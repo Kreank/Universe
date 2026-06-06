@@ -139,6 +139,41 @@
       "_overstretch_note": "Pro Geschwader ueber Span: -8% effektive Kampfkraft (Koordinationsstrafe)."
     },
     "specializations": ["combat", "logistics", "spy", "research", "trade"],
+
+    "ship_classes": {
+      "_note": "Schiffsklassen, auf die Commander-Boni zielen koennen (target).",
+      "fighter": ["light_fighter", "heavy_fighter"],
+      "cruiser": ["cruiser"],
+      "capital": ["battleship", "battlecruiser", "destroyer", "bomber", "deathstar"],
+      "civil": ["small_cargo", "large_cargo", "recycler", "colony_ship", "spy_probe", "solar_satellite"]
+    },
+
+    "combat_bonuses": {
+      "_note": "Commander-Boni: % auf Angriff/Schild/Tempo, teils flottenweit ('all'), teils auf eine Schiffsklasse (Fokus). Abgeleitet aus Spezialisierung + Rang + Traits + persona.focus, skaliert mit Moral. Damit baut sich jeder Spieler eigene Flotten-Profile (Offensive/Defensive/Speed).",
+      "stats": ["attack", "shield", "speed"],
+      "profiles": {
+        "combat":    { "primary": "attack", "secondary": "shield", "favored_class": "fighter" },
+        "logistics": { "primary": "speed",  "secondary": "shield", "favored_class": "civil" },
+        "spy":       { "primary": "speed",  "secondary": "attack", "favored_class": "civil" },
+        "research":  { "primary": "shield", "secondary": "speed",  "favored_class": "cruiser" },
+        "trade":     { "primary": "speed",  "secondary": "shield", "favored_class": "civil" }
+      },
+      "base": { "primary_pct": 0.10, "secondary_pct": 0.05, "favored_class_pct": 0.10 },
+      "rank_scale": { "cadet": 0.6, "officer": 0.8, "veteran": 1.0, "elite": 1.3, "legend": 1.6 },
+      "trait_mods": {
+        "_note": "Flotten-weite Modifikatoren je Trait (flach, NICHT rang-skaliert). Negative Werte = Schwaeche (Risiko/Belohnung).",
+        "aggressive":   { "attack": 0.08, "shield": -0.04 },
+        "cautious":     { "shield": 0.08, "attack": -0.03 },
+        "loyal":        {},
+        "ambitious":    { "attack": 0.03 },
+        "greedy":       { "attack": 0.04 },
+        "honorable":    { "shield": 0.03 },
+        "charismatic":  { "attack": 0.03, "shield": 0.03 },
+        "hot_tempered": { "attack": 0.12, "shield": -0.06 }
+      },
+      "morale_scale": { "floor": 0.5, "_note": "effektiv = base * (floor + (1-floor)*morale/100). Moral 100 -> voll, 0 -> floor." }
+    },
+
     "personality_traits": {
       "aggressive":   { "combat_attack_mod": 0.10, "self_risk_mod": 0.10 },
       "cautious":     { "combat_attack_mod": -0.05, "loss_reduction": 0.15, "retreat_early": true },

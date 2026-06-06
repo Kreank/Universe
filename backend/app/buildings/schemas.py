@@ -25,6 +25,10 @@ class BuildingOptionOut(BaseModel):
     build_seconds: int
     can_afford: bool
     requirements_met: bool
+    # Energiebilanz dieses Gebaeudes (Vorzeichen: + erzeugt, - verbraucht, 0 = neutral).
+    energy_now: float = 0.0      # bei aktueller Stufe
+    energy_next: float = 0.0     # bei naechster Stufe
+    energy_delta: float = 0.0    # Veraenderung durch den Ausbau
 
 
 class BuildingsResponse(BaseModel):

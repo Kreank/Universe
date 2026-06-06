@@ -12,6 +12,12 @@ class MoraleBandOut(BaseModel):
     combat_mod: float
 
 
+class BonusOut(BaseModel):
+    stat: str       # "attack" | "shield" | "speed"
+    target: str     # "all" | Schiffsklasse (fighter/cruiser/capital/civil)
+    pct: float      # Basiswert (im Kampf zusaetzlich moral-skaliert)
+
+
 class CommanderOut(BaseModel):
     id: uuid.UUID
     name: str
@@ -25,6 +31,8 @@ class CommanderOut(BaseModel):
     span_capacity: int
     status: str
     morale_band: MoraleBandOut
+    focus: str | None = None
+    bonuses: list[BonusOut] = []
     assigned_fleet_id: uuid.UUID | None = None
     training_finishes_at: dt.datetime | None = None
 

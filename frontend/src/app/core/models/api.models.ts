@@ -106,6 +106,10 @@ export interface BuildingOption {
   build_seconds: number;
   can_afford: boolean;
   requirements_met: boolean;
+  /** Energiebilanz: + erzeugt, - verbraucht, 0 neutral. */
+  energy_now: number;
+  energy_next: number;
+  energy_delta: number;
 }
 
 export interface BuildingsResponse {
@@ -245,11 +249,18 @@ export interface GalaxyTarget {
 export interface CommanderPersona {
   background: string;
   voice: string;
+  focus?: string;
 }
 
 export interface MoraleBand {
   label: string;
   combat_mod: number;
+}
+
+export interface CommanderBonus {
+  stat: 'attack' | 'shield' | 'speed' | string;
+  target: string; // 'all' | Schiffsklasse (fighter/cruiser/capital/civil)
+  pct: number; // Basiswert (im Kampf zusaetzlich moral-skaliert)
 }
 
 export interface Commander {
@@ -265,6 +276,8 @@ export interface Commander {
   span_capacity: number;
   status: string;
   morale_band: MoraleBand;
+  focus: string | null;
+  bonuses: CommanderBonus[];
   assigned_fleet_id: string | null;
   training_finishes_at: string | null;
 }

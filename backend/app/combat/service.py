@@ -135,6 +135,18 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     }
     attack_mult = _commander_mods(commander, len(attacker_ships))
 
+    # Schiffsklassen-spezifische Commander-Boni (Angriff/Schild je Schiffstyp, moral-skaliert).
+    ship_bonuses: dict[str, dict[str, float]] = {}
+    if commander is not None:
+        from app.commander.bonuses import base_bonuses, resolve_ship_bonuses
+        focus = (commander.persona or {}).get("focus")
+        cmd_bonuses = base_bonuses(
+            commander.specialization, commander.rank, commander.traits or [], focus
+        )
+        ship_bonuses, _speed = resolve_ship_bonuses(
+            cmd_bonuses, commander.morale, list(attacker_ships.keys())
+        )
+
     # -- Verteidiger ermitteln (NPC bevorzugt) -------------------------------
     cell = (await session.execute(
         select(UniverseCell).where(
@@ -172,7 +184,12 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         return None
 
     seed = random.randrange(1, 2 ** 62)
-    attacker = {"ships": attacker_ships, "tech": atk_tech, "attack_mult": attack_mult}
+    attacker = {
+        "ships": attacker_ships,
+        "tech": atk_tech,
+        "attack_mult": attack_mult,
+        "ship_bonuses": ship_bonuses,
+    }
     defender = {"ships": def_ships, "defenses": def_defenses, "tech": def_tech, "attack_mult": 1.0}
 
     result = simulate_battle(attacker, defender, seed, bal.data)

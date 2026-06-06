@@ -10,6 +10,38 @@ import { CountdownComponent } from '../../shared/components/countdown.component'
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { NotificationService } from '../../core/services/notification.service';
 
+interface ShipGroup {
+  key: string;
+  label: string;
+  glyph: string;
+  ships: ShipOption[];
+}
+
+/** Schiffs-Kategorien: zivile Flotte vs. Kampfflotte. */
+const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string[] }[] = [
+  {
+    key: 'civil',
+    label: 'Zivile Schiffe',
+    glyph: '🚚',
+    types: ['small_cargo', 'large_cargo', 'recycler', 'colony_ship', 'solar_satellite', 'spy_probe'],
+  },
+  {
+    key: 'combat',
+    label: 'Kampfschiffe',
+    glyph: '⚔️',
+    types: [
+      'light_fighter',
+      'heavy_fighter',
+      'cruiser',
+      'battleship',
+      'battlecruiser',
+      'bomber',
+      'destroyer',
+      'deathstar',
+    ],
+  },
+];
+
 @Component({
   selector: 'app-shipyard',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,25 +68,25 @@ import { NotificationService } from '../../core/services/notification.service';
         }
       </section>
 
-      <div class="grid two">
-        <section>
-          <div class="panel-title">🚀 Schiffe</div>
+      @for (group of shipGroups(); track group.key) {
+        <section class="cat">
+          <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
           <div class="grid list">
-            @for (s of d.ships; track s.type) {
+            @for (s of group.ships; track s.type) {
               <ng-container *ngTemplateOutlet="unitCard; context: { $implicit: s, cat: 'ship' }" />
             }
           </div>
         </section>
+      }
 
-        <section>
-          <div class="panel-title">🛡️ Verteidigung</div>
-          <div class="grid list">
-            @for (s of d.defenses; track s.type) {
-              <ng-container *ngTemplateOutlet="unitCard; context: { $implicit: s, cat: 'defense' }" />
-            }
-          </div>
-        </section>
-      </div>
+      <section class="cat">
+        <h2 class="cat-title">🛡️ Verteidigung</h2>
+        <div class="grid list">
+          @for (s of d.defenses; track s.type) {
+            <ng-container *ngTemplateOutlet="unitCard; context: { $implicit: s, cat: 'defense' }" />
+          }
+        </div>
+      </section>
 
       <ng-template #unitCard let-s let-cat="cat">
         <div class="card unit">
@@ -108,8 +140,13 @@ import { NotificationService } from '../../core/services/notification.service';
         display: flex; align-items: center; justify-content: space-between;
         padding: 0.4rem 0; font-size: 0.88rem; border-bottom: 1px solid rgba(255,255,255,0.05);
       }
-      .two { grid-template-columns: 1fr 1fr; align-items: start; }
-      .list { grid-template-columns: 1fr; }
+      .cat { margin-bottom: 1.6rem; }
+      .cat-title {
+        font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--accent); margin: 0 0 0.7rem;
+        padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+      }
+      .list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
       .unit-head { display: flex; gap: 0.8rem; align-items: flex-start; }
       .unit h3 { font-size: 0.98rem; margin: 0 0 0.3rem; }
       .unit-build { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
@@ -117,7 +154,6 @@ import { NotificationService } from '../../core/services/notification.service';
       .small { font-size: 0.76rem; }
       .hint { display: block; margin-top: 0.4rem; color: var(--text-faint); }
       .hint.warn { color: var(--warn); }
-      @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
     `,
   ],
 })
@@ -136,6 +172,27 @@ export class ShipyardComponent {
     return res
       ? { metal: res.metal.amount, crystal: res.crystal.amount, deuterium: res.deuterium.amount }
       : null;
+  });
+
+  /** Gruppiert die Schiffe in Kategorien (Reihenfolge aus SHIP_CATEGORY_ORDER). */
+  protected readonly shipGroups = computed<ShipGroup[]>(() => {
+    const ships = this.data()?.ships ?? [];
+    const byType = new Map(ships.map((s) => [s.type, s]));
+    const used = new Set<string>();
+    const groups: ShipGroup[] = [];
+    for (const cat of SHIP_CATEGORY_ORDER) {
+      const rows = cat.types.map((t) => byType.get(t)).filter((s): s is ShipOption => !!s);
+      rows.forEach((s) => used.add(s.type));
+      if (rows.length) {
+        groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, ships: rows });
+      }
+    }
+    // Etwaige unkategorisierte Schiffe als "Sonstiges".
+    const rest = ships.filter((s) => !used.has(s.type));
+    if (rest.length) {
+      groups.push({ key: 'other', label: 'Sonstiges', glyph: '🚀', ships: rest });
+    }
+    return groups;
   });
 
   constructor() {

@@ -59,6 +59,9 @@ async def get_buildings(
                 build_seconds=o["build_seconds"],
                 can_afford=o["can_afford"],
                 requirements_met=o["requirements_met"],
+                energy_now=o["energy_now"],
+                energy_next=o["energy_next"],
+                energy_delta=o["energy_delta"],
             )
             for o in options
         ],

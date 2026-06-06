@@ -48,6 +48,21 @@ export const commanderStyles = `
   .morale-bar .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--band) 50%, transparent), var(--band)); }
   .traits { display: flex; flex-wrap: wrap; gap: 0.3rem; }
   .trait { border-color: var(--border); }
+
+  .bonuses { display: flex; flex-direction: column; gap: 0.3rem; }
+  .bonus-head { text-transform: uppercase; letter-spacing: 0.04em; }
+  .bonus-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .chip.bonus {
+    border-color: var(--accent-dim);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    font-size: 0.72rem;
+  }
+  .chip.bonus.neg {
+    border-color: var(--warn); color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 8%, transparent);
+  }
+
   .cmd-foot { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 
   @media (max-width: 520px) {

@@ -15,6 +15,22 @@ interface BuildingRow {
   option: BuildingOption | null;
 }
 
+interface BuildingGroup {
+  key: string;
+  label: string;
+  glyph: string;
+  rows: BuildingRow[];
+}
+
+/** Kategorien gemaess Wunsch: Rohstoffe, Energie, Anlagen, Lager, Kommando. */
+const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string[] }[] = [
+  { key: 'resource', label: 'Rohstoff-Gebaeude', glyph: '⛏️', types: ['metal_mine', 'crystal_mine', 'deuterium_synth'] },
+  { key: 'energy', label: 'Energie', glyph: '⚡', types: ['solar_plant', 'fusion_reactor'] },
+  { key: 'facility', label: 'Anlagen', glyph: '🏭', types: ['robot_factory', 'shipyard', 'research_lab'] },
+  { key: 'storage', label: 'Lager', glyph: '📦', types: ['metal_storage', 'crystal_storage', 'deuterium_tank'] },
+  { key: 'command', label: 'Kommando', glyph: '🎖️', types: ['command_academy', 'command_center'] },
+];
+
 @Component({
   selector: 'app-buildings',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,56 +44,85 @@ interface BuildingRow {
     } @else if (rows().length === 0) {
       <p class="empty-state">Keine Gebaeudedaten verfuegbar.</p>
     } @else {
-      <div class="grid list">
-        @for (b of rows(); track b.type) {
-          <div class="card building" [class.busy]="b.finishesAt">
-            <app-icon-tile [glyph]="meta(b.type).glyph" [size]="52" />
-            <div class="info">
-              <div class="row-between">
-                <h3 class="tip" [attr.data-tip]="meta(b.type).blurb ?? ''">{{ meta(b.type).label }}</h3>
-                <span class="chip">Stufe {{ b.level }}</span>
-              </div>
+      @for (group of groups(); track group.key) {
+        <section class="cat">
+          <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
+          <div class="grid list">
+            @for (b of group.rows; track b.type) {
+              <div class="card building" [class.busy]="b.finishesAt">
+                <app-icon-tile [glyph]="meta(b.type).glyph" [size]="52" />
+                <div class="info">
+                  <div class="row-between">
+                    <h3 class="tip" [attr.data-tip]="meta(b.type).blurb ?? ''">{{ meta(b.type).label }}</h3>
+                    <span class="chip">Stufe {{ b.level }}</span>
+                  </div>
 
-              @if (b.option) {
-                <div class="next">
-                  <span class="muted small">Naechste Stufe {{ b.option.next_level }}</span>
-                  <app-cost-line [cost]="b.option.cost" [available]="balances()" />
-                  <span class="muted small">⏱ {{ formatTime(b.option.build_seconds) }}</span>
+                  @if (b.option) {
+                    <div class="next">
+                      <span class="muted small">Naechste Stufe {{ b.option.next_level }}</span>
+                      <app-cost-line [cost]="b.option.cost" [available]="balances()" />
+                      <div class="meta-line">
+                        <span class="muted small">⏱ {{ formatTime(b.option.build_seconds) }}</span>
+                        @if (b.option.energy_now !== 0 || b.option.energy_delta !== 0) {
+                          <span class="energy small"
+                            [class.produces]="b.option.energy_now > 0"
+                            [class.consumes]="b.option.energy_now < 0"
+                            [attr.data-tip]="energyTip(b.option)">
+                            ⚡ {{ energyLabel(b.option.energy_now) }}
+                            @if (b.option.energy_delta !== 0) {
+                              <span class="delta">(Δ {{ signed(b.option.energy_delta) }})</span>
+                            }
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
                 </div>
-              }
-            </div>
 
-            <div class="action">
-              @if (b.finishesAt) {
-                <span class="muted small">Im Bau</span>
-                <app-countdown [target]="b.finishesAt" />
-              } @else if (b.option) {
-                <button
-                  class="btn btn-primary btn-sm"
-                  type="button"
-                  [disabled]="!canUpgrade(b) || pending() === b.type || anyBuilding()"
-                  (click)="upgrade(b.type)"
-                >
-                  {{ pending() === b.type ? '…' : 'Ausbauen' }}
-                </button>
-                @if (!b.option.requirements_met) {
-                  <span class="hint warn small">Voraussetzung fehlt</span>
-                } @else if (!b.option.can_afford) {
-                  <span class="hint warn small">Zu teuer</span>
-                } @else if (anyBuilding()) {
-                  <span class="hint small">Bauschleife belegt</span>
-                }
-              }
-            </div>
+                <div class="action">
+                  @if (b.finishesAt) {
+                    <span class="muted small">Im Bau</span>
+                    <app-countdown [target]="b.finishesAt" />
+                  } @else if (b.option) {
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="!canUpgrade(b) || pending() === b.type || anyBuilding()"
+                      (click)="upgrade(b.type)"
+                    >
+                      {{ pending() === b.type ? '…' : 'Ausbauen' }}
+                    </button>
+                    @if (!b.option.requirements_met) {
+                      <span class="hint warn small">Voraussetzung fehlt</span>
+                    } @else if (!b.option.can_afford) {
+                      <span class="hint warn small">Zu teuer</span>
+                    } @else if (anyBuilding()) {
+                      <span class="hint small">Bauschleife belegt</span>
+                    }
+                  }
+                </div>
+              </div>
+            }
           </div>
-        }
-      </div>
+        </section>
+      }
     }
   `,
   styles: [
     `
       .sub { margin-top: -0.3rem; font-size: 0.85rem; }
+      .cat { margin-bottom: 1.6rem; }
+      .cat-title {
+        font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--accent); margin: 0 0 0.7rem;
+        padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+      }
       .list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+      .meta-line { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+      .energy { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--text-dim); }
+      .energy.produces { color: var(--ok); }
+      .energy.consumes { color: var(--warn); }
+      .energy .delta { color: var(--text-faint); }
       .building {
         display: grid;
         grid-template-columns: auto 1fr auto;
@@ -123,6 +168,26 @@ export class BuildingsComponent {
         };
       })
       .sort((a, b) => a.type.localeCompare(b.type));
+  });
+
+  /** Gruppiert die Gebaeude in Kategorien (Reihenfolge aus CATEGORY_ORDER). */
+  protected readonly groups = computed<BuildingGroup[]>(() => {
+    const byType = new Map(this.rows().map((r) => [r.type, r]));
+    const used = new Set<string>();
+    const groups: BuildingGroup[] = [];
+    for (const cat of CATEGORY_ORDER) {
+      const rows = cat.types.map((t) => byType.get(t)).filter((r): r is BuildingRow => !!r);
+      rows.forEach((r) => used.add(r.type));
+      if (rows.length) {
+        groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, rows });
+      }
+    }
+    // Etwaige unkategorisierte Gebaeude (z. B. neue Typen) als "Sonstiges".
+    const rest = this.rows().filter((r) => !used.has(r.type));
+    if (rest.length) {
+      groups.push({ key: 'other', label: 'Sonstiges', glyph: '🏗️', rows: rest });
+    }
+    return groups;
   });
 
   protected readonly anyBuilding = computed(() => this.rows().some((r) => r.finishesAt));
@@ -179,6 +244,28 @@ export class BuildingsComponent {
   }
 
   meta = (t: string) => metaFor(BUILDING_META, t);
+
+  /** Energie-Label: erzeugt (+), verbraucht (-) oder neutral. */
+  energyLabel(value: number): string {
+    if (value > 0) return `+${Math.round(value)}`;
+    if (value < 0) return `${Math.round(value)}`;
+    return '0';
+  }
+
+  signed(value: number): string {
+    const v = Math.round(value);
+    return v > 0 ? `+${v}` : `${v}`;
+  }
+
+  energyTip(o: BuildingOption): string {
+    const verb = o.energy_now > 0 ? 'erzeugt' : o.energy_now < 0 ? 'verbraucht' : 'neutral';
+    const now = Math.abs(Math.round(o.energy_now));
+    const next = Math.abs(Math.round(o.energy_next));
+    if (o.energy_now === 0 && o.energy_delta !== 0) {
+      return `Naechste Stufe ${o.energy_next > 0 ? 'erzeugt' : 'verbraucht'} ${next} Energie`;
+    }
+    return `Aktuell: ${verb} ${now} Energie\nNaechste Stufe: ${next} Energie`;
+  }
 
   formatTime(seconds: number): string {
     const s = Math.max(0, Math.round(seconds));

@@ -15,6 +15,35 @@ interface ResearchRow {
   option: ResearchOption | null;
 }
 
+interface ResearchGroup {
+  key: string;
+  label: string;
+  glyph: string;
+  rows: ResearchRow[];
+}
+
+/** Kategorien des Techbaums: Antriebe, Kampftechnik, Fuehrung. */
+const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string[] }[] = [
+  {
+    key: 'drive',
+    label: 'Antriebe & Reichweite',
+    glyph: '🚀',
+    types: ['energy_tech', 'combustion_drive', 'impulse_drive', 'spy_tech', 'computer_tech'],
+  },
+  {
+    key: 'combat',
+    label: 'Kampftechnik',
+    glyph: '⚔️',
+    types: ['weapons_tech', 'shield_tech', 'armor_tech'],
+  },
+  {
+    key: 'command',
+    label: 'Fuehrung & Crew',
+    glyph: '🎖️',
+    types: ['command_doctrine', 'logistics_tech', 'crew_psychology'],
+  },
+];
+
 @Component({
   selector: 'app-research',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,48 +65,53 @@ interface ResearchRow {
     @if (loading()) {
       <p class="empty-state">Lade Techbaum…</p>
     } @else {
-      <div class="grid list">
-        @for (t of rows(); track t.type) {
-          <div class="card tech">
-            <app-icon-tile [glyph]="meta(t.type).glyph" [size]="52" variant="muted" />
-            <div class="info">
-              <div class="row-between">
-                <h3 class="tip" [attr.data-tip]="meta(t.type).blurb ?? ''">{{ meta(t.type).label }}</h3>
-                <span class="chip">Stufe {{ t.level }}</span>
-              </div>
-              @if (t.option) {
-                <div class="next">
-                  <span class="muted small">Stufe {{ t.option.next_level }}</span>
-                  <app-cost-line [cost]="t.option.cost" [available]="balances()" />
-                  <span class="muted small">⏱ {{ formatTime(t.option.research_seconds) }}</span>
+      @for (group of groups(); track group.key) {
+        <section class="cat">
+          <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
+          <div class="grid list">
+            @for (t of group.rows; track t.type) {
+              <div class="card tech">
+                <app-icon-tile [glyph]="meta(t.type).glyph" [size]="52" variant="muted" />
+                <div class="info">
+                  <div class="row-between">
+                    <h3 class="tip" [attr.data-tip]="meta(t.type).blurb ?? ''">{{ meta(t.type).label }}</h3>
+                    <span class="chip">Stufe {{ t.level }}</span>
+                  </div>
+                  @if (t.option) {
+                    <div class="next">
+                      <span class="muted small">Stufe {{ t.option.next_level }}</span>
+                      <app-cost-line [cost]="t.option.cost" [available]="balances()" />
+                      <span class="muted small">⏱ {{ formatTime(t.option.research_seconds) }}</span>
+                    </div>
+                  }
                 </div>
-              }
-            </div>
-            <div class="action">
-              @if (t.finishesAt) {
-                <span class="muted small">Laeuft</span>
-                <app-countdown [target]="t.finishesAt" />
-              } @else if (t.option) {
-                <button
-                  class="btn btn-primary btn-sm"
-                  type="button"
-                  [disabled]="!canStart(t) || pending() === t.type || researchBusy()"
-                  (click)="start(t.type)"
-                >
-                  {{ pending() === t.type ? '…' : 'Erforschen' }}
-                </button>
-                @if (!t.option.requirements_met) {
-                  <span class="hint warn small">Voraussetzung fehlt</span>
-                } @else if (!t.option.can_afford) {
-                  <span class="hint warn small">Zu teuer</span>
-                } @else if (researchBusy()) {
-                  <span class="hint small">Labor belegt</span>
-                }
-              }
-            </div>
+                <div class="action">
+                  @if (t.finishesAt) {
+                    <span class="muted small">Laeuft</span>
+                    <app-countdown [target]="t.finishesAt" />
+                  } @else if (t.option) {
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="!canStart(t) || pending() === t.type || researchBusy()"
+                      (click)="start(t.type)"
+                    >
+                      {{ pending() === t.type ? '…' : 'Erforschen' }}
+                    </button>
+                    @if (!t.option.requirements_met) {
+                      <span class="hint warn small">Voraussetzung fehlt</span>
+                    } @else if (!t.option.can_afford) {
+                      <span class="hint warn small">Zu teuer</span>
+                    } @else if (researchBusy()) {
+                      <span class="hint small">Labor belegt</span>
+                    }
+                  }
+                </div>
+              </div>
+            }
           </div>
-        }
-      </div>
+        </section>
+      }
     }
   `,
   styles: [
@@ -87,6 +121,12 @@ interface ResearchRow {
         display: flex; align-items: center; justify-content: space-between;
         gap: 1rem; margin-bottom: 1rem; border-color: var(--border-strong);
         box-shadow: var(--glow);
+      }
+      .cat { margin-bottom: 1.6rem; }
+      .cat-title {
+        font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--accent); margin: 0 0 0.7rem;
+        padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
       }
       .list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
       .tech { display: grid; grid-template-columns: auto 1fr auto; gap: 0.9rem; align-items: center; }
@@ -127,6 +167,26 @@ export class ResearchComponent {
         };
       })
       .sort((a, b) => a.type.localeCompare(b.type));
+  });
+
+  /** Gruppiert die Technologien in Kategorien (Reihenfolge aus CATEGORY_ORDER). */
+  protected readonly groups = computed<ResearchGroup[]>(() => {
+    const byType = new Map(this.rows().map((r) => [r.type, r]));
+    const used = new Set<string>();
+    const groups: ResearchGroup[] = [];
+    for (const cat of CATEGORY_ORDER) {
+      const rows = cat.types.map((t) => byType.get(t)).filter((r): r is ResearchRow => !!r);
+      rows.forEach((r) => used.add(r.type));
+      if (rows.length) {
+        groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, rows });
+      }
+    }
+    // Etwaige unkategorisierte Technologien als "Sonstiges".
+    const rest = this.rows().filter((r) => !used.has(r.type));
+    if (rest.length) {
+      groups.push({ key: 'other', label: 'Sonstiges', glyph: '🔬', rows: rest });
+    }
+    return groups;
   });
 
   protected readonly activeResearch = computed(() => this.rows().find((r) => r.finishesAt) ?? null);

@@ -184,6 +184,16 @@ async def send_fleet(
     origin = (planet.galaxy, planet.system, planet.position)
     distance = compute_distance(origin, target)
     secs = flight_seconds(distance, slowest_ship_speed(ships), speed_pct)
+    # Commander-Tempobonus verkuerzt die Flugzeit (moral-skaliert).
+    if commander is not None:
+        from app.commander.bonuses import base_bonuses, resolve_ship_bonuses
+        focus = (commander.persona or {}).get("focus")
+        cmd_bonuses = base_bonuses(
+            commander.specialization, commander.rank, commander.traits or [], focus
+        )
+        _sb, speed_bonus = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(ships.keys()))
+        if speed_bonus > 0:
+            secs = int(round(secs / (1.0 + speed_bonus)))
     fuel = fuel_cost(ships, distance)
 
     cargo = {
@@ -305,17 +315,23 @@ async def fleet_return(fleet_id: str) -> None:
         )).scalars().all()
 
         if origin is not None:
-            # Schiffe in den Planetenbestand zurueckfuehren.
+            # Schiffe in den Planetenbestand zurueckfuehren. Es kann mehrere
+            # Bestands-Zeilen je Typ geben (kein DB-Unique); robust zusammenfuehren.
             for fs in fleet_ships:
-                dest = (await session.execute(
+                existing = (await session.execute(
                     select(Ship).where(
                         Ship.planet_id == origin.id, Ship.fleet_id.is_(None), Ship.type == fs.type
                     )
-                )).scalar_one_or_none()
-                if dest is None:
-                    dest = Ship(planet_id=origin.id, fleet_id=None, type=fs.type, count=0)
-                    session.add(dest)
-                dest.count += fs.count
+                )).scalars().all()
+                if existing:
+                    dest = existing[0]
+                    dest.count += fs.count
+                    # Etwaige Duplikate in die erste Zeile konsolidieren.
+                    for extra in existing[1:]:
+                        dest.count += extra.count
+                        await session.delete(extra)
+                else:
+                    session.add(Ship(planet_id=origin.id, fleet_id=None, type=fs.type, count=fs.count))
                 await session.delete(fs)
             # Fracht gutschreiben.
             await add_resources(session, origin, fleet.cargo or {})

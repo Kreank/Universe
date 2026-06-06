@@ -83,6 +83,19 @@ import { commanderStyles } from './commander.styles';
                 }
               </div>
 
+              @if (c.bonuses.length) {
+                <div class="bonuses">
+                  <span class="bonus-head faint small">Boni (bei voller Moral){{ c.focus ? ' · Fokus: ' + classLabel(c.focus) : '' }}</span>
+                  <div class="bonus-chips">
+                    @for (b of c.bonuses; track b.stat + b.target) {
+                      <span class="chip bonus" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
+                        {{ statGlyph(b.stat) }} {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+
               <div class="cmd-foot faint small">
                 <span class="tip" [attr.data-tip]="c.persona.background">XP {{ c.xp }}</span>
                 <span>· Loyalitaet {{ c.loyalty }}</span>
@@ -143,4 +156,27 @@ export class CommandersComponent {
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   trait = (t: string) => metaFor(TRAIT_META, t);
   bandClass = (m: number) => this.balance.moraleBandClass(m);
+
+  // -- Boni-Darstellung ---------------------------------------------------
+  private static readonly STAT_GLYPH: Record<string, string> = {
+    attack: '⚔', shield: '🛡', speed: '💨',
+  };
+  private static readonly STAT_LABEL: Record<string, string> = {
+    attack: 'Angriff', shield: 'Schild', speed: 'Tempo',
+  };
+  private static readonly CLASS_LABEL: Record<string, string> = {
+    all: 'alle Schiffe', fighter: 'Jaeger', cruiser: 'Kreuzer',
+    capital: 'Grosskampfschiffe', civil: 'zivile Schiffe',
+  };
+
+  statGlyph = (s: string) => CommandersComponent.STAT_GLYPH[s] ?? '•';
+  classLabel = (t: string) => CommandersComponent.CLASS_LABEL[t] ?? t;
+  targetLabel = (t: string) => (t === 'all' ? '' : '· ' + this.classLabel(t));
+  signedPct = (p: number) => (p > 0 ? '+' : '') + Math.round(p * 100) + '%';
+
+  bonusTip(b: { stat: string; target: string; pct: number }): string {
+    const stat = CommandersComponent.STAT_LABEL[b.stat] ?? b.stat;
+    const tgt = b.target === 'all' ? 'alle Schiffe' : this.classLabel(b.target);
+    return `${this.signedPct(b.pct)} ${stat} auf ${tgt}\n(Basiswert — im Kampf mit der Moral skaliert)`;
+  }
 }

@@ -46,11 +46,17 @@ def _build_units(
     catalogs: dict[str, Any],
     tech: dict[str, int],
     attack_mult: float,
+    ship_bonuses: dict[str, dict[str, float]] | None = None,
 ) -> list[Unit]:
-    """Expandiert Stueckzahlen zu Einzel-Einheiten und wendet Tech-/Mod-Boni an."""
+    """Expandiert Stueckzahlen zu Einzel-Einheiten und wendet Tech-/Mod-Boni an.
+
+    ``ship_bonuses`` sind die schiffstyp-spezifischen Commander-Boni, bereits
+    aufgeloest pro Schiffstyp: {typ: {"attack": pct, "shield": pct}} (additiv auf 1.0).
+    Sie wirken ZUSAETZLICH zum globalen ``attack_mult`` (Moral-Band)."""
     ship_cat = catalogs["ships"]
     def_cat = catalogs["defenses"]
     bonus = catalogs["tech_bonus"]
+    sb = ship_bonuses or {}
 
     w = 1.0 + bonus["weapons_per_level"] * tech.get("weapons_tech", 0)
     s = 1.0 + bonus["shield_per_level"] * tech.get("shield_tech", 0)
@@ -61,8 +67,9 @@ def _build_units(
         cfg = ship_cat.get(typ)
         if cfg is None or count <= 0:
             continue
-        attack = cfg.get("attack", 0) * w * attack_mult
-        shield = cfg.get("shield", 0) * s * attack_mult
+        cb = sb.get(typ, {})
+        attack = cfg.get("attack", 0) * w * attack_mult * (1.0 + cb.get("attack", 0.0))
+        shield = cfg.get("shield", 0) * s * attack_mult * (1.0 + cb.get("shield", 0.0))
         hull = _hull_from_cost(cfg["cost"]) * a
         for _ in range(int(count)):
             units.append(Unit(typ, side, attack, shield, hull, dict(cfg.get("rapidfire", {})), False))
@@ -70,8 +77,9 @@ def _build_units(
         cfg = def_cat.get(typ)
         if cfg is None or count <= 0:
             continue
-        attack = cfg.get("attack", 0) * w * attack_mult
-        shield = cfg.get("shield", 0) * s * attack_mult
+        cb = sb.get(typ, {})
+        attack = cfg.get("attack", 0) * w * attack_mult * (1.0 + cb.get("attack", 0.0))
+        shield = cfg.get("shield", 0) * s * attack_mult * (1.0 + cb.get("shield", 0.0))
         hull = _hull_from_cost(cfg["cost"]) * a
         for _ in range(int(count)):
             units.append(Unit(typ, side, attack, shield, hull, dict(cfg.get("rapidfire_against", {})), True))
@@ -112,10 +120,12 @@ def simulate_battle(
     atk_units = _build_units(
         "attacker", attacker.get("ships", {}), {}, catalogs,
         attacker.get("tech", {}), attacker.get("attack_mult", 1.0),
+        attacker.get("ship_bonuses"),
     )
     def_units = _build_units(
         "defender", defender.get("ships", {}), defender.get("defenses", {}), catalogs,
         defender.get("tech", {}), defender.get("attack_mult", 1.0),
+        defender.get("ship_bonuses"),
     )
 
     attacker_initial = _counts(atk_units)

@@ -11,7 +11,12 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.economy.service import get_building_levels, refresh_resources, spend_resources
+from app.economy.service import (
+    get_building_levels,
+    get_research_levels,
+    refresh_resources,
+    spend_resources,
+)
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
@@ -38,6 +43,26 @@ def cost_for_level(building_type: str, current_level: int) -> dict[str, float]:
     }
 
 
+def energy_for_level(building_type: str, level: int, energy_tech: int = 0) -> float:
+    """Signierte Energiebilanz eines Gebaeudes bei gegebener Stufe.
+
+    Vorzeichen: positiv = erzeugt Energie, negativ = verbraucht, 0 = neutral.
+    Nutzt dieselben Formeln wie economy.compute_production_and_energy."""
+    if level <= 0:
+        return 0.0
+    cfg = get_balance().buildings[building_type]
+    # Verbraucher (Minen/Synthesizer)
+    if "energy_base" in cfg:
+        return -round(cfg["energy_base"] * level * (cfg["energy_growth"] ** level), 1)
+    # Solarkraftwerk
+    if building_type == "solar_plant":
+        return round(cfg["energy_prod_base"] * level * (cfg["energy_prod_growth"] ** level), 1)
+    # Fusionsreaktor (haengt von Energietechnik ab)
+    if building_type == "fusion_reactor":
+        return round(cfg["energy_prod_base"] * level * ((1.05 + 0.01 * energy_tech) ** level), 1)
+    return 0.0
+
+
 def build_seconds(cost: dict[str, float], robot_factory_lvl: int, nanite_lvl: int = 0) -> int:
     """Bauzeit (Sekunden): (M+K) / (2500*(1+robot)*2^nanite*speed) Stunden."""
     bal = get_balance()
@@ -55,6 +80,8 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
     bal = get_balance()
     levels = await get_building_levels(session, planet.id)
     robot = levels.get("robot_factory", 0)
+    research = await get_research_levels(session, planet.player_id)
+    energy_tech = research.get("energy_tech", 0)
     resources = await refresh_resources(session, planet)
     options: list[dict] = []
     for btype in bal.buildings.keys():
@@ -64,6 +91,8 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
         can_afford = all(
             resources[r]["amount"] + 1e-6 >= cost[r] for r in ("metal", "crystal", "deuterium")
         )
+        energy_now = energy_for_level(btype, level, energy_tech)
+        energy_next = energy_for_level(btype, level + 1, energy_tech)
         options.append({
             "type": btype,
             "next_level": level + 1,
@@ -71,6 +100,9 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
             "build_seconds": secs,
             "can_afford": can_afford,
             "requirements_met": True,  # Gebaeude haben im Slice keine Vorbedingungen
+            "energy_now": energy_now,
+            "energy_next": energy_next,
+            "energy_delta": round(energy_next - energy_now, 1),
         })
     return options
 

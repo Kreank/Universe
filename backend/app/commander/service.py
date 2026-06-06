@@ -11,6 +11,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.commander.bonuses import base_bonuses
 from app.economy.service import get_building_levels, get_research_levels
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
@@ -62,6 +63,12 @@ async def create_commander(
     bal = get_balance()
     rng = rng or random.Random()
     name, persona, traits = generate_persona(rng)
+    # Fokus-Schiffsklasse: meist die Spezialisierungs-Favoritin, sonst etwas Varianz,
+    # damit Commander auch innerhalb einer Spezialisierung unterschiedliche Profile haben.
+    cb = bal.commander["combat_bonuses"]
+    classes = [k for k in bal.commander["ship_classes"].keys() if not k.startswith("_")]
+    favored = cb["profiles"].get(specialization, cb["profiles"]["combat"])["favored_class"]
+    persona["focus"] = favored if rng.random() < 0.6 else rng.choice(classes)
     rank = bal.rank_by_key(rank_key)
     morale_start = bal.commander["morale"]["start"]
 
@@ -106,6 +113,8 @@ async def assigned_fleet_id(session: AsyncSession, commander_id: uuid.UUID) -> u
 async def commander_to_dict(session: AsyncSession, c: Commander) -> dict:
     bal = get_balance()
     band = bal.morale_band(c.morale)
+    focus = (c.persona or {}).get("focus")
+    bonuses = base_bonuses(c.specialization, c.rank, c.traits or [], focus)
     return {
         "id": c.id,
         "name": c.name,
@@ -119,6 +128,8 @@ async def commander_to_dict(session: AsyncSession, c: Commander) -> dict:
         "span_capacity": c.span_capacity,
         "status": c.status,
         "morale_band": {"label": band["label"], "combat_mod": band["combat_mod"]},
+        "focus": focus,
+        "bonuses": bonuses,
         "assigned_fleet_id": await assigned_fleet_id(session, c.id),
         "training_finishes_at": c.training_finishes_at,
     }
