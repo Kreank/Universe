@@ -1,0 +1,70 @@
+"""Pydantic-Schemas fuer Gebaeude (api-contract §3)."""
+from __future__ import annotations
+
+import datetime as dt
+
+from pydantic import BaseModel
+
+
+class CostOut(BaseModel):
+    metal: float
+    crystal: float
+    deuterium: float
+
+
+class BuildingStateOut(BaseModel):
+    type: str
+    level: int
+    upgrade_finishes_at: dt.datetime | None = None
+
+
+class BuildingOptionOut(BaseModel):
+    type: str
+    next_level: int
+    cost: CostOut
+    build_seconds: int
+    can_afford: bool
+    requirements_met: bool
+
+
+class BuildingsResponse(BaseModel):
+    buildings: list[BuildingStateOut]
+    available: list[BuildingOptionOut]
+
+
+class UpgradeResponse(BaseModel):
+    type: str
+    level: int
+    upgrade_finishes_at: dt.datetime
+
+
+# -- Werft (api-contract §5) ---------------------------------------------------
+class ShipOptionOut(BaseModel):
+    type: str
+    cost: CostOut
+    build_seconds_each: int
+    can_build: bool
+    requirements_met: bool
+
+
+class BuildQueueItemOut(BaseModel):
+    type: str
+    count: int
+    category: str
+    finishes_at: dt.datetime
+
+
+class ShipyardResponse(BaseModel):
+    ships: list[ShipOptionOut]
+    defenses: list[ShipOptionOut]
+    queue: list[BuildQueueItemOut]
+
+
+class ShipyardBuildRequest(BaseModel):
+    type: str
+    count: int
+    category: str  # "ship" | "defense"
+
+
+class ShipyardBuildResponse(BaseModel):
+    queue: list[BuildQueueItemOut]

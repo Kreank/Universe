@@ -1,0 +1,156 @@
+"""Gebaeude-Logik: Kosten/Bauzeit-Formeln, Ausbau starten, Abschluss-Job.
+
+Kosten der naechsten Stufe = base * factor^(aktuelle_stufe). Bauzeit aus balance.json.
+Pro Planet darf nur EIN Gebaeude gleichzeitig im Bau sein (api-contract §3, 409)."""
+from __future__ import annotations
+
+import datetime as dt
+import logging
+import uuid
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.economy.service import get_building_levels, refresh_resources, spend_resources
+from app.platform.balance import get_balance
+from app.platform.db import session_scope
+from app.platform.eventbus import event_bus
+from app.platform.models import Building, Planet
+from app.platform.scheduler import schedule_at
+
+log = logging.getLogger("universe.buildings")
+
+
+def _now() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
+
+
+def cost_for_level(building_type: str, current_level: int) -> dict[str, float]:
+    """Kosten fuer den Ausbau current_level -> current_level+1."""
+    cfg = get_balance().buildings[building_type]
+    factor = cfg["factor"]
+    mult = factor ** current_level
+    base = cfg["cost"]
+    return {
+        "metal": round(base.get("metal", 0) * mult, 2),
+        "crystal": round(base.get("crystal", 0) * mult, 2),
+        "deuterium": round(base.get("deuterium", 0) * mult, 2),
+    }
+
+
+def build_seconds(cost: dict[str, float], robot_factory_lvl: int, nanite_lvl: int = 0) -> int:
+    """Bauzeit (Sekunden): (M+K) / (2500*(1+robot)*2^nanite*speed) Stunden."""
+    bal = get_balance()
+    divisor = bal.data["build_time"]["divisor"]
+    speed = bal.speed
+    hours = (cost["metal"] + cost["crystal"]) / (
+        divisor * (1 + robot_factory_lvl) * (2 ** nanite_lvl) * speed
+    )
+    seconds = int(round(hours * 3600))
+    return max(bal.data["build_time"]["min_seconds"], seconds)
+
+
+async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
+    """Berechnet fuer jeden Gebaeudetyp die naechste Ausbau-Option."""
+    bal = get_balance()
+    levels = await get_building_levels(session, planet.id)
+    robot = levels.get("robot_factory", 0)
+    resources = await refresh_resources(session, planet)
+    options: list[dict] = []
+    for btype in bal.buildings.keys():
+        level = levels.get(btype, 0)
+        cost = cost_for_level(btype, level)
+        secs = build_seconds(cost, robot)
+        can_afford = all(
+            resources[r]["amount"] + 1e-6 >= cost[r] for r in ("metal", "crystal", "deuterium")
+        )
+        options.append({
+            "type": btype,
+            "next_level": level + 1,
+            "cost": cost,
+            "build_seconds": secs,
+            "can_afford": can_afford,
+            "requirements_met": True,  # Gebaeude haben im Slice keine Vorbedingungen
+        })
+    return options
+
+
+async def is_building_in_progress(session: AsyncSession, planet_id: uuid.UUID) -> bool:
+    rows = (await session.execute(
+        select(Building).where(
+            Building.planet_id == planet_id,
+            Building.upgrade_finishes_at.is_not(None),
+        )
+    )).scalars().all()
+    return len(rows) > 0
+
+
+async def start_upgrade(session: AsyncSession, planet: Planet, building_type: str) -> Building:
+    """Startet einen Gebaeudeausbau. Wirft ValueError bei ungueltigem Typ,
+    RuntimeError bei laufendem Bau oder fehlenden Ressourcen."""
+    bal = get_balance()
+    if building_type not in bal.buildings:
+        raise ValueError("Unbekannter Gebaeudetyp")
+    if await is_building_in_progress(session, planet.id):
+        raise RuntimeError("Es laeuft bereits ein Gebaeudeausbau auf diesem Planeten")
+
+    # Gebaeude-Zeile holen oder anlegen.
+    row = (await session.execute(
+        select(Building).where(Building.planet_id == planet.id, Building.type == building_type)
+    )).scalar_one_or_none()
+    if row is None:
+        row = Building(planet_id=planet.id, type=building_type, level=0)
+        session.add(row)
+        await session.flush()
+
+    levels = await get_building_levels(session, planet.id)
+    cost = cost_for_level(building_type, row.level)
+    if not await spend_resources(session, planet, cost):
+        raise RuntimeError("Nicht genug Ressourcen")
+
+    secs = build_seconds(cost, levels.get("robot_factory", 0))
+    finish = _now() + dt.timedelta(seconds=secs)
+    row.upgrade_finishes_at = finish
+    await session.flush()
+
+    schedule_at(
+        finish,
+        complete_building,
+        str(planet.id),
+        building_type,
+        job_id=f"build:{planet.id}:{building_type}",
+    )
+    return row
+
+
+async def complete_building(planet_id: str, building_type: str) -> None:
+    """Scheduler-Callback: erhoeht die Stufe, published WS-Event."""
+    async with session_scope() as session:
+        planet = await session.get(Planet, uuid.UUID(planet_id))
+        if planet is None:
+            return
+        row = (await session.execute(
+            select(Building).where(
+                Building.planet_id == planet.id, Building.type == building_type
+            )
+        )).scalar_one_or_none()
+        if row is None or row.upgrade_finishes_at is None:
+            return
+        # Ressourcen vor dem Stufensprung mit alter Rate fortschreiben.
+        await refresh_resources(session, planet)
+        row.level += 1
+        row.upgrade_finishes_at = None
+        planet.fields_used += 1
+        # Neue Rate wirksam machen.
+        await refresh_resources(session, planet)
+        new_level = row.level
+        player_id = planet.player_id
+        await session.commit()
+
+    await event_bus.publish_ws(player_id, {
+        "type": "build_complete",
+        "planet_id": planet_id,
+        "building": building_type,
+        "level": new_level,
+    })
+    log.info("Gebaeude fertig: %s lvl %s auf %s", building_type, new_level, planet_id)

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Leichter Jaeger">
+  <rect width="120" height="120" rx="14" fill="#0d1629"/>
+  <path d="M60 18l28 70-28-16-28 16z" fill="none" stroke="#2ee6d6" stroke-width="2.5" stroke-linejoin="round"/>
+  <line x1="60" y1="40" x2="60" y2="80" stroke="#2ee6d6" stroke-width="1.5" opacity="0.5"/>
+</svg>

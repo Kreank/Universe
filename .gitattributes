@@ -1,0 +1,5 @@
+# Einheitliche Zeilenenden im Repo (verhindert CRLF/LF-Rauschen).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.svg text eol=lf

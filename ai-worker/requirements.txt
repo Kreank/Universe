@@ -1,0 +1,9 @@
+# ai-worker — gepinnte Abhaengigkeiten (Python 3.12)
+# Nur offizieller Tech-Stack (GDD §11). Async durchgehend.
+
+redis==5.2.1            # redis.asyncio: Job-Queue (BRPOP) + PubSub (ws:player:{id})
+httpx==0.28.1           # async HTTP-Client fuer die Ollama-API
+asyncpg==0.30.0         # direkter async-PostgreSQL-Treiber
+pgvector==0.3.6         # vector(768)-Typ-Anbindung fuer asyncpg (Dedup/RAG)
+pydantic==2.10.6        # Job-Validierung / typisierte Payloads
+pydantic-settings==2.7.1  # Konfiguration aus Umgebungsvariablen

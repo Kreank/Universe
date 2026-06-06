@@ -1,0 +1,19 @@
+Situation: <<situation_label>>
+<<situation_hint>>
+
+Erzeuge <<count>> kurze, klar voneinander verschiedene Funkspruch-Varianten fuer
+genau diese Situation, im Stil von <<name>>.
+
+Anforderungen an JEDE Variante:
+- 1 bis 2 Saetze, knapp und pointiert, mit Persoenlichkeit.
+- Nutze die folgenden Platzhalter WOERTLICH dort, wo spaeter konkrete Details
+  eingesetzt werden (Slot-Filling durch das Spiel):
+    {enemy}  = Gegner / Ziel
+    {planet} = Ort als Galaxie:System:Position
+    {loot}   = erbeutete Rohstoffe
+  Nicht jeder Platzhalter muss vorkommen — verwende nur die, die zur Situation
+  passen. Schreibe die Platzhalter exakt in geschweiften Klammern, nicht ausfuellen.
+- Keine Wiederholung, keine Nummerierung, kein Aufzaehlungszeichen, keine
+  Anfuehrungszeichen.
+
+Format: GENAU eine Variante pro Zeile. <<count>> Zeilen. Sonst nichts.

@@ -1,0 +1,328 @@
+/* ============================================================
+   Universe — Globales Sci-Fi-Theme (dunkel, Cyan/Magenta)
+   ============================================================ */
+
+:root {
+  --bg-deep: #060a14;
+  --bg: #0a1020;
+  --surface: #0d1629;
+  --surface-2: #11203b;
+  --surface-3: #16294a;
+  --border: rgba(46, 230, 214, 0.18);
+  --border-strong: rgba(46, 230, 214, 0.4);
+
+  --accent: #2ee6d6;
+  --accent-dim: #1a8f86;
+  --magenta: #ff40a0;
+  --magenta-dim: #b02a6e;
+  --warn: #ffb347;
+  --ok: #46e08a;
+
+  --text: #e7f1ff;
+  --text-dim: #8ea4c8;
+  --text-faint: #5a6f93;
+
+  --metal: #b8c2d6;
+  --crystal: #6fd8ff;
+  --deuterium: #9b8cff;
+  --energy: #ffd24a;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 18px rgba(46, 230, 214, 0.25);
+
+  --font: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--text);
+  background:
+    radial-gradient(1200px 800px at 80% -10%, rgba(46, 230, 214, 0.08), transparent 60%),
+    radial-gradient(900px 700px at 10% 110%, rgba(255, 64, 160, 0.06), transparent 55%),
+    var(--bg-deep);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 0.4em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+h2 {
+  font-size: 1.2rem;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* --- Karten & Panels --- */
+.card {
+  background: linear-gradient(160deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  box-shadow: var(--shadow);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.8rem;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.muted {
+  color: var(--text-dim);
+}
+.faint {
+  color: var(--text-faint);
+}
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: rgba(46, 230, 214, 0.08);
+  color: var(--accent);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.05s ease;
+}
+.btn:hover:not(:disabled) {
+  background: rgba(46, 230, 214, 0.18);
+  box-shadow: var(--glow);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #03110f;
+  border-color: var(--accent);
+}
+.btn-primary:hover:not(:disabled) {
+  background: #54f0e2;
+}
+.btn-danger {
+  background: rgba(255, 64, 160, 0.12);
+  color: var(--magenta);
+  border-color: var(--magenta-dim);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(255, 64, 160, 0.22);
+  box-shadow: 0 0 18px rgba(255, 64, 160, 0.3);
+}
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+.btn-sm {
+  min-height: 34px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+/* --- Formularfelder --- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+}
+.field label {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+input,
+select {
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.7rem;
+  min-height: 44px;
+  width: 100%;
+}
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--glow);
+}
+
+/* --- Fortschritts-/Kapazitaetsbalken --- */
+.bar {
+  position: relative;
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.bar > .fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.bar.full > .fill {
+  background: linear-gradient(90deg, var(--magenta-dim), var(--magenta));
+}
+
+/* --- Badges & Chips --- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 99px;
+  font-size: 0.74rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+/* --- Moral-Baender --- */
+.band-high {
+  --band: var(--ok);
+}
+.band-neutral {
+  --band: var(--accent);
+}
+.band-low {
+  --band: var(--warn);
+}
+.band-critical {
+  --band: var(--magenta);
+}
+
+/* --- Tabellen-/Listen-Helfer --- */
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cost-line {
+  display: inline-flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+}
+.cost-line .ok {
+  color: var(--text);
+}
+.cost-line .lack {
+  color: var(--magenta);
+}
+
+/* --- Tooltip --- */
+.tip {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted var(--text-faint);
+}
+.tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: 130%;
+  transform: translateX(-50%);
+  white-space: pre-line;
+  width: max-content;
+  max-width: 240px;
+  background: rgba(6, 10, 20, 0.96);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 50;
+  box-shadow: var(--shadow);
+}
+.tip:hover::after {
+  opacity: 1;
+}
+
+/* --- Scrollbars --- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --- Utility --- */
+.empty-state {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 2.5rem 1rem;
+  font-size: 0.9rem;
+}

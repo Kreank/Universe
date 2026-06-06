@@ -1,0 +1,188 @@
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, firstValueFrom } from 'rxjs';
+import { ApiService } from './api.service';
+import { WebSocketService } from './websocket.service';
+import { NotificationService } from './notification.service';
+import { BalanceService } from './balance.service';
+import {
+  Commander,
+  Fleet,
+  Planet,
+  PlanetDetail,
+  SpanInfo,
+  Transmission,
+  WsAttackWarning,
+  WsBuildComplete,
+  WsFleetArrived,
+  WsFleetReturned,
+  WsResearchComplete,
+  WsResourceTick,
+  WsTransmission,
+} from '../models/api.models';
+import { BUILDING_META, TECH_META, metaFor } from '../models/display';
+
+export interface AttackAlert {
+  location: string;
+  arriveAt: string;
+}
+
+/**
+ * Zentraler reaktiver Spielzustand. Buendelt API-Ladevorgaenge und verteilt
+ * Live-WebSocket-Updates an Signale, auf die alle Screens reagieren.
+ */
+@Injectable({ providedIn: 'root' })
+export class GameStateService {
+  private readonly api = inject(ApiService);
+  private readonly ws = inject(WebSocketService);
+  private readonly notify = inject(NotificationService);
+  private readonly balance = inject(BalanceService);
+
+  readonly planets = signal<Planet[]>([]);
+  readonly activePlanetId = signal<string | null>(null);
+  readonly activePlanet = signal<PlanetDetail | null>(null);
+  readonly fleets = signal<Fleet[]>([]);
+  readonly commanders = signal<Commander[]>([]);
+  readonly span = signal<SpanInfo | null>(null);
+  readonly transmissions = signal<Transmission[]>([]);
+  readonly attackAlerts = signal<AttackAlert[]>([]);
+
+  readonly unreadTransmissions = computed(
+    () => this.transmissions().filter((t) => !t.read).length,
+  );
+  readonly pendingDecisions = computed(
+    () => this.transmissions().filter((t) => t.requires_decision && !t.read).length,
+  );
+
+  private wired = false;
+
+  /** Nach dem Login aufrufen: Verbindung + Erst-Daten + WS-Verdrahtung. */
+  async bootstrap(): Promise<void> {
+    this.ws.connect();
+    this.wireWebSocket();
+    await this.loadPlanets();
+    void this.reloadFleets();
+    void this.reloadCommanders();
+    void this.reloadTransmissions();
+  }
+
+  async loadPlanets(): Promise<void> {
+    const planets = await this.firstValue(this.api.getPlanets());
+    this.planets.set(planets);
+    if (!this.activePlanetId() && planets.length > 0) {
+      const home = planets.find((p) => p.is_homeworld) ?? planets[0];
+      await this.selectPlanet(home.id);
+    }
+  }
+
+  async selectPlanet(planetId: string): Promise<void> {
+    this.activePlanetId.set(planetId);
+    this.ws.subscribePlanet(planetId);
+    await this.reloadActivePlanet();
+  }
+
+  async reloadActivePlanet(): Promise<void> {
+    const id = this.activePlanetId();
+    if (!id) {
+      return;
+    }
+    const detail = await this.firstValue(this.api.getPlanet(id));
+    this.activePlanet.set(detail);
+  }
+
+  async reloadFleets(): Promise<void> {
+    this.fleets.set(await this.firstValue(this.api.getFleets()));
+  }
+
+  async reloadCommanders(): Promise<void> {
+    this.commanders.set(await this.firstValue(this.api.getCommanders()));
+    try {
+      this.span.set(await this.firstValue(this.api.getSpan()));
+    } catch {
+      // span optional
+    }
+  }
+
+  async reloadTransmissions(): Promise<void> {
+    this.transmissions.set(await this.firstValue(this.api.getTransmissions()));
+  }
+
+  upsertTransmission(t: Transmission): void {
+    this.transmissions.update((list) => {
+      const idx = list.findIndex((x) => x.id === t.id);
+      if (idx >= 0) {
+        const copy = [...list];
+        copy[idx] = t;
+        return copy;
+      }
+      return [t, ...list];
+    });
+  }
+
+  reset(): void {
+    this.ws.disconnect();
+    this.planets.set([]);
+    this.activePlanetId.set(null);
+    this.activePlanet.set(null);
+    this.fleets.set([]);
+    this.commanders.set([]);
+    this.span.set(null);
+    this.transmissions.set([]);
+    this.attackAlerts.set([]);
+  }
+
+  private wireWebSocket(): void {
+    if (this.wired) {
+      return;
+    }
+    this.wired = true;
+
+    this.ws.on<WsResourceTick>('resource_tick').subscribe((msg) => {
+      if (msg.planet_id === this.activePlanetId()) {
+        this.activePlanet.update((p) => (p ? { ...p, resources: msg.resources } : p));
+      }
+    });
+
+    this.ws.on<WsBuildComplete>('build_complete').subscribe((msg) => {
+      const label = metaFor(BUILDING_META, msg.building).label;
+      this.notify.success('Bau abgeschlossen', `${label} ist jetzt Stufe ${msg.level}.`);
+      void this.reloadActivePlanet();
+    });
+
+    this.ws.on<WsResearchComplete>('research_complete').subscribe((msg) => {
+      const label = metaFor(TECH_META, msg.tech).label;
+      this.notify.success('Forschung abgeschlossen', `${label} Stufe ${msg.level} erreicht.`);
+    });
+
+    this.ws.on<WsFleetArrived>('fleet_arrived').subscribe((msg) => {
+      this.notify.info('Flotte angekommen', `Mission "${msg.mission}" hat ihr Ziel erreicht.`);
+      void this.reloadFleets();
+    });
+
+    this.ws.on<WsFleetReturned>('fleet_returned').subscribe(() => {
+      this.notify.info('Flotte zurueck', 'Eine Flotte ist zur Basis zurueckgekehrt.');
+      void this.reloadFleets();
+    });
+
+    this.ws.on<WsTransmission>('transmission').subscribe((msg) => {
+      this.upsertTransmission(msg.transmission);
+      this.notify.push(
+        'transmission',
+        'Eingehende Transmission',
+        msg.transmission.subject,
+        msg.transmission.id,
+      );
+    });
+
+    this.ws.on<WsAttackWarning>('attack_warning').subscribe((msg) => {
+      this.attackAlerts.update((list) => [
+        { location: msg.location, arriveAt: msg.arrive_at },
+        ...list,
+      ]);
+      this.notify.warning('Eingehender Angriff', `Ziel: ${msg.location}. Fleetsave pruefen!`);
+    });
+  }
+
+  private firstValue<T>(obs: Observable<T>): Promise<T> {
+    return firstValueFrom(obs);
+  }
+}

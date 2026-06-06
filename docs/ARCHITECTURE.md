@@ -217,6 +217,9 @@ Kurzfassung. Größere Änderungen je als eigenes ADR-File unter `docs/adr/` abl
   Persona/Lore-Kontext für Live-Generierung liefern.
 - **ADR-005 — Monorepo, modular.** Ein Git-Repo, intern strikt getrennte Module/Services.
 - **ADR-006 — Autoritativer Server, dummer Client.** Alle Regeln serverseitig.
+- **ADR-007 — [Startup-Recovery offener Timer](./adr/ADR-007-scheduler-recovery.md).** Der
+  Scheduler ist flüchtig (MemoryJobStore); beim Start werden offene `*_finishes_at`/
+  `arrive_at` aus der DB neu eingeplant. Die DB bleibt einzige Wahrheit.
 
 ---
 
