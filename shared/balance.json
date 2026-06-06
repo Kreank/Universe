@@ -1,0 +1,194 @@
+{
+  "_meta": {
+    "description": "Single Source of Truth fuer alle Balance-Zahlen von Universe. Backend (Python) und Frontend (TS) laden diese Datei. Aenderungen hier wirken ueberall. Werte fuer den Vertical Slice festgelegt (2026-06-06), tunebar.",
+    "version": "0.1.0",
+    "doc_refs": ["docs/DESIGN_DECISIONS.md", "docs/systems/01-economy-and-buildings.md"]
+  },
+
+  "universe": {
+    "speed": 7,
+    "_speed_note": "Korridor 5-10 (GDD §12). 7 = modern/zugaenglich. Multipliziert Produktion UND Flottentempo.",
+    "base_income": { "metal": 30, "crystal": 15, "deuterium": 0 },
+    "galaxies": 3,
+    "systems_per_galaxy": 100,
+    "positions_per_system": 15
+  },
+
+  "buildings": {
+    "metal_mine":        { "cost": { "metal": 60,  "crystal": 15,  "deuterium": 0 },   "factor": 1.5, "prod_base": 30, "prod_growth": 1.1, "energy_base": 10, "energy_growth": 1.1 },
+    "crystal_mine":      { "cost": { "metal": 48,  "crystal": 24,  "deuterium": 0 },   "factor": 1.6, "prod_base": 20, "prod_growth": 1.1, "energy_base": 10, "energy_growth": 1.1 },
+    "deuterium_synth":   { "cost": { "metal": 225, "crystal": 75,  "deuterium": 0 },   "factor": 1.5, "prod_base": 10, "prod_growth": 1.1, "energy_base": 20, "energy_growth": 1.1 },
+    "solar_plant":       { "cost": { "metal": 75,  "crystal": 30,  "deuterium": 0 },   "factor": 1.5, "energy_prod_base": 20, "energy_prod_growth": 1.1 },
+    "fusion_reactor":    { "cost": { "metal": 900, "crystal": 360, "deuterium": 180 }, "factor": 1.8, "energy_prod_base": 30 },
+    "robot_factory":     { "cost": { "metal": 400, "crystal": 120, "deuterium": 200 }, "factor": 2.0 },
+    "shipyard":          { "cost": { "metal": 400, "crystal": 200, "deuterium": 100 }, "factor": 2.0 },
+    "research_lab":      { "cost": { "metal": 200, "crystal": 400, "deuterium": 200 }, "factor": 2.0 },
+    "metal_storage":     { "cost": { "metal": 1000,"crystal": 0,   "deuterium": 0 },   "factor": 2.0 },
+    "crystal_storage":   { "cost": { "metal": 1000,"crystal": 500, "deuterium": 0 },   "factor": 2.0 },
+    "deuterium_tank":    { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 0 },   "factor": 2.0 },
+    "command_academy":   { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 500 }, "factor": 2.0, "_note": "USP: bildet Commander aus" },
+    "command_center":    { "cost": { "metal": 5000,"crystal": 3000,"deuterium": 1000 },"factor": 2.0, "_note": "USP: erhoeht Span-of-Control" }
+  },
+
+  "storage": {
+    "_formula": "5000 * floor(2.5 * e^(20*lvl/33))",
+    "base": 5000,
+    "starting_capacity": 10000
+  },
+
+  "build_time": {
+    "_formula_buildings": "hours = (metal + crystal) / (2500 * (1 + robot_factory_lvl) * 2^nanite_lvl * speed)",
+    "_formula_ships": "hours = (metal + crystal) / (2500 * (1 + shipyard_lvl) * speed)",
+    "divisor": 2500,
+    "min_seconds": 1
+  },
+
+  "research": {
+    "_formula_time": "hours = (metal + crystal) / (1000 * (1 + lab_lvl) * speed)",
+    "_formula_cost": "base * 2^(lvl-1)",
+    "divisor": 1000,
+    "one_at_a_time": true,
+    "techs": {
+      "energy_tech":        { "cost": { "metal": 0,    "crystal": 800,  "deuterium": 400 }, "requires": { "research_lab": 1 } },
+      "combustion_drive":   { "cost": { "metal": 400,  "crystal": 0,    "deuterium": 600 }, "requires": { "energy_tech": 1 } },
+      "impulse_drive":      { "cost": { "metal": 2000, "crystal": 4000, "deuterium": 600 }, "requires": { "energy_tech": 1 } },
+      "spy_tech":           { "cost": { "metal": 200,  "crystal": 1000, "deuterium": 200 }, "requires": { "research_lab": 3 } },
+      "computer_tech":      { "cost": { "metal": 0,    "crystal": 400,  "deuterium": 600 }, "requires": { "research_lab": 1 }, "effect": "+1 fleet slot / level" },
+      "weapons_tech":       { "cost": { "metal": 800,  "crystal": 200,  "deuterium": 0 },   "requires": { "research_lab": 4 }, "effect": "+10% attack / level" },
+      "shield_tech":        { "cost": { "metal": 200,  "crystal": 600,  "deuterium": 0 },   "requires": { "research_lab": 6 }, "effect": "+10% shield / level" },
+      "armor_tech":         { "cost": { "metal": 1000, "crystal": 0,    "deuterium": 0 },   "requires": { "research_lab": 2 }, "effect": "+10% hull / level" },
+      "command_doctrine":   { "cost": { "metal": 2000, "crystal": 2000, "deuterium": 1000 },"requires": { "research_lab": 3 }, "effect": "+span-of-control (diminishing)" },
+      "logistics_tech":     { "cost": { "metal": 1000, "crystal": 1000, "deuterium": 500 }, "requires": { "research_lab": 3 }, "effect": "faster morale recovery, less overstretch penalty" },
+      "crew_psychology":    { "cost": { "metal": 500,  "crystal": 1500, "deuterium": 500 }, "requires": { "research_lab": 4 }, "effect": "higher morale ceiling, slower decay" }
+    }
+  },
+
+  "ships": {
+    "_note": "Huelle = (metall+kristall)/10. Werte OGame-nah, fuer Vertical Slice konkret.",
+    "light_fighter":    { "cost": { "metal": 3000,  "crystal": 1000, "deuterium": 0 },   "attack": 50,  "shield": 10, "cargo": 50,   "speed": 12500, "fuel": 20,  "rapidfire": {}, "requires": { "combustion_drive": 1 } },
+    "heavy_fighter":    { "cost": { "metal": 6000,  "crystal": 4000, "deuterium": 0 },   "attack": 150, "shield": 25, "cargo": 100,  "speed": 10000, "fuel": 75,  "rapidfire": { "small_cargo": 3, "spy_probe": 5 }, "requires": { "impulse_drive": 2, "armor_tech": 2 } },
+    "cruiser":          { "cost": { "metal": 20000, "crystal": 7000, "deuterium": 2000 },"attack": 400, "shield": 50, "cargo": 800,  "speed": 15000, "fuel": 300, "rapidfire": { "light_fighter": 6, "spy_probe": 5 }, "requires": { "impulse_drive": 4, "energy_tech": 3 } },
+    "small_cargo":      { "cost": { "metal": 2000,  "crystal": 2000, "deuterium": 0 },   "attack": 5,   "shield": 10, "cargo": 5000, "speed": 5000,  "fuel": 10,  "rapidfire": {}, "requires": { "combustion_drive": 2 } },
+    "spy_probe":        { "cost": { "metal": 0,     "crystal": 1000, "deuterium": 0 },   "attack": 0,   "shield": 0,  "cargo": 5,    "speed": 100000000, "fuel": 1, "rapidfire": {}, "requires": { "spy_tech": 1, "combustion_drive": 1 } }
+  },
+
+  "defenses": {
+    "rocket_launcher":  { "cost": { "metal": 2000, "crystal": 0,    "deuterium": 0 }, "attack": 80,  "shield": 20, "rapidfire_against": {} },
+    "light_laser":      { "cost": { "metal": 1500, "crystal": 500,  "deuterium": 0 }, "attack": 100, "shield": 25, "rapidfire_against": {} }
+  },
+
+  "tech_bonus": {
+    "weapons_per_level": 0.10,
+    "shield_per_level": 0.10,
+    "armor_per_level": 0.10
+  },
+
+  "combat": {
+    "max_rounds": 6,
+    "shield_bounce_ratio": 0.01,
+    "explosion_threshold_hull_pct": 0.70,
+    "debris_ratio": 0.30,
+    "debris_from_defense": false,
+    "plunder_ratio": 0.50,
+    "defense_regen_ratio": 0.70,
+    "evacuation": {
+      "_note": "Entkommen nur, wenn eigene Schiffe ueberleben (GDD §13 / Doku 04).",
+      "base_chance": 0.30,
+      "rank_bonus": { "cadet": 0.0, "officer": 0.05, "veteran": 0.10, "elite": 0.20, "legend": 0.35 },
+      "logistics_tech_bonus_per_level": 0.03,
+      "survivor_ship_bonus_max": 0.25
+    }
+  },
+
+  "commander": {
+    "morale": {
+      "min": 0, "max": 100, "start": 60, "base_target": 50,
+      "drift_rate_per_tick": 0.10,
+      "_tick_note": "Moral-Drift laeuft als periodischer Job (stuendlich).",
+      "bands": [
+        { "min": 80, "max": 100, "combat_mod": 0.10,  "label": "hoch",     "effects": ["+10% Angriff/Schild"] },
+        { "min": 50, "max": 79,  "combat_mod": 0.0,   "label": "neutral",  "effects": [] },
+        { "min": 25, "max": 49,  "combat_mod": -0.10, "label": "niedrig",  "effects": ["-10% Kampfwerte", "gelegentliche Befehlsverzoegerung"] },
+        { "min": 0,  "max": 24,  "combat_mod": -0.25, "label": "kritisch", "effects": ["-25% Kampfwerte", "Meuterei-/Ueberlauf-Risiko"] }
+      ],
+      "deltas": {
+        "victory": 8, "defeat": -12, "crushing_victory": 4, "bashing": -10,
+        "demand_fulfilled": 6, "demand_ignored": -6, "promotion": 12,
+        "shore_leave": 10, "loot_gained": 4
+      },
+      "neglect": {
+        "idle_days_before_decay": 3,
+        "decay_per_day": 2.0,
+        "_note": "Horten-Bremse: ungenutzte Commander verlieren Moral (kein Sold, GDD §6.3)."
+      }
+    },
+    "ranks": [
+      { "key": "cadet",   "label": "Kadett",   "xp_threshold": 0,    "span_contrib": 1, "stat_cap": 1.0, "permadeath_protection": 0.0 },
+      { "key": "officer", "label": "Offizier", "xp_threshold": 100,  "span_contrib": 1, "stat_cap": 1.2, "permadeath_protection": 0.05 },
+      { "key": "veteran", "label": "Veteran",  "xp_threshold": 400,  "span_contrib": 2, "stat_cap": 1.5, "permadeath_protection": 0.10 },
+      { "key": "elite",   "label": "Elite",    "xp_threshold": 1200, "span_contrib": 3, "stat_cap": 1.8, "permadeath_protection": 0.20 },
+      { "key": "legend",  "label": "Legende",  "xp_threshold": 4000, "span_contrib": 4, "stat_cap": 2.2, "permadeath_protection": 0.35 }
+    ],
+    "xp": { "mission_success": 25, "victory": 40, "expedition_find": 30 },
+    "span": {
+      "player_base": 3,
+      "command_center_bonus": [1, 1, 1, 1, 1, 0, 1, 0, 1, 0],
+      "_command_center_note": "Pro Kommandozentralen-Stufe (Index = lvl-1), abnehmender Ertrag.",
+      "command_doctrine_bonus_per_level": 1,
+      "overstretch_penalty_per_excess": 0.08,
+      "_overstretch_note": "Pro Geschwader ueber Span: -8% effektive Kampfkraft (Koordinationsstrafe)."
+    },
+    "specializations": ["combat", "logistics", "spy", "research", "trade"],
+    "personality_traits": {
+      "aggressive":   { "combat_attack_mod": 0.10, "self_risk_mod": 0.10 },
+      "cautious":     { "combat_attack_mod": -0.05, "loss_reduction": 0.15, "retreat_early": true },
+      "loyal":        { "morale_decay_mult": 0.5, "defect_risk_mult": 0.2 },
+      "ambitious":    { "xp_mult": 1.25, "demands_promotion": true },
+      "greedy":       { "morale_on_loot": 0.08, "demands_bigger_share": true },
+      "honorable":    { "morale_on_fair_target": 0.10, "morale_on_bashing": -0.20 },
+      "charismatic":  { "adjacent_morale_boost": 0.05 },
+      "hot_tempered": { "combat_attack_mod": 0.15, "morale_instability": 0.20, "mutiny_risk": true }
+    },
+    "economy_bonus": {
+      "_note": "Wirtschafts-Commander: +bonus * (morale/100) auf Planetenproduktion.",
+      "peak_pct_by_rank": { "cadet": 0.03, "officer": 0.05, "veteran": 0.07, "elite": 0.09, "legend": 0.10 }
+    },
+    "academy": {
+      "base_training_seconds": 600,
+      "_note": "Mit Universe-Speed skaliert; hoehere Akademie-Stufe = schneller + hoeherer Start-Rang.",
+      "concurrent_slots_per_level": 1
+    }
+  },
+
+  "fleet": {
+    "base_slots": 1,
+    "slots_per_computer_tech": 1,
+    "fuel_per_distance_unit": 1.0,
+    "distance": {
+      "_note": "Distanzklassen (Doku 06). Vereinfacht fuer Vertical Slice.",
+      "same_system": 5,
+      "same_galaxy_per_system": 95,
+      "inter_galaxy": 20000
+    },
+    "speed_factor": 35000,
+    "_speed_note": "flight_seconds = (10 + 3500/speed_pct * sqrt(distance*10/slowest_ship_speed)) / universe_speed"
+  },
+
+  "protection": {
+    "newbie_days": 7,
+    "newbie_score_threshold": 5000,
+    "_note": "Was zuerst endet (GDD §8). Kein Permadeath/Plunder unter Schutz."
+  },
+
+  "decay": {
+    "inactive_days_before_decay": 14,
+    "production_decay_per_day": 0.05,
+    "vacation_mode": true
+  },
+
+  "starting_player": {
+    "resources": { "metal": 1000, "crystal": 500, "deuterium": 200 },
+    "buildings": { "metal_mine": 1, "crystal_mine": 1, "solar_plant": 1 },
+    "commander": { "give_starter": true, "rank": "officer", "specialization": "combat" }
+  }
+}

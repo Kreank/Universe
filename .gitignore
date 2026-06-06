@@ -1,0 +1,30 @@
+# --- Env / Secrets ---
+infra/.env
+*.env
+!infra/.env.example
+
+# --- Python (backend, ai-worker) ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node / Angular (frontend) ---
+node_modules/
+frontend/dist/
+frontend/.angular/
+*.log
+npm-debug.log*
+
+# --- Docker ---
+*.pid
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

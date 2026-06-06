@@ -1,0 +1,100 @@
+# =====================================================================
+#  UNIVERSE — Docker-Compose (Stufe 0: Dev/Alpha, alles auf einer Box)
+#  ARCHITECTURE.md §8. Start:  docker compose -f infra/docker-compose.yml up --build
+# =====================================================================
+name: universe
+
+services:
+  # ----------------------------------------------------------------- DB
+  postgres:
+    image: pgvector/pgvector:pg16          # offizielles pgvector-Image (PostgreSQL 16 + vector)
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-universe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-universe}
+      POSTGRES_DB: ${POSTGRES_DB:-universe}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-universe} -d ${POSTGRES_DB:-universe}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # -------------------------------------------------------------- Redis
+  redis:
+    image: redis:7-alpine                  # offizielles Redis-Image
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ------------------------------------------------------------- Ollama
+  # Laeuft i.d.R. bereits NATIV auf der Host-Box (GPU-Zugriff einfacher).
+  # Dieser Container ist optional; per Profil "ollama" aktivierbar.
+  # Standard: game-server/ai-worker sprechen den Host-Ollama via
+  # host.docker.internal:11434 an (siehe .env OLLAMA_URL).
+  ollama:
+    image: ollama/ollama:latest            # offizielles Ollama-Image
+    profiles: ["ollama"]
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+
+  # -------------------------------------------------------- Game-Server
+  game-server:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-universe}:${POSTGRES_PASSWORD:-universe}@postgres:5432/${POSTGRES_DB:-universe}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      BALANCE_PATH: /app/shared/balance.json
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ../shared:/app/shared:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+
+  # --------------------------------------------------------- AI-Worker
+  ai-worker:
+    build:
+      context: ../ai-worker
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-universe}:${POSTGRES_PASSWORD:-universe}@postgres:5432/${POSTGRES_DB:-universe}
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      BALANCE_PATH: /app/shared/balance.json
+    volumes:
+      - ../shared:/app/shared:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Zugriff auf Host-Ollama
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+
+  # ---------------------------------------------------------- Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_PORT:-4200}:80"
+    depends_on:
+      - game-server
+
+volumes:
+  pgdata:
+  ollama_models:
