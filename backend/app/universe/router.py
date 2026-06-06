@@ -26,6 +26,46 @@ class GalaxyViewOut(BaseModel):
     cells: list[CellOut]
 
 
+class TargetOut(BaseModel):
+    """Ein bekanntes (PvE-)Ziel — damit der Spieler weiss, wen er angreifen kann."""
+    npc_id: str
+    name: str
+    galaxy: int
+    system: int
+    position: int
+    coords: str
+    ships_total: int
+    defenses_total: int
+
+
+@router.get("/galaxy/targets", response_model=list[TargetOut])
+async def galaxy_targets(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> list[TargetOut]:
+    """Verzeichnis bekannter NPC-Ziele (PvE). Sortiert nach Koordinaten.
+
+    Im Vertical Slice sind alle NPCs 'bekannt'; spaeter koppelbar an Spionage/Reichweite."""
+    rows = (await session.execute(
+        select(NpcEmpire).order_by(NpcEmpire.galaxy, NpcEmpire.system, NpcEmpire.position)
+    )).scalars().all()
+    out: list[TargetOut] = []
+    for npc in rows:
+        ships_total = sum(int(v) for v in (npc.fleet or {}).values())
+        def_total = sum(int(v) for v in (npc.defenses or {}).values())
+        out.append(TargetOut(
+            npc_id=str(npc.id),
+            name=npc.name,
+            galaxy=npc.galaxy,
+            system=npc.system,
+            position=npc.position,
+            coords=f"{npc.galaxy}:{npc.system}:{npc.position}",
+            ships_total=ships_total,
+            defenses_total=def_total,
+        ))
+    return out
+
+
 @router.get("/galaxy/{galaxy}/{system}", response_model=GalaxyViewOut)
 async def galaxy_view(
     galaxy: int,

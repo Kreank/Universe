@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import {
@@ -42,6 +43,10 @@ import { fleetStyles } from './fleet.styles';
             <p class="muted small">Keine Schiffe auf diesem Planeten. <a href="/shipyard">Werft →</a></p>
           }
         </div>
+
+        @if (prefilled()) {
+          <p class="hint small">🎯 Ziel aus der Galaxie-Karte uebernommen: [{{ prefilled() }}]</p>
+        }
 
         <div class="coord">
           <div class="field">
@@ -158,6 +163,7 @@ export class FleetComponent {
   private readonly api = inject(ApiService);
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly missions: FleetMission[] = ['attack', 'transport', 'spy', 'deploy'];
 
@@ -195,14 +201,37 @@ export class FleetComponent {
 
   protected readonly canSend = computed(() => this.hasSelection() && !!this.state.activePlanetId());
 
+  // Wurde aus der Galaxie-Karte mit Ziel-Koordinaten aufgerufen?
+  protected readonly prefilled = signal<string | null>(null);
+
   constructor() {
+    // Deep-Link aus der Galaxie-Ansicht: /fleet?g=&s=&p=&mission=attack
+    const qp = this.route.snapshot.queryParamMap;
+    const g = qp.get('g');
+    const s = qp.get('s');
+    const p = qp.get('p');
+    if (g && s && p) {
+      this.targetG = Number(g);
+      this.targetS = Number(s);
+      this.targetP = Number(p);
+      const m = qp.get('mission') as FleetMission | null;
+      if (m && this.missions.includes(m)) {
+        this.mission = m;
+      }
+      this.prefilled.set(`${this.targetG}:${this.targetS}:${this.targetP}`);
+      // Galaxie-Mini-Ansicht direkt auf das Zielsystem stellen.
+      this.viewG = this.targetG;
+      this.viewS = this.targetS;
+      this.loadGalaxy();
+    }
+
     effect(() => {
-      const p = this.state.activePlanet();
-      if (p) {
-        // Galaxie-Ansicht standardmaessig auf das eigene System
-        if (this.cells().length === 0) {
-          this.viewG = p.galaxy;
-          this.viewS = p.system;
+      const p2 = this.state.activePlanet();
+      if (p2) {
+        // Galaxie-Ansicht standardmaessig auf das eigene System (nur ohne Deep-Link)
+        if (this.cells().length === 0 && !this.prefilled()) {
+          this.viewG = p2.galaxy;
+          this.viewS = p2.system;
         }
       }
     });

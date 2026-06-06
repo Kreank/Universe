@@ -12,6 +12,7 @@ import {
   Fleet,
   FleetSendRequest,
   GalaxyResponse,
+  GalaxyTarget,
   Planet,
   PlanetDetail,
   ResearchResponse,
@@ -84,6 +85,10 @@ export class ApiService {
 
   recallFleet(fleetId: string): Observable<Fleet> {
     return this.http.post<Fleet>(`/api/fleets/${fleetId}/recall`, {});
+  }
+
+  getGalaxyTargets(): Observable<GalaxyTarget[]> {
+    return this.http.get<GalaxyTarget[]>('/api/galaxy/targets');
   }
 
   getGalaxy(galaxy: number, system: number): Observable<GalaxyResponse> {

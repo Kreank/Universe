@@ -122,6 +122,7 @@ export class ShellComponent implements OnInit {
     { path: '/research', label: 'Forschung', glyph: '🔬' },
     { path: '/shipyard', label: 'Werft', glyph: '🛠️' },
     { path: '/fleet', label: 'Flotte', glyph: '🚀' },
+    { path: '/galaxy', label: 'Galaxie', glyph: '🌌' },
     { path: '/commanders', label: 'Kommandozentrale', glyph: '🎖️' },
     { path: '/transmissions', label: 'Postfach', glyph: '📡' },
   ];

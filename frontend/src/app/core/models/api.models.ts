@@ -229,6 +229,17 @@ export interface GalaxyResponse {
   cells: GalaxyCell[];
 }
 
+export interface GalaxyTarget {
+  npc_id: string;
+  name: string;
+  galaxy: number;
+  system: number;
+  position: number;
+  coords: string;
+  ships_total: number;
+  defenses_total: number;
+}
+
 // --- Commander ----------------------------------------------------------
 
 export interface CommanderPersona {

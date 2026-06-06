@@ -45,6 +45,11 @@ export const routes: Routes = [
           import('./features/fleet/fleet.component').then((m) => m.FleetComponent),
       },
       {
+        path: 'galaxy',
+        loadComponent: () =>
+          import('./features/galaxy/galaxy.component').then((m) => m.GalaxyComponent),
+      },
+      {
         path: 'commanders',
         loadComponent: () =>
           import('./features/commanders/commanders.component').then((m) => m.CommandersComponent),
