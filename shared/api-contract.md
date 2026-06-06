@@ -144,8 +144,19 @@ Res 200: `Commander[]`
 Res 200: `Commander` plus `history: Transmission[]` (gesammelte Funksprüche).
 
 ### POST /api/commanders/train
-Body: `{ "planet_id": str }` (braucht Kommando-Akademie)
+Body: `{ "planet_id": str, "specialization": str|null, "focus": str|null }` (braucht Kommando-Akademie)
+- `specialization` ∈ {combat, logistics, spy, research, trade} (Default combat bei null/ungültig).
+- `focus` ∈ {fighter, cruiser, capital, civil} oder null = automatisch (spezialisierungstypisch).
 Res 202: `{ "commander": Commander }` (status=training)
+
+### GET /api/commanders/bonus-preview
+Query: `?specialization=combat&focus=fighter&rank=cadet`
+Res 200: `Bonus[]` — Vorschau der Boni für eine (Spezialisierung, Fokus)-Kombination
+(ohne Traits), damit der Spieler vor der Ausbildung das Profil sieht.
+
+**Bonus** = `{ stat: "attack"|"shield"|"speed", target: "all"|<Schiffsklasse>, pct: float }`
+Commander tragen zusätzlich `focus` (Schiffsklasse) und `bonuses: Bonus[]` (inkl. Traits,
+Basiswerte — im Kampf moral-skaliert).
 
 ### GET /api/player/span
 Res 200: `{ "base": int, "from_command_center": int, "from_doctrine": int, "total": int, "in_use": int }`

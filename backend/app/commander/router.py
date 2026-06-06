@@ -7,7 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.commander.bonuses import base_bonuses
 from app.commander.schemas import (
+    BonusOut,
     CommanderDetailOut,
     CommanderOut,
     SpanOut,
@@ -15,6 +17,7 @@ from app.commander.schemas import (
     TrainResponse,
 )
 from app.commander.service import commander_to_dict, compute_span, start_training
+from app.platform.balance import get_balance
 from app.messaging.service import transmission_to_dict
 from app.platform.db import get_session
 from app.platform.models import Commander, Planet, Player, Transmission
@@ -41,6 +44,27 @@ async def get_span(
 ) -> SpanOut:
     span = await compute_span(session, player.id)
     return SpanOut(**span)
+
+
+@router.get("/commanders/bonus-preview", response_model=list[BonusOut])
+async def bonus_preview(
+    specialization: str = "combat",
+    focus: str | None = None,
+    rank: str = "cadet",
+    player: Player = Depends(get_current_player),
+) -> list[dict]:
+    """Vorschau der Boni fuer eine (Spezialisierung, Fokus)-Kombination — damit der
+    Spieler vor der Ausbildung sieht, welches Profil entsteht. Default-Rang Kadett.
+    Muss VOR /commanders/{commander_id} stehen, sonst matcht der Pfad-Parameter."""
+    bal = get_balance()
+    valid_specs = bal.commander["specializations"]
+    spec = specialization if specialization in valid_specs else "combat"
+    valid_classes = [k for k in bal.commander["ship_classes"].keys() if not k.startswith("_")]
+    foc = focus if focus in valid_classes else None
+    rank_keys = {r["key"] for r in bal.commander["ranks"]}
+    rk = rank if rank in rank_keys else "cadet"
+    # Ohne explizite Traits (die kommen bei der Ausbildung zufaellig dazu).
+    return base_bonuses(spec, rk, [], foc)
 
 
 @router.get("/commanders/{commander_id}", response_model=CommanderDetailOut)
@@ -72,7 +96,7 @@ async def train_commander(
     if planet is None or planet.player_id != player.id:
         raise HTTPException(status_code=404, detail="Planet nicht gefunden")
     try:
-        commander = await start_training(session, planet)
+        commander = await start_training(session, planet, body.specialization, body.focus)
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     data = await commander_to_dict(session, commander)

@@ -49,6 +49,15 @@ export const commanderStyles = `
   .traits { display: flex; flex-wrap: wrap; gap: 0.3rem; }
   .trait { border-color: var(--border); }
 
+  .train-panel { margin-bottom: 1.2rem; display: flex; flex-direction: column; gap: 0.7rem; }
+  .train-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+  .train-panel .field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .train-panel .field > span { font-size: 0.78rem; color: var(--text-dim); }
+  .train-panel select { min-height: 38px; }
+  .train-panel .preview { display: flex; flex-direction: column; gap: 0.35rem; }
+  .train-panel .btn-primary { align-self: flex-start; }
+  @media (max-width: 520px) { .train-grid { grid-template-columns: 1fr; } }
+
   .bonuses { display: flex; flex-direction: column; gap: 0.3rem; }
   .bonus-head { text-transform: uppercase; letter-spacing: 0.04em; }
   .bonus-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }

@@ -43,6 +43,9 @@ class CommanderDetailOut(CommanderOut):
 
 class TrainRequest(BaseModel):
     planet_id: str
+    # Optional: Spezialisierung + Fokus-Schiffsklasse waehlen (sonst Default/auto).
+    specialization: str | None = None
+    focus: str | None = None
 
 
 class TrainResponse(BaseModel):

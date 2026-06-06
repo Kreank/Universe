@@ -55,20 +55,27 @@ async def create_commander(
     *,
     rank_key: str = "cadet",
     specialization: str = "combat",
+    focus: str | None = None,
     status: str = "active",
     training_finishes_at: dt.datetime | None = None,
     rng: random.Random | None = None,
 ) -> Commander:
-    """Legt einen Commander an und enqueued einen persona_init-Job (Banken-Aufbau)."""
+    """Legt einen Commander an und enqueued einen persona_init-Job (Banken-Aufbau).
+
+    ``focus`` (Schiffsklasse) kann explizit gewaehlt werden; sonst wird sie
+    spezialisierungstypisch (mit etwas Varianz) gezogen."""
     bal = get_balance()
     rng = rng or random.Random()
     name, persona, traits = generate_persona(rng)
-    # Fokus-Schiffsklasse: meist die Spezialisierungs-Favoritin, sonst etwas Varianz,
-    # damit Commander auch innerhalb einer Spezialisierung unterschiedliche Profile haben.
+    # Fokus-Schiffsklasse: explizit gewaehlt, sonst meist die Spezialisierungs-Favoritin
+    # (mit etwas Varianz), damit Commander unterschiedliche Profile haben.
     cb = bal.commander["combat_bonuses"]
     classes = [k for k in bal.commander["ship_classes"].keys() if not k.startswith("_")]
     favored = cb["profiles"].get(specialization, cb["profiles"]["combat"])["favored_class"]
-    persona["focus"] = favored if rng.random() < 0.6 else rng.choice(classes)
+    if focus in classes:
+        persona["focus"] = focus
+    else:
+        persona["focus"] = favored if rng.random() < 0.6 else rng.choice(classes)
     rank = bal.rank_by_key(rank_key)
     morale_start = bal.commander["morale"]["start"]
 
@@ -177,9 +184,23 @@ async def compute_span(session: AsyncSession, player_id: uuid.UUID) -> dict:
     }
 
 
-async def start_training(session: AsyncSession, planet: Planet) -> Commander:
-    """Bildet einen neuen Commander an der Kommando-Akademie aus."""
+async def start_training(
+    session: AsyncSession,
+    planet: Planet,
+    specialization: str | None = None,
+    focus: str | None = None,
+) -> Commander:
+    """Bildet einen neuen Commander an der Kommando-Akademie aus.
+
+    ``specialization`` und ``focus`` (Schiffsklasse) sind optional waehlbar — so kann
+    der Spieler gezielt z. B. Defensive- oder Tempo-Commander ausbilden."""
     bal = get_balance()
+    # Eingaben validieren (sonst Default).
+    valid_specs = bal.commander["specializations"]
+    spec = specialization if specialization in valid_specs else "combat"
+    valid_classes = [k for k in bal.commander["ship_classes"].keys() if not k.startswith("_")]
+    focus_class = focus if focus in valid_classes else None  # None -> auto in create_commander
+
     levels = await get_building_levels(session, planet.id)
     academy = levels.get("command_academy", 0)
     if academy < 1:
@@ -203,7 +224,7 @@ async def start_training(session: AsyncSession, planet: Planet) -> Commander:
 
     commander = await create_commander(
         session, planet.player_id,
-        rank_key=rank_key, specialization="combat",
+        rank_key=rank_key, specialization=spec, focus=focus_class,
         status="training", training_finishes_at=finish,
     )
     from app.platform.scheduler import schedule_at

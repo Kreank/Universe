@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { CommanderBonus } from '../../core/models/api.models';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { BalanceService } from '../../core/services/balance.service';
@@ -15,7 +17,7 @@ import { commanderStyles } from './commander.styles';
 @Component({
   selector: 'app-commanders',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   template: `
     <div class="head">
       <div>
@@ -25,12 +27,58 @@ import { commanderStyles } from './commander.styles';
       <button
         class="btn btn-primary"
         type="button"
-        [disabled]="!canTrain() || training()"
-        (click)="train()"
+        [disabled]="!canTrain()"
+        (click)="toggleTrain()"
       >
-        🎖️ {{ training() ? 'Bildet aus…' : 'Kadett ausbilden' }}
+        🎖️ {{ showTrain() ? 'Abbrechen' : 'Kadett ausbilden' }}
       </button>
     </div>
+
+    @if (showTrain()) {
+      <div class="card train-panel">
+        <div class="panel-title">🎓 Neuen Commander ausbilden</div>
+        <p class="faint small">Waehle Ausrichtung und Schiffs-Fokus — so formst du gezielt
+          Offensiv-, Defensiv- oder Tempo-Commander. (Traits kommen zufaellig dazu.)</p>
+
+        <div class="train-grid">
+          <label class="field">
+            <span>Spezialisierung</span>
+            <select [ngModel]="selSpec()" (ngModelChange)="onSpecChange($event)">
+              @for (s of specOptions; track s) {
+                <option [value]="s">{{ spec(s).glyph }} {{ spec(s).label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Fokus-Schiffsklasse</span>
+            <select [ngModel]="selFocus()" (ngModelChange)="onFocusChange($event)">
+              <option value="">✨ automatisch (typisch)</option>
+              @for (c of focusOptions; track c) {
+                <option [value]="c">{{ classLabel(c) }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <div class="preview">
+          <span class="bonus-head faint small">Erwartetes Profil (Kadett, ohne Traits)</span>
+          <div class="bonus-chips">
+            @for (b of preview(); track b.stat + b.target) {
+              <span class="chip bonus" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
+                {{ statGlyph(b.stat) }} {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
+              </span>
+            } @empty {
+              <span class="faint small">—</span>
+            }
+          </div>
+        </div>
+
+        <button class="btn btn-primary" type="button" [disabled]="training()" (click)="train()">
+          {{ training() ? 'Bildet aus…' : '🎖️ Ausbildung starten' }}
+        </button>
+      </div>
+    }
 
     @if (span(); as s) {
       <div class="card span-card">
@@ -123,10 +171,42 @@ export class CommandersComponent {
   protected readonly span = this.state.span;
   protected readonly training = signal(false);
 
+  // Ausbildungs-Auswahl.
+  protected readonly showTrain = signal(false);
+  protected readonly selSpec = signal('combat');
+  protected readonly selFocus = signal(''); // '' = automatisch
+  protected readonly preview = signal<CommanderBonus[]>([]);
+  protected readonly specOptions = ['combat', 'logistics', 'spy', 'research', 'trade'];
+  protected readonly focusOptions = ['fighter', 'cruiser', 'capital', 'civil'];
+
   protected readonly canTrain = computed(() => !!this.state.activePlanetId());
 
   constructor() {
     void this.state.reloadCommanders();
+  }
+
+  toggleTrain(): void {
+    this.showTrain.update((v) => !v);
+    if (this.showTrain()) {
+      this.loadPreview();
+    }
+  }
+
+  onSpecChange(spec: string): void {
+    this.selSpec.set(spec);
+    this.loadPreview();
+  }
+
+  onFocusChange(focus: string): void {
+    this.selFocus.set(focus);
+    this.loadPreview();
+  }
+
+  private loadPreview(): void {
+    this.api.getBonusPreview(this.selSpec(), this.selFocus() || null).subscribe({
+      next: (b) => this.preview.set(b),
+      error: () => this.preview.set([]),
+    });
   }
 
   train(): void {
@@ -135,10 +215,14 @@ export class CommandersComponent {
       return;
     }
     this.training.set(true);
-    this.api.trainCommander(planetId).subscribe({
+    this.api.trainCommander(planetId, this.selSpec(), this.selFocus() || null).subscribe({
       next: () => {
         this.training.set(false);
-        this.notify.success('Ausbildung gestartet', 'Ein neuer Kadett tritt der Akademie bei.');
+        this.showTrain.set(false);
+        this.notify.success(
+          'Ausbildung gestartet',
+          `${this.spec(this.selSpec()).label}-Commander tritt der Akademie bei.`,
+        );
         void this.state.reloadCommanders();
       },
       error: (err) => {

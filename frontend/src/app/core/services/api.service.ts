@@ -5,6 +5,7 @@ import {
   BuildingsResponse,
   CombatReport,
   Commander,
+  CommanderBonus,
   CommanderDetail,
   CommanderTrainResponse,
   DecisionChoice,
@@ -104,10 +105,24 @@ export class ApiService {
     return this.http.get<CommanderDetail>(`/api/commanders/${id}`);
   }
 
-  trainCommander(planetId: string): Observable<CommanderTrainResponse> {
+  trainCommander(
+    planetId: string,
+    specialization?: string | null,
+    focus?: string | null,
+  ): Observable<CommanderTrainResponse> {
     return this.http.post<CommanderTrainResponse>('/api/commanders/train', {
       planet_id: planetId,
+      specialization: specialization ?? null,
+      focus: focus ?? null,
     });
+  }
+
+  getBonusPreview(specialization: string, focus: string | null): Observable<CommanderBonus[]> {
+    let q = `?specialization=${encodeURIComponent(specialization)}`;
+    if (focus) {
+      q += `&focus=${encodeURIComponent(focus)}`;
+    }
+    return this.http.get<CommanderBonus[]>(`/api/commanders/bonus-preview${q}`);
   }
 
   getSpan(): Observable<SpanInfo> {
