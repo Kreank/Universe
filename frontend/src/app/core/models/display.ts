@@ -48,6 +48,12 @@ export const TECH_META: Record<string, DisplayMeta> = {
   command_doctrine: { label: 'Kommando-Doktrin', glyph: '📖', blurb: '+Span of Control.' },
   logistics_tech: { label: 'Logistik', glyph: '📦', blurb: 'Schnellere Moral-Erholung.' },
   crew_psychology: { label: 'Crew-Psychologie', glyph: '🧠', blurb: 'Hoehere Moral-Decke.' },
+  laser_tech: { label: 'Lasertechnik', glyph: '🔦', blurb: 'Lasergeschuetze & Schlachtkreuzer.' },
+  ion_tech: { label: 'Ionentechnik', glyph: '🌀', blurb: 'Ionengeschuetze & Kreuzer.' },
+  plasma_tech: { label: 'Plasmatechnik', glyph: '🔥', blurb: 'Plasmawerfer, Bomber & Zerstoerer.' },
+  hyperspace_tech: { label: 'Hyperraumtechnik', glyph: '🌌', blurb: 'Grundlage fuer Grosskampfschiffe.' },
+  hyperspace_drive: { label: 'Hyperraumantrieb', glyph: '🌠', blurb: 'Antrieb schwerer Kriegsschiffe.' },
+  graviton_tech: { label: 'Gravitontechnik', glyph: '🌑', blurb: 'Ermoeglicht den Todesstern.' },
 };
 
 export const SHIP_META: Record<string, DisplayMeta> = {
@@ -55,12 +61,29 @@ export const SHIP_META: Record<string, DisplayMeta> = {
   heavy_fighter: { label: 'Schwerer Jaeger', glyph: '✈️', blurb: 'Robuster Angreifer.' },
   cruiser: { label: 'Kreuzer', glyph: '🚀', blurb: 'Schlagkraeftiges Kriegsschiff.' },
   small_cargo: { label: 'Kleiner Transporter', glyph: '📦', blurb: 'Transportiert Ressourcen.' },
-  spy_probe: { label: 'Spionagesonde', glyph: '🛰️', blurb: 'Spaeht Ziele aus.' },
+  large_cargo: { label: 'Grosser Transporter', glyph: '🚛', blurb: 'Hohe Frachtkapazitaet.' },
+  colony_ship: { label: 'Kolonieschiff', glyph: '🪐', blurb: 'Gruendet neue Kolonien.' },
+  recycler: { label: 'Recycler', glyph: '♻️', blurb: 'Sammelt Truemmerfelder ein.' },
+  solar_satellite: { label: 'Solarsatellit', glyph: '🛰️', blurb: 'Liefert Energie im Orbit.' },
+  spy_probe: { label: 'Spionagesonde', glyph: '📡', blurb: 'Spaeht Ziele aus.' },
+  battleship: { label: 'Schlachtschiff', glyph: '🚀', blurb: 'Rueckgrat der Kampfflotte.' },
+  battlecruiser: { label: 'Schlachtkreuzer', glyph: '⚔️', blurb: 'Schnell und schlagkraeftig.' },
+  bomber: { label: 'Bomber', glyph: '💣', blurb: 'Bricht feindliche Verteidigung.' },
+  destroyer: { label: 'Zerstoerer', glyph: '🔱', blurb: 'Schwerer Linienkaempfer.' },
+  deathstar: { label: 'Todesstern', glyph: '🌑', blurb: 'Mobile Kampfstation.' },
 };
 
 export const DEFENSE_META: Record<string, DisplayMeta> = {
   rocket_launcher: { label: 'Raketenwerfer', glyph: '🚀', blurb: 'Guenstige Verteidigung.' },
   light_laser: { label: 'Leichtes Lasergeschuetz', glyph: '🔦', blurb: 'Solide Verteidigung.' },
+  heavy_laser: { label: 'Schweres Lasergeschuetz', glyph: '🔆', blurb: 'Robusteres Lasergeschuetz.' },
+  gauss_cannon: { label: 'Gausskanone', glyph: '🎯', blurb: 'Anti-Grosskampfschiff.' },
+  ion_cannon: { label: 'Ionengeschuetz', glyph: '🌀', blurb: 'Hoher Schild, Schildtank.' },
+  plasma_turret: { label: 'Plasmawerfer', glyph: '🔥', blurb: 'Staerkste Verteidigung.' },
+  small_shield_dome: { label: 'Kleine Schildkuppel', glyph: '🛡️', blurb: 'Max. 1 pro Planet.' },
+  large_shield_dome: { label: 'Grosse Schildkuppel', glyph: '🛡️', blurb: 'Max. 1 pro Planet.' },
+  anti_ballistic_missile: { label: 'Abfangrakete', glyph: '🚀', blurb: 'Faengt Interplanetarraketen ab.' },
+  interplanetary_missile: { label: 'Interplanetarrakete', glyph: '☄️', blurb: 'Zerstoert feindliche Verteidigung.' },
 };
 
 export const MISSION_META: Record<string, DisplayMeta> = {
