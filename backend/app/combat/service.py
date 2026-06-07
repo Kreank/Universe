@@ -141,7 +141,8 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         from app.commander.bonuses import base_bonuses, resolve_ship_bonuses
         focus = (commander.persona or {}).get("focus")
         cmd_bonuses = base_bonuses(
-            commander.specialization, commander.rank, commander.traits or [], focus
+            commander.specialization, commander.rank, commander.traits or [], focus,
+            commander.grade or "C",
         )
         ship_bonuses, _speed = resolve_ship_bonuses(
             cmd_bonuses, commander.morale, list(attacker_ships.keys())

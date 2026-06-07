@@ -127,6 +127,23 @@ class Balance:
                 return rank
         return self.commander["ranks"][0]
 
+    # -- Gueteklassen (Grade F..SSS, Doku 05a) ------------------------------
+    @property
+    def grades(self) -> dict[str, Any]:
+        return self.commander["grades"]
+
+    def grade_potency(self, grade: str) -> float:
+        """Potenz-Faktor einer Gueteklasse (C = 1.00 Baseline). Unbekannt -> 1.0."""
+        return float(self.grades["potency"].get(grade, 1.0))
+
+    def training_tier(self, key: str) -> dict[str, Any]:
+        """Investitions-Stufe der Akademie-Ausbildung (Fallback: erste Stufe)."""
+        tiers = self.grades["training_tiers"]
+        for tier in tiers:
+            if tier["key"] == key:
+                return tier
+        return tiers[0]
+
 
 @lru_cache
 def get_balance() -> Balance:

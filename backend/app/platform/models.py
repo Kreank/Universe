@@ -134,6 +134,7 @@ class Commander(Base):
     traits: Mapped[list] = mapped_column(JSONB, default=list)
     specialization: Mapped[str] = mapped_column(specialization_enum, default="combat")
     rank: Mapped[str] = mapped_column(commander_rank_enum, default="cadet")
+    grade: Mapped[str] = mapped_column(Text, default="C")  # Gueteklasse F..SSS (Doku 05a)
     xp: Mapped[int] = mapped_column(Integer, default=0)
     morale: Mapped[int] = mapped_column(Integer, default=60)
     loyalty: Mapped[int] = mapped_column(Integer, default=100)

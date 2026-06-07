@@ -9,6 +9,8 @@ import {
   SPECIALIZATION_META,
   TRAIT_META,
   commanderFace,
+  gradeBadgeClass,
+  gradeLabel,
   metaFor,
 } from '../../core/models/display';
 import { CountdownComponent } from '../../shared/components/countdown.component';
@@ -29,6 +31,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
           </div>
           <h1>{{ c.name }}</h1>
           <div class="badges">
+            <span class="chip grade-chip" [class]="gradeClass(c.grade)">Grad {{ gradeText(c.grade) }}</span>
             <span class="chip">{{ rank(c.rank).glyph }} {{ rank(c.rank).label }}</span>
             <span class="chip">{{ spec(c.specialization).glyph }} {{ spec(c.specialization).label }}</span>
           </div>
@@ -146,6 +149,8 @@ export class CommanderDetailComponent {
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   trait = (t: string) => metaFor(TRAIT_META, t);
   bandClass = (m: number) => this.balance.moraleBandClass(m);
+  gradeClass = (g?: string | null) => gradeBadgeClass(g);
+  gradeText = (g?: string | null) => gradeLabel(g);
 
   faceFor = (id: string) => commanderFace(id);
   onFaceError(event: Event): void {

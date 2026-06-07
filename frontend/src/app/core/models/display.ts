@@ -118,6 +118,32 @@ export const RANK_META: Record<string, DisplayMeta> = {
   legend: { label: 'Legende', glyph: '✸' },
 };
 
+/**
+ * Gueteklassen F..SSS (Doku 05a). `glyph` haelt die CSS-Klasse fuer die
+ * Farbcodierung des Grad-Badges (F-D grau, C-B blau, A-S cyan, SS-SSS magenta/gold).
+ */
+export const GRADE_META: Record<string, DisplayMeta> = {
+  F: { label: 'F', glyph: 'grade-low' },
+  E: { label: 'E', glyph: 'grade-low' },
+  D: { label: 'D', glyph: 'grade-low' },
+  C: { label: 'C', glyph: 'grade-mid' },
+  B: { label: 'B', glyph: 'grade-mid' },
+  A: { label: 'A', glyph: 'grade-high' },
+  S: { label: 'S', glyph: 'grade-high' },
+  SS: { label: 'SS', glyph: 'grade-elite' },
+  SSS: { label: 'SSS', glyph: 'grade-elite' },
+};
+
+/** CSS-Klassenname fuer das Grad-Badge (Farbcodierung). Fallback: blau (mid). */
+export function gradeBadgeClass(grade: string | null | undefined): string {
+  return GRADE_META[grade ?? 'C']?.glyph ?? 'grade-mid';
+}
+
+/** Anzeige-Label einer Gueteklasse (Fallback: Roh-Schluessel oder 'C'). */
+export function gradeLabel(grade: string | null | undefined): string {
+  return GRADE_META[grade ?? 'C']?.label ?? (grade ?? 'C');
+}
+
 export const TRAIT_META: Record<string, DisplayMeta> = {
   aggressive: { label: 'aggressiv', glyph: '🔥' },
   cautious: { label: 'vorsichtig', glyph: '🧊' },

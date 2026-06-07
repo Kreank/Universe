@@ -117,18 +117,27 @@ export class ApiService {
     planetId: string,
     specialization?: string | null,
     focus?: string | null,
+    tier?: string | null,
   ): Observable<CommanderTrainResponse> {
     return this.http.post<CommanderTrainResponse>('/api/commanders/train', {
       planet_id: planetId,
       specialization: specialization ?? null,
       focus: focus ?? null,
+      tier: tier ?? null,
     });
   }
 
-  getBonusPreview(specialization: string, focus: string | null): Observable<CommanderBonus[]> {
+  getBonusPreview(
+    specialization: string,
+    focus: string | null,
+    grade?: string | null,
+  ): Observable<CommanderBonus[]> {
     let q = `?specialization=${encodeURIComponent(specialization)}`;
     if (focus) {
       q += `&focus=${encodeURIComponent(focus)}`;
+    }
+    if (grade) {
+      q += `&grade=${encodeURIComponent(grade)}`;
     }
     return this.http.get<CommanderBonus[]>(`/api/commanders/bonus-preview${q}`);
   }

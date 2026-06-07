@@ -230,6 +230,34 @@
       "base_training_seconds": 600,
       "_note": "Mit Universe-Speed skaliert; hoehere Akademie-Stufe = schneller + hoeherer Start-Rang.",
       "concurrent_slots_per_level": 1
+    },
+    "grades": {
+      "_note": "Gueteklasse F..SSS (Doku 05a). Angeborenes Potenzial, orthogonal zum Rang. potency skaliert Schiffsboni/Span. Bestands-Commander = C (Baseline). Ausbildungs-Tiers verschieben die Verteilung nach oben; SSS nur Experimentell (max 5%). Gewichte werden normalisiert (Summe egal). F-D-Bucket aus 05a §3.1 gleichmaessig auf F/E/D verteilt.",
+      "default": "C",
+      "order": ["F", "E", "D", "C", "B", "A", "S", "SS", "SSS"],
+      "potency": {
+        "F": 0.60, "E": 0.75, "D": 0.90, "C": 1.00, "B": 1.15,
+        "A": 1.30, "S": 1.50, "SS": 1.75, "SSS": 2.00
+      },
+      "training_base_cost": { "metal": 2000, "crystal": 1500, "deuterium": 500 },
+      "training_tiers": [
+        {
+          "key": "standard", "label": "Standard", "cost_mult": 1,
+          "weights": { "F": 28.33, "E": 28.33, "D": 28.34, "C": 12, "B": 3, "A": 0, "S": 0, "SS": 0, "SSS": 0 }
+        },
+        {
+          "key": "gehoben", "label": "Gehoben", "cost_mult": 3,
+          "weights": { "F": 15, "E": 15, "D": 15, "C": 30, "B": 18, "A": 6, "S": 1, "SS": 0, "SSS": 0 }
+        },
+        {
+          "key": "elite", "label": "Elite", "cost_mult": 8,
+          "weights": { "F": 8.33, "E": 8.33, "D": 8.34, "C": 20, "B": 30, "A": 21.5, "S": 3, "SS": 0.5, "SSS": 0 }
+        },
+        {
+          "key": "experimentell", "label": "Experimentell", "cost_mult": 20,
+          "weights": { "F": 1.67, "E": 1.67, "D": 1.66, "C": 15, "B": 30, "A": 30, "S": 12, "SS": 3, "SSS": 5 }
+        }
+      ]
     }
   },
 

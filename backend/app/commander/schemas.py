@@ -25,6 +25,7 @@ class CommanderOut(BaseModel):
     traits: list[str]
     specialization: str
     rank: str
+    grade: str = "C"
     xp: int
     morale: int
     loyalty: int
@@ -46,6 +47,8 @@ class TrainRequest(BaseModel):
     # Optional: Spezialisierung + Fokus-Schiffsklasse waehlen (sonst Default/auto).
     specialization: str | None = None
     focus: str | None = None
+    # Investitions-Stufe (standard/gehoben/elite/experimentell) -> Kosten + Grad-Chancen.
+    tier: str | None = None
 
 
 class TrainResponse(BaseModel):

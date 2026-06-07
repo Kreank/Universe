@@ -12,6 +12,11 @@ export const commanderDetailStyles = `
   }
   .portrait img { width: 100%; height: 100%; display: block; }
   .badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .grade-chip { font-weight: 800; color: #06101e; border: none; }
+  .grade-chip.grade-low { background: #9aa3b2; }
+  .grade-chip.grade-mid { background: #4aa3ff; }
+  .grade-chip.grade-high { background: #22e0c8; }
+  .grade-chip.grade-elite { background: linear-gradient(135deg, #ff49c0, #ffd24a); color: #1a0a14; }
   .morale-bar .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--band) 50%, transparent), var(--band)); }
 
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0; }

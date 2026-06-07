@@ -19,9 +19,13 @@ def base_bonuses(
     rank: str,
     traits: list[str] | None,
     focus: str | None = None,
+    grade: str = "C",
 ) -> list[dict]:
     """Liefert die *Basis*-Boni (ohne Moral-Skalierung) eines Commanders — fuer Anzeige
-    und als Grundlage der Kampf-Aufloesung."""
+    und als Grundlage der Kampf-Aufloesung.
+
+    ``grade`` (Gueteklasse F..SSS) skaliert alle Boni ueber den potency-Faktor
+    (C = 1.0 Baseline, SSS ~2x). So ist die Magnitude an das Potenzial gekoppelt."""
     bal = get_balance()
     cb = bal.commander["combat_bonuses"]
     profiles = cb["profiles"]
@@ -29,6 +33,8 @@ def base_bonuses(
     scale = cb["rank_scale"].get(rank, 1.0)
     base = cb["base"]
     fav_class = focus or prof["favored_class"]
+    # Grad-Potenz (angeborenes Potenzial, Doku 05a) skaliert ALLE Boni einheitlich.
+    potency = bal.grade_potency(grade)
 
     raw: list[dict] = [
         {"stat": prof["primary"], "target": "all", "pct": base["primary_pct"] * scale},
@@ -50,7 +56,7 @@ def base_bonuses(
         merged[key] = merged.get(key, 0.0) + b["pct"]
 
     result = [
-        {"stat": stat, "target": target, "pct": round(pct, 3)}
+        {"stat": stat, "target": target, "pct": round(pct * potency, 3)}
         for (stat, target), pct in merged.items()
         if abs(pct) > 1e-9
     ]

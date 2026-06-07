@@ -43,6 +43,42 @@ export const commanderStyles = `
     font-size: 0.58rem; padding: 1px 5px; border-radius: 99px;
   }
 
+  /* Gueteklassen-Badge (F..SSS), prominent oben links. */
+  .grade-badge {
+    position: absolute; top: 4px; left: 4px;
+    min-width: 20px; text-align: center;
+    font-weight: 800; font-size: 0.68rem; letter-spacing: 0.02em;
+    padding: 1px 6px; border-radius: 6px;
+    color: #06101e; border: 1px solid rgba(255,255,255,0.25);
+    box-shadow: 0 0 8px var(--grade-glow, transparent);
+  }
+  .grade-badge.grade-low { background: #9aa3b2; --grade-glow: rgba(154,163,178,0.5); }
+  .grade-badge.grade-mid { background: #4aa3ff; --grade-glow: rgba(74,163,255,0.6); }
+  .grade-badge.grade-high { background: #22e0c8; --grade-glow: rgba(34,224,200,0.7); }
+  .grade-badge.grade-elite {
+    background: linear-gradient(135deg, #ff49c0, #ffd24a); color: #1a0a14;
+    --grade-glow: rgba(255,73,192,0.8);
+  }
+
+  /* Investitions-Stufen-Auswahl. */
+  .tier-block { display: flex; flex-direction: column; gap: 0.4rem; }
+  .tier-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem; }
+  .tier-card {
+    display: flex; flex-direction: column; gap: 0.2rem; text-align: left;
+    padding: 0.5rem 0.6rem; border-radius: 8px;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+    color: var(--text); cursor: pointer;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  }
+  .tier-card:hover { border-color: var(--border-strong); }
+  .tier-card.active {
+    border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent);
+    box-shadow: var(--glow);
+  }
+  .tier-name { font-weight: 700; font-size: 0.86rem; }
+  .tier-cost { font-size: 0.7rem; color: var(--text-dim); }
+  .tier-hint { font-size: 0.68rem; }
+
   .cmd-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
   .cmd-body h3 { font-size: 1rem; margin: 0; }
   .morale-bar .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--band) 50%, transparent), var(--band)); }

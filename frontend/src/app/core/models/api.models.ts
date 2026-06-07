@@ -308,6 +308,8 @@ export interface Commander {
   traits: string[];
   specialization: string;
   rank: string;
+  /** Gueteklasse F..SSS (angeborenes Potenzial, Doku 05a). Default C. */
+  grade?: string;
   xp: number;
   morale: number;
   loyalty: number;

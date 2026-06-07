@@ -198,7 +198,8 @@ async def send_fleet(
         from app.commander.bonuses import base_bonuses, resolve_ship_bonuses
         focus = (commander.persona or {}).get("focus")
         cmd_bonuses = base_bonuses(
-            commander.specialization, commander.rank, commander.traits or [], focus
+            commander.specialization, commander.rank, commander.traits or [], focus,
+            commander.grade or "C",
         )
         _sb, speed_bonus = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(ships.keys()))
         if speed_bonus > 0:

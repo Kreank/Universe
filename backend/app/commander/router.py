@@ -51,10 +51,11 @@ async def bonus_preview(
     specialization: str = "combat",
     focus: str | None = None,
     rank: str = "cadet",
+    grade: str = "C",
     player: Player = Depends(get_current_player),
 ) -> list[dict]:
-    """Vorschau der Boni fuer eine (Spezialisierung, Fokus)-Kombination — damit der
-    Spieler vor der Ausbildung sieht, welches Profil entsteht. Default-Rang Kadett.
+    """Vorschau der Boni fuer eine (Spezialisierung, Fokus, Grad)-Kombination — damit der
+    Spieler vor der Ausbildung sieht, welches Profil entsteht. Default-Rang Kadett, Grad C.
     Muss VOR /commanders/{commander_id} stehen, sonst matcht der Pfad-Parameter."""
     bal = get_balance()
     valid_specs = bal.commander["specializations"]
@@ -63,8 +64,9 @@ async def bonus_preview(
     foc = focus if focus in valid_classes else None
     rank_keys = {r["key"] for r in bal.commander["ranks"]}
     rk = rank if rank in rank_keys else "cadet"
+    grd = grade if grade in bal.grades["potency"] else "C"
     # Ohne explizite Traits (die kommen bei der Ausbildung zufaellig dazu).
-    return base_bonuses(spec, rk, [], foc)
+    return base_bonuses(spec, rk, [], foc, grd)
 
 
 @router.get("/commanders/{commander_id}", response_model=CommanderDetailOut)
@@ -96,7 +98,9 @@ async def train_commander(
     if planet is None or planet.player_id != player.id:
         raise HTTPException(status_code=404, detail="Planet nicht gefunden")
     try:
-        commander = await start_training(session, planet, body.specialization, body.focus)
+        commander = await start_training(
+            session, planet, body.specialization, body.focus, body.tier
+        )
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     data = await commander_to_dict(session, commander)

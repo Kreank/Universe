@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.commander.bonuses import base_bonuses
-from app.economy.service import get_building_levels, get_research_levels
+from app.economy.service import get_building_levels, get_research_levels, spend_resources
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
@@ -36,6 +36,23 @@ def _now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
 
 
+def roll_grade(weights: dict[str, float], rng: random.Random) -> str:
+    """Wuerfelt eine Gueteklasse gewichtet (Gewichte werden normalisiert, Summe egal).
+
+    ``rng`` ist ein geseedeter random.Random — so ist der Wurf reproduzierbar."""
+    items = [(g, float(w)) for g, w in weights.items() if float(w) > 0]
+    if not items:
+        return "C"
+    total = sum(w for _, w in items)
+    r = rng.random() * total
+    acc = 0.0
+    for grade, w in items:
+        acc += w
+        if r <= acc:
+            return grade
+    return items[-1][0]
+
+
 def generate_persona(rng: random.Random) -> tuple[str, dict, list[str]]:
     """Erzeugt (name, persona, traits)."""
     bal = get_balance()
@@ -56,6 +73,7 @@ async def create_commander(
     rank_key: str = "cadet",
     specialization: str = "combat",
     focus: str | None = None,
+    grade: str = "C",
     status: str = "active",
     training_finishes_at: dt.datetime | None = None,
     rng: random.Random | None = None,
@@ -63,7 +81,8 @@ async def create_commander(
     """Legt einen Commander an und enqueued einen persona_init-Job (Banken-Aufbau).
 
     ``focus`` (Schiffsklasse) kann explizit gewaehlt werden; sonst wird sie
-    spezialisierungstypisch (mit etwas Varianz) gezogen."""
+    spezialisierungstypisch (mit etwas Varianz) gezogen. ``grade`` (Gueteklasse
+    F..SSS) ist das angeborene Potenzial (Default C = Baseline)."""
     bal = get_balance()
     rng = rng or random.Random()
     name, persona, traits = generate_persona(rng)
@@ -78,6 +97,10 @@ async def create_commander(
         persona["focus"] = favored if rng.random() < 0.6 else rng.choice(classes)
     rank = bal.rank_by_key(rank_key)
     morale_start = bal.commander["morale"]["start"]
+    # Grad-Potenz skaliert auch die Span-of-Control-Decke (Doku 05a): hoeherer Grad
+    # fuehrt mehr (C = 1.0 Baseline bleibt unveraendert).
+    grade_key = grade if grade in bal.grades["potency"] else "C"
+    span = max(1, round(rank["span_contrib"] * bal.grade_potency(grade_key)))
 
     commander = Commander(
         player_id=player_id,
@@ -86,10 +109,11 @@ async def create_commander(
         traits=traits,
         specialization=specialization,
         rank=rank_key,
+        grade=grade_key,
         xp=rank["xp_threshold"],
         morale=morale_start,
         loyalty=100,
-        span_capacity=rank["span_contrib"],
+        span_capacity=span,
         status=status,
         training_finishes_at=training_finishes_at,
         last_active_at=_now(),
@@ -121,7 +145,8 @@ async def commander_to_dict(session: AsyncSession, c: Commander) -> dict:
     bal = get_balance()
     band = bal.morale_band(c.morale)
     focus = (c.persona or {}).get("focus")
-    bonuses = base_bonuses(c.specialization, c.rank, c.traits or [], focus)
+    grade = c.grade or "C"
+    bonuses = base_bonuses(c.specialization, c.rank, c.traits or [], focus, grade)
     return {
         "id": c.id,
         "name": c.name,
@@ -129,6 +154,7 @@ async def commander_to_dict(session: AsyncSession, c: Commander) -> dict:
         "traits": c.traits or [],
         "specialization": c.specialization,
         "rank": c.rank,
+        "grade": grade,
         "xp": c.xp,
         "morale": c.morale,
         "loyalty": c.loyalty,
@@ -189,17 +215,20 @@ async def start_training(
     planet: Planet,
     specialization: str | None = None,
     focus: str | None = None,
+    tier: str | None = None,
 ) -> Commander:
     """Bildet einen neuen Commander an der Kommando-Akademie aus.
 
     ``specialization`` und ``focus`` (Schiffsklasse) sind optional waehlbar — so kann
-    der Spieler gezielt z. B. Defensive- oder Tempo-Commander ausbilden."""
+    der Spieler gezielt z. B. Defensive- oder Tempo-Commander ausbilden. ``tier``
+    (Investitions-Stufe) bestimmt Kosten und Grad-Wahrscheinlichkeiten (Doku 05a)."""
     bal = get_balance()
     # Eingaben validieren (sonst Default).
     valid_specs = bal.commander["specializations"]
     spec = specialization if specialization in valid_specs else "combat"
     valid_classes = [k for k in bal.commander["ship_classes"].keys() if not k.startswith("_")]
     focus_class = focus if focus in valid_classes else None  # None -> auto in create_commander
+    tier_cfg = bal.training_tier(tier or "standard")
 
     levels = await get_building_levels(session, planet.id)
     academy = levels.get("command_academy", 0)
@@ -216,6 +245,19 @@ async def start_training(
     if len(in_training) >= slots:
         raise RuntimeError("Keine freien Ausbildungsplaetze")
 
+    # Investitions-Kosten (Basis x Tier-Multiplikator) vom Heimatplaneten abziehen.
+    grades_cfg = bal.grades
+    base_cost = grades_cfg["training_base_cost"]
+    mult = float(tier_cfg.get("cost_mult", 1))
+    cost = {k: float(v) * mult for k, v in base_cost.items()}
+    if not await spend_resources(session, planet, cost):
+        raise RuntimeError("Nicht genug Ressourcen")
+
+    # Grad gewichtet + geseedet wuerfeln (reproduzierbar, kein ungeseedetes random).
+    seed_src = f"{planet.player_id}:{_now().timestamp()}:{len(in_training)}:{tier_cfg['key']}"
+    rng = random.Random(seed_src)
+    grade = roll_grade(tier_cfg["weights"], rng)
+
     base_secs = bal.commander["academy"]["base_training_seconds"]
     secs = max(1, int(base_secs / academy))
     finish = _now() + dt.timedelta(seconds=secs)
@@ -224,8 +266,8 @@ async def start_training(
 
     commander = await create_commander(
         session, planet.player_id,
-        rank_key=rank_key, specialization=spec, focus=focus_class,
-        status="training", training_finishes_at=finish,
+        rank_key=rank_key, specialization=spec, focus=focus_class, grade=grade,
+        status="training", training_finishes_at=finish, rng=rng,
     )
     from app.platform.scheduler import schedule_at
     schedule_at(finish, complete_training, str(commander.id), job_id=f"train:{commander.id}")

@@ -97,6 +97,7 @@ CREATE TABLE commanders (
     traits         JSONB NOT NULL DEFAULT '[]'::jsonb,   -- ["aggressive","loyal"]
     specialization specialization NOT NULL DEFAULT 'combat',
     rank           commander_rank NOT NULL DEFAULT 'cadet',
+    grade          TEXT NOT NULL DEFAULT 'C',            -- Gueteklasse F..SSS (angeborenes Potenzial)
     xp             INT NOT NULL DEFAULT 0,
     morale         INT NOT NULL DEFAULT 60 CHECK (morale BETWEEN 0 AND 100),
     loyalty        INT NOT NULL DEFAULT 100 CHECK (loyalty BETWEEN 0 AND 100),

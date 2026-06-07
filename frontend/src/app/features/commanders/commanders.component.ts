@@ -11,9 +11,26 @@ import {
   SPECIALIZATION_META,
   TRAIT_META,
   commanderFace,
+  gradeBadgeClass,
+  gradeLabel,
   metaFor,
 } from '../../core/models/display';
 import { commanderStyles } from './commander.styles';
+
+/** Eine waehlbare Investitions-Stufe (aus balance.json abgeleitet). */
+interface TierOption {
+  key: string;
+  label: string;
+  cost: { metal: number; crystal: number; deuterium: number };
+  hint: string;
+}
+
+/** Ausschnitt der `commander.grades`-Sektion aus balance.json (nur Anzeige). */
+interface GradesConfig {
+  order: string[];
+  training_base_cost: { metal: number; crystal: number; deuterium: number };
+  training_tiers: { key: string; label: string; cost_mult: number; weights: Record<string, number> }[];
+}
 
 @Component({
   selector: 'app-commanders',
@@ -62,6 +79,30 @@ import { commanderStyles } from './commander.styles';
           </label>
         </div>
 
+        @if (tierOptions().length) {
+          <div class="tier-block">
+            <span class="bonus-head faint small">Investitions-Stufe (bestimmt Grad-Chancen)</span>
+            <div class="tier-row">
+              @for (t of tierOptions(); track t.key) {
+                <button
+                  type="button"
+                  class="tier-card"
+                  [class.active]="selTier() === t.key"
+                  (click)="onTierChange(t.key)"
+                >
+                  <span class="tier-name">{{ t.label }}</span>
+                  <span class="tier-cost mono">
+                    ⛏️ {{ t.cost.metal }} · 💎 {{ t.cost.crystal }} · 🛢️ {{ t.cost.deuterium }}
+                  </span>
+                  <span class="tier-hint faint">{{ t.hint }}</span>
+                </button>
+              }
+            </div>
+            <p class="faint small">Hoehere Stufe = bessere Grad-Chancen. SSS bleibt selten
+              (max 5%, nur Experimentell) — ein echtes Prestige-Ereignis.</p>
+          </div>
+        }
+
         <div class="preview">
           <span class="bonus-head faint small">Erwartetes Profil (Kadett, ohne Traits)</span>
           <div class="bonus-chips">
@@ -102,6 +143,7 @@ import { commanderStyles } from './commander.styles';
           <a class="card cmd-card" [routerLink]="['/commanders', c.id]">
             <div class="portrait" [class]="bandClass(c.morale)">
               <img [src]="faceFor(c.id)" alt="" (error)="onFaceError($event)" />
+              <span class="grade-badge" [class]="gradeClass(c.grade)" [attr.data-tip]="'Gueteklasse ' + gradeText(c.grade)">{{ gradeText(c.grade) }}</span>
               <span class="rank-badge">{{ rank(c.rank).glyph }} {{ rank(c.rank).label }}</span>
               @if (c.training_finishes_at) {
                 <span class="status-tag">in Ausbildung</span>
@@ -176,9 +218,45 @@ export class CommandersComponent {
   protected readonly showTrain = signal(false);
   protected readonly selSpec = signal('combat');
   protected readonly selFocus = signal(''); // '' = automatisch
+  protected readonly selTier = signal('standard');
   protected readonly preview = signal<CommanderBonus[]>([]);
   protected readonly specOptions = ['combat', 'logistics', 'spy', 'research', 'trade'];
   protected readonly focusOptions = ['fighter', 'cruiser', 'capital', 'civil'];
+
+  // Investitions-Stufen aus balance.json (Kosten + Grad-Chance-Andeutung).
+  protected readonly tierOptions = computed<TierOption[]>(() => {
+    const grades = (this.balance.value?.commander as Record<string, unknown> | undefined)?.[
+      'grades'
+    ] as GradesConfig | undefined;
+    if (!grades) {
+      return [];
+    }
+    const base = grades.training_base_cost;
+    const order = grades.order;
+    return grades.training_tiers.map((t) => {
+      const mult = Number(t.cost_mult ?? 1);
+      const weights = t.weights ?? {};
+      const total = order.reduce((s, k) => s + (Number(weights[k]) || 0), 0);
+      let best = 'C';
+      for (const k of order) {
+        if ((Number(weights[k]) || 0) > 0) {
+          best = k;
+        }
+      }
+      const sss = total > 0 ? Math.round(((Number(weights['SSS']) || 0) / total) * 100) : 0;
+      const hint = sss > 0 ? `bis ${best} · SSS bis ${sss}%` : `bis ${best}`;
+      return {
+        key: t.key,
+        label: t.label,
+        cost: {
+          metal: Math.round(base.metal * mult),
+          crystal: Math.round(base.crystal * mult),
+          deuterium: Math.round(base.deuterium * mult),
+        },
+        hint,
+      };
+    });
+  });
 
   protected readonly canTrain = computed(() => !!this.state.activePlanetId());
 
@@ -203,6 +281,10 @@ export class CommandersComponent {
     this.loadPreview();
   }
 
+  onTierChange(tier: string): void {
+    this.selTier.set(tier);
+  }
+
   private loadPreview(): void {
     this.api.getBonusPreview(this.selSpec(), this.selFocus() || null).subscribe({
       next: (b) => this.preview.set(b),
@@ -216,7 +298,7 @@ export class CommandersComponent {
       return;
     }
     this.training.set(true);
-    this.api.trainCommander(planetId, this.selSpec(), this.selFocus() || null).subscribe({
+    this.api.trainCommander(planetId, this.selSpec(), this.selFocus() || null, this.selTier()).subscribe({
       next: () => {
         this.training.set(false);
         this.showTrain.set(false);
@@ -241,6 +323,8 @@ export class CommandersComponent {
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   trait = (t: string) => metaFor(TRAIT_META, t);
   bandClass = (m: number) => this.balance.moraleBandClass(m);
+  gradeClass = (g?: string | null) => gradeBadgeClass(g);
+  gradeText = (g?: string | null) => gradeLabel(g);
 
   faceFor = (id: string) => commanderFace(id);
   onFaceError(event: Event): void {
