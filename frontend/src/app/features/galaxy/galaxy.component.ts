@@ -1,22 +1,29 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
-import { GalaxyCell, GalaxyTarget } from '../../core/models/api.models';
+import { GalaxyCell, GalaxyIntel, GalaxyTarget } from '../../core/models/api.models';
 import { NotificationService } from '../../core/services/notification.service';
+import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { galaxyStyles } from './galaxy.styles';
 
 /**
  * Galaxie-/Kartenansicht (UX-Doku 11 §2). Zeigt ein System Position fuer Position,
- * markiert den eigenen Planeten und liefert ein Verzeichnis bekannter (NPC-)Ziele —
- * damit der Spieler weiss, *wen* er angreifen kann. "Angreifen" verlinkt mit
- * vorausgefuelltem Ziel auf den Flotten-Screen.
+ * markiert den eigenen Planeten und liefert ein Verzeichnis bekannter Ziele.
+ *
+ * Spionage: Im Scanner koennen belegte Gegner-Felder per Spionagesonde aufgeklaert
+ * werden (Deep-Link auf den Flotten-Screen mit `mission: 'spy'`). Bereits aufgeklaerte
+ * Felder werden markiert. Das Ziel-Verzeichnis listet nur AUFGEKLAERTE Ziele samt
+ * Aufklaerungsstufe und — je nach Stufe — Flotten-/Verteidigungs- und Ressourcen-Intel.
+ * "Angreifen" verlinkt mit vorausgefuelltem Ziel auf den Flotten-Screen
+ * (Blindangriffe ohne Aufklaerung sind erlaubt, aber riskant).
  */
 @Component({
   selector: 'app-galaxy',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [FormsModule, DatePipe],
   template: `
     <h1>Galaxie · Karte</h1>
     <p class="sub">Erkunde Systeme, finde Ziele und entsende deine Flotten.</p>
@@ -55,7 +62,13 @@ import { galaxyStyles } from './galaxy.styles';
                   <div class="cell-name">{{ c.name ?? '—' }}</div>
                 </div>
                 @if (c.occupant_type === 'npc' || (c.occupant_type === 'player' && !isOwn(c))) {
-                  <button class="btn btn-danger btn-sm" type="button" (click)="attack(c)">⚔ Angreifen</button>
+                  <div class="cell-act">
+                    @if (c.discovered) {
+                      <span class="chip">🛰 aufgeklärt ✓</span>
+                    }
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="spy(c)">🛰 Spionieren</button>
+                    <button class="btn btn-danger btn-sm" type="button" (click)="attack(c)">⚔ Angreifen</button>
+                  </div>
                 } @else if (isOwn(c)) {
                   <span class="chip own">dein Planet</span>
                 }
@@ -67,26 +80,46 @@ import { galaxyStyles } from './galaxy.styles';
 
       <!-- Ziel-Verzeichnis ---------------------------------------------- -->
       <section class="card targets">
-        <div class="panel-title">🎯 Bekannte Ziele</div>
+        <div class="panel-title">🎯 Aufgeklärte Ziele</div>
         @if (targets().length) {
           <p class="muted small">Aufklaerung gemeldet — wähle ein Ziel:</p>
-          @for (t of targets(); track t.npc_id) {
+          @for (t of targets(); track t.coords) {
             <div class="target-row">
               <div class="target-main">
                 <span class="target-name">🤖 {{ t.name }}</span>
-                <span class="mono small">[{{ t.coords }}]</span>
+                <span class="mono small">
+                  <span class="chip lvl">L{{ t.level ?? 1 }}/3</span>
+                  [{{ t.coords }}]
+                </span>
               </div>
               <div class="target-meta small muted">
                 🚀 {{ t.ships_total }} Schiffe · 🛡 {{ t.defenses_total }} Verteidigung
               </div>
+              @if (fmtUnits(t.intel?.fleet); as f) {
+                <div class="target-intel small">🚀 {{ f }}</div>
+              }
+              @if (fmtUnits(t.intel?.defenses); as d) {
+                <div class="target-intel small">🛡 {{ d }}</div>
+              }
+              @if (fmtRes(t.intel?.resources); as r) {
+                <div class="target-intel small">💰 {{ r }}</div>
+              }
+              @if (t.discovered_at) {
+                <div class="target-meta small muted">zuletzt aufgeklärt: {{ t.discovered_at | date: 'short' }}</div>
+              }
               <div class="target-act">
                 <button class="btn btn-ghost btn-sm" type="button" (click)="jumpTo(t)">Anfliegen</button>
-                <button class="btn btn-danger btn-sm" type="button" (click)="attackTarget(t)">⚔ Angreifen</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="spyTarget(t)">🛰 Spionieren</button>
+                @if (t.npc_id) {
+                  <button class="btn btn-danger btn-sm" type="button" (click)="attackTarget(t)">⚔ Angreifen</button>
+                }
               </div>
             </div>
           }
         } @else {
-          <p class="muted small">Keine Ziele in Reichweite gemeldet.</p>
+          <p class="muted small">
+            Noch keine Ziele aufgeklärt. Entsende Spionagesonden (🛰) auf belegte Felder im Scanner.
+          </p>
         }
       </section>
     </div>
@@ -196,9 +229,54 @@ export class GalaxyComponent {
   }
 
   attackTarget(t: GalaxyTarget): void {
+    // Deep-Link nur fuer aufgeklaerte NPC-Ziele (npc_id noetig fuer Vorbelegung).
+    if (!t.npc_id) {
+      return;
+    }
     void this.router.navigate(['/fleet'], {
       queryParams: { g: t.galaxy, s: t.system, p: t.position, mission: 'attack' },
     });
+  }
+
+  spy(c: GalaxyCell): void {
+    void this.router.navigate(['/fleet'], {
+      queryParams: { g: this.viewG, s: this.viewS, p: c.position, mission: 'spy' },
+    });
+  }
+
+  spyTarget(t: GalaxyTarget): void {
+    void this.router.navigate(['/fleet'], {
+      queryParams: { g: t.galaxy, s: t.system, p: t.position, mission: 'spy' },
+    });
+  }
+
+  /** Rendert eine {typ: anzahl}-Map kompakt, z.B. "🛩️ 3× Leichter Jaeger, 📦 8× Kleiner Transporter". */
+  fmtUnits(map?: Record<string, number> | null): string {
+    if (!map) {
+      return '';
+    }
+    const parts = Object.entries(map)
+      .filter(([, n]) => n > 0)
+      .map(([type, n]) => {
+        const meta = SHIP_META[type] ?? metaFor(DEFENSE_META, type);
+        return `${n}× ${meta.label}`;
+      });
+    return parts.join(', ');
+  }
+
+  /** Rendert Ressourcen-Intel mit Tausenderpunkt, z.B. "Metall 12.000 · Kristall 4.500". */
+  fmtRes(res?: GalaxyIntel['resources'] | null): string {
+    if (!res) {
+      return '';
+    }
+    const parts: string[] = [];
+    for (const key of ['metal', 'crystal', 'deuterium'] as const) {
+      const val = res[key];
+      if (val != null) {
+        parts.push(`${metaFor(RESOURCE_META, key).label} ${val.toLocaleString('de-DE')}`);
+      }
+    }
+    return parts.join(' · ');
   }
 
   isOwn(c: GalaxyCell): boolean {

@@ -227,14 +227,29 @@ export interface GalaxyCell {
   name: string | null;
   player_id: string | null;
   npc_id: string | null;
+  /** Hat dieser Spieler dieses Ziel schon per Sonde aufgeklaert? */
+  discovered?: boolean;
 }
 
 export interface GalaxyResponse {
   cells: GalaxyCell[];
 }
 
+/** Aufklaerungs-Schnappschuss eines Ziels (Detailtiefe je nach Stufe). */
+export interface GalaxyIntel {
+  name?: string;
+  kind?: string;
+  ships_total?: number;
+  defenses_total?: number;
+  level?: number;
+  fleet?: Record<string, number>;
+  defenses?: Record<string, number>;
+  resources?: { metal?: number; crystal?: number; deuterium?: number };
+  scanned_at?: string;
+}
+
 export interface GalaxyTarget {
-  npc_id: string;
+  npc_id: string | null;
   name: string;
   galaxy: number;
   system: number;
@@ -242,6 +257,10 @@ export interface GalaxyTarget {
   coords: string;
   ships_total: number;
   defenses_total: number;
+  /** Aufklaerungs-Detailstufe (1..3). */
+  level?: number;
+  discovered_at?: string | null;
+  intel?: GalaxyIntel | null;
 }
 
 // --- Commander ----------------------------------------------------------
