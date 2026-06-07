@@ -11,25 +11,41 @@ Der **Vertical Slice läuft end-to-end** durch den kompletten Stack (Angular →
 PostgreSQL/pgvector → Redis → ai-worker → Ollama). Alle 5 Container laufen via
 `docker compose`. Diese Session lief vollständig in Docker und ist verifiziert.
 
-**Letzte Commits (diese Session, oben = neu):**
+**Diese Session — gewaltiger Batch (alles verifiziert + committet, oben = neu):**
 ```
-e30e795 feat(spionage): Galaxie-Screen mit Aufklaerung + Sonden-Deep-Links — Frontend
-efdb87f feat(spionage): Ziele erst per Sonde aufdecken (Doku 04 §6) — Backend
-57d49f4 feat(npc): Behavior-Tree-Tick laesst NPC-Imperien leben (Doku 08)
-1d897e4 feat(werft): persistente Bau-Warteschlange (Tech-Debt #2)
-f19e8b9 feat(commander): Spezialisierung + Fokus bei Akademie-Ausbildung waehlbar
+a3b4de9 Galaxie-Planeten/Debris-Renders + Tech-Tree-Ansicht + frische Szenen
+88767f0 Commander-Gueteklassen F-SSS (Potenzial + Ausbildungs-Investition)
+5550886 Planetentypen + Felder-Kurve (Model A, Doku 06a)
+bfcb2c8 voller Schiffs-/Verteidigungs-Roster + Rapidfire-Matrix + neue Techs
+6364dd9 Dashboard-Cockpit (aktive Timer + Flottenbewegungen)
+13bc444 Voraussetzungen konkret anzeigen ("benoetigt: ...")
+061a463 Forschung/Werft/Flotte im OGame-Stil (dichte Kacheln)
+ffa4130 Gebaeude-Screen im OGame-Stil
+779646d echte Assets integriert (Schiffe/Gebaeude/Verteidigung/Commander/BG)
+8841e67 Postfach strukturiert (Spionagebericht-Karte, Typ-Badges) + loeschen
+...davor: Spionage, NPC-Verhalten, Werft-Queue persistent (s.u.)
 ```
 
-**Neu in dieser Session (alles verifiziert, Working Tree sauber):**
-- **Werft-Queue persistent** (Tech-Debt #2 geschlossen): neue `shipyard_queue`-Tabelle,
-  Auftraege ueberleben Neustart, Scheduler-Recovery plant sie nach.
-- **Idempotente Startup-Migration** (`platform/migrations.py`, `ensure_schema`): bringt neue
-  Tabellen/ENUMs in bestehende DBs OHNE `down -v` (laeuft im lifespan vor der Recovery).
-- **NPC-Verhalten** (Behavior Trees, `app/npc/`): periodischer Tick laesst NPCs ihre Garnison
-  Richtung baseline regenerieren / je Profil wachsen (Anti-Farming, Doku 08).
-- **Spionage** (Doku 04 §6): `spy`-Mission deckt Ziele per Sonde auf (Detailstufe 1–3 je nach
-  Sondenzahl/Spionagetech), Spionagebericht ins Postfach, `player_discoveries`-Tabelle;
-  `GET /galaxy/targets` liefert nur noch aufgeklaerte Ziele; Galaxie-Screen mit Spionieren-Buttons.
+**Neu in dieser Session (Highlights):**
+- **OGame-UI-Redesign** aller Bau-Screens (Gebaeude/Forschung/Werft/Flotte) — dichte,
+  bild-zentrierte Kacheln; **Dashboard = Cockpit** (Bau/Forschung/Werft-Countdowns,
+  Flottenbewegungen, Alerts); **Voraussetzungen** werden konkret angezeigt.
+- **Echte Assets** integriert (Schiffe/Gebaeude/Verteidigung/Commander-Portraits/
+  Ressourcen-Icons/Hintergruende; Galaxie zeigt Planeten-/Debris-Renders).
+- **Kampf-Roster Phase 1**: voller Roster (14 Schiffe / 10 Verteidigung) + komplette
+  **Rapidfire-Matrix** + 6 neue Techs (laser/ion/plasma/hyperspace/graviton) — `balance.json`,
+  Engine datengetrieben. Sim verifiziert (Schlachtkreuzer schlagen Schlachtschiffe via RF 7).
+- **Planetentypen + Felder (Model A)**: Position -> Typ/Temp/`fields_max` (Doku 06a),
+  fields_max erzwungen, Abreissen erstattet Felder. `derive_planet()` + Startup-Backfill.
+- **Commander-Gueteklassen F-SSS** (Doku 05a): Potenzial-Achse (potency 0.6-2.0) neben Rang,
+  Ausbildungs-Investition (Standard..Experimentell), SSS max 5%; wirkt real in Kampf/Tempo.
+- **Tech-Tree-Screen** (neuer Nav-Eintrag "Techbaum").
+- **Postfach** strukturiert (Spionagebericht als Intel-Karte, Typ-Badges) + Loeschen.
+- davor: **Spionage** (Sonden decken Ziele auf, Doku 04 §6), **NPC-Verhalten** (Behavior Trees,
+  Doku 08), **Werft-Queue persistent** + idempotente Startup-Migration (`platform/migrations.py`).
+
+**Neue Design-Docs (gelockt, teils gebaut):** `docs/systems/03a-combat-ships-roadmap.md`,
+`05a-commander-grades.md`, `06a-planet-types-fields.md`.
 
 ---
 
@@ -106,6 +122,18 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 10. **`_note`-Meta-Keys in balance.json**: Kataloge (ships/defenses) enthalten `_note`-Kommentare.
     Iterierende Codestellen müssen `_`-Keys überspringen (in `shipyard.build_options` gefixt) —
     bei neuen Katalog-Schleifen beachten.
+
+### Naechste grosse Brocken (designt/teil-gebaut → noch offen)
+- **Kampf (Roadmap `03a`):** Phase 1 (Roster) gebaut. Offen: **Trümmer-/Recycler-Loop**,
+  ⭐ **Interception** (Flotten im Flug abfangen, Tempo-basiert), **aktive Commander-Faehigkeiten**,
+  **Flaggschiff/Permadeath/Capture** vervollstaendigen, **Kampf-Simulator**,
+  Verteidigungs-Spezialmechanik (Schildkuppel max 1/Planet, ABM/IPM-Raketen).
+- **Planeten (`06a`):** Typen/Felder gebaut. Offen: **Gasplaneten + Exotische Materie**
+  (RESERVIERT, erst mit Allianzen/End-Forschung), Terraformer, **Kolonisierung** (colonize-Mission
+  hat noch keinen Planet-Erstellungs-Handler).
+- **Commander (`05a`):** Grade gebaut. Offen: Grade auch via **Expeditionen** finden;
+  aktive Faehigkeiten (Doku 05 §6).
+- **KI/LLM-Funksprüche** weiterhin bewusst aufgeschoben (Nutzer-Wunsch), bis der Rest rund ist.
 
 ---
 
