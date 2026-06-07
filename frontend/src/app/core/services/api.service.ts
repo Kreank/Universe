@@ -143,6 +143,14 @@ export class ApiService {
     return this.http.post<DecisionResponse>(`/api/transmissions/${id}/decide`, { choice });
   }
 
+  deleteTransmission(id: string): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`/api/transmissions/${id}`);
+  }
+
+  deleteReadTransmissions(): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`/api/transmissions/read`);
+  }
+
   // --- Combat-Report ---
   getCombatReport(id: string): Observable<CombatReport> {
     return this.http.get<CombatReport>(`/api/combat-reports/${id}`);

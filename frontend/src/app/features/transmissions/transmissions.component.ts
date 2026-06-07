@@ -49,6 +49,9 @@ interface SpyIntelView {
         <button class="btn btn-sm" [class.btn-primary]="onlyUnread()" (click)="onlyUnread.set(true)">
           Ungelesen ({{ state.unreadTransmissions() }})
         </button>
+        <button class="btn btn-sm btn-ghost" [disabled]="!readCount()" (click)="deleteRead()">
+          🗑 Gelesene löschen{{ readCount() ? ' (' + readCount() + ')' : '' }}
+        </button>
       </div>
     </div>
 
@@ -155,8 +158,13 @@ interface SpyIntelView {
                   >Ablehnen</button>
                 </div>
               </div>
-            } @else if (!t.read) {
-              <button class="btn btn-sm btn-ghost mark" (click)="markRead(t)">Als gelesen markieren</button>
+            } @else {
+              <div class="msg-actions">
+                @if (!t.read) {
+                  <button class="btn btn-sm btn-ghost" (click)="markRead(t)">Als gelesen markieren</button>
+                }
+                <button class="btn btn-sm btn-ghost del" (click)="deleteOne(t)" title="Funkspruch loeschen">🗑 Löschen</button>
+              </div>
             }
           </article>
         }
@@ -188,6 +196,11 @@ export class TransmissionsComponent {
     return this.onlyUnread() ? all.filter((t) => !t.read) : all;
   });
 
+  /** Anzahl loeschbarer (gelesener, nicht entscheidungs-offener) Funksprueche. */
+  protected readonly readCount = computed(
+    () => this.state.transmissions().filter((t) => t.read && !t.requires_decision).length,
+  );
+
   constructor() {
     void this.state.reloadTransmissions();
   }
@@ -213,6 +226,26 @@ export class TransmissionsComponent {
     this.api.markTransmissionRead(t.id).subscribe({
       next: () => this.state.upsertTransmission({ ...t, read: true }),
       error: () => this.state.upsertTransmission({ ...t, read: true }),
+    });
+  }
+
+  deleteOne(t: Transmission): void {
+    // Optimistisch entfernen; bei Fehler neu laden.
+    this.state.removeTransmission(t.id);
+    this.api.deleteTransmission(t.id).subscribe({
+      error: () => void this.state.reloadTransmissions(),
+    });
+  }
+
+  deleteRead(): void {
+    const n = this.readCount();
+    if (!n) {
+      return;
+    }
+    this.state.removeReadTransmissions();
+    this.api.deleteReadTransmissions().subscribe({
+      next: () => this.notify.success('Postfach aufgeraeumt', `${n} gelesene Funksprueche geloescht.`),
+      error: () => void this.state.reloadTransmissions(),
     });
   }
 

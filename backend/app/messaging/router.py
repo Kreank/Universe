@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.messaging.schemas import (
@@ -45,6 +45,36 @@ async def mark_read(
     if t is None or t.player_id != player.id:
         raise HTTPException(status_code=404, detail="Transmission nicht gefunden")
     t.read = True
+    return OkResponse(ok=True)
+
+
+@router.delete("/transmissions/read", response_model=OkResponse)
+async def delete_read(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> OkResponse:
+    """Loescht alle gelesenen Funksprueche (offene Forderungen bleiben erhalten)."""
+    await session.execute(
+        delete(Transmission).where(
+            Transmission.player_id == player.id,
+            Transmission.read.is_(True),
+            Transmission.requires_decision.is_(False),
+        )
+    )
+    return OkResponse(ok=True)
+
+
+@router.delete("/transmissions/{transmission_id}", response_model=OkResponse)
+async def delete_transmission(
+    transmission_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> OkResponse:
+    """Loescht einen einzelnen Funkspruch des Spielers."""
+    t = await session.get(Transmission, transmission_id)
+    if t is None or t.player_id != player.id:
+        raise HTTPException(status_code=404, detail="Transmission nicht gefunden")
+    await session.delete(t)
     return OkResponse(ok=True)
 
 

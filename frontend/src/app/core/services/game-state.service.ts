@@ -118,6 +118,14 @@ export class GameStateService {
     });
   }
 
+  removeTransmission(id: string): void {
+    this.transmissions.update((list) => list.filter((x) => x.id !== id));
+  }
+
+  removeReadTransmissions(): void {
+    this.transmissions.update((list) => list.filter((x) => !x.read || x.requires_decision));
+  }
+
   reset(): void {
     this.ws.disconnect();
     this.planets.set([]);

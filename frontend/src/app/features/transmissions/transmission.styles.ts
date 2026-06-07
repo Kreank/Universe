@@ -79,5 +79,6 @@ export const transmissionStyles = `
     display: flex; flex-direction: column; gap: 0.5rem;
   }
   .dec-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .mark { margin-top: 0.8rem; }
+  .msg-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.8rem; }
+  .del:hover { color: var(--magenta); border-color: var(--magenta); }
 `;
