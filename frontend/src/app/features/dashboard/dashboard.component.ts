@@ -22,6 +22,7 @@ import {
   DEFENSE_META,
   TECH_META,
   MISSION_META,
+  PLANET_TYPE_META,
   metaFor,
 } from '../../core/models/display';
 import {
@@ -40,8 +41,9 @@ import { dashboardStyles } from './dashboard.styles';
     <h1>Dashboard</h1>
     @if (planet(); as p) {
       <p class="muted sub">
-        {{ p.name }} · Koordinaten [{{ p.galaxy }}:{{ p.system }}:{{ p.position }}] ·
-        Felder {{ p.fields_used }}/{{ p.fields_max }}
+        {{ p.name }} · {{ planetType(p.planet_type).glyph }} {{ planetType(p.planet_type).label }} ·
+        Koordinaten [{{ p.galaxy }}:{{ p.system }}:{{ p.position }}] ·
+        {{ p.temp_max }}°C · Felder {{ p.fields_used }}/{{ p.fields_max }}
       </p>
 
       <div class="grid cols">
@@ -316,5 +318,6 @@ export class DashboardComponent {
     metaFor(q.category === 'defense' ? DEFENSE_META : SHIP_META, q.type);
   rank = (r: string) => metaFor(RANK_META, r);
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
+  planetType = (t: string | undefined) => metaFor(PLANET_TYPE_META, t ?? 'normal');
   bandClass = (m: number) => this.balance.moraleBandClass(m);
 }

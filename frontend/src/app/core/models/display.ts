@@ -86,6 +86,15 @@ export const DEFENSE_META: Record<string, DisplayMeta> = {
   interplanetary_missile: { label: 'Interplanetarrakete', glyph: '☄️', blurb: 'Zerstoert feindliche Verteidigung.' },
 };
 
+/** Planetentypen (aus der Position abgeleitet, Doku 06a). */
+export const PLANET_TYPE_META: Record<string, DisplayMeta> = {
+  fire: { label: 'Feuerplanet', glyph: '🔥', blurb: 'Sehr heiss, wenige Felder, viel Solarenergie.' },
+  barren: { label: 'Karger Planet', glyph: '🪨', blurb: 'Heiss-gemaessigt, mittlere Felder.' },
+  normal: { label: 'Normal', glyph: '🌍', blurb: 'Ausgewogen, meiste Felder.' },
+  cold: { label: 'Kalter Planet', glyph: '❄️', blurb: 'Kuehl, mehr Deuterium.' },
+  ice: { label: 'Eisplanet', glyph: '🧊', blurb: 'Sehr kalt, viel Deuterium.' },
+};
+
 export const MISSION_META: Record<string, DisplayMeta> = {
   attack: { label: 'Angriff', glyph: '⚔️' },
   transport: { label: 'Transport', glyph: '📦' },

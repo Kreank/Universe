@@ -24,6 +24,7 @@ import {
   SpanInfo,
   Transmission,
   UpgradeResponse,
+  DemolishResponse,
 } from '../models/api.models';
 
 /**
@@ -51,6 +52,13 @@ export class ApiService {
   upgradeBuilding(planetId: string, type: string): Observable<UpgradeResponse> {
     return this.http.post<UpgradeResponse>(
       `/api/planets/${planetId}/buildings/${type}/upgrade`,
+      {},
+    );
+  }
+
+  demolishBuilding(planetId: string, type: string): Observable<DemolishResponse> {
+    return this.http.post<DemolishResponse>(
+      `/api/planets/${planetId}/buildings/${type}/demolish`,
       {},
     );
   }

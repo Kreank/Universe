@@ -56,6 +56,8 @@ _STATEMENTS: list[str] = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_discoveries_player ON player_discoveries(player_id)",
+    # -- Feature: Planetentypen + Felder (Doku 06a) --------------------------
+    "ALTER TABLE planets ADD COLUMN IF NOT EXISTS planet_type TEXT NOT NULL DEFAULT 'normal'",
 ]
 
 

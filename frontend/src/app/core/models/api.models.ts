@@ -47,6 +47,8 @@ export interface Planet {
   galaxy: number;
   system: number;
   position: number;
+  /** Aus der Position abgeleitet: fire | barren | normal | cold | ice. */
+  planet_type?: string;
   temp_max: number;
   fields_used: number;
   fields_max: number;
@@ -131,6 +133,11 @@ export interface UpgradeResponse {
   type: string;
   level: number;
   upgrade_finishes_at: string;
+}
+
+export interface DemolishResponse {
+  type: string;
+  level: number;
 }
 
 // --- Forschung ----------------------------------------------------------

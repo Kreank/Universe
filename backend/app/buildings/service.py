@@ -126,6 +126,9 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
         raise ValueError("Unbekannter Gebaeudetyp")
     if await is_building_in_progress(session, planet.id):
         raise RuntimeError("Es laeuft bereits ein Gebaeudeausbau auf diesem Planeten")
+    # Feld-Budget erzwingen: jede Gebaeudestufe kostet ein Feld (Modell A, Doku 06a).
+    if planet.fields_used >= planet.fields_max:
+        raise RuntimeError("Kein Bauplatz frei")
 
     # Gebaeude-Zeile holen oder anlegen.
     row = (await session.execute(
@@ -153,6 +156,33 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
         building_type,
         job_id=f"build:{planet.id}:{building_type}",
     )
+    return row
+
+
+async def demolish_building(session: AsyncSession, planet: Planet, building_type: str) -> Building:
+    """Reisst ein Gebaeude eine Stufe ab und gibt das Feld zurueck.
+
+    Stufe -1 (min 0), ``fields_used -= 1`` (min 0). KEIN Ressourcen-Refund —
+    die Felder-Erstattung ist der Zweck (Doku 06a §2). Erlaubt nur bei Stufe > 0
+    und ohne laufenden Ausbau dieses Gebaeudes. Wirft ValueError/RuntimeError."""
+    bal = get_balance()
+    if building_type not in bal.buildings:
+        raise ValueError("Unbekannter Gebaeudetyp")
+    row = (await session.execute(
+        select(Building).where(Building.planet_id == planet.id, Building.type == building_type)
+    )).scalar_one_or_none()
+    if row is None or row.level <= 0:
+        raise RuntimeError("Gebaeude hat keine Stufe zum Abreissen")
+    if row.upgrade_finishes_at is not None:
+        raise RuntimeError("Gebaeude ist gerade im Ausbau")
+
+    # Ressourcen mit aktueller Rate fortschreiben, dann Stufe + Feld zuruecknehmen.
+    await refresh_resources(session, planet)
+    row.level -= 1
+    planet.fields_used = max(0, planet.fields_used - 1)
+    # Neue (niedrigere) Produktionsrate wirksam machen.
+    await refresh_resources(session, planet)
+    await session.flush()
     return row
 
 

@@ -14,6 +14,20 @@
     "positions_per_system": 15
   },
 
+  "planets": {
+    "_note": "Position bestimmt Typ/Temperatur/fields_max (Doku 06a). field_curve: Stuetzwert je Position 1..15 (1 Feld pro Gebaeudestufe). type_bands: erstes Band mit pos <= max_pos gewinnt. temp linear von inner (Pos 1) nach outer (Pos 15). homeworld_min_fields garantiert fairen Start.",
+    "field_curve": [90, 110, 130, 165, 200, 230, 255, 265, 255, 230, 200, 165, 135, 110, 95],
+    "homeworld_min_fields": 190,
+    "type_bands": [
+      { "max_pos": 3,  "type": "fire" },
+      { "max_pos": 5,  "type": "barren" },
+      { "max_pos": 10, "type": "normal" },
+      { "max_pos": 12, "type": "cold" },
+      { "max_pos": 15, "type": "ice" }
+    ],
+    "temp": { "inner": 220, "outer": -40 }
+  },
+
   "buildings": {
     "metal_mine":        { "cost": { "metal": 60,  "crystal": 15,  "deuterium": 0 },   "factor": 1.5, "prod_base": 30, "prod_growth": 1.1, "energy_base": 10, "energy_growth": 1.1 },
     "crystal_mine":      { "cost": { "metal": 48,  "crystal": 24,  "deuterium": 0 },   "factor": 1.6, "prod_base": 20, "prod_growth": 1.1, "energy_base": 10, "energy_growth": 1.1 },

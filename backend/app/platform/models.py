@@ -88,6 +88,7 @@ class Planet(Base):
     system: Mapped[int] = mapped_column(Integer, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(Text, default="Heimatplanet")
+    planet_type: Mapped[str] = mapped_column(Text, default="normal")
     temp_max: Mapped[int] = mapped_column(Integer, default=40)
     fields_used: Mapped[int] = mapped_column(Integer, default=0)
     fields_max: Mapped[int] = mapped_column(Integer, default=163)

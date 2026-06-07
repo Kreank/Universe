@@ -87,6 +87,10 @@ class Balance:
         return self.data["starting_player"]
 
     @property
+    def planets(self) -> dict[str, Any]:
+        return self.data["planets"]
+
+    @property
     def tech_bonus(self) -> dict[str, Any]:
         return self.data["tech_bonus"]
 

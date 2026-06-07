@@ -45,6 +45,7 @@ CREATE TABLE planets (
     system       INT NOT NULL,
     position     INT NOT NULL,
     name         TEXT NOT NULL DEFAULT 'Heimatplanet',
+    planet_type  TEXT NOT NULL DEFAULT 'normal',
     temp_max     INT NOT NULL DEFAULT 40,
     fields_used  INT NOT NULL DEFAULT 0,
     fields_max   INT NOT NULL DEFAULT 163,

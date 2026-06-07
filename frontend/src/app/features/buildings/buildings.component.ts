@@ -37,7 +37,12 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
   imports: [CostLineComponent, CountdownComponent, IconTileComponent],
   template: `
     <h1>Gebaeude</h1>
-    <p class="muted sub">Baue deinen Planeten aus. Es laeuft jeweils ein Bau gleichzeitig.</p>
+    <p class="muted sub">
+      Baue deinen Planeten aus. Es laeuft jeweils ein Bau gleichzeitig.
+      @if (fields(); as f) {
+        · <span class="fields" [class.full]="f.used >= f.max">Felder {{ f.used }}/{{ f.max }}</span>
+      }
+    </p>
 
     @if (loading()) {
       <p class="empty-state">Lade Gebaeude…</p>
@@ -92,6 +97,16 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
                       <span class="hint small">Bauschleife belegt</span>
                     }
                   }
+                  @if (b.level > 0 && !b.finishesAt) {
+                    <button
+                      class="btn btn-ghost btn-sm full demolish"
+                      type="button"
+                      [disabled]="pending() === b.type || anyBuilding()"
+                      (click)="demolish(b.type)"
+                    >
+                      Abreissen → {{ b.level - 1 }}
+                    </button>
+                  }
                 </div>
               </div>
             }
@@ -140,6 +155,10 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       .small { font-size: 0.76rem; }
       .hint { color: var(--text-faint); }
       .hint.warn { color: var(--warn); }
+      .fields { color: var(--text-dim); }
+      .fields.full { color: var(--warn); font-weight: 600; }
+      .demolish { color: var(--text-dim); }
+      .demolish:hover:not(:disabled) { color: var(--warn); }
     `,
   ],
 })
@@ -195,6 +214,12 @@ export class BuildingsComponent {
 
   protected readonly anyBuilding = computed(() => this.rows().some((r) => r.finishesAt));
 
+  /** Feld-Budget des aktiven Planeten (Modell A: 1 Feld pro Gebaeudestufe). */
+  protected readonly fields = computed(() => {
+    const p = this.state.activePlanet();
+    return p ? { used: p.fields_used, max: p.fields_max } : null;
+  });
+
   protected readonly balances = computed(() => {
     const res = this.state.activePlanet()?.resources;
     return res
@@ -242,6 +267,26 @@ export class BuildingsComponent {
       error: (err) => {
         this.pending.set(null);
         this.notify.warning('Bau nicht moeglich', err?.error?.detail ?? 'Fehler beim Ausbau.');
+      },
+    });
+  }
+
+  demolish(type: string): void {
+    const planetId = this.state.activePlanetId();
+    if (!planetId) {
+      return;
+    }
+    this.pending.set(type);
+    this.api.demolishBuilding(planetId, type).subscribe({
+      next: (res) => {
+        this.pending.set(null);
+        this.notify.info('Abgerissen', `${this.meta(type).label} ist jetzt Stufe ${res.level}. Feld freigegeben.`);
+        this.load(planetId);
+        void this.state.reloadActivePlanet();
+      },
+      error: (err) => {
+        this.pending.set(null);
+        this.notify.warning('Abriss nicht moeglich', err?.error?.detail ?? 'Fehler beim Abreissen.');
       },
     });
   }

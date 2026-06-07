@@ -23,6 +23,7 @@ from app.messaging.router import router as messaging_router
 from app.npc.service import npc_behavior_tick
 from app.platform.balance import get_balance
 from app.platform.eventbus import event_bus
+from app.planets.derive import backfill_planets
 from app.platform.migrations import ensure_schema
 from app.platform.recovery import recover_pending_jobs
 from app.platform.scheduler import schedule_interval, shutdown_scheduler, start_scheduler
@@ -40,6 +41,8 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     # Idempotente Schema-Migrationen (neue Tabellen/ENUMs in bestehende DBs bringen).
     await ensure_schema()
+    # Bestehende Planeten auf positionsabhaengigen Typ/Temp/Felder bringen (idempotent).
+    await backfill_planets()
     # Offene Timer nach Neustart wiederherstellen (MemoryJobStore ist fluechtig).
     await recover_pending_jobs()
     # Stuendlicher Moral-Drift / Neglect-Decay (balance.commander.morale).

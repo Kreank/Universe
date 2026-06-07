@@ -50,6 +50,11 @@ class UpgradeResponse(BaseModel):
     upgrade_finishes_at: dt.datetime
 
 
+class DemolishResponse(BaseModel):
+    type: str
+    level: int  # neue Stufe nach dem Abriss
+
+
 # -- Werft (api-contract §5) ---------------------------------------------------
 class ShipOptionOut(BaseModel):
     type: str

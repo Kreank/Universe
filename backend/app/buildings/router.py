@@ -13,6 +13,7 @@ from app.buildings.schemas import (
     BuildingStateOut,
     BuildQueueItemOut,
     CostOut,
+    DemolishResponse,
     RequirementOut,
     ShipOptionOut,
     ShipyardBuildRequest,
@@ -20,7 +21,7 @@ from app.buildings.schemas import (
     ShipyardResponse,
     UpgradeResponse,
 )
-from app.buildings.service import building_options, start_upgrade
+from app.buildings.service import building_options, demolish_building, start_upgrade
 from app.buildings.shipyard import queue_build, shipyard_view
 from app.platform.db import get_session
 from app.platform.models import Building, Planet, Player
@@ -89,6 +90,23 @@ async def upgrade_building(
         level=row.level + 1,  # Stufe, die gerade gebaut wird
         upgrade_finishes_at=row.upgrade_finishes_at,
     )
+
+
+@router.post("/planets/{planet_id}/buildings/{type}/demolish", response_model=DemolishResponse)
+async def demolish_building_route(
+    planet_id: uuid.UUID,
+    type: str,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> DemolishResponse:
+    planet = await _owned_planet(session, player, planet_id)
+    try:
+        row = await demolish_building(session, planet, type)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return DemolishResponse(type=row.type, level=row.level)
 
 
 def _to_ship_options(items: list[dict]) -> list[ShipOptionOut]:

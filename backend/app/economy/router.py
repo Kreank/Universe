@@ -64,6 +64,7 @@ async def get_planet(
         galaxy=planet.galaxy,
         system=planet.system,
         position=planet.position,
+        planet_type=planet.planet_type,
         temp_max=planet.temp_max,
         fields_used=planet.fields_used,
         fields_max=planet.fields_max,

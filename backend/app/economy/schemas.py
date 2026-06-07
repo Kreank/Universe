@@ -16,6 +16,7 @@ class PlanetOut(BaseModel):
     galaxy: int
     system: int
     position: int
+    planet_type: str
     temp_max: int
     fields_used: int
     fields_max: int
