@@ -13,6 +13,7 @@ from app.buildings.schemas import (
     BuildingStateOut,
     BuildQueueItemOut,
     CostOut,
+    RequirementOut,
     ShipOptionOut,
     ShipyardBuildRequest,
     ShipyardBuildResponse,
@@ -59,6 +60,7 @@ async def get_buildings(
                 build_seconds=o["build_seconds"],
                 can_afford=o["can_afford"],
                 requirements_met=o["requirements_met"],
+                requirements=[RequirementOut(**r) for r in o.get("requirements", [])],
                 energy_now=o["energy_now"],
                 energy_next=o["energy_next"],
                 energy_delta=o["energy_delta"],
@@ -97,6 +99,7 @@ def _to_ship_options(items: list[dict]) -> list[ShipOptionOut]:
             build_seconds_each=o["build_seconds_each"],
             can_build=o["can_build"],
             requirements_met=o["requirements_met"],
+            requirements=[RequirementOut(**r) for r in o.get("requirements", [])],
         )
         for o in items
     ]

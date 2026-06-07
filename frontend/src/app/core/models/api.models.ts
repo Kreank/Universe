@@ -91,6 +91,15 @@ export interface PlanetDetail extends Planet {
   defenses: PlanetUnit[];
 }
 
+// --- Voraussetzungen ----------------------------------------------------
+
+/** Eine einzelne Voraussetzung (Forschung ODER Gebaeude) mit Erfuellungs-Status. */
+export interface Requirement {
+  type: string;
+  level: number;
+  met: boolean;
+}
+
 // --- Gebaeude -----------------------------------------------------------
 
 export interface BuildingState {
@@ -106,6 +115,7 @@ export interface BuildingOption {
   build_seconds: number;
   can_afford: boolean;
   requirements_met: boolean;
+  requirements?: Requirement[];
   /** Energiebilanz: + erzeugt, - verbraucht, 0 neutral. */
   energy_now: number;
   energy_next: number;
@@ -138,6 +148,7 @@ export interface ResearchOption {
   research_seconds: number;
   can_afford: boolean;
   requirements_met: boolean;
+  requirements?: Requirement[];
 }
 
 export interface ResearchResponse {
@@ -161,6 +172,7 @@ export interface ShipOption {
   build_seconds_each: number;
   can_build: boolean;
   requirements_met: boolean;
+  requirements?: Requirement[];
 }
 
 export interface BuildQueueItem {

@@ -61,6 +61,21 @@ def requirements_met(
     return True
 
 
+def requirement_list(
+    tech_type: str, research_levels: dict[str, int], building_levels: dict[str, int]
+) -> list[dict]:
+    """Uebersetzt das ``requires``-Dict einer Tech in eine Liste mit Status je Eintrag."""
+    requires = get_balance().techs[tech_type].get("requires", {})
+    return [
+        {
+            "type": key,
+            "level": needed,
+            "met": research_levels.get(key, building_levels.get(key, 0)) >= needed,
+        }
+        for key, needed in requires.items()
+    ]
+
+
 async def active_research(session: AsyncSession, player_id: uuid.UUID) -> Research | None:
     return (await session.execute(
         select(Research).where(
@@ -94,6 +109,7 @@ async def research_options(session: AsyncSession, player_id: uuid.UUID, lab_plan
             "research_seconds": secs,
             "can_afford": can_afford,
             "requirements_met": requirements_met(tech, rlevels, blevels),
+            "requirements": requirement_list(tech, rlevels, blevels),
         })
     return options
 

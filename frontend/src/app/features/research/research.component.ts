@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
-import { ResearchOption, ResearchResponse, ResearchState } from '../../core/models/api.models';
-import { TECH_META, metaFor } from '../../core/models/display';
+import { Requirement, ResearchOption, ResearchResponse, ResearchState } from '../../core/models/api.models';
+import { BUILDING_META, TECH_META, metaFor } from '../../core/models/display';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
@@ -98,7 +98,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
                       {{ pending() === t.type ? '…' : 'Erforschen → ' + t.option.next_level }}
                     </button>
                     @if (!t.option.requirements_met) {
-                      <span class="hint warn small">Voraussetzung fehlt</span>
+                      <span class="hint warn small">{{ missingReqText(t.option) }}</span>
                     } @else if (!t.option.can_afford) {
                       <span class="hint warn small">Zu teuer</span>
                     } @else if (researchBusy()) {
@@ -259,6 +259,19 @@ export class ResearchComponent {
   }
 
   meta = (t: string) => metaFor(TECH_META, t);
+
+  /** Klarname einer Voraussetzung (Tech ODER Gebaeude) inkl. benoetigter Stufe. */
+  reqLabel(r: Requirement): string {
+    return metaFor({ ...BUILDING_META, ...TECH_META }, r.type).label + ' ' + r.level;
+  }
+
+  /** Anzeigetext der NICHT erfuellten Voraussetzungen mit Klarnamen. */
+  missingReqText(option: ResearchOption): string {
+    const labels = (option.requirements ?? [])
+      .filter((r) => !r.met)
+      .map((r) => this.reqLabel(r));
+    return labels.length ? 'benötigt: ' + labels.join(', ') : 'Voraussetzung fehlt';
+  }
 
   formatTime(seconds: number): string {
     const s = Math.max(0, Math.round(seconds));

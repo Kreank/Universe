@@ -12,6 +12,7 @@ from app.platform.models import Planet, Player, Research
 from app.platform.security import get_current_player
 from app.research.schemas import (
     CostOut,
+    RequirementOut,
     ResearchOptionOut,
     ResearchResponse,
     ResearchStateOut,
@@ -54,6 +55,7 @@ async def get_research(
                 research_seconds=o["research_seconds"],
                 can_afford=o["can_afford"],
                 requirements_met=o["requirements_met"],
+                requirements=[RequirementOut(**r) for r in o.get("requirements", [])],
             )
             for o in options
         ],

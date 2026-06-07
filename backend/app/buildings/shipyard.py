@@ -55,6 +55,18 @@ def _requirements_met(requires: dict, rlevels: dict[str, int], blevels: dict[str
     return True
 
 
+def _requirement_list(requires: dict, rlevels: dict[str, int], blevels: dict[str, int]) -> list[dict]:
+    """Uebersetzt das ``requires``-Dict in eine Liste mit Erfuellungs-Status je Eintrag."""
+    return [
+        {
+            "type": key,
+            "level": needed,
+            "met": rlevels.get(key, blevels.get(key, 0)) >= needed,
+        }
+        for key, needed in requires.items()
+    ]
+
+
 async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
     """Liefert Schiff-/Verteidigungs-Optionen + aktuelle Queue."""
     bal = get_balance()
@@ -81,6 +93,7 @@ async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
                 "build_seconds_each": build_seconds_each(cost, shipyard_lvl),
                 "can_build": shipyard_lvl >= 1 and req_met,
                 "requirements_met": req_met,
+                "requirements": _requirement_list(req, rlevels, blevels),
             })
         return out
 

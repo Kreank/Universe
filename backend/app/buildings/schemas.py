@@ -12,6 +12,13 @@ class CostOut(BaseModel):
     deuterium: float
 
 
+class RequirementOut(BaseModel):
+    """Eine einzelne Voraussetzung (Forschung ODER Gebaeude) mit Erfuellungs-Status."""
+    type: str
+    level: int
+    met: bool
+
+
 class BuildingStateOut(BaseModel):
     type: str
     level: int
@@ -25,6 +32,7 @@ class BuildingOptionOut(BaseModel):
     build_seconds: int
     can_afford: bool
     requirements_met: bool
+    requirements: list[RequirementOut] = []
     # Energiebilanz dieses Gebaeudes (Vorzeichen: + erzeugt, - verbraucht, 0 = neutral).
     energy_now: float = 0.0      # bei aktueller Stufe
     energy_next: float = 0.0     # bei naechster Stufe
@@ -49,6 +57,7 @@ class ShipOptionOut(BaseModel):
     build_seconds_each: int
     can_build: bool
     requirements_met: bool
+    requirements: list[RequirementOut] = []
 
 
 class BuildQueueItemOut(BaseModel):

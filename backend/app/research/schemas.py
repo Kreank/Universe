@@ -12,6 +12,13 @@ class CostOut(BaseModel):
     deuterium: float
 
 
+class RequirementOut(BaseModel):
+    """Eine einzelne Voraussetzung (Forschung ODER Gebaeude) mit Erfuellungs-Status."""
+    type: str
+    level: int
+    met: bool
+
+
 class ResearchStateOut(BaseModel):
     type: str
     level: int
@@ -25,6 +32,7 @@ class ResearchOptionOut(BaseModel):
     research_seconds: int
     can_afford: bool
     requirements_met: bool
+    requirements: list[RequirementOut] = []
 
 
 class ResearchResponse(BaseModel):

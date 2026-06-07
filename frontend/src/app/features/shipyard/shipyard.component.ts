@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
-import { ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
-import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
+import { Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
+import { BUILDING_META, DEFENSE_META, SHIP_META, TECH_META, metaFor } from '../../core/models/display';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
@@ -126,7 +126,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
               </button>
             </div>
             @if (!s.requirements_met) {
-              <span class="hint warn small">Voraussetzung fehlt</span>
+              <span class="hint warn small">{{ missingReqText(s) }}</span>
             } @else if (!s.can_build) {
               <span class="hint warn small">Zu wenig Ressourcen</span>
             }
@@ -267,6 +267,19 @@ export class ShipyardComponent {
 
   unitMeta(type: string, category: ShipyardCategory) {
     return metaFor(category === 'defense' ? DEFENSE_META : SHIP_META, type);
+  }
+
+  /** Klarname einer Voraussetzung (Tech ODER Gebaeude) inkl. benoetigter Stufe. */
+  reqLabel(r: Requirement): string {
+    return metaFor({ ...BUILDING_META, ...TECH_META }, r.type).label + ' ' + r.level;
+  }
+
+  /** Anzeigetext der NICHT erfuellten Voraussetzungen mit Klarnamen. */
+  missingReqText(option: ShipOption): string {
+    const labels = (option.requirements ?? [])
+      .filter((r) => !r.met)
+      .map((r) => this.reqLabel(r));
+    return labels.length ? 'benötigt: ' + labels.join(', ') : 'Voraussetzung fehlt';
   }
 
   formatTime(seconds: number): string {

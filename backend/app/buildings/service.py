@@ -100,6 +100,7 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
             "build_seconds": secs,
             "can_afford": can_afford,
             "requirements_met": True,  # Gebaeude haben im Slice keine Vorbedingungen
+            "requirements": [],  # Gebaeude haben im Slice keine Vorbedingungen
             "energy_now": energy_now,
             "energy_next": energy_next,
             "energy_delta": round(energy_next - energy_now, 1),
