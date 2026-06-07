@@ -1,9 +1,9 @@
 """Werft-Logik (api-contract §5): Schiffe & Verteidigung bauen.
 
-Hinweis (Slice-Einschraenkung): Das Schema hat keine eigene Bau-Warteschlangen-
-Tabelle. Die Queue wird daher prozess-lokal im Speicher gehalten; abgeschlossene
-Bauten landen ueber einen Scheduler-Job persistent in ``ships``/``defenses``.
-Ueber Neustarts hinweg ueberlebt die Queue-Anzeige nicht (im README vermerkt)."""
+Die Bau-Warteschlange ist persistent (Tabelle ``shipyard_queue``): jeder Auftrag
+wird als ``ShipyardQueueItem`` gespeichert und beim Abschluss per Scheduler-Job in
+``ships``/``defenses`` ueberfuehrt. Offene Auftraege ueberleben Neustarts —
+``recover_pending_jobs`` plant sie nach (Tech-Debt #2 geschlossen)."""
 from __future__ import annotations
 
 import datetime as dt
@@ -21,13 +21,10 @@ from app.economy.service import (
 )
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
-from app.platform.models import Defense, Planet, Ship
+from app.platform.models import Defense, Planet, Ship, ShipyardQueueItem
 from app.platform.scheduler import schedule_at
 
 log = logging.getLogger("universe.shipyard")
-
-# Prozess-lokale Bau-Warteschlange: planet_id(str) -> Liste von Queue-Items.
-_QUEUE: dict[str, list[dict]] = {}
 
 
 def _now() -> dt.datetime:
@@ -68,6 +65,9 @@ async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
     def build_options(catalog: dict) -> list[dict]:
         out = []
         for typ, cfg in catalog.items():
+            # ``_``-praefixierte Keys sind Meta-/Kommentar-Eintraege (z. B. "_note").
+            if typ.startswith("_") or not isinstance(cfg, dict):
+                continue
             cost = cfg["cost"]
             req = cfg.get("requires", {})
             req_met = _requirements_met(req, rlevels, blevels)
@@ -87,8 +87,26 @@ async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
     return {
         "ships": build_options(bal.ships),
         "defenses": build_options(bal.defenses),
-        "queue": list(_QUEUE.get(str(planet.id), [])),
+        "queue": await _queue_items(session, planet.id),
     }
+
+
+async def _queue_items(session: AsyncSession, planet_id: uuid.UUID) -> list[dict]:
+    """Aktuelle Werft-Queue eines Planeten (nach Fertigstellung sortiert)."""
+    rows = (await session.execute(
+        select(ShipyardQueueItem)
+        .where(ShipyardQueueItem.planet_id == planet_id)
+        .order_by(ShipyardQueueItem.finishes_at)
+    )).scalars().all()
+    return [
+        {
+            "type": q.type,
+            "count": q.count,
+            "category": q.category,
+            "finishes_at": q.finishes_at.isoformat(),
+        }
+        for q in rows
+    ]
 
 
 async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: int, category: str) -> list[dict]:
@@ -121,33 +139,35 @@ async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: in
 
     secs_each = build_seconds_each(unit_cost, blevels.get("shipyard", 0))
     finish = _now() + dt.timedelta(seconds=secs_each * count)
-    item = {
-        "type": typ,
-        "count": count,
-        "category": category,
-        "finishes_at": finish.isoformat(),
-    }
-    _QUEUE.setdefault(str(planet.id), []).append(item)
+    item = ShipyardQueueItem(
+        planet_id=planet.id,
+        type=typ,
+        count=count,
+        category=category,
+        finishes_at=finish,
+    )
+    session.add(item)
+    await session.flush()  # item.id verfuegbar machen
 
     schedule_at(
         finish,
         complete_shipyard_build,
-        str(planet.id),
-        typ,
-        count,
-        category,
-        finish.isoformat(),
-        job_id=f"shipyard:{planet.id}:{typ}:{finish.timestamp()}",
+        str(item.id),
+        job_id=f"shipyard:{item.id}",
     )
-    return list(_QUEUE[str(planet.id)])
+    return await _queue_items(session, planet.id)
 
 
-async def complete_shipyard_build(
-    planet_id: str, typ: str, count: int, category: str, finish_iso: str
-) -> None:
-    """Scheduler-Callback: fuegt die gebauten Einheiten dem Planeten hinzu."""
+async def complete_shipyard_build(queue_item_id: str) -> None:
+    """Scheduler-Callback: ueberfuehrt einen abgeschlossenen Auftrag in ships/defenses."""
     async with session_scope() as session:
-        pid = uuid.UUID(planet_id)
+        item = (await session.execute(
+            select(ShipyardQueueItem).where(ShipyardQueueItem.id == uuid.UUID(queue_item_id))
+        )).scalar_one_or_none()
+        if item is None:
+            return  # bereits abgeschlossen (z. B. doppelter Misfire)
+
+        pid, typ, count, category = item.planet_id, item.type, item.count, item.category
         if category == "ship":
             row = (await session.execute(
                 select(Ship).where(
@@ -166,12 +186,7 @@ async def complete_shipyard_build(
                 row = Defense(planet_id=pid, type=typ, count=0)
                 session.add(row)
             row.count += count
-        await session.commit()
 
-    # Aus der In-Memory-Queue entfernen.
-    queue = _QUEUE.get(planet_id, [])
-    _QUEUE[planet_id] = [
-        q for q in queue
-        if not (q["type"] == typ and q["count"] == count and q["finishes_at"] == finish_iso)
-    ]
-    log.info("Werft fertig: %sx %s (%s) auf %s", count, typ, category, planet_id)
+        await session.delete(item)
+
+    log.info("Werft fertig: %sx %s (%s) auf %s", count, typ, category, pid)

@@ -155,6 +155,19 @@ CREATE TABLE defenses (
     PRIMARY KEY (planet_id, type)
 );
 
+-- Persistente Werft-Bau-Warteschlange: ueberlebt Neustarts (Scheduler-Recovery).
+CREATE TABLE shipyard_queue (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    planet_id   UUID NOT NULL REFERENCES planets(id) ON DELETE CASCADE,
+    type        TEXT NOT NULL,
+    count       INT  NOT NULL CHECK (count > 0),
+    category    TEXT NOT NULL,                       -- 'ship' | 'defense'
+    finishes_at TIMESTAMPTZ NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_shipyard_queue_finishes ON shipyard_queue(finishes_at);
+CREATE INDEX idx_shipyard_queue_planet ON shipyard_queue(planet_id);
+
 -- ---------------------------------------------------------------------
 --  KI-Content: Reaktions-Banken, Flavor, Transmissionen (GDD §10)
 -- ---------------------------------------------------------------------

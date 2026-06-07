@@ -15,7 +15,7 @@ import logging
 from sqlalchemy import select
 
 from app.platform.db import session_scope
-from app.platform.models import Building, Commander, Fleet, Research
+from app.platform.models import Building, Commander, Fleet, Research, ShipyardQueueItem
 from app.platform.scheduler import schedule_at
 
 log = logging.getLogger("universe.recovery")
@@ -25,6 +25,7 @@ async def recover_pending_jobs() -> None:
     """Plant alle in der DB offenen Abschluss-Jobs nach einem Neustart neu ein."""
     # Lazy-Import der Callbacks (vermeidet Import-Zyklen mit den Service-Modulen).
     from app.buildings.service import complete_building
+    from app.buildings.shipyard import complete_shipyard_build
     from app.commander.service import complete_training
     from app.fleet.service import fleet_arrive, fleet_return
     from app.research.service import complete_research
@@ -65,6 +66,15 @@ async def recover_pending_jobs() -> None:
             if f.return_at is not None:
                 schedule_at(f.return_at, fleet_return, str(f.id), job_id=f"fleet-return:{f.id}")
                 recovered += 1
+
+        # -- Werft-Bau-Warteschlange ---------------------------------------
+        rows = (await session.execute(select(ShipyardQueueItem))).scalars().all()
+        for q in rows:
+            schedule_at(
+                q.finishes_at, complete_shipyard_build, str(q.id),
+                job_id=f"shipyard:{q.id}",
+            )
+            recovered += 1
 
         # -- Commander-Ausbildung ------------------------------------------
         rows = (await session.execute(

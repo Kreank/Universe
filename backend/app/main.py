@@ -21,6 +21,7 @@ from app.economy.router import router as economy_router
 from app.fleet.router import router as fleet_router
 from app.messaging.router import router as messaging_router
 from app.platform.eventbus import event_bus
+from app.platform.migrations import ensure_schema
 from app.platform.recovery import recover_pending_jobs
 from app.platform.scheduler import schedule_interval, shutdown_scheduler, start_scheduler
 from app.research.router import router as research_router
@@ -35,6 +36,8 @@ log = logging.getLogger("universe.main")
 async def lifespan(app: FastAPI):
     """Startup/Shutdown: Scheduler + periodische Jobs."""
     start_scheduler()
+    # Idempotente Schema-Migrationen (neue Tabellen/ENUMs in bestehende DBs bringen).
+    await ensure_schema()
     # Offene Timer nach Neustart wiederherstellen (MemoryJobStore ist fluechtig).
     await recover_pending_jobs()
     # Stuendlicher Moral-Drift / Neglect-Decay (balance.commander.morale).

@@ -190,6 +190,22 @@ class Defense(Base):
     count: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class ShipyardQueueItem(Base):
+    __tablename__ = "shipyard_queue"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    planet_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("planets.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(Text, nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
+    category: Mapped[str] = mapped_column(Text, nullable=False)  # 'ship' | 'defense'
+    finishes_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    __table_args__ = (
+        CheckConstraint("count > 0", name="shipyard_queue_count_check"),
+    )
+
+
 class ReactionBank(Base):
     __tablename__ = "reaction_banks"
     # Hinweis: Spalte ``embedding`` (vector(768)) wird bewusst NICHT gemappt.
