@@ -20,6 +20,8 @@ from app.commander.service import morale_drift_tick
 from app.economy.router import router as economy_router
 from app.fleet.router import router as fleet_router
 from app.messaging.router import router as messaging_router
+from app.npc.service import npc_behavior_tick
+from app.platform.balance import get_balance
 from app.platform.eventbus import event_bus
 from app.platform.migrations import ensure_schema
 from app.platform.recovery import recover_pending_jobs
@@ -42,6 +44,12 @@ async def lifespan(app: FastAPI):
     await recover_pending_jobs()
     # Stuendlicher Moral-Drift / Neglect-Decay (balance.commander.morale).
     schedule_interval(morale_drift_tick, hours=1, job_id="morale-drift")
+    # NPC-Behavior-Tick: Garnison-Wiederaufbau/Wachstum je Profil (balance.npc).
+    schedule_interval(
+        npc_behavior_tick,
+        seconds=get_balance().npc["tick_interval_seconds"],
+        job_id="npc-behavior",
+    )
     log.info("game-server bereit")
     try:
         yield

@@ -269,4 +269,6 @@ class NpcEmpire(Base):
     fleet: Mapped[dict] = mapped_column(JSONB, default=dict)
     defenses: Mapped[dict] = mapped_column(JSONB, default=dict)
     resources: Mapped[dict] = mapped_column(JSONB, default=dict)
+    baseline: Mapped[dict] = mapped_column(JSONB, default=dict)
+    last_action_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

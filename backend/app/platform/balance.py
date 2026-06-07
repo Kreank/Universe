@@ -79,6 +79,10 @@ class Balance:
         return self.data["protection"]
 
     @property
+    def npc(self) -> dict[str, Any]:
+        return self.data["npc"]
+
+    @property
     def starting_player(self) -> dict[str, Any]:
         return self.data["starting_player"]
 

@@ -209,6 +209,20 @@
     "_speed_note": "flight_seconds = (10 + 3500/speed_pct * sqrt(distance*10/slowest_ship_speed)) / universe_speed"
   },
 
+  "npc": {
+    "tick_interval_seconds": 3600,
+    "income_per_tick": { "metal": 800, "crystal": 500, "deuterium": 150 },
+    "resource_cap": { "metal": 60000, "crystal": 40000, "deuterium": 15000 },
+    "rebuild_fraction_per_tick": 0.25,
+    "profiles": {
+      "defensive":  { "rebuild_defense": 0.6, "reinforce_fleet": 0.2, "growth_cap_mult": 1.0 },
+      "aggressive": { "rebuild_defense": 0.3, "reinforce_fleet": 0.7, "growth_cap_mult": 1.5 },
+      "expansive":  { "rebuild_defense": 0.3, "reinforce_fleet": 0.5, "growth_cap_mult": 2.0 },
+      "merchant":   { "rebuild_defense": 0.2, "reinforce_fleet": 0.1, "growth_cap_mult": 1.0 }
+    },
+    "_note": "NPC-Behavior-Tick (Doku 08). NPCs regenerieren Garnison zur baseline und wachsen je Profil; Anti-Farming durch Wiederaufbau."
+  },
+
   "protection": {
     "newbie_days": 7,
     "newbie_score_threshold": 5000,

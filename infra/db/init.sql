@@ -245,6 +245,8 @@ CREATE TABLE npc_empires (
     fleet            JSONB NOT NULL DEFAULT '{}'::jsonb,   -- {light_fighter: 10, ...}
     defenses         JSONB NOT NULL DEFAULT '{}'::jsonb,
     resources        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    baseline         JSONB NOT NULL DEFAULT '{}'::jsonb,   -- Soll-Garnison {fleet:{...}, defenses:{...}}
+    last_action_at   TIMESTAMPTZ,                          -- Zeitpunkt der letzten NPC-Tick-Aktion
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_npc_location ON npc_empires(galaxy, system, position);
