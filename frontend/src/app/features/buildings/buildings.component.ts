@@ -49,48 +49,40 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
           <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
           <div class="grid list">
             @for (b of group.rows; track b.type) {
-              <div class="card building" [class.busy]="b.finishesAt">
-                <app-icon-tile [glyph]="meta(b.type).glyph" [src]="'assets/img/buildings/' + b.type + '.png'" [size]="52" />
-                <div class="info">
-                  <div class="row-between">
-                    <h3 class="tip" [attr.data-tip]="meta(b.type).blurb ?? ''">{{ meta(b.type).label }}</h3>
-                    <span class="chip">Stufe {{ b.level }}</span>
-                  </div>
-
-                  @if (b.option) {
-                    <div class="next">
-                      <span class="muted small">Naechste Stufe {{ b.option.next_level }}</span>
-                      <app-cost-line [cost]="b.option.cost" [available]="balances()" />
-                      <div class="meta-line">
-                        <span class="muted small">⏱ {{ formatTime(b.option.build_seconds) }}</span>
-                        @if (b.option.energy_now !== 0 || b.option.energy_delta !== 0) {
-                          <span class="energy small"
-                            [class.produces]="b.option.energy_now > 0"
-                            [class.consumes]="b.option.energy_now < 0"
-                            [attr.data-tip]="energyTip(b.option)">
-                            ⚡ {{ energyLabel(b.option.energy_now) }}
-                            @if (b.option.energy_delta !== 0) {
-                              <span class="delta">(Δ {{ signed(b.option.energy_delta) }})</span>
-                            }
-                          </span>
-                        }
-                      </div>
-                    </div>
-                  }
+              <div class="bld" [class.busy]="b.finishesAt">
+                <div class="bld-art">
+                  <app-icon-tile [glyph]="meta(b.type).glyph" [src]="'assets/img/buildings/' + b.type + '.png'" [size]="78" />
+                  <span class="lvl" [class.zero]="b.level === 0" title="Stufe">{{ b.level }}</span>
                 </div>
+                <div class="bld-name tip" [attr.data-tip]="meta(b.type).blurb ?? ''">{{ meta(b.type).label }}</div>
 
-                <div class="action">
+                @if (b.option) {
+                  <app-cost-line [cost]="b.option.cost" [available]="balances()" />
+                  <div class="bld-meta">
+                    <span class="muted small">⏱ {{ formatTime(b.option.build_seconds) }}</span>
+                    @if (b.option.energy_now !== 0 || b.option.energy_delta !== 0) {
+                      <span class="energy small"
+                        [class.produces]="b.option.energy_now > 0"
+                        [class.consumes]="b.option.energy_now < 0"
+                        [attr.data-tip]="energyTip(b.option)">
+                        ⚡ {{ energyLabel(b.option.energy_now) }}@if (b.option.energy_delta !== 0) {<span class="delta"> (Δ {{ signed(b.option.energy_delta) }})</span>}
+                      </span>
+                    }
+                  </div>
+                }
+
+                <div class="bld-action">
                   @if (b.finishesAt) {
-                    <span class="muted small">Im Bau</span>
+                    <span class="building-badge">⏳ Im Bau</span>
                     <app-countdown [target]="b.finishesAt" />
                   } @else if (b.option) {
                     <button
-                      class="btn btn-primary btn-sm"
+                      class="btn btn-primary btn-sm full"
                       type="button"
                       [disabled]="!canUpgrade(b) || pending() === b.type || anyBuilding()"
                       (click)="upgrade(b.type)"
                     >
-                      {{ pending() === b.type ? '…' : 'Ausbauen' }}
+                      {{ pending() === b.type ? '…' : 'Ausbauen → ' + b.option.next_level }}
                     </button>
                     @if (!b.option.requirements_met) {
                       <span class="hint warn small">Voraussetzung fehlt</span>
@@ -111,30 +103,41 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
   styles: [
     `
       .sub { margin-top: -0.3rem; font-size: 0.85rem; }
-      .cat { margin-bottom: 1.6rem; }
+      .cat { margin-bottom: 1.4rem; }
       .cat-title {
-        font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em;
-        color: var(--accent); margin: 0 0 0.7rem;
-        padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+        font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--accent); margin: 0 0 0.6rem;
+        padding-bottom: 0.35rem; border-bottom: 1px solid var(--border);
       }
-      .list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
-      .meta-line { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+      /* Dichtes, bild-zentriertes Kachel-Raster (OGame-Stil). */
+      .list { grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 0.7rem; }
+      .bld {
+        display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
+        padding: 0.75rem; text-align: center;
+      }
+      .bld.busy { border-color: var(--accent); box-shadow: var(--glow); }
+      .bld-art { position: relative; align-self: center; }
+      .bld-art .lvl {
+        position: absolute; bottom: -5px; right: -5px;
+        min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px;
+        background: var(--accent); color: #04121a; font-size: 0.74rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 0 8px var(--accent);
+      }
+      .bld-art .lvl.zero {
+        background: var(--surface-2); color: var(--text-dim);
+        box-shadow: none; border: 1px solid var(--border);
+      }
+      .bld-name { font-weight: 600; font-size: 0.92rem; }
+      .bld-meta { display: flex; justify-content: center; gap: 0.8rem; flex-wrap: wrap; }
+      .bld-action { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+      .full { width: 100%; }
+      .building-badge { font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
       .energy { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--text-dim); }
       .energy.produces { color: var(--ok); }
       .energy.consumes { color: var(--warn); }
       .energy .delta { color: var(--text-faint); }
-      .building {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        gap: 0.9rem;
-        align-items: center;
-      }
-      .building.busy { border-color: var(--border-strong); box-shadow: var(--glow); }
-      .info { min-width: 0; }
-      .info h3 { font-size: 1rem; margin: 0; }
-      .next { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem; }
       .small { font-size: 0.76rem; }
-      .action { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; }
       .hint { color: var(--text-faint); }
       .hint.warn { color: var(--warn); }
     `,
