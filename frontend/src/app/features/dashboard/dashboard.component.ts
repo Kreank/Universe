@@ -1,6 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { GameStateService } from '../../core/services/game-state.service';
+import { ApiService } from '../../core/services/api.service';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { BalanceService } from '../../core/services/balance.service';
@@ -9,8 +18,18 @@ import {
   RESOURCE_META,
   RANK_META,
   SPECIALIZATION_META,
+  SHIP_META,
+  DEFENSE_META,
+  TECH_META,
+  MISSION_META,
   metaFor,
 } from '../../core/models/display';
+import {
+  BuildQueueItem,
+  BuildingState,
+  Fleet,
+  ResearchState,
+} from '../../core/models/api.models';
 import { dashboardStyles } from './dashboard.styles';
 
 @Component({
@@ -62,28 +81,75 @@ import { dashboardStyles } from './dashboard.styles';
           </div>
         </section>
 
-        <!-- Bau-Queue -->
+        <!-- Aktive Vorgaenge -->
         <section class="card">
-          <div class="panel-title">🏗️ Bau & Forschung</div>
-          @if (buildQueue().length) {
-            @for (b of buildQueue(); track b.type) {
+          <div class="panel-title">⏳ Aktive Vorgaenge</div>
+
+          <div class="ops-block">
+            <div class="ops-label">🏗️ Bau</div>
+            @if (activeBuild(); as b) {
               <div class="queue-row">
                 <span>{{ metaB(b.type).glyph }} {{ metaB(b.type).label }} → Stufe {{ b.level + 1 }}</span>
                 <app-countdown [target]="b.upgrade_finishes_at" />
               </div>
+            } @else {
+              <p class="muted small">Kein Bau aktiv. <a routerLink="/buildings">Bauen →</a></p>
+            }
+          </div>
+
+          <hr />
+
+          <div class="ops-block">
+            <div class="ops-label">🔬 Forschung</div>
+            @if (activeResearch(); as t) {
+              <div class="queue-row">
+                <span>{{ metaT(t.type).glyph }} {{ metaT(t.type).label }} → Stufe {{ t.level + 1 }}</span>
+                <app-countdown [target]="t.finishes_at" />
+              </div>
+            } @else {
+              <p class="muted small">Keine Forschung aktiv. <a routerLink="/research">Techbaum →</a></p>
+            }
+          </div>
+
+          <hr />
+
+          <div class="ops-block">
+            <div class="ops-label">🛠️ Werft</div>
+            @if (shipyardQueue().length) {
+              @for (q of shipyardQueue(); track $index) {
+                <div class="queue-row">
+                  <span>{{ metaShip(q).glyph }} {{ q.count }}× {{ metaShip(q).label }}</span>
+                  <app-countdown [target]="q.finishes_at" />
+                </div>
+              }
+            } @else {
+              <p class="muted small">Werft frei. <a routerLink="/shipyard">Schiffe bauen →</a></p>
+            }
+          </div>
+        </section>
+
+        <!-- Flottenbewegungen -->
+        <section class="card">
+          <div class="panel-title">🚀 Flottenbewegungen</div>
+          @if (activeFleets().length) {
+            @for (f of activeFleets(); track f.id) {
+              <div class="queue-row">
+                <span>
+                  {{ metaM(f.mission).glyph }} {{ metaM(f.mission).label }}
+                  <span class="faint">→ [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</span>
+                  <span class="chip">{{ statusLabel(f.status) }}</span>
+                </span>
+                <app-countdown [target]="f.status === 'returning' ? f.return_at : f.arrive_at" />
+              </div>
             }
           } @else {
-            <p class="muted small">Kein Gebaeudeausbau aktiv. <a routerLink="/buildings">Bauen →</a></p>
-          }
-          <hr />
-          @if (state.activePlanet()) {
-            <p class="muted small">Forschung wird global verwaltet. <a routerLink="/research">Techbaum →</a></p>
+            <p class="muted small">Keine Flotten unterwegs. <a routerLink="/fleet">Flotte entsenden →</a></p>
           }
         </section>
 
-        <!-- Alerts / Ankuenfte -->
+        <!-- Alerts / Ereignisse -->
         <section class="card">
-          <div class="panel-title">⚠ Alerts & Ankuenfte</div>
+          <div class="panel-title">⚠ Alerts & Ereignisse</div>
           @if (state.attackAlerts().length) {
             @for (a of state.attackAlerts(); track a.location) {
               <div class="alert danger">
@@ -92,20 +158,26 @@ import { dashboardStyles } from './dashboard.styles';
               </div>
             }
           }
-          @for (f of incomingFleets(); track f.id) {
-            <div class="alert">
-              <span>🚀 {{ f.mission }} → [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</span>
-              <app-countdown [target]="f.status === 'returning' ? f.return_at : f.arrive_at" />
+          @if (energyDeficit()) {
+            <div class="alert danger">
+              <span>⚡ Energie-Defizit ({{ energy().balance | shortNumber }}) drosselt die Minen</span>
+              <a class="btn btn-sm" routerLink="/buildings">Beheben</a>
             </div>
           }
-          @if (!state.attackAlerts().length && !incomingFleets().length) {
-            <p class="muted small">Keine offenen Ereignisse. Alles ruhig im Sektor.</p>
+          @if (fullStorages().length) {
+            <div class="alert">
+              <span>📦 Lager fast voll: {{ fullStoragesLabel() }}</span>
+              <a class="btn btn-sm" routerLink="/buildings">Ausbauen</a>
+            </div>
           }
-          @if (state.pendingDecisions() > 0) {
+          @if (state.unreadTransmissions() > 0) {
             <div class="alert decision">
-              <span>📡 {{ state.pendingDecisions() }} Funkspruch/Forderung wartet</span>
+              <span>📡 {{ state.unreadTransmissions() }} ungelesene Transmission(en)</span>
               <a class="btn btn-sm" routerLink="/transmissions">Oeffnen</a>
             </div>
+          }
+          @if (!hasAlerts()) {
+            <p class="muted small">Keine offenen Ereignisse. Alles ruhig im Sektor.</p>
           }
         </section>
 
@@ -142,9 +214,53 @@ import { dashboardStyles } from './dashboard.styles';
 })
 export class DashboardComponent {
   protected readonly state = inject(GameStateService);
+  private readonly api = inject(ApiService);
   private readonly balance = inject(BalanceService);
 
   protected readonly planet = this.state.activePlanet;
+
+  // --- Aktive Vorgaenge (per Effekt beim Planetenwechsel geladen) ---
+  protected readonly activeBuild = signal<BuildingState | null>(null);
+  protected readonly activeResearch = signal<ResearchState | null>(null);
+  protected readonly shipyardQueue = signal<BuildQueueItem[]>([]);
+
+  constructor() {
+    // Reload der Timer, sobald ein anderer Planet aktiv wird.
+    effect(() => {
+      const id = this.state.activePlanetId();
+      if (id) {
+        void this.loadActiveOps(id);
+      } else {
+        this.activeBuild.set(null);
+        this.activeResearch.set(null);
+        this.shipyardQueue.set([]);
+      }
+    });
+  }
+
+  private async loadActiveOps(planetId: string): Promise<void> {
+    // Bau
+    try {
+      const res = await firstValueFrom(this.api.getBuildings(planetId));
+      this.activeBuild.set(res.buildings.find((b) => b.upgrade_finishes_at) ?? null);
+    } catch {
+      this.activeBuild.set(null);
+    }
+    // Forschung (global)
+    try {
+      const res = await firstValueFrom(this.api.getResearch());
+      this.activeResearch.set(res.research.find((t) => t.finishes_at) ?? null);
+    } catch {
+      this.activeResearch.set(null);
+    }
+    // Werft-Queue
+    try {
+      const res = await firstValueFrom(this.api.getShipyard(planetId));
+      this.shipyardQueue.set(res.queue ?? []);
+    } catch {
+      this.shipyardQueue.set([]);
+    }
+  }
 
   protected readonly resources = computed(() => {
     const res = this.planet()?.resources;
@@ -170,15 +286,34 @@ export class DashboardComponent {
       this.planet()?.resources?.energy ?? { produced: 0, consumed: 0, balance: 0, factor: 1 },
   );
 
-  protected readonly buildQueue = computed(
-    () => this.planet()?.buildings?.filter((b) => b.upgrade_finishes_at) ?? [],
+  protected readonly energyDeficit = computed(() => this.energy().balance < 0);
+
+  /** Lager mit >= 95% Fuellstand. */
+  protected readonly fullStorages = computed(() => this.resources().filter((r) => r.pct >= 95));
+  protected readonly fullStoragesLabel = computed(() =>
+    this.fullStorages().map((r) => r.label).join(', '),
   );
 
-  protected readonly incomingFleets = computed(() =>
-    this.state.fleets().filter((f) => f.status !== 'returned'),
+  /** Aktive Flotten: unterwegs zum Ziel oder auf dem Rueckflug. */
+  protected readonly activeFleets = computed(() =>
+    this.state.fleets().filter((f) => f.status === 'flying' || f.status === 'returning'),
   );
+
+  protected readonly hasAlerts = computed(
+    () =>
+      this.state.attackAlerts().length > 0 ||
+      this.energyDeficit() ||
+      this.fullStorages().length > 0 ||
+      this.state.unreadTransmissions() > 0,
+  );
+
+  statusLabel = (s: string) => (s === 'returning' ? 'Rueckflug' : 'unterwegs');
 
   metaB = (t: string) => metaFor(BUILDING_META, t);
+  metaT = (t: string) => metaFor(TECH_META, t);
+  metaM = (m: string) => metaFor(MISSION_META, m);
+  metaShip = (q: BuildQueueItem) =>
+    metaFor(q.category === 'defense' ? DEFENSE_META : SHIP_META, q.type);
   rank = (r: string) => metaFor(RANK_META, r);
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   bandClass = (m: number) => this.balance.moraleBandClass(m);

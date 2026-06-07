@@ -15,6 +15,14 @@ export const dashboardStyles = `
     padding-top: 0.7rem;
   }
   .small { font-size: 0.76rem; }
+  .ops-block { display: flex; flex-direction: column; gap: 0.2rem; }
+  .ops-label {
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 0.1rem;
+  }
+  .queue-row .chip { margin-left: 0.35rem; }
   .ok { color: var(--ok); }
   .neg { color: var(--magenta); }
 
