@@ -47,6 +47,13 @@ ffa4130 Gebaeude-Screen im OGame-Stil
 **Neue Design-Docs (gelockt, teils gebaut):** `docs/systems/03a-combat-ships-roadmap.md`,
 `05a-commander-grades.md`, `06a-planet-types-fields.md`.
 
+**🎯 Aktuelle Frontier (NEU diese Session, noch NICHT gebaut):** ein **rollenbasiertes
+Kampf-System** mit Subsystemen (Schild/Antrieb/Hülle), Schadenstypen, Piraterie/Eskorte und
+4 Soft-Doktrinen — vollständig designt in **`docs/systems/03b-role-based-combat.md`** +
+**`03c-role-roster-spec.md`**. Das ist der Headline-Build für morgen (siehe §6). **Assets:** der
+komplette v0.1-Satz ist **produziert** und integriert; nur die neuen Rollen-Assets (ASSETS.md §11)
+sind offen (Nutzer generiert sie).
+
 ---
 
 ## 2. Schnellstart (morgen)
@@ -138,18 +145,26 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 ---
 
 ## 6. Vorgeschlagene nächste Schritte (priorisiert)
-1. **Spielfluss real durchspielen** (frisches Konto): Werft + Akademie + Labor hochziehen,
-   Schiffe + Sonden bauen, Ziele **erst spionieren, dann angreifen** → Balance/Pacing am echten
-   Spielgefühl tunen (`shared/balance.json`, inkl. neuer `npc`- und `spy`-Sektionen).
-2. ~~Spionage-Mechanik~~ → **ERLEDIGT** (diese Session). Nächster Ausbau: Gegen-Spionage /
-   Sonden-Erkennung beim Ziel (Tech-Debt #5).
-3. ~~Werft-Queue persistent~~ → **ERLEDIGT** (diese Session).
-4. **NPC-Verhalten erweitern**: aktive NPC-Angriffe + Expansion auf neue Felder (Tech-Debt #4).
-5. **LLM-Funksprüche aktivieren** (Modelle pullen) und die Großmoment-Pipeline live erleben.
-   (Vom Nutzer bewusst aufgeschoben, bis der Rest „rund" ist.)
-6. **Assets**: echte Grafiken nach `docs/ASSETS.md` + `docs/STYLE_BIBLE.md` erzeugen
-   (aktuell SVG/Emoji-Platzhalter; `assets/` liegt bereits mit Platzhaltern im Working Tree,
-   noch nicht committet).
+
+### ⭐ Headline für morgen: Rollen-Kampf-System bauen (Doku 03b/03c)
+Das große neue Design dieser Session: Schiffe als **Rollen mit Kontern** statt linearer Machtleiter.
+Vollständig spezifiziert in **`docs/systems/03b-role-based-combat.md`** (Mechanik + 4 Doktrinen) und
+**`docs/systems/03c-role-roster-spec.md`** (konkreter Roster + Asset-Liste). Build-Pfad (03b §6):
+1. **Phase 1 — Engine-Fundament** (`combat/engine.py` + `balance.json`): **Antrieb als 3. Subsystem**
+   (Integritäts-Stufen) + **Schadenstyp×Subsystem-Matrix** (Energie/Kinetik/Ionen/Rakete) +
+   **Reichweiten-Bänder** (Standoff/Initiative). Danach per Sim verifizierbar. ← *hier anfangen.*
+2. Phase 2 Stranden/Disengage/Interdiktion · 3 Entern/Capture (nur Schiffe+Fracht, **keine** Commander) ·
+   4 Rollen-Roster + Eskort-Konter (braucht neue Assets) · 5 Söldner-/Markt-Layer.
+- **Entscheidungen gelockt:** echte Reichweiten · Capture nur Schiffe · Söldner = Service · 4 Soft-Doktrinen
+  (Kriegsherr/Händler/Freibeuter/Pionier) · Kernmechaniken (Kolonisieren!) universell, Doktrin nur Boni.
+
+### Parallel / sonst offen
+- **Assets v0.2:** Nutzer generiert die **§11-Rollen-Assets** (`docs/ASSETS.md`: 12 neue Schiffe +
+  Waffen-/Status-Icons + Effekte). v0.1-Satz ist komplett produziert.
+- **Spielfluss real durchspielen** (frisches Konto) → Balance/Pacing tunen (`shared/balance.json`).
+- **NPC-Verhalten erweitern**: aktive Angriffe/Expansion · **Gegen-Spionage** (Tech-Debt #4/#5).
+- **Kolonisierung** (colonize-Mission hat noch keinen Planet-Erstellungs-Handler) · **Trümmer/Recycler-Loop**.
+- **LLM-Funksprüche** (Modelle pullen) — vom Nutzer bewusst aufgeschoben, bis der Rest „rund" ist.
 
 ---
 
@@ -169,7 +184,9 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 | **Spionage-Aufloesung** | `backend/app/universe/spionage.py` |
 | AI-Worker | `ai-worker/` (jobs/, prompts/) |
 | Frontend-Screens | `frontend/src/app/features/<screen>/` |
-| Design-Doku | `docs/` (GDD, ARCHITECTURE, DESIGN_DECISIONS, systems/01–12, adr/, ASSETS, STYLE_BIBLE) |
+| **⭐ Rollen-Kampf-System (Design, nächster Build)** | `docs/systems/03b-role-based-combat.md` · `03c-role-roster-spec.md` |
+| **Asset-Spezifikation (v0.1 produziert, §11 neu)** | `docs/ASSETS.md` |
+| Design-Doku | `docs/` (GDD, ARCHITECTURE, DESIGN_DECISIONS, systems/01–12 + 03a/03b/03c/05a/06a, adr/, ASSETS, STYLE_BIBLE) |
 
 ---
 

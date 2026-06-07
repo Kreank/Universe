@@ -1,6 +1,6 @@
 # Asset-Spezifikation — *Universe*
 
-> **Status:** v0.1 · **Stand:** 2026-06-06 · Teil von [Universe](./GAME_DESIGN_DOCUMENT.md)
+> **Status:** v0.2 · **Stand:** 2026-06-07 · Teil von [Universe](./GAME_DESIGN_DOCUMENT.md)
 > · **Stilvorgabe:** [STYLE_BIBLE.md](./STYLE_BIBLE.md) (Palette, Form, Rendering, Prompt-Baukasten)
 > · **Daten-Quelle:** [`shared/balance.json`](../shared/balance.json) (kanonische Keys)
 >
@@ -8,6 +8,19 @@
 > spezifiziert, dass ein Artist **oder** ein KI-Bildgenerator ihn eindeutig umsetzen kann.
 > Dateinamen = `balance.json`-Keys (snake_case) → das Frontend lädt Assets per Key ohne
 > Mapping-Tabelle.
+
+> ## ✅ Produktions-Status
+> **Der komplette v0.1-Satz (§1–§8) ist PRODUZIERT** (2026-06-07): hochwertige PNGs für
+> Ressourcen-Icons, 14 Gebäude, 14 Schiffe, 10 Verteidigungen, Commander (8 Faces + 5 Frames
+> + 5 Spec-Badges + 8 Trait-Marker), 16 Hintergründe (inkl. Planeten/Login/Dashboard/System-View/
+> Regionen/Nebel), 6 Effekte sowie Icon-Familien (Ressourcen/Traits/Missions/Status/Nav).
+> Liegen unter `assets/` und sind ins Frontend (`frontend/src/assets/img/`) integriert.
+> `assets/placeholders/` wurde entfernt.
+> **UI-Primitives** (Buttons/Panels/Moral-Balken/Progress) bleiben bewusst **SVG** (skalierbar,
+> themable); die sichtbaren Icon-Familien haben zusätzlich PNG-Versionen.
+>
+> **NEU/offen (v0.2):** das **Rollen-Kampf-System** (Doku [03b](./systems/03b-role-based-combat.md)/
+> [03c](./systems/03c-role-roster-spec.md)) bringt neue Schiffe + Icons → **§11** (zu erstellen).
 
 ---
 
@@ -22,17 +35,18 @@
 
 ### Asset-Bilanz (Übersicht)
 
-| Kategorie | Assets spezifiziert | davon VS (P0/P1) |
+| Kategorie | Assets spezifiziert | Status |
 |-----------|:---:|:---:|
-| 1. Ressourcen-Icons | 4 | 4 |
-| 2. Gebäude | 14 | 11 |
-| 3. Schiffe | 14 | 5 |
-| 4. Verteidigung | 10 | 2 |
-| 5. Commander-Portraits (modular) | 27 Bausteine | 16 |
-| 6. UI-Elemente | 38 | ~24 |
-| 7. Hintergründe/Atmosphäre | 16 | 6 |
-| 8. Effekte | 6 | 0–2 |
-| **Summe** | **~129 Einzel-Assets** | **~70** |
+| 1. Ressourcen-Icons | 4 | ✅ produziert |
+| 2. Gebäude | 14 | ✅ produziert |
+| 3. Schiffe | 14 | ✅ produziert |
+| 4. Verteidigung | 10 | ✅ produziert |
+| 5. Commander-Portraits (modular) | 27 Bausteine | ✅ produziert |
+| 6. UI-Elemente | 38 | ✅ produziert (UI-Primitives SVG) |
+| 7. Hintergründe/Atmosphäre | 16 | ✅ produziert |
+| 8. Effekte | 6 | ✅ produziert |
+| **11. Rollen-Kampf-Assets (v0.2)** | **~24 neu** | 🎨 **zu erstellen** |
+| **Summe** | **~129 produziert + ~24 neu** | |
 
 ---
 
@@ -402,6 +416,62 @@ Damit nichts fehlt: jeder spielmechanische Key hat ein Asset.
 
 ---
 
+## 11. Rollen-Kampf-Assets (v0.2 — NEU, zu erstellen 🎨)
+
+**Quelle:** [Doku 03b Rollen-Kampf](./systems/03b-role-based-combat.md) + [03c Roster-Spec](./systems/03c-role-roster-spec.md).
+Das rollenbasierte Kampfsystem (Subsysteme Schild/Antrieb/Hülle, Schadenstypen, Piraterie/Eskorte,
+4 Doktrinen) bringt **neue Schiffsrollen** ohne Art sowie Waffen-/Status-Icons + Effekte.
+Die **14 bestehenden Schiffe** (§3) decken ihre Rollen weiter ab — **keine** neue Art nötig.
+
+### 11.1 Neue Schiffe (Stil = §3, 3/4-Top-Down, einheitlicher Maßstab, PNG-32 512×512 transparent)
+
+| ID / Datei | Rolle | Doktrin | Generierungs-Beschreibung |
+|------------|-------|:---:|---------------------------|
+| `ships/carrier.png` | Träger | MIL | Breiter Rumpf mit **offenem Hangar-Deck** + Drohnen-Buchten, mehrere Startkatapulte, wuchtig. „Mutterschiff". |
+| `ships/interdictor.png` | Interdiktor/Fangschiff | PIR | Gedrungen, dominiert von großen **Feld-Generator-Ringen/Antennen-Gittern** (Fang-Feld), pulsierendes Energie-Schimmern. |
+| `ships/ewar_frigate.png` | EWAR-Fregatte | PIR | Schlank, markante **Ionen-/EMP-Emitter** + blaue Energie-Coils statt klassischer Kanonen. „Entwaffner". |
+| `ships/boarder.png` | Enterschiff | PIR | Gepanzerter Bug mit **Enter-/Greifklauen** + Andock-Tunnel, robust, aggressiv. |
+| `ships/stealth_corvette.png` | Tarnkappen-Korvette | PIR | Kantig-facettierte, **dunkle** Silhouette, kaum Glow (Stealth), schnelle Linien. |
+| `ships/escort_frigate.png` | Eskort-Fregatte (Punktverteidigung) | UNI | Kompakt-defensiv, viele kleine **Punktverteidigungs-Türme/Flak**, Schutz-Optik. |
+| `ships/shield_tender.png` | Schild-Tender | UNI | Zentraler **Schild-Projektor-Dom**, Support-Anmutung, kaum Waffen, sanftes cyan Schild-Glühen. |
+| `ships/interceptor.png` | Abfangjäger | UNI | Extrem **schlanke** Speed-Silhouette, große Triebwerke, minimal Panzerung. |
+| `ships/miner.png` | Bergbauschiff | HAN | Industriell mit **Bohr-/Sammelarmen** + Erz-Buchten, schwerfällig. |
+| `ships/deep_scout.png` | Tief-Aufklärer | PIO | Leicht & schnell, große **Sensor-Schüssel/Antennen-Cluster**. |
+| `ships/expedition_ship.png` | Expeditions-Schiff | PIO | Robust, **Langstrecken-Tanks** + Bergungs-Optik, „Forschungs-Kutter". |
+| `ships/drone.png` *(opt.)* | Träger-Drohne | MIL | Kleine, gesichtslose **Jäger-Drohne** (für die Träger-Mechanik), wiederholbar im Schwarm. |
+
+### 11.2 Waffen-/Schadenstyp-Icons (SVG 64×64, für Ladungs-/Tooltip-UI)
+
+| ID / Datei | Schadenstyp | Glyph |
+|------------|-------------|-------|
+| `icons/weapons/weapon_energy.svg` | Energie (anti-Schild) | gebündelter **Laserstrahl** / Fokus-Emitter, cyan |
+| `icons/weapons/weapon_kinetic.svg` | Kinetik (anti-Hülle) | **Projektil/Geschoss** mit Aufprall-Splittern, silber |
+| `icons/weapons/weapon_ion.svg` | Ionen/EMP (Schild+Antrieb) | **EMP-Welle/Blitzkringel**, elektrisch blau-violett |
+| `icons/weapons/weapon_missile.svg` | Rakete (anti-Hülle, abfangbar) | **Rakete** mit Abgasfahne, warm/orange |
+
+### 11.3 Status-Icons (SVG 64×64, Kampf-/Flotten-Zustände)
+
+| ID / Datei | Zustand | Glyph |
+|------------|---------|-------|
+| `icons/status/status_shield_down.svg` | Schild zusammengebrochen | zerbrochenes Schild-Hex, ausgegraut |
+| `icons/status/status_drive_damaged.svg` | Antrieb beschädigt (Stufen) | Triebwerk mit Warn-/Riss-Symbol |
+| `icons/status/status_stranded.svg` | **gestrandet** (enterbar) | Schiff mit Ketten-/Anker-Symbol, rot |
+| `icons/status/status_interdiction.svg` | Fang-Feld aktiv | konzentrische Feld-Ringe, magenta |
+| `icons/status/status_boarding.svg` | Entervorgang | Greifklaue + Schiff, „Kaperung" |
+
+### 11.4 Effekte (ergänzend zu §8; WEBP/APNG oder Sprite)
+
+| ID / Datei | Beschreibung |
+|------------|--------------|
+| `effects/ion_emp.webp` | **Ionen/EMP-Treffer**: elektrische Entladung übers Ziel, Schild-Flimmer + Antriebs-Funken. |
+| `effects/boarding.webp` | **Kaper-Effekt**: Andock-Tunnel/Enter-Kapsel + Übernahme-Glow am Ziel. |
+| `effects/warp_disrupt.webp` | **Warp-Disruptor** (Interdiktor): kollabierender Sprung-Riss, Flucht verhindert. |
+
+> **Doktrin-Hinweis:** Doktrinen (Kriegsherr/Händler/Freibeuter/Pionier) brauchen optional je ein
+> kleines **Doktrin-Emblem** (`icons/doctrines/<key>.svg`) für die Doktrin-Wahl/UI — P2-Backlog.
+
+---
+
 ## 10. Abhängigkeiten
 
 - **`shared/balance.json`** — kanonische Keys = Dateinamen. Bei neuen Keys: Asset ergänzen.
@@ -414,6 +484,10 @@ Damit nichts fehlt: jeder spielmechanische Key hat ein Asset.
 ---
 
 ### Änderungshistorie
+- **v0.2 (2026-06-07):** v0.1-Satz (§1–§8) als **PRODUZIERT** markiert (hochwertige PNGs,
+  ins Frontend integriert, Platzhalter entfernt). Neue **§11 Rollen-Kampf-Assets** ergänzt
+  (12 neue Schiffe + 4 Waffen-Icons + 5 Status-Icons + 3 Effekte) aus Doku 03b/03c. Bilanz/
+  Status-Banner aktualisiert.
 - **v0.1 (2026-06-06):** Erstfassung. 8 Kategorien, ~129 Assets gegen `balance.json` +
   System-Dokus 01/03/05/06/11 abgeglichen; modulares Commander-Persona-System (USP);
   Vollständigkeits-Mapping; Backlog markiert.
