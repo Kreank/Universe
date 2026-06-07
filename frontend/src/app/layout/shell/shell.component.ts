@@ -120,6 +120,7 @@ export class ShellComponent implements OnInit {
     { path: '/dashboard', label: 'Dashboard', glyph: '🛰️' },
     { path: '/buildings', label: 'Gebaeude', glyph: '🏗️' },
     { path: '/research', label: 'Forschung', glyph: '🔬' },
+    { path: '/techtree', label: 'Techbaum', glyph: '🌳' },
     { path: '/shipyard', label: 'Werft', glyph: '🛠️' },
     { path: '/fleet', label: 'Flotte', glyph: '🚀' },
     { path: '/galaxy', label: 'Galaxie', glyph: '🌌' },

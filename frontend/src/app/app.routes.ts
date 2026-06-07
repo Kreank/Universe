@@ -35,6 +35,11 @@ export const routes: Routes = [
           import('./features/research/research.component').then((m) => m.ResearchComponent),
       },
       {
+        path: 'techtree',
+        loadComponent: () =>
+          import('./features/techtree/techtree.component').then((m) => m.TechtreeComponent),
+      },
+      {
         path: 'shipyard',
         loadComponent: () =>
           import('./features/shipyard/shipyard.component').then((m) => m.ShipyardComponent),

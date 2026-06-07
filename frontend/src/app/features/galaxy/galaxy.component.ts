@@ -56,7 +56,14 @@ import { galaxyStyles } from './galaxy.styles';
           <div class="positions">
             @for (c of cells(); track c.position) {
               <div class="cell" [class]="cellClass(c)">
-                <div class="cell-pos mono">{{ c.position }}</div>
+                <div class="cell-visual">
+                  @if (cellImage(c); as img) {
+                    <img class="cell-img" [src]="img" [alt]="occupantLabel(c)" loading="lazy" />
+                  } @else {
+                    <span class="cell-dot" aria-hidden="true"></span>
+                  }
+                  <span class="cell-pos mono">{{ c.position }}</span>
+                </div>
                 <div class="cell-body">
                   <div class="cell-kind">{{ occupantLabel(c) }}</div>
                   <div class="cell-name">{{ c.name ?? '—' }}</div>
@@ -293,6 +300,29 @@ export class GalaxyComponent {
   cellClass(c: GalaxyCell): string {
     if (this.isOwn(c)) return 'cell own';
     return `cell ${c.occupant_type}`;
+  }
+
+  /**
+   * Liefert den Pfad zum Planeten-/Truemmerfeld-Bild einer Zelle oder null
+   * (leere Felder). Der NPC-Planetentyp wird deterministisch aus der Position
+   * abgeleitet, damit ein System bei jedem Scan gleich aussieht.
+   */
+  cellImage(c: GalaxyCell): string | null {
+    const base = 'assets/img/backgrounds/';
+    switch (c.occupant_type) {
+      case 'player':
+        return base + (this.isOwn(c) ? 'planet_homeworld.png' : 'planet_normal.png');
+      case 'npc': {
+        let name = 'planet_normal';
+        if (c.position <= 3) name = 'planet_hot';
+        else if (c.position >= 11) name = 'planet_cold';
+        return base + name + '.png';
+      }
+      case 'debris':
+        return base + 'debris_field.png';
+      default:
+        return null;
+    }
   }
 
   occupantLabel(c: GalaxyCell): string {
