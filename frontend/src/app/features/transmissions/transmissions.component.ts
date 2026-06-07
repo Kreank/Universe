@@ -4,8 +4,36 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Commander, DecisionChoice, Transmission } from '../../core/models/api.models';
+import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { transmissionStyles } from './transmission.styles';
 
+/** Eine Einheit-Zeile im Spionagebericht (Glyph + deutscher Name + Anzahl). */
+interface IntelUnit {
+  label: string;
+  glyph: string;
+  count: number;
+}
+
+/** Aufbereitete Sicht auf einen Spionagebericht (aus transmission.decision_payload). */
+interface SpyIntelView {
+  name: string;
+  kind: string;
+  level: number;
+  shipsTotal: number;
+  defensesTotal: number;
+  fleet: IntelUnit[] | null;
+  defenses: IntelUnit[] | null;
+  resources: IntelUnit[] | null;
+  scannedAt: string | null;
+}
+
+/**
+ * Postfach / Funksprueche. Rendert Transmissionen typ-bewusst:
+ * - ``spy_report`` wird aus dem strukturierten Payload als Aufklaerungs-Karte
+ *   dargestellt (Gesamtstaerke + Flotte/Verteidigung/Ressourcen je Detailstufe),
+ * - Forderungen (``requires_decision``) zeigen Entscheidungs-Buttons,
+ * - alle uebrigen Funksprueche bleiben als (mehrzeiliger) Fliesstext.
+ */
 @Component({
   selector: 'app-transmissions',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,7 +59,10 @@ import { transmissionStyles } from './transmission.styles';
             <div class="msg-head">
               <span class="type-glyph">{{ typeGlyph(t) }}</span>
               <div class="msg-meta">
-                <h3>{{ t.subject }}</h3>
+                <div class="title-row">
+                  <h3>{{ t.subject }}</h3>
+                  <span class="type-chip" [class]="'tc-' + t.type">{{ typeLabel(t) }}</span>
+                </div>
                 <span class="faint small">
                   {{ commanderName(t.commander_id) }} · {{ t.created_at | date: 'short' }}
                 </span>
@@ -41,7 +72,67 @@ import { transmissionStyles } from './transmission.styles';
               }
             </div>
 
-            <p class="body">{{ t.body }}</p>
+            @if (spyIntel(t); as intel) {
+              <!-- Strukturierter Spionagebericht ----------------------------- -->
+              <div class="intel">
+                <div class="intel-top">
+                  <span class="intel-target">{{ kindGlyph(intel.kind) }} {{ intel.name }}</span>
+                  <span class="lvl-badge" [attr.data-lvl]="intel.level" title="Aufklaerungsstufe">
+                    Stufe {{ intel.level }}/3
+                  </span>
+                </div>
+
+                <div class="intel-strength">
+                  <span class="stat"><span class="stat-num">{{ fmt(intel.shipsTotal) }}</span> Schiffe</span>
+                  <span class="stat"><span class="stat-num">{{ fmt(intel.defensesTotal) }}</span> Verteidigung</span>
+                </div>
+
+                @if (intel.fleet) {
+                  <div class="intel-section">
+                    <div class="intel-label">🚀 Flotte</div>
+                    <div class="intel-rows">
+                      @for (u of intel.fleet; track u.label) {
+                        <span class="unit"><span class="u-glyph">{{ u.glyph }}</span>{{ u.count }}× {{ u.label }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (intel.defenses) {
+                  <div class="intel-section">
+                    <div class="intel-label">🛡 Verteidigung</div>
+                    <div class="intel-rows">
+                      @for (u of intel.defenses; track u.label) {
+                        <span class="unit"><span class="u-glyph">{{ u.glyph }}</span>{{ u.count }}× {{ u.label }}</span>
+                      } @empty {
+                        <span class="faint small">keine</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (intel.resources) {
+                  <div class="intel-section">
+                    <div class="intel-label">💰 Ressourcen</div>
+                    <div class="intel-rows">
+                      @for (u of intel.resources; track u.label) {
+                        <span class="unit res"><span class="u-glyph">{{ u.glyph }}</span>{{ fmt(u.count) }} {{ u.label }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if (intel.level < 3) {
+                  <p class="intel-hint small">
+                    🔒 {{ intel.level < 2 ? 'Nur Gesamtstaerke aufgeklaert.' : 'Ressourcen verborgen.' }}
+                    Mehr Sonden oder hoehere Spionagetechnik liefern Details.
+                  </p>
+                }
+                @if (intel.scannedAt) {
+                  <p class="faint small intel-time">Aufgeklaert: {{ intel.scannedAt | date: 'short' }}</p>
+                }
+              </div>
+            } @else {
+              <p class="body">{{ t.body }}</p>
+            }
 
             @if (t.requires_decision) {
               <div class="decision">
@@ -132,21 +223,97 @@ export class TransmissionsComponent {
     return this.commanderMap().get(id)?.name ?? 'Unbekannter Commander';
   }
 
+  /** Tausenderpunkt-Formatierung (de-DE). */
+  fmt(n: number): string {
+    return Math.round(n).toLocaleString('de-DE');
+  }
+
+  /** Baut die strukturierte Aufklaerungs-Sicht, sonst null (-> Fliesstext-Fallback). */
+  spyIntel(t: Transmission): SpyIntelView | null {
+    if (t.type !== 'spy_report') {
+      return null;
+    }
+    const p = t.decision_payload as Record<string, unknown> | null;
+    if (!p || typeof p !== 'object') {
+      return null;
+    }
+    const units = (map: unknown, metaMap: Record<string, { label: string; glyph: string }>): IntelUnit[] | null => {
+      if (!map || typeof map !== 'object') {
+        return null;
+      }
+      const rows: IntelUnit[] = [];
+      for (const [key, value] of Object.entries(map as Record<string, number>)) {
+        const meta = metaFor(metaMap, key);
+        rows.push({ label: meta.label, glyph: meta.glyph, count: Number(value) || 0 });
+      }
+      return rows.length ? rows : null;
+    };
+    const res = p['resources'] as Record<string, number> | undefined;
+    const resources = res
+      ? (['metal', 'crystal', 'deuterium'] as const)
+          .filter((k) => res[k])
+          .map((k) => {
+            const meta = metaFor(RESOURCE_META, k);
+            return { label: meta.label, glyph: meta.glyph, count: Number(res[k]) || 0 };
+          })
+      : null;
+
+    return {
+      name: String(p['name'] ?? 'Unbekanntes Ziel'),
+      kind: String(p['kind'] ?? 'npc'),
+      level: Number(p['level'] ?? 1),
+      shipsTotal: Number(p['ships_total'] ?? 0),
+      defensesTotal: Number(p['defenses_total'] ?? 0),
+      fleet: units(p['fleet'], SHIP_META),
+      defenses: units(p['defenses'], DEFENSE_META),
+      resources: resources && resources.length ? resources : null,
+      scannedAt: typeof p['scanned_at'] === 'string' ? (p['scanned_at'] as string) : null,
+    };
+  }
+
+  kindGlyph(kind: string): string {
+    return kind === 'player' ? '👤' : '🤖';
+  }
+
   typeGlyph(t: Transmission): string {
     if (t.requires_decision) {
       return '⚠️';
     }
     switch (t.type) {
+      case 'spy_report':
+        return '🛰️';
       case 'combat_report':
         return '⚔️';
-      case 'victory':
+      case 'reaction':
+        return '🎙️';
+      case 'big_moment':
         return '🏆';
-      case 'defeat':
-        return '💥';
-      case 'lore':
-        return '📖';
+      case 'system':
+        return '🛰️';
       default:
         return '📡';
+    }
+  }
+
+  typeLabel(t: Transmission): string {
+    if (t.requires_decision) {
+      return 'Forderung';
+    }
+    switch (t.type) {
+      case 'spy_report':
+        return 'Spionagebericht';
+      case 'combat_report':
+        return 'Kampfbericht';
+      case 'reaction':
+        return 'Funkspruch';
+      case 'big_moment':
+        return 'Großmoment';
+      case 'demand':
+        return 'Forderung';
+      case 'system':
+        return 'System';
+      default:
+        return 'Funkspruch';
     }
   }
 }
