@@ -11,13 +11,14 @@ import {
 } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
 import { CountdownComponent } from '../../shared/components/countdown.component';
+import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { NotificationService } from '../../core/services/notification.service';
 import { fleetStyles } from './fleet.styles';
 
 @Component({
   selector: 'app-fleet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CountdownComponent],
+  imports: [FormsModule, CountdownComponent, IconTileComponent],
   template: `
     <h1>Flotte</h1>
 
@@ -29,7 +30,10 @@ import { fleetStyles } from './fleet.styles';
         <div class="ships">
           @for (s of availableShips(); track s.type) {
             <label class="ship-pick">
-              <span>{{ shipMeta(s.type).glyph }} {{ shipMeta(s.type).label }}</span>
+              <span class="ship-name"
+                ><app-icon-tile [glyph]="shipMeta(s.type).glyph" [src]="'assets/img/ships/' + s.type + '.png'" [size]="30" />
+                {{ shipMeta(s.type).label }}</span
+              >
               <span class="faint">verf. {{ s.count }}</span>
               <input
                 type="number"

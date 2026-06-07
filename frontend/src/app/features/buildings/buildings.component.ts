@@ -50,7 +50,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
           <div class="grid list">
             @for (b of group.rows; track b.type) {
               <div class="card building" [class.busy]="b.finishesAt">
-                <app-icon-tile [glyph]="meta(b.type).glyph" [size]="52" />
+                <app-icon-tile [glyph]="meta(b.type).glyph" [src]="'assets/img/buildings/' + b.type + '.png'" [size]="52" />
                 <div class="info">
                   <div class="row-between">
                     <h3 class="tip" [attr.data-tip]="meta(b.type).blurb ?? ''">{{ meta(b.type).label }}</h3>

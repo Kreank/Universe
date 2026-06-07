@@ -1,19 +1,25 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
 
 /**
- * Konsistenter Platzhalter fuer Schiffe/Gebaeude/Ressourcen-Icons.
- * Rendert eine getoente Kachel mit Glyph. Spaeter leicht durch echte
- * Bilder ersetzbar (assets/img/<kind>/<key>.svg) — dieselben Keys.
+ * Konsistente Icon-Kachel fuer Schiffe/Gebaeude/Verteidigung/Ressourcen.
+ * Rendert ein echtes Asset-Bild (``src``), faellt bei fehlendem/kaputtem Bild
+ * automatisch auf den Emoji-``glyph`` zurueck. Asset-Pfad-Konvention:
+ * ``assets/img/<kind>/<key>.png`` (Key = balance.json-Key).
  */
 @Component({
   selector: 'app-icon-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<span class="tile" [class]="'tile-' + variant()" [style.--size.px]="size()">
-    <span class="glyph">{{ glyph() }}</span>
+    @if (src() && !broken()) {
+      <img class="img" [src]="src()" alt="" loading="lazy" (error)="broken.set(true)" />
+    } @else {
+      <span class="glyph">{{ glyph() }}</span>
+    }
   </span>`,
   styles: [
     `
       .tile {
+        position: relative;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -24,6 +30,14 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         border: 1px solid rgba(46, 230, 214, 0.3);
         box-shadow: inset 0 0 14px rgba(46, 230, 214, 0.12);
         flex: 0 0 auto;
+        overflow: hidden;
+      }
+      .img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 8%;
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
       }
       .glyph {
         font-size: calc(var(--size, 44px) * 0.52);
@@ -47,4 +61,7 @@ export class IconTileComponent {
   readonly glyph = input<string>('◆');
   readonly size = input<number>(44);
   readonly variant = input<'accent' | 'magenta' | 'muted'>('accent');
+  /** Optionaler Asset-Pfad; faellt bei Ladefehler auf den Glyph zurueck. */
+  readonly src = input<string | null>(null);
+  protected readonly broken = signal(false);
 }

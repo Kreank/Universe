@@ -17,6 +17,7 @@ export const fleetStyles = `
     font-size: 0.86rem;
   }
   .ship-pick input { min-height: 36px; padding: 0.3rem 0.5rem; }
+  .ship-name { display: inline-flex; align-items: center; gap: 0.45rem; min-width: 0; }
 
   .coord { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }

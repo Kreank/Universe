@@ -5,6 +5,12 @@ export const authPanelStyles = `
     display: grid;
     place-items: center;
     padding: 1.5rem;
+    background-image:
+      linear-gradient(rgba(8, 12, 24, 0.72), rgba(8, 12, 24, 0.82)),
+      url('/assets/img/backgrounds/login.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
   .auth-card {
     width: min(420px, 100%);

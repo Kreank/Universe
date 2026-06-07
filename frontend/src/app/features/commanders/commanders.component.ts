@@ -10,6 +10,7 @@ import {
   RANK_META,
   SPECIALIZATION_META,
   TRAIT_META,
+  commanderFace,
   metaFor,
 } from '../../core/models/display';
 import { commanderStyles } from './commander.styles';
@@ -100,7 +101,7 @@ import { commanderStyles } from './commander.styles';
         @for (c of commanders(); track c.id) {
           <a class="card cmd-card" [routerLink]="['/commanders', c.id]">
             <div class="portrait" [class]="bandClass(c.morale)">
-              <img src="assets/img/commanders/portrait.svg" alt="" />
+              <img [src]="faceFor(c.id)" alt="" (error)="onFaceError($event)" />
               <span class="rank-badge">{{ rank(c.rank).glyph }} {{ rank(c.rank).label }}</span>
               @if (c.training_finishes_at) {
                 <span class="status-tag">in Ausbildung</span>
@@ -240,6 +241,11 @@ export class CommandersComponent {
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   trait = (t: string) => metaFor(TRAIT_META, t);
   bandClass = (m: number) => this.balance.moraleBandClass(m);
+
+  faceFor = (id: string) => commanderFace(id);
+  onFaceError(event: Event): void {
+    (event.target as HTMLImageElement).src = 'assets/img/commanders/silhouette_unknown.png';
+  }
 
   // -- Boni-Darstellung ---------------------------------------------------
   private static readonly STAT_GLYPH: Record<string, string> = {

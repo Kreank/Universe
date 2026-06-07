@@ -8,6 +8,7 @@ import {
   RANK_META,
   SPECIALIZATION_META,
   TRAIT_META,
+  commanderFace,
   metaFor,
 } from '../../core/models/display';
 import { CountdownComponent } from '../../shared/components/countdown.component';
@@ -24,7 +25,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
       <div class="grid layout">
         <section class="card profile">
           <div class="portrait" [class]="bandClass(c.morale)">
-            <img src="assets/img/commanders/portrait.svg" alt="" />
+            <img [src]="faceFor(c.id)" alt="" (error)="onFaceError($event)" />
           </div>
           <h1>{{ c.name }}</h1>
           <div class="badges">
@@ -145,4 +146,9 @@ export class CommanderDetailComponent {
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   trait = (t: string) => metaFor(TRAIT_META, t);
   bandClass = (m: number) => this.balance.moraleBandClass(m);
+
+  faceFor = (id: string) => commanderFace(id);
+  onFaceError(event: Event): void {
+    (event.target as HTMLImageElement).src = 'assets/img/commanders/silhouette_unknown.png';
+  }
 }

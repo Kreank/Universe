@@ -53,7 +53,12 @@ body {
   background:
     radial-gradient(1200px 800px at 80% -10%, rgba(46, 230, 214, 0.08), transparent 60%),
     radial-gradient(900px 700px at 10% 110%, rgba(255, 64, 160, 0.06), transparent 55%),
+    linear-gradient(rgba(6, 9, 18, 0.35), rgba(6, 9, 18, 0.35)),
+    url('/assets/img/backgrounds/starfield_tile.png'),
     var(--bg-deep);
+  background-size: cover, cover, cover, 256px 256px, auto;
+  background-position: center;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   line-height: 1.45;

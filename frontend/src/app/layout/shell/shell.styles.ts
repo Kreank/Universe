@@ -47,6 +47,7 @@ export const shellStyles = `
     gap: 0.45rem;
   }
   .res-glyph { font-size: 1.1rem; }
+  .res-icon { width: 22px; height: 22px; object-fit: contain; vertical-align: middle; flex: 0 0 auto; }
   .res-meta { display: flex; flex-direction: column; gap: 3px; min-width: 64px; }
   .res-amount { font-size: 0.92rem; }
   .res-amount.neg { color: var(--magenta); }

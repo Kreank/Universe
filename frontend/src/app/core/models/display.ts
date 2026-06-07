@@ -108,3 +108,17 @@ export function humanize(key: string): string {
 export function metaFor(map: Record<string, DisplayMeta>, key: string): DisplayMeta {
   return map[key] ?? { label: humanize(key), glyph: '◆' };
 }
+
+/**
+ * Waehlt deterministisch eines der acht echten Commander-Gesichter
+ * (``faces/face_01.png`` … ``face_08.png``) anhand der Commander-ID.
+ * Formel: Summe der charCodes der ID modulo 8, +1, zweistellig.
+ */
+export function commanderFace(id: string): string {
+  let sum = 0;
+  for (let i = 0; i < id.length; i++) {
+    sum += id.charCodeAt(i);
+  }
+  const idx = (sum % 8) + 1;
+  return `assets/img/commanders/faces/face_${String(idx).padStart(2, '0')}.png`;
+}

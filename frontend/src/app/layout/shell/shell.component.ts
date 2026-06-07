@@ -32,7 +32,7 @@ interface NavItem {
               [attr.data-tip]="r.tip"
               [class.full]="r.pct >= 100"
             >
-              <span class="res-glyph">{{ r.glyph }}</span>
+              <img class="res-icon" src="assets/img/resources/{{ r.key }}.png" alt="" />
               <div class="res-meta">
                 <span class="res-amount mono">{{ r.amount | shortNumber }}</span>
                 <div class="bar" [class.full]="r.pct >= 100">
@@ -45,7 +45,7 @@ interface NavItem {
             </div>
           }
           <div class="res energy tip" [attr.data-tip]="energyTip()">
-            <span class="res-glyph">⚡</span>
+            <img class="res-icon" src="assets/img/resources/energy.png" alt="" />
             <span class="res-amount mono" [class.neg]="energyBalance() < 0">{{
               energyBalance() | shortNumber
             }}</span>

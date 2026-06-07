@@ -93,6 +93,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
           <div class="unit-head">
             <app-icon-tile
               [glyph]="unitMeta(s.type, cat).glyph"
+              [src]="'assets/img/' + (cat === 'ship' ? 'ships' : 'defenses') + '/' + s.type + '.png'"
               [size]="48"
               [variant]="cat === 'defense' ? 'magenta' : 'accent'"
             />
