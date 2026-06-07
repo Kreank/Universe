@@ -89,44 +89,48 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       </section>
 
       <ng-template #unitCard let-s let-cat="cat">
-        <div class="card unit">
-          <div class="unit-head">
+        <div class="bld">
+          <div class="bld-art">
             <app-icon-tile
               [glyph]="unitMeta(s.type, cat).glyph"
               [src]="'assets/img/' + (cat === 'ship' ? 'ships' : 'defenses') + '/' + s.type + '.png'"
-              [size]="48"
+              [size]="78"
               [variant]="cat === 'defense' ? 'magenta' : 'accent'"
             />
-            <div>
-              <h3 class="tip" [attr.data-tip]="unitMeta(s.type, cat).blurb ?? ''">{{ unitMeta(s.type, cat).label }}</h3>
-              <app-cost-line [cost]="s.cost" [available]="balances()" />
-              <div class="muted small">⏱ {{ formatTime(s.build_seconds_each) }} / Stueck</div>
+          </div>
+          <div class="bld-name tip" [attr.data-tip]="unitMeta(s.type, cat).blurb ?? ''">{{ unitMeta(s.type, cat).label }}</div>
+
+          <app-cost-line [cost]="s.cost" [available]="balances()" />
+          <div class="bld-meta">
+            <span class="muted small">⏱ {{ formatTime(s.build_seconds_each) }} / Stk.</span>
+          </div>
+
+          <div class="bld-action">
+            <div class="qty-row">
+              <input
+                type="number"
+                min="1"
+                [ngModel]="unitCount(s.type)"
+                (ngModelChange)="setCount(s.type, $event)"
+                [disabled]="!buildable(s)"
+                aria-label="Anzahl"
+              />
+              <button
+                class="btn btn-sm"
+                [class.btn-primary]="buildable(s)"
+                type="button"
+                [disabled]="!buildable(s) || pending() === s.type"
+                (click)="build(s.type, cat)"
+              >
+                {{ pending() === s.type ? '…' : 'Bauen' }}
+              </button>
             </div>
+            @if (!s.requirements_met) {
+              <span class="hint warn small">Voraussetzung fehlt</span>
+            } @else if (!s.can_build) {
+              <span class="hint warn small">Zu wenig Ressourcen</span>
+            }
           </div>
-          <div class="unit-build">
-            <input
-              type="number"
-              min="1"
-              [ngModel]="unitCount(s.type)"
-              (ngModelChange)="setCount(s.type, $event)"
-              [disabled]="!buildable(s)"
-              aria-label="Anzahl"
-            />
-            <button
-              class="btn btn-sm"
-              [class.btn-primary]="buildable(s)"
-              type="button"
-              [disabled]="!buildable(s) || pending() === s.type"
-              (click)="build(s.type, cat)"
-            >
-              {{ pending() === s.type ? '…' : 'Bauen' }}
-            </button>
-          </div>
-          @if (!s.requirements_met) {
-            <span class="hint warn small">Voraussetzung fehlt</span>
-          } @else if (!s.can_build) {
-            <span class="hint warn small">Zu wenig Ressourcen</span>
-          }
         </div>
       </ng-template>
     } @else {
@@ -141,19 +145,28 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
         display: flex; align-items: center; justify-content: space-between;
         padding: 0.4rem 0; font-size: 0.88rem; border-bottom: 1px solid rgba(255,255,255,0.05);
       }
-      .cat { margin-bottom: 1.6rem; }
+      .queue-row:last-child { border-bottom: none; }
+      .cat { margin-bottom: 1.4rem; }
       .cat-title {
-        font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em;
-        color: var(--accent); margin: 0 0 0.7rem;
-        padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+        font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--accent); margin: 0 0 0.6rem;
+        padding-bottom: 0.35rem; border-bottom: 1px solid var(--border);
       }
-      .list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
-      .unit-head { display: flex; gap: 0.8rem; align-items: flex-start; }
-      .unit h3 { font-size: 0.98rem; margin: 0 0 0.3rem; }
-      .unit-build { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
-      .unit-build input { width: 90px; }
+      /* Dichtes, bild-zentriertes Kachel-Raster (OGame-Stil). */
+      .list { grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 0.7rem; }
+      .bld {
+        display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
+        padding: 0.75rem; text-align: center;
+      }
+      .bld-art { position: relative; align-self: center; }
+      .bld-name { font-weight: 600; font-size: 0.92rem; }
+      .bld-meta { display: flex; justify-content: center; gap: 0.8rem; flex-wrap: wrap; }
+      .bld-action { margin-top: auto; display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem; }
+      .qty-row { display: flex; gap: 0.4rem; }
+      .qty-row input { width: 64px; flex: 0 0 auto; text-align: center; }
+      .qty-row .btn { flex: 1 1 auto; }
       .small { font-size: 0.76rem; }
-      .hint { display: block; margin-top: 0.4rem; color: var(--text-faint); }
+      .hint { color: var(--text-faint); }
       .hint.warn { color: var(--warn); }
     `,
   ],

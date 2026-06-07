@@ -70,33 +70,32 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
           <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
           <div class="grid list">
             @for (t of group.rows; track t.type) {
-              <div class="card tech">
-                <app-icon-tile [glyph]="meta(t.type).glyph" [size]="52" variant="muted" />
-                <div class="info">
-                  <div class="row-between">
-                    <h3 class="tip" [attr.data-tip]="meta(t.type).blurb ?? ''">{{ meta(t.type).label }}</h3>
-                    <span class="chip">Stufe {{ t.level }}</span>
-                  </div>
-                  @if (t.option) {
-                    <div class="next">
-                      <span class="muted small">Stufe {{ t.option.next_level }}</span>
-                      <app-cost-line [cost]="t.option.cost" [available]="balances()" />
-                      <span class="muted small">⏱ {{ formatTime(t.option.research_seconds) }}</span>
-                    </div>
-                  }
+              <div class="bld" [class.busy]="t.finishesAt">
+                <div class="bld-art">
+                  <app-icon-tile [glyph]="meta(t.type).glyph" [size]="78" variant="muted" />
+                  <span class="lvl" [class.zero]="t.level === 0" title="Stufe">{{ t.level }}</span>
                 </div>
-                <div class="action">
+                <div class="bld-name tip" [attr.data-tip]="meta(t.type).blurb ?? ''">{{ meta(t.type).label }}</div>
+
+                @if (t.option) {
+                  <app-cost-line [cost]="t.option.cost" [available]="balances()" />
+                  <div class="bld-meta">
+                    <span class="muted small">⏱ {{ formatTime(t.option.research_seconds) }}</span>
+                  </div>
+                }
+
+                <div class="bld-action">
                   @if (t.finishesAt) {
-                    <span class="muted small">Laeuft</span>
+                    <span class="building-badge">⏳ In Forschung</span>
                     <app-countdown [target]="t.finishesAt" />
                   } @else if (t.option) {
                     <button
-                      class="btn btn-primary btn-sm"
+                      class="btn btn-primary btn-sm full"
                       type="button"
                       [disabled]="!canStart(t) || pending() === t.type || researchBusy()"
                       (click)="start(t.type)"
                     >
-                      {{ pending() === t.type ? '…' : 'Erforschen' }}
+                      {{ pending() === t.type ? '…' : 'Erforschen → ' + t.option.next_level }}
                     </button>
                     @if (!t.option.requirements_met) {
                       <span class="hint warn small">Voraussetzung fehlt</span>
@@ -122,18 +121,37 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
         gap: 1rem; margin-bottom: 1rem; border-color: var(--border-strong);
         box-shadow: var(--glow);
       }
-      .cat { margin-bottom: 1.6rem; }
+      .cat { margin-bottom: 1.4rem; }
       .cat-title {
-        font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em;
-        color: var(--accent); margin: 0 0 0.7rem;
-        padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+        font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--accent); margin: 0 0 0.6rem;
+        padding-bottom: 0.35rem; border-bottom: 1px solid var(--border);
       }
-      .list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
-      .tech { display: grid; grid-template-columns: auto 1fr auto; gap: 0.9rem; align-items: center; }
-      .info h3 { font-size: 1rem; margin: 0; }
-      .next { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem; }
+      /* Dichtes, icon-zentriertes Kachel-Raster (OGame-Stil). */
+      .list { grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 0.7rem; }
+      .bld {
+        display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
+        padding: 0.75rem; text-align: center;
+      }
+      .bld.busy { border-color: var(--accent); box-shadow: var(--glow); }
+      .bld-art { position: relative; align-self: center; }
+      .bld-art .lvl {
+        position: absolute; bottom: -5px; right: -5px;
+        min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px;
+        background: var(--accent); color: #04121a; font-size: 0.74rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 0 8px var(--accent);
+      }
+      .bld-art .lvl.zero {
+        background: var(--surface-2); color: var(--text-dim);
+        box-shadow: none; border: 1px solid var(--border);
+      }
+      .bld-name { font-weight: 600; font-size: 0.92rem; }
+      .bld-meta { display: flex; justify-content: center; gap: 0.8rem; flex-wrap: wrap; }
+      .bld-action { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+      .full { width: 100%; }
+      .building-badge { font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
       .small { font-size: 0.76rem; }
-      .action { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; }
       .hint { color: var(--text-faint); }
       .hint.warn { color: var(--warn); }
     `,

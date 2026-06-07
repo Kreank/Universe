@@ -27,24 +27,40 @@ import { fleetStyles } from './fleet.styles';
       <section class="card send">
         <div class="panel-title">🚀 Flotte entsenden</div>
 
-        <div class="ships">
+        <!-- Schiffsauswahl als dichtes, bild-zentriertes Kachel-Raster (OGame-Stil) -->
+        <div class="grid ships-grid">
           @for (s of availableShips(); track s.type) {
-            <label class="ship-pick">
-              <span class="ship-name"
-                ><app-icon-tile [glyph]="shipMeta(s.type).glyph" [src]="'assets/img/ships/' + s.type + '.png'" [size]="30" />
-                {{ shipMeta(s.type).label }}</span
-              >
-              <span class="faint">verf. {{ s.count }}</span>
-              <input
-                type="number"
-                min="0"
-                [max]="s.count"
-                [ngModel]="shipCount(s.type)"
-                (ngModelChange)="setShip(s.type, $event, s.count)"
-              />
-            </label>
+            <div class="ship" [class.picked]="shipCount(s.type) > 0">
+              <div class="ship-art">
+                <app-icon-tile
+                  [glyph]="shipMeta(s.type).glyph"
+                  [src]="'assets/img/ships/' + s.type + '.png'"
+                  [size]="70"
+                />
+                <span class="avail" title="vorhanden">{{ s.count }}</span>
+              </div>
+              <div class="ship-name">{{ shipMeta(s.type).label }}</div>
+              <div class="ship-pick">
+                <input
+                  type="number"
+                  min="0"
+                  [max]="s.count"
+                  [ngModel]="shipCount(s.type)"
+                  (ngModelChange)="setShip(s.type, $event, s.count)"
+                  aria-label="Menge"
+                />
+                <button
+                  class="btn btn-ghost btn-sm"
+                  type="button"
+                  title="Alle auswaehlen"
+                  (click)="setShip(s.type, s.count, s.count)"
+                >
+                  alle
+                </button>
+              </div>
+            </div>
           } @empty {
-            <p class="muted small">Keine Schiffe auf diesem Planeten. <a href="/shipyard">Werft →</a></p>
+            <p class="muted small empty-ships">Keine Schiffe auf diesem Planeten. <a href="/shipyard">Werft →</a></p>
           }
         </div>
 
@@ -52,22 +68,19 @@ import { fleetStyles } from './fleet.styles';
           <p class="hint small">🎯 Ziel aus der Galaxie-Karte uebernommen: [{{ prefilled() }}]</p>
         }
 
-        <div class="coord">
-          <div class="field">
-            <label>Galaxie</label>
-            <input type="number" min="1" [(ngModel)]="targetG" />
+        <!-- Auftrags-Leiste: Ziel, Mission, Tempo, Commander, Start -->
+        <div class="order-bar">
+          <div class="field coords">
+            <label>Ziel (Galaxie : System : Position)</label>
+            <div class="coord">
+              <input type="number" min="1" [(ngModel)]="targetG" aria-label="Galaxie" />
+              <span class="sep">:</span>
+              <input type="number" min="1" [(ngModel)]="targetS" aria-label="System" />
+              <span class="sep">:</span>
+              <input type="number" min="1" [(ngModel)]="targetP" aria-label="Position" />
+            </div>
           </div>
-          <div class="field">
-            <label>System</label>
-            <input type="number" min="1" [(ngModel)]="targetS" />
-          </div>
-          <div class="field">
-            <label>Position</label>
-            <input type="number" min="1" [(ngModel)]="targetP" />
-          </div>
-        </div>
 
-        <div class="row2">
           <div class="field">
             <label>Mission</label>
             <select [(ngModel)]="mission">
@@ -76,28 +89,31 @@ import { fleetStyles } from './fleet.styles';
               }
             </select>
           </div>
+
           <div class="field">
             <label class="tip" data-tip="Langsamer = weniger Sprit">Tempo {{ speed() }}%</label>
             <input type="range" min="10" max="100" step="10" [ngModel]="speed()" (ngModelChange)="speed.set($event)" />
           </div>
-        </div>
 
-        <div class="field">
-          <label>Commander</label>
-          <select [(ngModel)]="commanderId">
-            <option [ngValue]="null">— ohne Commander —</option>
-            @for (c of assignableCommanders(); track c.id) {
-              <option [ngValue]="c.id">{{ rankMeta(c.rank).glyph }} {{ c.name }} ({{ c.morale_band.label }})</option>
+          <div class="field">
+            <label>Commander</label>
+            <select [(ngModel)]="commanderId">
+              <option [ngValue]="null">— ohne Commander —</option>
+              @for (c of assignableCommanders(); track c.id) {
+                <option [ngValue]="c.id">{{ rankMeta(c.rank).glyph }} {{ c.name }} ({{ c.morale_band.label }})</option>
+              }
+            </select>
+          </div>
+
+          <div class="field send-field">
+            <button class="btn btn-primary full" type="button" [disabled]="!canSend() || sending()" (click)="send()">
+              {{ sending() ? 'Sende…' : '🚀 Flotte starten' }}
+            </button>
+            @if (!hasSelection()) {
+              <span class="hint small">Mindestens ein Schiff auswaehlen.</span>
             }
-          </select>
+          </div>
         </div>
-
-        <button class="btn btn-primary full" type="button" [disabled]="!canSend() || sending()" (click)="send()">
-          {{ sending() ? 'Sende…' : 'Flotte starten' }}
-        </button>
-        @if (!hasSelection()) {
-          <p class="hint small">Mindestens ein Schiff auswaehlen.</p>
-        }
       </section>
 
       <!-- Laufende Flotten -->
