@@ -41,6 +41,21 @@ _STATEMENTS: list[str] = [
     # -- Feature: NPC-Verhalten (Behavior Trees) -----------------------------
     "ALTER TABLE npc_empires ADD COLUMN IF NOT EXISTS baseline JSONB NOT NULL DEFAULT '{}'::jsonb",
     "ALTER TABLE npc_empires ADD COLUMN IF NOT EXISTS last_action_at TIMESTAMPTZ",
+    # -- Feature: Spionage (Discovery + Spionagebericht) ---------------------
+    "ALTER TYPE transmission_type ADD VALUE IF NOT EXISTS 'spy_report'",
+    """
+    CREATE TABLE IF NOT EXISTS player_discoveries (
+        player_id     UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        galaxy        INT NOT NULL,
+        system        INT NOT NULL,
+        position      INT NOT NULL,
+        intel         JSONB NOT NULL DEFAULT '{}'::jsonb,
+        level         INT NOT NULL DEFAULT 1,
+        discovered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (player_id, galaxy, system, position)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_discoveries_player ON player_discoveries(player_id)",
 ]
 
 

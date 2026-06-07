@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platform.balance import get_balance
 from app.platform.db import get_session
-from app.platform.models import NpcEmpire, Planet, Player, UniverseCell
+from app.platform.models import NpcEmpire, Planet, Player, PlayerDiscovery, UniverseCell
 from app.platform.security import get_current_player
 
 router = APIRouter(tags=["universe"])
@@ -20,6 +20,7 @@ class CellOut(BaseModel):
     name: str | None = None
     player_id: str | None = None
     npc_id: str | None = None
+    discovered: bool = False  # hat dieser Spieler das Ziel schon aufgeklaert?
 
 
 class GalaxyViewOut(BaseModel):
@@ -27,8 +28,8 @@ class GalaxyViewOut(BaseModel):
 
 
 class TargetOut(BaseModel):
-    """Ein bekanntes (PvE-)Ziel — damit der Spieler weiss, wen er angreifen kann."""
-    npc_id: str
+    """Ein aufgeklaertes (PvE-)Ziel — erst nach Spionage sichtbar (Doku 04 §6)."""
+    npc_id: str | None = None
     name: str
     galaxy: int
     system: int
@@ -36,6 +37,19 @@ class TargetOut(BaseModel):
     coords: str
     ships_total: int
     defenses_total: int
+    level: int = 1
+    discovered_at: str | None = None
+    intel: dict | None = None  # voller Aufklaerungs-Schnappschuss (Zusammensetzung/Resschen ab L2/L3)
+
+
+async def _player_discoveries(
+    session: AsyncSession, player_id
+) -> dict[tuple[int, int, int], PlayerDiscovery]:
+    """Aufgedeckte Ziele eines Spielers, indexiert nach Koordinaten."""
+    rows = (await session.execute(
+        select(PlayerDiscovery).where(PlayerDiscovery.player_id == player_id)
+    )).scalars().all()
+    return {(d.galaxy, d.system, d.position): d for d in rows}
 
 
 @router.get("/galaxy/targets", response_model=list[TargetOut])
@@ -43,25 +57,38 @@ async def galaxy_targets(
     player: Player = Depends(get_current_player),
     session: AsyncSession = Depends(get_session),
 ) -> list[TargetOut]:
-    """Verzeichnis bekannter NPC-Ziele (PvE). Sortiert nach Koordinaten.
+    """Verzeichnis AUFGEKLAERTER Ziele (PvE). Erst nach Spionage sichtbar.
 
-    Im Vertical Slice sind alle NPCs 'bekannt'; spaeter koppelbar an Spionage/Reichweite."""
-    rows = (await session.execute(
-        select(NpcEmpire).order_by(NpcEmpire.galaxy, NpcEmpire.system, NpcEmpire.position)
-    )).scalars().all()
+    Liefert nur Ziele, die dieser Spieler per Sonde aufgedeckt hat
+    (``player_discoveries``); Staerke/Zusammensetzung stammen aus dem letzten
+    Aufklaerungs-Schnappschuss und koennen veraltet sein."""
+    discoveries = sorted(
+        (await _player_discoveries(session, player.id)).values(),
+        key=lambda d: (d.galaxy, d.system, d.position),
+    )
     out: list[TargetOut] = []
-    for npc in rows:
-        ships_total = sum(int(v) for v in (npc.fleet or {}).values())
-        def_total = sum(int(v) for v in (npc.defenses or {}).values())
+    for d in discoveries:
+        intel = d.intel or {}
+        # npc_id fuer den Angriffs-Deep-Link aufloesen (falls Ziel ein NPC ist).
+        npc = (await session.execute(
+            select(NpcEmpire).where(
+                NpcEmpire.galaxy == d.galaxy,
+                NpcEmpire.system == d.system,
+                NpcEmpire.position == d.position,
+            )
+        )).scalar_one_or_none()
         out.append(TargetOut(
-            npc_id=str(npc.id),
-            name=npc.name,
-            galaxy=npc.galaxy,
-            system=npc.system,
-            position=npc.position,
-            coords=f"{npc.galaxy}:{npc.system}:{npc.position}",
-            ships_total=ships_total,
-            defenses_total=def_total,
+            npc_id=str(npc.id) if npc else None,
+            name=intel.get("name") or (npc.name if npc else f"{d.galaxy}:{d.system}:{d.position}"),
+            galaxy=d.galaxy,
+            system=d.system,
+            position=d.position,
+            coords=f"{d.galaxy}:{d.system}:{d.position}",
+            ships_total=int(intel.get("ships_total", 0)),
+            defenses_total=int(intel.get("defenses_total", 0)),
+            level=d.level,
+            discovered_at=d.discovered_at.isoformat() if d.discovered_at else None,
+            intel=intel,
         ))
     return out
 
@@ -80,6 +107,7 @@ async def galaxy_view(
         )
     )).scalars().all()
     by_pos = {c.position: c for c in rows}
+    discovered = await _player_discoveries(session, player.id)
 
     cells: list[CellOut] = []
     for pos in range(1, bal.positions_per_system + 1):
@@ -106,5 +134,6 @@ async def galaxy_view(
             name=name,
             player_id=player_id,
             npc_id=npc_id,
+            discovered=(galaxy, system, pos) in discovered,
         ))
     return GalaxyViewOut(cells=cells)

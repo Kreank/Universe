@@ -155,6 +155,15 @@ async def send_fleet(
         if have is None or have.count < count:
             raise RuntimeError(f"Zu wenige Schiffe vom Typ {typ}")
 
+    # Spionage erfordert Spionagesonden in der Flotte (Doku 04 §6).
+    if mission == "spy":
+        spy_cfg = bal.data["spy"]
+        probes = ships.get(spy_cfg["probe_type"], 0)
+        if probes < spy_cfg["min_probes"]:
+            raise RuntimeError(
+                f"Spionage benoetigt mindestens {spy_cfg['min_probes']} {spy_cfg['probe_type']}"
+            )
+
     # Commander pruefen (falls angegeben).
     commander = None
     if commander_id:
@@ -276,8 +285,9 @@ async def recall_fleet(session: AsyncSession, player: Player, fleet_id: uuid.UUI
 
 
 async def fleet_arrive(fleet_id: str) -> None:
-    """Anflug-Job: bei Angriff Kampf ausloesen, danach Rueckflug einleiten."""
+    """Anflug-Job: bei Angriff Kampf, bei Spionage Aufklaerung; danach Rueckflug."""
     from app.combat.service import resolve_attack
+    from app.universe.spionage import resolve_spy
 
     async with session_scope() as session:
         fleet = await session.get(Fleet, uuid.UUID(fleet_id))
@@ -289,6 +299,8 @@ async def fleet_arrive(fleet_id: str) -> None:
 
         if mission == "attack":
             await resolve_attack(session, fleet)
+        elif mission == "spy":
+            await resolve_spy(session, fleet)
 
         # Nach Ankunft kehrt die Flotte zurueck (return_at bleibt wie geplant).
         fleet.status = "returning"

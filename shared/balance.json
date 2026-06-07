@@ -223,6 +223,16 @@
     "_note": "NPC-Behavior-Tick (Doku 08). NPCs regenerieren Garnison zur baseline und wachsen je Profil; Anti-Farming durch Wiederaufbau."
   },
 
+  "spy": {
+    "probe_type": "spy_probe",
+    "min_probes": 1,
+    "level2_probes": 3,
+    "level3_probes": 5,
+    "level2_spy_tech": 2,
+    "level3_spy_tech": 4,
+    "_note": "Spionage (Doku 04 §6). Detailstufe steigt mit Sondenanzahl bzw. Spionagetech: L1 Gesamtstaerke, L2 + Flotten-/Verteidigungs-Zusammensetzung, L3 + Ressourcen."
+  },
+
   "protection": {
     "newbie_days": 7,
     "newbie_score_threshold": 5000,

@@ -18,7 +18,7 @@ CREATE TYPE specialization  AS ENUM ('combat', 'logistics', 'spy', 'research', '
 CREATE TYPE fleet_mission   AS ENUM ('attack', 'transport', 'deploy', 'hold', 'colonize', 'spy', 'recycle', 'expedition', 'return');
 CREATE TYPE fleet_status    AS ENUM ('flying', 'arrived', 'returning', 'done');
 CREATE TYPE occupant_type   AS ENUM ('empty', 'player', 'npc', 'debris');
-CREATE TYPE transmission_type AS ENUM ('routine', 'reaction', 'demand', 'combat_report', 'big_moment', 'system');
+CREATE TYPE transmission_type AS ENUM ('routine', 'reaction', 'demand', 'combat_report', 'big_moment', 'system', 'spy_report');
 
 -- ---------------------------------------------------------------------
 --  Spieler & Auth
@@ -270,3 +270,20 @@ INSERT INTO npc_empires (name, behavior_profile, galaxy, system, position, fleet
 
 INSERT INTO universe_cells (galaxy, system, position, occupant_type, ref_id)
   SELECT galaxy, system, position, 'npc', id FROM npc_empires;
+
+-- ---------------------------------------------------------------------
+--  Spionage: pro Spieler aufgedeckte Ziele (Doku 04 §6)
+-- ---------------------------------------------------------------------
+-- Ziele werden erst per Spionagesonde sichtbar; intel haelt den letzten
+-- Aufklaerungs-Schnappschuss (Flotte/Verteidigung/Resschen je nach Stufe).
+CREATE TABLE player_discoveries (
+    player_id     UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    galaxy        INT NOT NULL,
+    system        INT NOT NULL,
+    position      INT NOT NULL,
+    intel         JSONB NOT NULL DEFAULT '{}'::jsonb,   -- {name, fleet, defenses, resources, ...}
+    level         INT NOT NULL DEFAULT 1,               -- Aufklaerungs-Detailstufe (1..3)
+    discovered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (player_id, galaxy, system, position)
+);
+CREATE INDEX idx_discoveries_player ON player_discoveries(player_id);

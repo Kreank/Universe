@@ -56,6 +56,7 @@ occupant_type_enum = ENUM(
 )
 transmission_type_enum = ENUM(
     "routine", "reaction", "demand", "combat_report", "big_moment", "system",
+    "spy_report",
     name="transmission_type", create_type=False,
 )
 
@@ -272,3 +273,15 @@ class NpcEmpire(Base):
     baseline: Mapped[dict] = mapped_column(JSONB, default=dict)
     last_action_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PlayerDiscovery(Base):
+    __tablename__ = "player_discoveries"
+
+    player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), primary_key=True)
+    galaxy: Mapped[int] = mapped_column(Integer, primary_key=True)
+    system: Mapped[int] = mapped_column(Integer, primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    intel: Mapped[dict] = mapped_column(JSONB, default=dict)
+    level: Mapped[int] = mapped_column(Integer, default=1)
+    discovered_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
