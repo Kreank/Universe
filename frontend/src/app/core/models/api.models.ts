@@ -207,13 +207,22 @@ export interface ShipyardBuildResponse {
 
 // --- Flotte -------------------------------------------------------------
 
-export type FleetMission = 'attack' | 'transport' | 'spy' | 'deploy';
+export type FleetMission = 'attack' | 'transport' | 'spy' | 'deploy' | 'recycle' | 'colonize';
 export type FleetStatus = 'flying' | 'arrived' | 'returning' | 'returned';
 
 export interface Coordinate {
   galaxy: number;
   system: number;
   position: number;
+}
+
+export interface IncomingAttack {
+  id: string;
+  attacker: string;
+  origin: string | null;
+  target: Coordinate;
+  ships_total: number;
+  arrive_at: string;
 }
 
 export interface Fleet {

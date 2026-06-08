@@ -15,7 +15,7 @@ from app.economy.service import add_resources, get_research_levels, spend_resour
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
-from app.platform.models import Commander, Fleet, Planet, Player, Ship, UniverseCell
+from app.platform.models import Commander, Fleet, NpcAttack, NpcEmpire, Planet, Player, Ship, UniverseCell
 from app.platform.scheduler import schedule_at
 
 log = logging.getLogger("universe.fleet")
@@ -271,6 +271,31 @@ async def send_fleet(
     schedule_at(return_at, fleet_return, str(fleet.id), job_id=f"fleet-return:{fleet.id}")
     log.info("Flotte %s gesendet -> %s (mission=%s)", fleet.id, target, mission)
     return fleet
+
+
+async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> list[dict]:
+    """Eingehende NPC-Angriffe auf die Planeten des Spielers (im Anflug), naechste zuerst."""
+    rows = (await session.execute(
+        select(NpcAttack)
+        .where(NpcAttack.target_player_id == player_id, NpcAttack.status == "incoming")
+        .order_by(NpcAttack.arrive_at.asc())
+    )).scalars().all()
+    out: list[dict] = []
+    for a in rows:
+        npc = await session.get(NpcEmpire, a.npc_id)
+        out.append({
+            "id": a.id,
+            "attacker": npc.name if npc else "Unbekannte Flotte",
+            "origin": f"{npc.galaxy}:{npc.system}:{npc.position}" if npc else None,
+            "target": {
+                "galaxy": a.target_galaxy,
+                "system": a.target_system,
+                "position": a.target_position,
+            },
+            "ships_total": sum((a.fleet or {}).values()),
+            "arrive_at": a.arrive_at,
+        })
+    return out
 
 
 async def recall_fleet(session: AsyncSession, player: Player, fleet_id: uuid.UUID) -> Fleet:

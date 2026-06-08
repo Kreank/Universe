@@ -68,6 +68,21 @@ export const fleetStyles = `
   .fleet-act { display: flex; align-items: center; gap: 0.6rem; }
   .badge-mission { font-weight: 600; }
 
+  /* --- Eingehende Angriffe (Warn-Banner) --- */
+  .card.incoming {
+    border: 1px solid rgba(255, 90, 90, 0.45);
+    background: rgba(120, 20, 20, 0.18);
+    margin-bottom: 1rem;
+  }
+  .incoming-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.6rem; padding: 0.55rem 0;
+    border-bottom: 1px solid rgba(255, 90, 90, 0.18);
+    flex-wrap: wrap;
+  }
+  .incoming-info { display: flex; flex-direction: column; gap: 0.25rem; }
+  .badge-threat { font-weight: 700; color: #ff9b9b; }
+
   /* --- Galaxie-Ansicht --- */
   .gx-controls { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; }
   .gx-controls input { width: 90px; }

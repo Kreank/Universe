@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.fleet.schemas import FleetOut, SendFleetRequest
-from app.fleet.service import fleet_to_dict, recall_fleet, send_fleet
+from app.fleet.schemas import FleetOut, IncomingAttackOut, SendFleetRequest
+from app.fleet.service import fleet_to_dict, list_incoming_attacks, recall_fleet, send_fleet
 from app.platform.db import get_session
 from app.platform.models import Fleet, Player
 from app.platform.security import get_current_player
@@ -27,6 +27,14 @@ async def list_fleets(
         .order_by(Fleet.created_at.desc())
     )).scalars().all()
     return [await fleet_to_dict(session, f) for f in rows]
+
+
+@router.get("/incoming-attacks", response_model=list[IncomingAttackOut])
+async def incoming_attacks(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    return await list_incoming_attacks(session, player.id)
 
 
 @router.post("/fleets/send", status_code=202, response_model=FleetOut)

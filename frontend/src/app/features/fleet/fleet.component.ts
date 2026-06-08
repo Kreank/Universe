@@ -7,6 +7,7 @@ import {
   Fleet,
   FleetMission,
   GalaxyCell,
+  IncomingAttack,
   PlanetUnit,
 } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
@@ -21,6 +22,23 @@ import { fleetStyles } from './fleet.styles';
   imports: [FormsModule, CountdownComponent, IconTileComponent],
   template: `
     <h1>Flotte</h1>
+
+    @if (incoming().length) {
+      <section class="card incoming">
+        <div class="panel-title">🚨 Eingehende Angriffe</div>
+        @for (a of incoming(); track a.id) {
+          <div class="incoming-row">
+            <div class="incoming-info">
+              <span class="badge-threat">⚔️ {{ a.attacker }}</span>
+              <span class="mono small">@if (a.origin) { von [{{ a.origin }}] } → [{{ a.target.galaxy }}:{{ a.target.system }}:{{ a.target.position }}]</span>
+              <span class="chip">{{ a.ships_total }} Schiffe</span>
+            </div>
+            <app-countdown [target]="a.arrive_at" />
+          </div>
+        }
+        <p class="hint small">Verstaerke deine Verteidigung oder evakuiere die Flotte (Fleetsave), bevor sie eintrifft.</p>
+      </section>
+    }
 
     <div class="grid layout">
       <!-- Flotte senden -->
@@ -83,11 +101,14 @@ import { fleetStyles } from './fleet.styles';
 
           <div class="field">
             <label>Mission</label>
-            <select [(ngModel)]="mission">
+            <select [ngModel]="missionSig()" (ngModelChange)="missionSig.set($event)">
               @for (m of missions; track m) {
                 <option [value]="m">{{ missionMeta(m).glyph }} {{ missionMeta(m).label }}</option>
               }
             </select>
+            @if (missionHint()) {
+              <span class="hint small">{{ missionHint() }}</span>
+            }
           </div>
 
           <div class="field">
@@ -185,14 +206,24 @@ export class FleetComponent {
   private readonly notify = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
 
-  protected readonly missions: FleetMission[] = ['attack', 'transport', 'spy', 'deploy'];
+  protected readonly missions: FleetMission[] = [
+    'attack', 'transport', 'spy', 'deploy', 'recycle', 'colonize',
+  ];
+
+  // Pflicht-Schiff je Spezial-Mission (Backend erzwingt es; hier als Hinweis).
+  private readonly missionRequires: Partial<Record<FleetMission, { type: string; label: string }>> = {
+    spy: { type: 'spy_probe', label: 'Spionagesonde' },
+    recycle: { type: 'recycler', label: 'Recycler' },
+    colonize: { type: 'colony_ship', label: 'Kolonieschiff' },
+  };
+
+  protected readonly incoming = signal<IncomingAttack[]>([]);
 
   // Sende-Formular
   protected readonly selection = signal<Record<string, number>>({});
   targetG = 1;
   targetS = 1;
   targetP = 1;
-  mission: FleetMission = 'attack';
   commanderId: string | null = null;
   protected readonly speed = signal(100);
   protected readonly sending = signal(false);
@@ -221,6 +252,20 @@ export class FleetComponent {
 
   protected readonly canSend = computed(() => this.hasSelection() && !!this.state.activePlanetId());
 
+  // Hinweis auf das Pflicht-Schiff der gewaehlten Mission, falls noch nicht ausgewaehlt.
+  protected readonly missionHint = computed<string | null>(() => {
+    const req = this.missionRequires[this.missionSig()];
+    if (!req) {
+      return null;
+    }
+    return this.shipCount(req.type) > 0
+      ? null
+      : `Diese Mission benoetigt mindestens ein ${req.label}.`;
+  });
+
+  // Signal-Spiegel der Mission, damit missionHint reaktiv ist (ngModel schreibt das Feld).
+  protected readonly missionSig = signal<FleetMission>('attack');
+
   // Wurde aus der Galaxie-Karte mit Ziel-Koordinaten aufgerufen?
   protected readonly prefilled = signal<string | null>(null);
 
@@ -236,7 +281,7 @@ export class FleetComponent {
       this.targetP = Number(p);
       const m = qp.get('mission') as FleetMission | null;
       if (m && this.missions.includes(m)) {
-        this.mission = m;
+        this.missionSig.set(m);
       }
       this.prefilled.set(`${this.targetG}:${this.targetS}:${this.targetP}`);
       // Galaxie-Mini-Ansicht direkt auf das Zielsystem stellen.
@@ -254,6 +299,15 @@ export class FleetComponent {
           this.viewS = p2.system;
         }
       }
+    });
+
+    this.loadIncoming();
+  }
+
+  loadIncoming(): void {
+    this.api.getIncomingAttacks().subscribe({
+      next: (rows) => this.incoming.set(rows),
+      error: () => this.incoming.set([]),
     });
   }
 
@@ -282,7 +336,7 @@ export class FleetComponent {
       .sendFleet({
         origin_planet_id: origin,
         target: { galaxy: this.targetG, system: this.targetS, position: this.targetP },
-        mission: this.mission,
+        mission: this.missionSig(),
         ships,
         cargo: { metal: 0, crystal: 0, deuterium: 0 },
         commander_id: this.commanderId,
@@ -292,7 +346,7 @@ export class FleetComponent {
         next: () => {
           this.sending.set(false);
           this.selection.set({});
-          this.notify.success('Flotte gestartet', `Mission ${this.missionMeta(this.mission).label} unterwegs.`);
+          this.notify.success('Flotte gestartet', `Mission ${this.missionMeta(this.missionSig()).label} unterwegs.`);
           void this.state.reloadFleets();
           void this.state.reloadActivePlanet();
           void this.state.reloadCommanders();

@@ -100,6 +100,8 @@ export const MISSION_META: Record<string, DisplayMeta> = {
   transport: { label: 'Transport', glyph: '📦' },
   spy: { label: 'Spionage', glyph: '🛰️' },
   deploy: { label: 'Stationierung', glyph: '🚚' },
+  recycle: { label: 'Recycling', glyph: '♻️' },
+  colonize: { label: 'Kolonisieren', glyph: '🌱' },
 };
 
 export const SPECIALIZATION_META: Record<string, DisplayMeta> = {

@@ -11,6 +11,7 @@ import {
   DecisionChoice,
   DecisionResponse,
   Fleet,
+  IncomingAttack,
   FleetSendRequest,
   GalaxyResponse,
   GalaxyTarget,
@@ -94,6 +95,10 @@ export class ApiService {
 
   recallFleet(fleetId: string): Observable<Fleet> {
     return this.http.post<Fleet>(`/api/fleets/${fleetId}/recall`, {});
+  }
+
+  getIncomingAttacks(): Observable<IncomingAttack[]> {
+    return this.http.get<IncomingAttack[]>('/api/incoming-attacks');
   }
 
   getGalaxyTargets(): Observable<GalaxyTarget[]> {

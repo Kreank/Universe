@@ -27,6 +27,15 @@ class FleetOut(BaseModel):
     return_at: dt.datetime | None = None
 
 
+class IncomingAttackOut(BaseModel):
+    id: uuid.UUID
+    attacker: str
+    origin: str | None = None
+    target: TargetCoords
+    ships_total: int
+    arrive_at: dt.datetime
+
+
 class SendFleetRequest(BaseModel):
     origin_planet_id: str
     target: TargetCoords
