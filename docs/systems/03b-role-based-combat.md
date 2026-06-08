@@ -97,9 +97,11 @@ schlägt Linientanks (Überreichweite) → Flak/Linie schlägt Schwarm (Flächen
    integriert (`balance.ships` + `combat_roster` + Frontend/Werft + Assets, universell baubar). Die
    **Eskort-Konter** stehen (`balance.combat.escort`): **Punktverteidigung** (Eskort-Fregatte) fängt
    Enterer ab (neutralisiert Enter-Kapazität); **Schild-Tender** repariert Antriebe pro Runde (kontert
-   das Ionen-/Strand-Fenster). Damit ist die Piraterie-Schere-Stein-Papier komplett. Offen: restliche
-   Sondermechaniken (Drohnen-Start des Trägers, Stealth-Überraschungsrunde, Mining/Expedition) +
-   **Stat-Neutierung der ALTEN Artillerie** (Konter-Dreieck offener Kampf spürbar machen).
+   das Ionen-/Strand-Fenster). Damit ist die Piraterie-Schere-Stein-Papier komplett.
+   **Sondermechaniken GEBAUT:** Tarnkappen-**Hinterhalt** (Überraschungsrunde, `combat.ambush`) +
+   **Träger-Drohnen** (ephemere Staffeln, `combat.carrier`). Offen: **Mining/Expedition** als
+   Wirtschafts-Loops, **Sensor-Entdeckung** als Stealth-Konter, **Stat-Neutierung der ALTEN
+   Artillerie** (Konter-Dreieck offener Kampf spürbar machen).
 5. **Spielstil-Layer:** Söldner-/Eskorten-Anheuern, Piraterie-Reputation (Wirtschafts-/Sozial-Schicht).
 
 ## 7. Entscheidungen

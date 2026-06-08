@@ -172,10 +172,11 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 - **Rollen-Kampf (`03b/03c`):** Phase 1–4 GEBAUT (Subsysteme/Matrix/Reichweite · Antrieb/Disengage/
   Interdiktion · **Entern/Capture** · **12-Schiff-Roster** integriert, in der Werft baubar). Der volle
   Piraterie-Loop läuft inkl. **Eskort-Kontern** (Eskort-Fregatte fängt Enterer ab, Schild-Tender
-  repariert Antriebe gegen Stranding) → vollständiges Schere-Stein-Papier. Offen:
-  **Phase 5 Söldner-/Markt-Layer**, restliche **Sondermechaniken** (Drohnen-Start/Stealth-
-  Überraschung/Mining/Expedition), **Stat-Neutierung der alten Artillerie** (Konter-Dreieck offener
-  Kampf), und die **Doktrinen** (Kriegsherr/Händler/Freibeuter/Pionier — Kosten-/Zeit-Boni).
+  repariert Antriebe gegen Stranding) → vollständiges Schere-Stein-Papier. **Sondermechaniken
+  gebaut:** Tarnkappen-Hinterhalt (Überraschungsrunde) + Träger-Drohnen (ephemere Staffeln). Offen:
+  **Phase 5 Söldner-/Markt-Layer**, **Mining/Expedition** als Wirtschafts-Loops, **Sensor-Entdeckung**
+  (Stealth-Konter), **Stat-Neutierung der alten Artillerie** (Konter-Dreieck offener Kampf), und die
+  **Doktrinen** (Kriegsherr/Händler/Freibeuter/Pionier — Kosten-/Zeit-Boni).
 - **Kampf (Roadmap `03a`):** ~~Trümmer-/Recycler-Loop~~ **ERLEDIGT**. Offen: ⭐ **Interception**
   (Flotten im Flug abfangen — verschmilzt mit Disengage aus 03b §6.2), **aktive Commander-
   Faehigkeiten**, **Flaggschiff/Permadeath/Capture**, **Kampf-Simulator** (nutzt jetzt die
