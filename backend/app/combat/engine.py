@@ -47,6 +47,7 @@ class Unit:
     shield_projector: bool = False
     stealth: bool = False
     carrier: bool = False
+    sensor: bool = False
     launched: bool = False  # vom Traeger gestartete Drohne (ephemer, zaehlt nicht als Schiff)
     hull: float = 0.0
     shield: float = 0.0
@@ -112,6 +113,7 @@ def _build_units(
                 bool(prof.get("interdictor", False)), bool(prof.get("boarder", False)),
                 bool(prof.get("point_defense", False)), bool(prof.get("shield_projector", False)),
                 bool(prof.get("stealth", False)), bool(prof.get("carrier", False)),
+                bool(prof.get("sensor", False)),
             ))
     # Traeger starten Drohnen-Staffeln (ephemer): zaehlen nicht als eigene Schiffe.
     carrier_cfg = catalogs.get("carrier_cfg", {})
@@ -216,6 +218,7 @@ def simulate_battle(
     ambush_cfg = combat.get("ambush", {})
     ambush_enabled = ambush_cfg.get("enabled", False)
     ambush_dist = order.index(ambush_cfg["distance"]) if ambush_cfg.get("distance") in order else 0
+    detect_sensors = int(ambush_cfg.get("detect_sensors", 0))
 
     catalogs = {
         "ships": balance["ships"],
@@ -367,8 +370,10 @@ def simulate_battle(
         return survivors, losses
 
     # Hinterhalt (Tarnkappe, Doku 03b §9): hat der Angreifer Stealth-Schiffe, eroeffnet er mit
-    # einer Ueberraschungsrunde aus dem Nahbereich -- nur der Angreifer feuert.
-    if ambush_enabled and atk_units and def_units and any(u.stealth for u in atk_units):
+    # einer Ueberraschungsrunde aus dem Nahbereich -- nur der Angreifer feuert. Konter: genug
+    # Sensor-Schiffe beim Verteidiger entdecken den Hinterhalt und negieren ihn.
+    _detected = detect_sensors > 0 and sum(1 for u in def_units if u.sensor) >= detect_sensors
+    if ambush_enabled and not _detected and atk_units and def_units and any(u.stealth for u in atk_units):
         for u in atk_units:
             u.shield = u.shield_max
         for u in def_units:

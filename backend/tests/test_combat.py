@@ -223,3 +223,31 @@ def test_carrier_launches_ephemeral_drones():
     assert "drone" not in with_d["attacker_survivors"]              # Drohnen sind ephemer
     # Mit Drohnen verliert der Verteidiger mehr als ohne (die Staffeln kaempfen mit).
     assert sum(with_d["defender_losses"].values()) > sum(no_d["defender_losses"].values())
+
+
+# ---- Konter-Dreieck (Doku 03c §6): Artillerie-Glaskanone + Standoff ----
+
+def test_artillery_standoff_beats_line():
+    """Artillerie (Destroyer, Fern) ueberreicht die Linie (Schlachtschiff, Mittel) -> Standoff-Sieg."""
+    arty = {"ships": {"destroyer": 20}, "tech": {}, "attack_mult": 1.0}
+    line = {"ships": {"battleship": 15}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    r = simulate_battle(arty, line, 7, BALANCE)
+    assert r["winner"] == "attacker"
+    assert r["defender_survivors"].get("battleship", 0) == 0
+
+
+def test_artillery_is_crackable_glass_cannon():
+    """Re-tierte Artillerie (Glaskanone, duenner Schild + niedrige Huelle) ist jetzt knackbar:
+    ein getechter Jaeger-Schwarm (Rapidfire gegen Destroyer) zerstoert welche."""
+    swarm = {"ships": {"light_fighter": 200}, "tech": {"weapons_tech": 8}, "attack_mult": 1.0}
+    arty = {"ships": {"destroyer": 15}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    r = simulate_battle(swarm, arty, 7, BALANCE)
+    assert r["defender_survivors"].get("destroyer", 0) < 15        # nicht mehr unverwundbar
+
+
+def test_sensor_negates_stealth_ambush():
+    """Sensor-Schiffe (Tief-Aufklaerer) beim Verteidiger entdecken den Hinterhalt -> keine Ueberraschungsrunde."""
+    pirate = {"ships": {"stealth_corvette": 30}, "tech": {}, "attack_mult": 1.0}
+    guarded = {"ships": {"cruiser": 5, "deep_scout": 2}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    r = simulate_battle(pirate, guarded, 5, BALANCE)
+    assert r["rounds"][0].get("ambush") is not True               # entdeckt -> kein Ambush
