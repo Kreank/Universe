@@ -1,6 +1,7 @@
 """Smoke-Tests fuer die deterministische Kampf-Engine.
 
 Laedt balance.json direkt (ohne DB/Config-Abhaengigkeit) -> reine Engine-Pruefung."""
+import copy
 import json
 import os
 
@@ -105,3 +106,39 @@ def test_energy_cracks_shield_kinetic_bounces():
     k_res = simulate_battle(kinetic, dict(dome), 21, BALANCE)
     assert e_res["winner"] == "attacker"               # Energie bricht den Schild -> Kuppel faellt
     assert k_res["defender_survivors"].get("large_shield_dome", 0) == 1  # Kinetik prallt ab
+
+
+# ---- Rollen-Kampf Phase 2 (Doku 03b §4): Disengage / Antriebs-Stufen / Interdiktion ----
+
+def test_outgunned_attacker_disengages():
+    """Eine hoffnungslos unterlegene Angreifer-Flotte zieht sich zurueck (Antrieb intakt) statt
+    vernichtet zu werden: einige Jaeger fliehen, ueberleben und gelten nicht als Verlust."""
+    attacker = {"ships": {"light_fighter": 6}, "tech": {}, "attack_mult": 1.0}
+    defender = {"ships": {"battleship": 50}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    result = simulate_battle(attacker, defender, 3, BALANCE)
+    fled = result["attacker_fled"].get("light_fighter", 0)
+    assert fled > 0                                            # Rueckzug fand statt
+    surv = result["attacker_survivors"].get("light_fighter", 0)
+    lost = result["attacker_losses"].get("light_fighter", 0)
+    assert surv + lost == 6 and surv >= fled                   # Geflohene zaehlen als Ueberlebende
+    assert result["winner"] == "defender"                      # Verteidiger haelt das Feld
+
+
+def test_defender_holds_by_default():
+    """Verteidiger fliehen standardmaessig NICHT (halten Stellung) -> werden bei Unterlegenheit vernichtet."""
+    attacker = {"ships": {"cruiser": 80}, "tech": {"weapons_tech": 6}, "attack_mult": 1.1}
+    defender = {"ships": {"light_fighter": 4}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    result = simulate_battle(attacker, defender, 7, BALANCE)
+    assert result["defender_fled"] == {}
+    assert result["defender_survivors"].get("light_fighter", 0) == 0
+
+
+def test_interdictor_suppresses_disengage():
+    """Interdiktor-Feld (combat_roster.interdictor) drueckt die Flucht-Chance auf 0:
+    dieselbe unterlegene Flotte kann mit genug Interdiktoren nicht mehr entkommen."""
+    bal = copy.deepcopy(BALANCE)
+    bal["combat_roster"]["battleship"]["interdictor"] = True  # Schlachtschiffe als Fang-Schiffe
+    attacker = {"ships": {"light_fighter": 6}, "tech": {}, "attack_mult": 1.0}
+    defender = {"ships": {"battleship": 50}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    result = simulate_battle(attacker, defender, 3, bal)
+    assert result["attacker_fled"] == {}                       # Fang-Feld: niemand entkommt

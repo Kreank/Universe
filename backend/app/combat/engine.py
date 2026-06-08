@@ -41,6 +41,7 @@ class Unit:
     weapon_type: str | None
     drive_max: float
     range_idx: int
+    interdictor: bool = False
     hull: float = 0.0
     shield: float = 0.0
     drive: float = 0.0
@@ -101,7 +102,7 @@ def _build_units(
         for _ in range(int(count)):
             units.append(Unit(
                 typ, side, attack, shield, hull, dict(cfg.get("rapidfire", {})), False,
-                prof.get("weapon_type"), drive_max, ridx,
+                prof.get("weapon_type"), drive_max, ridx, bool(prof.get("interdictor", False)),
             ))
     for typ, count in (defenses or {}).items():
         cfg = def_cat.get(typ)
@@ -116,7 +117,7 @@ def _build_units(
         for _ in range(int(count)):
             units.append(Unit(
                 typ, side, attack, shield, hull, dict(cfg.get("rapidfire_against", {})), True,
-                prof.get("weapon_type"), 0.0, ridx,
+                prof.get("weapon_type"), 0.0, ridx, bool(prof.get("interdictor", False)),
             ))
     return units
 
@@ -161,6 +162,17 @@ def simulate_battle(
     start_dist = order.index(bands["start"]) if bands["start"] in order else len(order) - 1
     close_per_round = bands.get("close_per_round", 1)
     standoff_penalty = bands.get("standoff_penalty_per_band", 0.5)
+
+    stages = combat.get("drive_stages", {})
+    dis = combat.get("disengage", {})
+    dis_enabled = dis.get("enabled", False)
+    loser_ratio = dis.get("loser_power_ratio", 1.8)
+    dis_base = dis.get("base_chance", 0.45)
+    interdiction_per = dis.get("interdiction_per_unit", 0.2)
+    interdiction_cap = dis.get("interdiction_cap", 1.0)
+    # Standardmaessig darf der Angreifer fliehen (Rueckzug), der Verteidiger nicht (haelt Stellung).
+    atk_can_flee = dis_enabled and attacker.get("allow_disengage", True)
+    def_can_flee = dis_enabled and defender.get("allow_disengage", False)
 
     catalogs = {
         "ships": balance["ships"],
@@ -248,6 +260,50 @@ def simulate_battle(
             return standoff_penalty ** (unit.range_idx - distance)
         return 1.0
 
+    def drive_stage(unit: Unit) -> tuple[str, dict[str, Any]]:
+        """Antriebs-Integritaets-Stufe (Doku 03b §2). Antrieb 0 -> gestrandet."""
+        if unit.drive_max <= 0:
+            return "full", stages.get("full", {})
+        if unit.drive <= 0:
+            return "stranded", stages.get("stranded", {})
+        ratio = unit.drive / unit.drive_max
+        for name in ("full", "reduced", "crippled"):
+            cfg = stages.get(name)
+            if cfg is not None and ratio >= cfg.get("min_ratio", 0.0):
+                return name, cfg
+        return "stranded", stages.get("stranded", {})
+
+    def power(units: list[Unit]) -> float:
+        return sum(u.attack for u in units)
+
+    def disengage_phase(fleeing: list[Unit], enemy: list[Unit], fled: list[Unit]) -> tuple[list[Unit], int]:
+        """Flucht-Wurf pro Schiff (Doku 03b §4). Gegnerische Interdiktoren druecken die Chance.
+        Liefert (verbleibende, Anzahl_geflohen)."""
+        interdiction = min(interdiction_cap, sum(1 for u in enemy if u.interdictor) * interdiction_per)
+        suppress = max(0.0, 1.0 - interdiction)
+        if suppress <= 0.0:
+            return fleeing, 0
+        remaining: list[Unit] = []
+        n_fled = 0
+        for u in fleeing:
+            if u.is_defense:
+                remaining.append(u)
+                continue
+            _name, cfg = drive_stage(u)
+            if not cfg.get("can_flee", False):
+                remaining.append(u)  # bewegungsunfaehig/gestrandet -> kann nicht fliehen
+                continue
+            chance = dis_base * cfg.get("flee_factor", 0.0) * suppress
+            if rng.random() < chance:
+                fled.append(u)
+                n_fled += 1
+            else:
+                remaining.append(u)
+        return remaining, n_fled
+
+    atk_fled: list[Unit] = []
+    def_fled: list[Unit] = []
+
     for rnd in range(1, max_rounds + 1):
         if not atk_units or not def_units:
             break
@@ -301,6 +357,14 @@ def simulate_battle(
         for t, c in def_losses.items():
             defender_losses_total[t] = defender_losses_total.get(t, 0) + c
 
+        # Disengage: die unterlegene Seite versucht zu fliehen (Antrieb-gated, Interdiktion-gedrosselt).
+        atk_fled_now = def_fled_now = 0
+        if atk_units and def_units:
+            if atk_can_flee and power(def_units) >= loser_ratio * power(atk_units):
+                atk_units, atk_fled_now = disengage_phase(atk_units, def_units, atk_fled)
+            if def_can_flee and power(atk_units) >= loser_ratio * power(def_units):
+                def_units, def_fled_now = disengage_phase(def_units, atk_units, def_fled)
+
         rounds.append({
             "round": rnd,
             "distance": order[distance],
@@ -308,13 +372,16 @@ def simulate_battle(
             "defender_fire": round(defender_fire, 1),
             "attacker_losses": atk_losses,
             "defender_losses": def_losses,
+            "attacker_fled": atk_fled_now,
+            "defender_fled": def_fled_now,
         })
 
         if not atk_units or not def_units:
             break
 
-    attacker_survivors = _counts(atk_units)
-    defender_survivors = _counts(def_units)
+    # Geflohene Einheiten ueberleben (kehren heim), zaehlen aber nicht als "haelt das Feld".
+    attacker_survivors = _counts(atk_units + atk_fled)
+    defender_survivors = _counts(def_units + def_fled)
 
     atk_alive = len(atk_units) > 0
     def_alive = len(def_units) > 0
@@ -339,4 +406,6 @@ def simulate_battle(
         "defender_losses": defender_losses_total,
         "attacker_drive_disabled": _drive_disabled(atk_units),
         "defender_drive_disabled": _drive_disabled(def_units),
+        "attacker_fled": _counts(atk_fled),
+        "defender_fled": _counts(def_fled),
     }

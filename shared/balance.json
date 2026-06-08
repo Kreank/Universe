@@ -173,6 +173,21 @@
       "close_per_round": 1,
       "standoff_penalty_per_band": 0.5
     },
+    "drive_stages": {
+      "_note": "Doku 03b §2: Antriebs-Integritaet (drive/drive_max) -> Stufe. Steuert Flucht (can_flee) und Tempo (speed_factor, fuer spaetere Flugzeit-Wirkung). Gestrandet (0) = enterbar (Phase 3).",
+      "full":     { "min_ratio": 0.66, "speed_factor": 1.0, "can_flee": true,  "flee_factor": 1.0 },
+      "reduced":  { "min_ratio": 0.33, "speed_factor": 0.6, "can_flee": true,  "flee_factor": 0.5 },
+      "crippled": { "min_ratio": 0.0,  "speed_factor": 0.3, "can_flee": false, "flee_factor": 0.0 },
+      "stranded": { "min_ratio": -1.0, "speed_factor": 0.0, "can_flee": false, "flee_factor": 0.0 }
+    },
+    "disengage": {
+      "_note": "Doku 03b §4: Flucht-Wurf pro Runde fuer die unterlegene Seite (Power >= loser_power_ratio). Pro Schiff: base_chance * Antriebs-flee_factor * (1 - Interdiktion). Interdiktion = Anzahl gegnerischer Interdiktor-Einheiten (combat_roster.interdictor=true) * interdiction_per_unit (Phase 4). Angreifer darf standardmaessig fliehen (Rueckzug), Verteidiger nicht (haelt Stellung).",
+      "enabled": true,
+      "loser_power_ratio": 1.8,
+      "base_chance": 0.45,
+      "interdiction_per_unit": 0.2,
+      "interdiction_cap": 1.0
+    },
     "evacuation": {
       "_note": "Entkommen nur, wenn eigene Schiffe ueberleben (GDD §13 / Doku 04).",
       "base_chance": 0.30,

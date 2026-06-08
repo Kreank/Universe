@@ -79,9 +79,16 @@ schlägt Linientanks (Überreichweite) → Flak/Linie schlägt Schwarm (Flächen
      500 Schild). Volle Wirkung erst nach **Stat-Neutierung des Rosters (Phase 4)** — Phase 1 liefert
      den Mechanismus, nicht die finale Balance.
    - *Ursprünglicher Plan:* Schiffe bekommen `weapon_type` + Schild/Antrieb/Hülle-Stats. Rapidfire optional.
-2. **Strand/Disengage/Interdiktion:** Disengage-Wurf, Antriebs-Stufen, Interdiktor-Feld → Flucht/Fang.
-   (Verschmilzt mit der bereits geplanten **Interception** aus 03a Phase 3.)
-3. **Entern/Capture:** `gestrandet`-Auflösung, Enterschiff kapert Fracht/Schiff.
+2. ✅ **GEBAUT (2026-06-08) — Strand/Disengage/Interdiktion:** Antriebs-Stufen (`combat.drive_stages`:
+   voll/reduziert/bewegungsunfähig/gestrandet) + **Disengage-Wurf** pro Runde für die unterlegene
+   Seite (`combat.disengage`, Power-Verhältnis-Trigger, Antrieb-`flee_factor`-gated) + **Interdiktions-Hook**
+   (`combat_roster.interdictor=true` → Disengage→0). Engine-Default: **Angreifer darf fliehen** (Rückzug),
+   Verteidiger hält Stellung — emergent sichtbar: hoffnungslos unterlegene Angreifer-Flotten ziehen sich
+   zurück statt vernichtet zu werden (Geflohene überleben, gelten nicht als Verlust, Feld bleibt beim
+   Verteidiger). Result: `attacker_fled`/`defender_fled` + `*_drive_disabled` (= enterbar, Phase 3).
+   Verifiziert: 14 Tests grün. **Offen (Phase 3+):** echte Prey-Flucht im Fleet-vs-Fleet (Interception
+   aus 03a Phase 3) + Tempo-Wirkung der Antriebs-Stufen auf die Flugzeit (braucht Pro-Schiff-drive-Persistenz).
+3. **Entern/Capture:** `gestrandet`-Auflösung (Antrieb 0 → enterbar, schon getrackt), Enterschiff kapert Fracht/Schiff.
 4. **Rollen-Roster + Eskort-Konter:** neue Schiffstypen (s. §5 ✚) + Schild-Tender/Punktverteidigung. **Braucht neue Assets.**
 5. **Spielstil-Layer:** Söldner-/Eskorten-Anheuern, Piraterie-Reputation (Wirtschafts-/Sozial-Schicht).
 
