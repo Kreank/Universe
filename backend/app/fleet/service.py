@@ -126,7 +126,7 @@ async def send_fleet(
 ) -> Fleet:
     """Sendet eine Flotte. Validiert Schiffe, Slots, Ziel-Schutz, zieht Sprit+Fracht ab."""
     bal = get_balance()
-    valid_missions = {"attack", "transport", "spy", "deploy", "recycle"}
+    valid_missions = {"attack", "transport", "spy", "deploy", "recycle", "colonize"}
     if mission not in valid_missions:
         raise ValueError(f"Mission muss eine von {sorted(valid_missions)} sein")
 
@@ -172,6 +172,13 @@ async def send_fleet(
             raise RuntimeError(
                 f"Recycler-Mission benoetigt mindestens {h_cfg.get('min_collectors', 1)} {collector}"
             )
+
+    # Kolonisierung erfordert ein Kolonieschiff in der Flotte.
+    if mission == "colonize":
+        c_cfg = bal.data.get("colonization", {})
+        cs_type = c_cfg.get("ship_type", "colony_ship")
+        if ships.get(cs_type, 0) < 1:
+            raise RuntimeError(f"Kolonisierung benoetigt ein {cs_type}")
 
     # Commander pruefen (falls angegeben).
     commander = None
@@ -298,6 +305,7 @@ async def fleet_arrive(fleet_id: str) -> None:
     """Anflug-Job: bei Angriff Kampf, bei Spionage Aufklaerung; danach Rueckflug."""
     from app.combat.service import resolve_attack
     from app.fleet.harvest import resolve_harvest
+    from app.planets.colonize import resolve_colonize
     from app.universe.spionage import resolve_spy
 
     async with session_scope() as session:
@@ -314,6 +322,8 @@ async def fleet_arrive(fleet_id: str) -> None:
             await resolve_spy(session, fleet)
         elif mission == "recycle":
             await resolve_harvest(session, fleet)
+        elif mission == "colonize":
+            await resolve_colonize(session, fleet)
 
         # Nach Ankunft kehrt die Flotte zurueck (return_at bleibt wie geplant).
         fleet.status = "returning"

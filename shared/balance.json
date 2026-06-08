@@ -203,6 +203,14 @@
     "min_collectors": 1
   },
 
+  "colonization": {
+    "_note": "Doku 06a: 'colonize'-Mission gruendet eine Kolonie auf einer leeren (oder reinen Truemmer-) Zelle. max_planets = Gesamtlimit inkl. Heimatplanet (Pionier-Doktrin erhoeht es spaeter). Das Kolonieschiff wird beim Gruenden verbraucht; mitgefuehrte Fracht wird zur Start-Ressource der Kolonie.",
+    "ship_type": "colony_ship",
+    "max_planets": 9,
+    "colony_resources": { "metal": 500, "crystal": 500, "deuterium": 0 },
+    "colony_buildings": {}
+  },
+
   "commander": {
     "morale": {
       "min": 0, "max": 100, "start": 60, "base_target": 50,
