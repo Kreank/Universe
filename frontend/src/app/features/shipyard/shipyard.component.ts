@@ -23,7 +23,17 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
     key: 'civil',
     label: 'Zivile Schiffe',
     glyph: '🚚',
-    types: ['small_cargo', 'large_cargo', 'recycler', 'colony_ship', 'solar_satellite', 'spy_probe'],
+    types: [
+      'small_cargo',
+      'large_cargo',
+      'recycler',
+      'colony_ship',
+      'solar_satellite',
+      'spy_probe',
+      'miner',
+      'deep_scout',
+      'expedition_ship',
+    ],
   },
   {
     key: 'combat',
@@ -38,6 +48,22 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       'bomber',
       'destroyer',
       'deathstar',
+    ],
+  },
+  {
+    key: 'roles',
+    label: 'Rollen-Schiffe',
+    glyph: '🎯',
+    types: [
+      'interceptor',
+      'escort_frigate',
+      'shield_tender',
+      'carrier',
+      'drone',
+      'interdictor',
+      'ewar_frigate',
+      'boarder',
+      'stealth_corvette',
     ],
   },
 ];
@@ -69,9 +95,9 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       </section>
 
       @for (group of shipGroups(); track group.key) {
-        <section class="cat">
+        <section class="card cat">
           <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
-          <div class="grid list">
+          <div class="bld-list">
             @for (s of group.ships; track s.type) {
               <ng-container *ngTemplateOutlet="unitCard; context: { $implicit: s, cat: 'ship' }" />
             }
@@ -79,9 +105,9 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
         </section>
       }
 
-      <section class="cat">
+      <section class="card cat">
         <h2 class="cat-title">🛡️ Verteidigung</h2>
-        <div class="grid list">
+        <div class="bld-list">
           @for (s of d.defenses; track s.type) {
             <ng-container *ngTemplateOutlet="unitCard; context: { $implicit: s, cat: 'defense' }" />
           }
@@ -89,20 +115,22 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       </section>
 
       <ng-template #unitCard let-s let-cat="cat">
-        <div class="bld">
+        <div class="bld-row">
           <div class="bld-art">
             <app-icon-tile
               [glyph]="unitMeta(s.type, cat).glyph"
               [src]="'assets/img/' + (cat === 'ship' ? 'ships' : 'defenses') + '/' + s.type + '.png'"
-              [size]="78"
+              [size]="56"
               [variant]="cat === 'defense' ? 'magenta' : 'accent'"
             />
           </div>
-          <div class="bld-name tip" [attr.data-tip]="unitMeta(s.type, cat).blurb ?? ''">{{ unitMeta(s.type, cat).label }}</div>
 
-          <app-cost-line [cost]="s.cost" [available]="balances()" />
-          <div class="bld-meta">
-            <span class="muted small">⏱ {{ formatTime(s.build_seconds_each) }} / Stk.</span>
+          <div class="bld-info">
+            <div class="bld-name tip" [attr.data-tip]="unitMeta(s.type, cat).blurb ?? ''">{{ unitMeta(s.type, cat).label }}</div>
+            <div class="bld-stats">
+              <app-cost-line [cost]="s.cost" [available]="balances()" />
+              <span class="muted small">⏱ {{ formatTime(s.build_seconds_each) }} / Stk.</span>
+            </div>
           </div>
 
           <div class="bld-action">
@@ -146,27 +174,33 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
         padding: 0.4rem 0; font-size: 0.88rem; border-bottom: 1px solid rgba(255,255,255,0.05);
       }
       .queue-row:last-child { border-bottom: none; }
-      .cat { margin-bottom: 1.4rem; }
+      .cat { margin-bottom: 1rem; }
       .cat-title {
-        font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.06em;
-        color: var(--accent); margin: 0 0 0.6rem;
-        padding-bottom: 0.35rem; border-bottom: 1px solid var(--border);
+        font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.14em;
+        color: #b9c6de; margin: 0 0 0.4rem;
+        padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);
       }
-      /* Dichtes, bild-zentriertes Kachel-Raster (OGame-Stil). */
-      .list { grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 0.7rem; }
-      .bld {
-        display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
-        padding: 0.75rem; text-align: center;
+      /* Zeilen-Layout: Art links, Infos mittig, Aktion rechts. */
+      .bld-list { display: flex; flex-direction: column; }
+      .bld-row {
+        display: flex; align-items: center; gap: 1rem;
+        padding: 0.75rem 0.25rem;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
       }
-      .bld-art { position: relative; align-self: center; }
-      .bld-name { font-weight: 600; font-size: 0.92rem; }
-      .bld-meta { display: flex; justify-content: center; gap: 0.8rem; flex-wrap: wrap; }
-      .bld-action { margin-top: auto; display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem; }
-      .qty-row { display: flex; gap: 0.4rem; }
+      .bld-row:last-child { border-bottom: none; }
+      .bld-art { position: relative; flex: 0 0 auto; }
+      .bld-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+      .bld-name { font-weight: 600; font-size: 0.95rem; }
+      .bld-stats { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+      .bld-action {
+        flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end;
+        gap: 0.3rem; min-width: 180px; max-width: 240px;
+      }
+      .qty-row { display: flex; gap: 0.4rem; align-items: center; }
       .qty-row input { width: 64px; flex: 0 0 auto; text-align: center; }
-      .qty-row .btn { flex: 1 1 auto; }
+      .qty-row .btn { flex: 0 0 auto; white-space: nowrap; }
       .small { font-size: 0.76rem; }
-      .hint { color: var(--text-faint); }
+      .hint { color: var(--text-faint); text-align: right; }
       .hint.warn { color: var(--warn); }
     `,
   ],

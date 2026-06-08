@@ -71,6 +71,18 @@ export const SHIP_META: Record<string, DisplayMeta> = {
   bomber: { label: 'Bomber', glyph: '💣', blurb: 'Bricht feindliche Verteidigung.' },
   destroyer: { label: 'Zerstoerer', glyph: '🔱', blurb: 'Schwerer Linienkaempfer.' },
   deathstar: { label: 'Todesstern', glyph: '🌑', blurb: 'Mobile Kampfstation.' },
+  carrier: { label: 'Traeger', glyph: '🛸', blurb: 'Kraftmultiplikator, startet Drohnen.' },
+  drone: { label: 'Drohne', glyph: '🛩️', blurb: 'Billige Schwarm-Einheit.' },
+  interdictor: { label: 'Interdiktor', glyph: '🧲', blurb: 'Fang-Feld: verhindert Flucht.' },
+  ewar_frigate: { label: 'EWAR-Fregatte', glyph: '⚡', blurb: 'Ionen: leert Schilde, legt Antrieb lahm.' },
+  boarder: { label: 'Enterschiff', glyph: '🪝', blurb: 'Kapert gestrandete Schiffe.' },
+  stealth_corvette: { label: 'Tarnkappen-Korvette', glyph: '🌫️', blurb: 'Stealth, eroeffnet den Ueberfall.' },
+  escort_frigate: { label: 'Eskort-Fregatte', glyph: '🛡️', blurb: 'Punktverteidigung, schirmt Fracht.' },
+  shield_tender: { label: 'Schild-Tender', glyph: '🔆', blurb: 'Projiziert Schilde im Gefecht.' },
+  interceptor: { label: 'Abfangjaeger', glyph: '🏹', blurb: 'Sehr schnell, Anti-Jaeger.' },
+  miner: { label: 'Bergbauschiff', glyph: '⛏️', blurb: 'Mobiler Rohstoff-Abbau.' },
+  deep_scout: { label: 'Tief-Aufklaerer', glyph: '🔭', blurb: 'Langstrecken-Aufklaerung.' },
+  expedition_ship: { label: 'Expeditions-Schiff', glyph: '🧭', blurb: 'Erkundung und Langstrecke.' },
 };
 
 export const DEFENSE_META: Record<string, DisplayMeta> = {
