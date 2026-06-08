@@ -152,8 +152,8 @@
     "ewar_frigate":     { "weapon_type": "ion",     "drive": 4, "range": "medium" },
     "boarder":          { "weapon_type": "kinetic", "drive": 3, "range": "near", "boarder": true },
     "stealth_corvette": { "weapon_type": "energy",  "drive": 5, "range": "near" },
-    "escort_frigate":   { "weapon_type": "kinetic", "drive": 3, "range": "medium" },
-    "shield_tender":    { "weapon_type": null,      "drive": 2, "range": "medium" },
+    "escort_frigate":   { "weapon_type": "kinetic", "drive": 3, "range": "medium", "point_defense": true },
+    "shield_tender":    { "weapon_type": null,      "drive": 2, "range": "medium", "shield_projector": true },
     "interceptor":      { "weapon_type": "energy",  "drive": 5, "range": "near" },
     "miner":            { "weapon_type": null,      "drive": 1, "range": "near" },
     "deep_scout":       { "weapon_type": null,      "drive": 4, "range": "far" },
@@ -218,6 +218,11 @@
     "boarding": {
       "_note": "Doku 03b §4/§7: Enterschiffe (combat_roster.boarder=true) kapern am Ende des Kampfes GESTRANDETE Gegner (Antrieb 0). capture_per_boarder = gekaperte Schiffe je ueberlebendem Enterschiff. Kaperung = nur SCHIFFE (Commander nie). Greift unabhaengig vom Sieger (disable+board).",
       "capture_per_boarder": 2
+    },
+    "escort": {
+      "_note": "Eskorten-Konter (Doku 03b §4). Punktverteidigung (combat_roster.point_defense=true) neutralisiert pro ueberlebendem Schiff X gegnerische Enter-Kapazitaet (schuetzt vor Kaperung). Schild-Tender (combat_roster.shield_projector=true) repariert pro Runde Antriebs-Integritaet der eigenen Schiffe (haelt Subsysteme online) -> kontert das Ionen-/Strand-Fenster.",
+      "boarders_blocked_per_escort": 1,
+      "drive_repair_per_projector": 80
     },
     "evacuation": {
       "_note": "Entkommen nur, wenn eigene Schiffe ueberleben (GDD §13 / Doku 04).",

@@ -166,3 +166,30 @@ def test_no_capture_without_boarder():
     assert result["attacker_captured"] == {}
     assert result["defender_survivors"].get("cruiser", 0) == 8     # alle ueberleben ...
     assert result["defender_drive_disabled"].get("cruiser", 0) == 8  # ... aber gestrandet
+
+
+# ---- Eskorten-Konter (Doku 03b §4): Punktverteidigung + Schild-Tender ----
+
+def test_escort_point_defense_blocks_boarding():
+    """Eskort-Fregatten (Punktverteidigung) fangen Enterer ab: dieselbe Pirat-Flotte kapert
+    OHNE Eskorte die Kreuzer, MIT genug Eskorten gelingt keine Kaperung."""
+    pirates = {"ships": {"ewar_frigate": 40, "boarder": 10}, "tech": {}, "attack_mult": 1.0}
+    bare = {"ships": {"cruiser": 8}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    escorted = {"ships": {"cruiser": 8, "escort_frigate": 25}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    r_bare = simulate_battle(pirates, bare, 5, BALANCE)
+    r_esc = simulate_battle(pirates, escorted, 5, BALANCE)
+    assert r_bare["attacker_captured"].get("cruiser", 0) > 0     # ohne Eskorte: gekapert
+    assert r_esc["attacker_captured"] == {}                       # mit Eskorte: abgefangen
+
+
+def test_shield_tender_counters_stranding():
+    """Schild-Tender reparieren Antriebe und verhindern das Ionen-Strand-Fenster:
+    OHNE Tender stranden die Kreuzer, MIT genug Tendern bleiben sie manoevrierfaehig."""
+    ewar = {"ships": {"ewar_frigate": 12}, "tech": {}, "attack_mult": 1.0}
+    bare = {"ships": {"cruiser": 10}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    tended = {"ships": {"cruiser": 10, "shield_tender": 15}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    r_bare = simulate_battle(ewar, bare, 5, BALANCE)
+    r_tended = simulate_battle(ewar, tended, 5, BALANCE)
+    assert r_bare["defender_drive_disabled"].get("cruiser", 0) >= 5    # ohne Tender: gestrandet
+    assert r_tended["defender_drive_disabled"].get("cruiser", 0) < \
+        r_bare["defender_drive_disabled"].get("cruiser", 0)            # Tender reduziert Stranding

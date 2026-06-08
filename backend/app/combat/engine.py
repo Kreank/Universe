@@ -43,6 +43,8 @@ class Unit:
     range_idx: int
     interdictor: bool = False
     boarder: bool = False
+    point_defense: bool = False
+    shield_projector: bool = False
     hull: float = 0.0
     shield: float = 0.0
     drive: float = 0.0
@@ -105,6 +107,7 @@ def _build_units(
                 typ, side, attack, shield, hull, dict(cfg.get("rapidfire", {})), False,
                 prof.get("weapon_type"), drive_max, ridx,
                 bool(prof.get("interdictor", False)), bool(prof.get("boarder", False)),
+                bool(prof.get("point_defense", False)), bool(prof.get("shield_projector", False)),
             ))
     for typ, count in (defenses or {}).items():
         cfg = def_cat.get(typ)
@@ -175,6 +178,10 @@ def simulate_battle(
     # Standardmaessig darf der Angreifer fliehen (Rueckzug), der Verteidiger nicht (haelt Stellung).
     atk_can_flee = dis_enabled and attacker.get("allow_disengage", True)
     def_can_flee = dis_enabled and defender.get("allow_disengage", False)
+
+    escort = combat.get("escort", {})
+    pd_block = int(escort.get("boarders_blocked_per_escort", 0))
+    drive_repair_per = float(escort.get("drive_repair_per_projector", 0.0))
 
     catalogs = {
         "ships": balance["ships"],
@@ -335,6 +342,18 @@ def simulate_battle(
             if f is not None:
                 defender_fire += fire(u, atk_units, f)
 
+        # Schild-Tender reparieren nach der Feuerphase Antriebs-Integritaet der eigenen
+        # Seite (kontert das Ionen-/Strand-Fenster; haelt Subsysteme online).
+        def repair_drives(units: list[Unit]) -> None:
+            repair = sum(1 for u in units if u.shield_projector) * drive_repair_per
+            if repair <= 0:
+                return
+            for u in units:
+                if u.drive_max > 0 and u.drive < u.drive_max:
+                    u.drive = min(u.drive_max, u.drive + repair)
+        repair_drives(atk_units)
+        repair_drives(def_units)
+
         # Explosionen / Zerstoerung abwickeln.
         def resolve(units: list[Unit]) -> tuple[list[Unit], dict[str, int]]:
             survivors: list[Unit] = []
@@ -390,6 +409,8 @@ def simulate_battle(
 
     def board(boarding_units: list[Unit], victim_units: list[Unit], captured: dict[str, int]) -> list[Unit]:
         capacity = sum(1 for u in boarding_units if u.boarder) * cap_per
+        # Punktverteidigung der Opfer-Seite (Eskort-Fregatten) faengt Enterer ab.
+        capacity -= sum(1 for u in victim_units if u.point_defense) * pd_block
         if capacity <= 0:
             return victim_units
         kept: list[Unit] = []
