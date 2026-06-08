@@ -187,12 +187,14 @@ Rollen-Kampf Phase 1+2 sind gebaut (s. §0). Naheliegende nächste Schritte:
 1. **Frontend an die neue Engine anbinden:** UI für `weapon_type`/Reichweite/Antriebs-Stufen in den
    Schiff-Kacheln + Kampfbericht zeigt Distanz/Fliehen/`drive_disabled`. Der **Kampf-Simulator**
    (Doku-Screen ohne Endpunkt) lohnt sich jetzt richtig — die Engine ist reich genug.
-2. **`recycle`/`colonize` im Frontend** wählbar machen (Backend-Missionen stehen, UI fehlt noch) —
-   sonst sind die neuen Loops nur per API erreichbar.
+2. ~~`recycle`/`colonize` im Frontend wählbar~~ **ERLEDIGT (2026-06-08)** — Missionen im
+   Flotten-Versand wählbar (mit Pflicht-Schiff-Hinweis) + **eingehende Angriffe** als rotes
+   Warn-Banner im Flotten-Screen (`GET /api/incoming-attacks`). Offen: Cockpit/Dashboard-Alert
+   (dort liegt noch die uncommittete „Kolonien-Leiste"-WIP — bewusst nicht angefasst).
 3. ~~NPC-Aktivangriff~~ **GEBAUT (2026-06-08)** — eingehende Angriffe via `npc_attacks`-Tabelle
    (`npc/attack.py`): aggressive NPCs greifen ungeschützte Spieler an, Warnung im Anflug, Kampf bei
-   Ankunft (Spieler = Verteidiger), Beute/Verluste/Trümmer, Recovery-fest. **Offen im Frontend:**
-   eingehende Angriffe anzeigen (Cockpit-Alert) — Backend pusht `combat_report` + Warn-Transmission.
+   Ankunft (Spieler = Verteidiger), Beute/Verluste/Trümmer, Recovery-fest. Frontend: Warn-Banner im
+   Flotten-Screen (s. o.). Offen: Cockpit-Alert + WS-Live-Update des Banners (statt nur beim Laden).
 4. **Phase 3 Entern/Capture** & **Phase 4 Roster-Stat-Neutierung** — brauchen die neuen Rollen-Assets.
 
 ### Parallel / sonst offen
