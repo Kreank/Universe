@@ -116,7 +116,7 @@ interface Tier {
         font-size: 0.82rem;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        color: var(--accent);
+        color: #b9c6de;
         margin: 0 0 0.6rem;
         padding-bottom: 0.35rem;
         border-bottom: 1px solid var(--border);

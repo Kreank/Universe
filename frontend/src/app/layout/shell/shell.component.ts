@@ -103,6 +103,24 @@ interface NavItem {
         <main class="content">
           <router-outlet />
         </main>
+
+        <!-- Kolonien-Leiste -->
+        @if (planets().length) {
+          <aside class="colony-rail">
+            <div class="rail-title">Kolonien</div>
+            @for (p of planets(); track p.id) {
+              <button
+                type="button"
+                class="colony"
+                [class.active]="p.id === state.activePlanetId()"
+                (click)="selectColony(p.id)"
+              >
+                <span class="colony-name">{{ p.name }}</span>
+                <span class="colony-coords mono">[{{ p.galaxy }}:{{ p.system }}:{{ p.position }}]</span>
+              </button>
+            }
+          </aside>
+        }
       </div>
     </div>
   `,
@@ -166,6 +184,10 @@ export class ShellComponent implements OnInit {
 
   onPlanetChange(event: Event): void {
     const id = (event.target as HTMLSelectElement).value;
+    void this.state.selectPlanet(id);
+  }
+
+  selectColony(id: string): void {
     void this.state.selectPlanet(id);
   }
 

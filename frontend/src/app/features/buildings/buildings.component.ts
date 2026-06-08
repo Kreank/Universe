@@ -50,62 +50,66 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       <p class="empty-state">Keine Gebaeudedaten verfuegbar.</p>
     } @else {
       @for (group of groups(); track group.key) {
-        <section class="cat">
+        <section class="card cat">
           <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
-          <div class="grid list">
+          <div class="bld-list">
             @for (b of group.rows; track b.type) {
-              <div class="bld" [class.busy]="b.finishesAt">
+              <div class="bld-row" [class.busy]="b.finishesAt">
                 <div class="bld-art">
-                  <app-icon-tile [glyph]="meta(b.type).glyph" [src]="'assets/img/buildings/' + b.type + '.png'" [size]="78" />
+                  <app-icon-tile [glyph]="meta(b.type).glyph" [src]="'assets/img/buildings/' + b.type + '.png'" [size]="56" />
                   <span class="lvl" [class.zero]="b.level === 0" title="Stufe">{{ b.level }}</span>
                 </div>
-                <div class="bld-name tip" [attr.data-tip]="meta(b.type).blurb ?? ''">{{ meta(b.type).label }}</div>
 
-                @if (b.option) {
-                  <app-cost-line [cost]="b.option.cost" [available]="balances()" />
-                  <div class="bld-meta">
-                    <span class="muted small">⏱ {{ formatTime(b.option.build_seconds) }}</span>
-                    @if (b.option.energy_now !== 0 || b.option.energy_delta !== 0) {
-                      <span class="energy small"
-                        [class.produces]="b.option.energy_now > 0"
-                        [class.consumes]="b.option.energy_now < 0"
-                        [attr.data-tip]="energyTip(b.option)">
-                        ⚡ {{ energyLabel(b.option.energy_now) }}@if (b.option.energy_delta !== 0) {<span class="delta"> (Δ {{ signed(b.option.energy_delta) }})</span>}
-                      </span>
-                    }
-                  </div>
-                }
+                <div class="bld-info">
+                  <div class="bld-name tip" [attr.data-tip]="meta(b.type).blurb ?? ''">{{ meta(b.type).label }}</div>
+                  @if (b.option) {
+                    <div class="bld-stats">
+                      <app-cost-line [cost]="b.option.cost" [available]="balances()" />
+                      <span class="muted small">⏱ {{ formatTime(b.option.build_seconds) }}</span>
+                      @if (b.option.energy_now !== 0 || b.option.energy_delta !== 0) {
+                        <span class="energy small"
+                          [class.produces]="b.option.energy_now > 0"
+                          [class.consumes]="b.option.energy_now < 0"
+                          [attr.data-tip]="energyTip(b.option)">
+                          ⚡ {{ energyLabel(b.option.energy_now) }}@if (b.option.energy_delta !== 0) {<span class="delta"> (Δ {{ signed(b.option.energy_delta) }})</span>}
+                        </span>
+                      }
+                    </div>
+                  }
+                </div>
 
                 <div class="bld-action">
                   @if (b.finishesAt) {
                     <span class="building-badge">⏳ Im Bau</span>
                     <app-countdown [target]="b.finishesAt" />
-                  } @else if (b.option) {
-                    <button
-                      class="btn btn-primary btn-sm full"
-                      type="button"
-                      [disabled]="!canUpgrade(b) || pending() === b.type || anyBuilding()"
-                      (click)="upgrade(b.type)"
-                    >
-                      {{ pending() === b.type ? '…' : 'Ausbauen → ' + b.option.next_level }}
-                    </button>
-                    @if (!b.option.requirements_met) {
-                      <span class="hint warn small">Voraussetzung fehlt</span>
-                    } @else if (!b.option.can_afford) {
-                      <span class="hint warn small">Zu teuer</span>
-                    } @else if (anyBuilding()) {
-                      <span class="hint small">Bauschleife belegt</span>
+                  } @else {
+                    @if (b.option) {
+                      <button
+                        class="btn btn-primary btn-sm"
+                        type="button"
+                        [disabled]="!canUpgrade(b) || pending() === b.type || anyBuilding()"
+                        (click)="upgrade(b.type)"
+                      >
+                        {{ pending() === b.type ? '…' : 'Ausbauen → ' + b.option.next_level }}
+                      </button>
+                      @if (!b.option.requirements_met) {
+                        <span class="hint warn small">Voraussetzung fehlt</span>
+                      } @else if (!b.option.can_afford) {
+                        <span class="hint warn small">Zu teuer</span>
+                      } @else if (anyBuilding()) {
+                        <span class="hint small">Bauschleife belegt</span>
+                      }
                     }
-                  }
-                  @if (b.level > 0 && !b.finishesAt) {
-                    <button
-                      class="btn btn-ghost btn-sm full demolish"
-                      type="button"
-                      [disabled]="pending() === b.type || anyBuilding()"
-                      (click)="demolish(b.type)"
-                    >
-                      Abreissen → {{ b.level - 1 }}
-                    </button>
+                    @if (b.level > 0) {
+                      <button
+                        class="btn btn-ghost btn-sm demolish"
+                        type="button"
+                        [disabled]="pending() === b.type || anyBuilding()"
+                        (click)="demolish(b.type)"
+                      >
+                        Abreissen → {{ b.level - 1 }}
+                      </button>
+                    }
                   }
                 </div>
               </div>
@@ -118,24 +122,26 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
   styles: [
     `
       .sub { margin-top: -0.3rem; font-size: 0.85rem; }
-      .cat { margin-bottom: 1.4rem; }
+      .cat { margin-bottom: 1rem; }
       .cat-title {
-        font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.06em;
-        color: var(--accent); margin: 0 0 0.6rem;
-        padding-bottom: 0.35rem; border-bottom: 1px solid var(--border);
+        font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.14em;
+        color: #b9c6de; margin: 0 0 0.4rem;
+        padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);
       }
-      /* Dichtes, bild-zentriertes Kachel-Raster (OGame-Stil). */
-      .list { grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 0.7rem; }
-      .bld {
-        display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
-        padding: 0.75rem; text-align: center;
+      /* Zeilen-Layout: Art links, Infos mittig, Aktion rechts. */
+      .bld-list { display: flex; flex-direction: column; }
+      .bld-row {
+        display: flex; align-items: center; gap: 1rem;
+        padding: 0.75rem 0.25rem;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
       }
-      .bld.busy { border-color: var(--accent); box-shadow: var(--glow); }
-      .bld-art { position: relative; align-self: center; }
+      .bld-row:last-child { border-bottom: none; }
+      .bld-row.busy { box-shadow: inset 2px 0 0 var(--accent); }
+      .bld-art { position: relative; flex: 0 0 auto; }
       .bld-art .lvl {
         position: absolute; bottom: -5px; right: -5px;
-        min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px;
-        background: var(--accent); color: #04121a; font-size: 0.74rem; font-weight: 700;
+        min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px;
+        background: var(--accent); color: #04121a; font-size: 0.72rem; font-weight: 700;
         display: flex; align-items: center; justify-content: center;
         box-shadow: 0 0 8px var(--accent);
       }
@@ -143,10 +149,14 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
         background: var(--surface-2); color: var(--text-dim);
         box-shadow: none; border: 1px solid var(--border);
       }
-      .bld-name { font-weight: 600; font-size: 0.92rem; }
-      .bld-meta { display: flex; justify-content: center; gap: 0.8rem; flex-wrap: wrap; }
-      .bld-action { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
-      .full { width: 100%; }
+      .bld-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+      .bld-name { font-weight: 600; font-size: 0.95rem; }
+      .bld-stats { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+      .bld-action {
+        flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end;
+        gap: 0.3rem; min-width: 150px;
+      }
+      .bld-action .btn { white-space: nowrap; }
       .building-badge { font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
       .energy { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--text-dim); }
       .energy.produces { color: var(--ok); }

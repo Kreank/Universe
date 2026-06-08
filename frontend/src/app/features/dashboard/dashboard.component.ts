@@ -46,7 +46,8 @@ import { dashboardStyles } from './dashboard.styles';
         {{ p.temp_max }}°C · Felder {{ p.fields_used }}/{{ p.fields_max }}
       </p>
 
-      <div class="grid cols">
+      <div class="cols">
+       <div class="col">
         <!-- Ressourcen -->
         <section class="card">
           <div class="panel-title">⛏️ Ressourcen</div>
@@ -83,6 +84,33 @@ import { dashboardStyles } from './dashboard.styles';
           </div>
         </section>
 
+        <!-- Commander-Moral -->
+        <section class="card">
+          <div class="panel-title">🎖️ Crew-Moral</div>
+          @if (state.commanders().length) {
+            @for (c of state.commanders(); track c.id) {
+              <a class="cmd-row" [routerLink]="['/commanders', c.id]">
+                <span class="cmd-name">
+                  {{ rank(c.rank).glyph }} {{ c.name }}
+                  <span class="faint">· {{ spec(c.specialization).label }}</span>
+                </span>
+                <span class="cmd-morale" [class]="bandClass(c.morale)">
+                  <span class="dot"></span>{{ c.morale }} · {{ c.morale_band.label }}
+                </span>
+              </a>
+            }
+            @if (state.span(); as s) {
+              <p class="muted small span-line">
+                Span of Control: {{ s.in_use }}/{{ s.total }} belegt
+              </p>
+            }
+          } @else {
+            <p class="muted small">Noch keine Commander. <a routerLink="/commanders">Kommandozentrale →</a></p>
+          }
+        </section>
+       </div>
+
+       <div class="col">
         <!-- Aktive Vorgaenge -->
         <section class="card">
           <div class="panel-title">⏳ Aktive Vorgaenge</div>
@@ -183,30 +211,7 @@ import { dashboardStyles } from './dashboard.styles';
           }
         </section>
 
-        <!-- Commander-Moral -->
-        <section class="card">
-          <div class="panel-title">🎖️ Crew-Moral</div>
-          @if (state.commanders().length) {
-            @for (c of state.commanders(); track c.id) {
-              <a class="cmd-row" [routerLink]="['/commanders', c.id]">
-                <span class="cmd-name">
-                  {{ rank(c.rank).glyph }} {{ c.name }}
-                  <span class="faint">· {{ spec(c.specialization).label }}</span>
-                </span>
-                <span class="cmd-morale" [class]="bandClass(c.morale)">
-                  <span class="dot"></span>{{ c.morale }} · {{ c.morale_band.label }}
-                </span>
-              </a>
-            }
-            @if (state.span(); as s) {
-              <p class="muted small span-line">
-                Span of Control: {{ s.in_use }}/{{ s.total }} belegt
-              </p>
-            }
-          } @else {
-            <p class="muted small">Noch keine Commander. <a routerLink="/commanders">Kommandozentrale →</a></p>
-          }
-        </section>
+       </div>
       </div>
     } @else {
       <p class="empty-state">Lade Planetendaten…</p>

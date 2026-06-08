@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="status_stranded">
+  <defs><filter id="g"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <path d="M5 5h44l10 10v44H5z" fill="#0B1424" stroke="#2A467A" stroke-width="2"/>
+  <g fill="none" stroke="#F0070C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" filter="url(#g)">
+    <path d="M13 35l18-20 18 20-18-5z"/>
+    <path d="M32 32v19"/>
+    <path d="M24 51h16"/>
+    <path d="M18 43c5-5 9-5 14 0s9 5 14 0"/>
+  </g>
+</svg>

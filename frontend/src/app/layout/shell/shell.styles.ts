@@ -126,11 +126,62 @@ export const shellStyles = `
 
   .content {
     flex: 1;
+    min-width: 0;
     padding: 1.3rem;
-    max-width: 1280px;
     width: 100%;
-    margin: 0 auto;
   }
+
+  /* Kolonien-Leiste (rechts) */
+  .colony-rail {
+    width: 160px;
+    flex: 0 0 160px;
+    padding: 1rem 0.6rem;
+    border-left: 1px solid var(--border);
+    background: rgba(13, 22, 41, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .rail-title {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0 0.4rem 0.4rem;
+  }
+  .colony {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.55rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .colony:hover { background: rgba(46,230,214,0.06); color: var(--text); }
+  .colony.active {
+    background: rgba(46,230,214,0.12);
+    color: var(--accent);
+    border-color: var(--border);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .colony-name {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .colony-coords { font-size: 0.68rem; opacity: 0.75; }
+
+  /* Auf Desktop ersetzt die Kolonien-Leiste das Topbar-Dropdown */
+  .planet-select { display: none; }
 
   .scrim { display: none; }
 
@@ -150,6 +201,14 @@ export const shellStyles = `
       background: var(--bg);
     }
     .sidenav.open { transform: translateX(0); }
+    .colony-rail { display: none; }
+    .planet-select {
+      display: inline-block;
+      width: auto;
+      min-height: 34px;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.82rem;
+    }
     .scrim {
       display: block;
       position: fixed;

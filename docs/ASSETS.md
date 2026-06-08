@@ -19,8 +19,8 @@
 > **UI-Primitives** (Buttons/Panels/Moral-Balken/Progress) bleiben bewusst **SVG** (skalierbar,
 > themable); die sichtbaren Icon-Familien haben zusätzlich PNG-Versionen.
 >
-> **NEU/offen (v0.2):** das **Rollen-Kampf-System** (Doku [03b](./systems/03b-role-based-combat.md)/
-> [03c](./systems/03c-role-roster-spec.md)) bringt neue Schiffe + Icons → **§11** (zu erstellen).
+> **PRODUZIERT (v0.2, 2026-06-08):** das **Rollen-Kampf-System** (Doku [03b](./systems/03b-role-based-combat.md)/
+> [03c](./systems/03c-role-roster-spec.md)) bringt neue Schiffe + Icons → **§11** (erstellt).
 
 ---
 
@@ -45,8 +45,8 @@
 | 6. UI-Elemente | 38 | ✅ produziert (UI-Primitives SVG) |
 | 7. Hintergründe/Atmosphäre | 16 | ✅ produziert |
 | 8. Effekte | 6 | ✅ produziert |
-| **11. Rollen-Kampf-Assets (v0.2)** | **~24 neu** | 🎨 **zu erstellen** |
-| **Summe** | **~129 produziert + ~24 neu** | |
+| **11. Rollen-Kampf-Assets (v0.2)** | **24 neu** | ✅ produziert |
+| **Summe** | **~153 produziert** | |
 
 ---
 
@@ -416,12 +416,16 @@ Damit nichts fehlt: jeder spielmechanische Key hat ein Asset.
 
 ---
 
-## 11. Rollen-Kampf-Assets (v0.2 — NEU, zu erstellen 🎨)
+## 11. Rollen-Kampf-Assets (v0.2 — PRODUZIERT ✅)
 
 **Quelle:** [Doku 03b Rollen-Kampf](./systems/03b-role-based-combat.md) + [03c Roster-Spec](./systems/03c-role-roster-spec.md).
 Das rollenbasierte Kampfsystem (Subsysteme Schild/Antrieb/Hülle, Schadenstypen, Piraterie/Eskorte,
 4 Doktrinen) bringt **neue Schiffsrollen** ohne Art sowie Waffen-/Status-Icons + Effekte.
 Die **14 bestehenden Schiffe** (§3) decken ihre Rollen weiter ab — **keine** neue Art nötig.
+
+> **Produktionsstand 2026-06-08:** §11.1–§11.3 sind vollständig erstellt und unter `assets/`
+> einsortiert. §11.4 ist als statischer PNG-Fallback produziert (`effects/*.png`), passend zur
+> bestehenden Effekt-Konvention im Repository; WebP/APNG-Animation bleibt optionales Upgrade.
 
 ### 11.1 Neue Schiffe (Stil = §3, 3/4-Top-Down, einheitlicher Maßstab, PNG-32 512×512 transparent)
 
@@ -463,9 +467,9 @@ Die **14 bestehenden Schiffe** (§3) decken ihre Rollen weiter ab — **keine** 
 
 | ID / Datei | Beschreibung |
 |------------|--------------|
-| `effects/ion_emp.webp` | **Ionen/EMP-Treffer**: elektrische Entladung übers Ziel, Schild-Flimmer + Antriebs-Funken. |
-| `effects/boarding.webp` | **Kaper-Effekt**: Andock-Tunnel/Enter-Kapsel + Übernahme-Glow am Ziel. |
-| `effects/warp_disrupt.webp` | **Warp-Disruptor** (Interdiktor): kollabierender Sprung-Riss, Flucht verhindert. |
+| `effects/ion_emp.png` | **Ionen/EMP-Treffer**: elektrische Entladung übers Ziel, Schild-Flimmer + Antriebs-Funken. |
+| `effects/boarding.png` | **Kaper-Effekt**: Andock-Tunnel/Enter-Kapsel + Übernahme-Glow am Ziel. |
+| `effects/warp_disrupt.png` | **Warp-Disruptor** (Interdiktor): kollabierender Sprung-Riss, Flucht verhindert. |
 
 > **Doktrin-Hinweis:** Doktrinen (Kriegsherr/Händler/Freibeuter/Pionier) brauchen optional je ein
 > kleines **Doktrin-Emblem** (`icons/doctrines/<key>.svg`) für die Doktrin-Wahl/UI — P2-Backlog.
@@ -484,6 +488,8 @@ Die **14 bestehenden Schiffe** (§3) decken ihre Rollen weiter ab — **keine** 
 ---
 
 ### Änderungshistorie
+- **v0.3 (2026-06-08):** **§11 Rollen-Kampf-Assets produziert** und unter `assets/`
+  einsortiert: 12 Schiffe, 4 Waffen-Icons, 5 Status-Icons, 3 statische Effekt-PNGs.
 - **v0.2 (2026-06-07):** v0.1-Satz (§1–§8) als **PRODUZIERT** markiert (hochwertige PNGs,
   ins Frontend integriert, Platzhalter entfernt). Neue **§11 Rollen-Kampf-Assets** ergänzt
   (12 neue Schiffe + 4 Waffen-Icons + 5 Status-Icons + 3 Effekte) aus Doku 03b/03c. Bilanz/

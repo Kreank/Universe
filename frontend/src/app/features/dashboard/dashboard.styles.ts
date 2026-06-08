@@ -1,8 +1,20 @@
 export const dashboardStyles = `
   .sub { margin-top: -0.3rem; font-size: 0.85rem; }
+  /* Zwei feste, oben ausgerichtete Spalten — balanciert, keine toten Flaechen */
   .cols {
-    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
     align-items: start;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+  }
+  @media (max-width: 900px) {
+    .cols { grid-template-columns: 1fr; }
   }
   .res-grid { display: flex; flex-direction: column; gap: 0.8rem; }
   .res-card {

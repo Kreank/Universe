@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="weapon_ion">
+  <defs><filter id="g"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <path d="M5 5h44l10 10v44H5z" fill="#0B1424" stroke="#2A467A" stroke-width="2"/>
+  <g fill="none" stroke="#46D5FF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" filter="url(#g)">
+    <path d="M32 12c10 0 18 8 18 20s-8 20-18 20-18-8-18-20 8-20 18-20z"/>
+    <path d="M24 32h8l-4 11 12-17h-8l4-9z" stroke="#FF41F8"/>
+    <path d="M9 32h5M50 32h5M32 7v5M32 52v5"/>
+  </g>
+</svg>
