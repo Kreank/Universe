@@ -223,6 +223,20 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         "crystal": round(debris["crystal"] + def_debris["crystal"], 1),
     }
 
+    # Truemmerfeld am Zielort persistieren (akkumuliert) -> per Recycler einsammelbar.
+    if debris["metal"] > 0 or debris["crystal"] > 0:
+        tgt_cell = cell
+        if tgt_cell is None:
+            tgt_cell = UniverseCell(
+                galaxy=fleet.target_galaxy, system=fleet.target_system,
+                position=fleet.target_position, occupant_type="debris",
+            )
+            session.add(tgt_cell)
+        field = dict(tgt_cell.debris_field or {})
+        field["metal"] = round(field.get("metal", 0) + debris["metal"], 1)
+        field["crystal"] = round(field.get("crystal", 0) + debris["crystal"], 1)
+        tgt_cell.debris_field = field
+
     # Beute (nur bei Sieg des Angreifers).
     loot = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}
     if winner == "attacker":

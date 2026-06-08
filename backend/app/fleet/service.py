@@ -126,7 +126,7 @@ async def send_fleet(
 ) -> Fleet:
     """Sendet eine Flotte. Validiert Schiffe, Slots, Ziel-Schutz, zieht Sprit+Fracht ab."""
     bal = get_balance()
-    valid_missions = {"attack", "transport", "spy", "deploy"}
+    valid_missions = {"attack", "transport", "spy", "deploy", "recycle"}
     if mission not in valid_missions:
         raise ValueError(f"Mission muss eine von {sorted(valid_missions)} sein")
 
@@ -162,6 +162,15 @@ async def send_fleet(
         if probes < spy_cfg["min_probes"]:
             raise RuntimeError(
                 f"Spionage benoetigt mindestens {spy_cfg['min_probes']} {spy_cfg['probe_type']}"
+            )
+
+    # Recycler-Mission erfordert Recycler in der Flotte (Truemmer einsammeln).
+    if mission == "recycle":
+        h_cfg = bal.data.get("harvest", {})
+        collector = h_cfg.get("collector_type", "recycler")
+        if ships.get(collector, 0) < h_cfg.get("min_collectors", 1):
+            raise RuntimeError(
+                f"Recycler-Mission benoetigt mindestens {h_cfg.get('min_collectors', 1)} {collector}"
             )
 
     # Commander pruefen (falls angegeben).
@@ -288,6 +297,7 @@ async def recall_fleet(session: AsyncSession, player: Player, fleet_id: uuid.UUI
 async def fleet_arrive(fleet_id: str) -> None:
     """Anflug-Job: bei Angriff Kampf, bei Spionage Aufklaerung; danach Rueckflug."""
     from app.combat.service import resolve_attack
+    from app.fleet.harvest import resolve_harvest
     from app.universe.spionage import resolve_spy
 
     async with session_scope() as session:
@@ -302,6 +312,8 @@ async def fleet_arrive(fleet_id: str) -> None:
             await resolve_attack(session, fleet)
         elif mission == "spy":
             await resolve_spy(session, fleet)
+        elif mission == "recycle":
+            await resolve_harvest(session, fleet)
 
         # Nach Ankunft kehrt die Flotte zurueck (return_at bleibt wie geplant).
         fleet.status = "returning"

@@ -60,6 +60,8 @@ _STATEMENTS: list[str] = [
     "ALTER TABLE planets ADD COLUMN IF NOT EXISTS planet_type TEXT NOT NULL DEFAULT 'normal'",
     # -- Feature: Commander-Gueteklassen F..SSS (Doku 05a) -------------------
     "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS grade TEXT NOT NULL DEFAULT 'C'",
+    # -- Feature: Truemmerfeld + Recycler-Harvest ----------------------------
+    "ALTER TABLE universe_cells ADD COLUMN IF NOT EXISTS debris_field JSONB NOT NULL DEFAULT '{}'::jsonb",
 ]
 
 

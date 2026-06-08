@@ -234,6 +234,7 @@ CREATE TABLE universe_cells (
     position      INT NOT NULL,
     occupant_type occupant_type NOT NULL DEFAULT 'empty',
     ref_id        UUID,                    -- planet_id oder npc_id
+    debris_field  JSONB NOT NULL DEFAULT '{}'::jsonb,  -- Truemmer am Ort {metal, crystal}
     PRIMARY KEY (galaxy, system, position)
 );
 

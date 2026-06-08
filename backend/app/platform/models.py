@@ -258,6 +258,8 @@ class UniverseCell(Base):
     position: Mapped[int] = mapped_column(Integer, primary_key=True)
     occupant_type: Mapped[str] = mapped_column(occupant_type_enum, default="empty")
     ref_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # Truemmerfeld am Ort (nach Kaempfen), {metal, crystal}; vom Recycler einsammelbar.
+    debris_field: Mapped[dict] = mapped_column(JSONB, default=dict)
 
 
 class NpcEmpire(Base):

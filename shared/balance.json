@@ -197,6 +197,12 @@
     }
   },
 
+  "harvest": {
+    "_note": "Recycler-Mission: sammelt das Truemmerfeld (universe_cells.debris_field) am Zielort ein, begrenzt durch die Frachtkapazitaet der Flotte. min_collectors = benoetigte Recycler.",
+    "collector_type": "recycler",
+    "min_collectors": 1
+  },
+
   "commander": {
     "morale": {
       "min": 0, "max": 100, "start": 60, "base_target": 50,
