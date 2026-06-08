@@ -28,8 +28,14 @@ b175c3b feat(combat): Rollen-Kampf Phase 2 — Antriebs-Stufen + Disengage + Int
   + Interdiktion (`combat.drive_stages`/`disengage`) · **Entern/Capture** (`combat.boarding`) · **12
   neue Spezial-Schiffe** (`combat_roster`, in der Werft baubar, Assets integriert). Der volle
   **Piraterie-Loop läuft**: EWAR-Ionen stranden → Interdiktor hält → Enterschiff kapert.
-- **Frontend:** `recycle`/`colonize` im Flotten-Versand wählbar + **eingehende Angriffe** als
-  Warn-Banner (`GET /api/incoming-attacks`); 12 neue Schiffe in der Werft (Kategorie „Rollen-Schiffe").
+- **Frontend:** `recycle`/`colonize`/`mine`/`expedition` im Flotten-Versand wählbar + **eingehende
+  Angriffe** als Warn-Banner (`GET /api/incoming-attacks`); 12 neue Schiffe in der Werft.
+- **Eskort-Konter + Sondermechaniken:** Punktverteidigung (Eskort-Fregatte) + Schild-Tender
+  (Antriebs-Reparatur) · Tarnkappen-Hinterhalt (Überraschungsrunde) + Sensor-Entdeckung als Konter ·
+  Träger-Drohnen (ephemer) · Artillerie zur Glaskanone re-tiert (Konter-Dreieck).
+- **Mining + Expedition** als Flotten-Missionen (Bergbau-Ertrag / gewichteter Zufalls-Fund).
+- **Imperiums-Doktrinen** (Kriegsherr/Händler/Freibeuter/Pionier): Flottenslots, Signatur-Bau-Rabatt,
+  Kampf-Angriff; Wahl/Wechsel via `/api/player/doctrine` (Kosten+Cooldown). UI-Screen offen.
 - **Fusionsreaktor** verbrennt jetzt Deuterium (Tech-Debt #3 erledigt).
 - **Trümmer/Recycler-Loop**: Kämpfe hinterlassen Trümmer (`universe_cells.debris_field`),
   `recycle`-Mission sammelt sie ein.
