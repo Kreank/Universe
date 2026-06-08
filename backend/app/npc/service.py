@@ -16,10 +16,12 @@ import logging
 from sqlalchemy import select
 
 from app.npc.behavior import NpcContext
+from app.npc.expansion import first_free_position, should_expand
 from app.npc.profiles import build_tree
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
-from app.platform.models import NpcEmpire
+from app.platform.models import NpcEmpire, Planet, UniverseCell
+from app.universe.service import occupy_cell
 
 log = logging.getLogger("universe.npc")
 
@@ -29,6 +31,57 @@ def _now() -> dt.datetime:
 
 
 _RESOURCES = ("metal", "crystal", "deuterium")
+
+
+async def _occupied_positions(session, galaxy: int, system: int) -> set[int]:
+    """Belegte Positionen in einem System (Zellen != empty UND existierende Planeten)."""
+    occ: set[int] = set()
+    cells = (await session.execute(
+        select(UniverseCell.position, UniverseCell.occupant_type).where(
+            UniverseCell.galaxy == galaxy, UniverseCell.system == system
+        )
+    )).all()
+    occ.update(pos for pos, otype in cells if otype != "empty")
+    planets = (await session.execute(
+        select(Planet.position).where(Planet.galaxy == galaxy, Planet.system == system)
+    )).scalars().all()
+    occ.update(planets)
+    return occ
+
+
+async def _try_expand(session, npc: NpcEmpire, exp_cfg: dict, max_positions: int) -> bool:
+    """Versucht eine NPC-Expansion auf eine freie Position im eigenen System. True bei Erfolg.
+
+    Vorbedingung (should_expand) wird vom Aufrufer geprueft. Zieht Kosten ab, legt eine neue
+    'defensive' NPC-Garnison an und belegt die Zelle."""
+    occupied = await _occupied_positions(session, npc.galaxy, npc.system)
+    pos = first_free_position(occupied, max_positions)
+    if pos is None:
+        return False
+
+    cost = exp_cfg.get("cost", {})
+    resources = dict(npc.resources or {})
+    for res in _RESOURCES:
+        resources[res] = resources.get(res, 0) - float(cost.get(res, 0))
+    npc.resources = resources  # neues dict -> Change-Tracking
+
+    garrison = exp_cfg.get("garrison", {})
+    fleet = dict(garrison.get("fleet", {}))
+    defenses = dict(garrison.get("defenses", {}))
+    colony = NpcEmpire(
+        name=f"Aussenposten {npc.galaxy}:{npc.system}:{pos}",
+        behavior_profile="defensive",
+        galaxy=npc.galaxy, system=npc.system, position=pos,
+        fleet=fleet, defenses=defenses,
+        resources=dict(exp_cfg.get("colony_resources", {})),
+        baseline={"fleet": dict(fleet), "defenses": dict(defenses)},
+        last_action_at=_now(),
+    )
+    session.add(colony)
+    await session.flush()
+    await occupy_cell(session, npc.galaxy, npc.system, pos, "npc", colony.id)
+    log.info("NPC %s expandiert -> %d:%d:%d", npc.name, npc.galaxy, npc.system, pos)
+    return True
 
 
 def _apply_income(resources: dict, income: dict, cap: dict) -> dict[str, float]:
@@ -53,8 +106,19 @@ async def npc_behavior_tick() -> None:
     ship_costs = bal.ships
     defense_costs = bal.defenses
 
+    exp_cfg = npc_cfg.get("expansion", {})
+    max_positions = bal.positions_per_system
+    max_exp = int(exp_cfg.get("max_expansions_per_tick", 0))
+    expansions_done = 0
+
     async with session_scope() as session:
         npcs = (await session.execute(select(NpcEmpire))).scalars().all()
+        # NPC-Dichte je System (inkl. im selben Tick neu gegruendeter).
+        system_counts: dict[tuple[int, int], int] = {}
+        for n in npcs:
+            key = (n.galaxy, n.system)
+            system_counts[key] = system_counts.get(key, 0) + 1
+
         for npc in npcs:
             # baseline beim ersten Tick als Schnappschuss der Soll-Garnison setzen.
             baseline = npc.baseline or {}
@@ -87,5 +151,13 @@ async def npc_behavior_tick() -> None:
             npc.fleet = ctx.fleet
             npc.defenses = ctx.defenses
             npc.last_action_at = _now()
+
+            # Expansion (expansive NPCs): freie Position im eigenen System besiedeln.
+            key = (npc.galaxy, npc.system)
+            if (expansions_done < max_exp
+                    and should_expand(npc.behavior_profile, exp_cfg, ctx.resources, system_counts.get(key, 0))):
+                if await _try_expand(session, npc, exp_cfg, max_positions):
+                    expansions_done += 1
+                    system_counts[key] = system_counts.get(key, 0) + 1
         await session.commit()
     log.info("NPC-Behavior-Tick: %d NPCs verarbeitet", len(npcs))

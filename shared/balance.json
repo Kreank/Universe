@@ -359,6 +359,16 @@
       "expansive":  { "rebuild_defense": 0.3, "reinforce_fleet": 0.5, "growth_cap_mult": 2.0 },
       "merchant":   { "rebuild_defense": 0.2, "reinforce_fleet": 0.1, "growth_cap_mult": 1.0 }
     },
+    "expansion": {
+      "_note": "Doku 08: 'expansive' NPCs gruenden auf einer freien Position im EIGENEN System eine neue NPC-Garnison. Throttle: hohe min_resources (nahe resource_cap) + Kosten (danach unter Schwelle) + max_per_system + max_expansions_per_tick. Determinismus: erste freie Position gewinnt; neue Garnison ist 'defensive' (kein Ketten-Wachstum).",
+      "enabled_profiles": ["expansive"],
+      "min_resources": { "metal": 45000, "crystal": 30000, "deuterium": 10000 },
+      "cost": { "metal": 35000, "crystal": 22000, "deuterium": 7000 },
+      "max_per_system": 4,
+      "max_expansions_per_tick": 3,
+      "garrison": { "fleet": { "light_fighter": 20, "cruiser": 4 }, "defenses": { "rocket_launcher": 10, "light_laser": 5 } },
+      "colony_resources": { "metal": 2000, "crystal": 1000, "deuterium": 500 }
+    },
     "_note": "NPC-Behavior-Tick (Doku 08). NPCs regenerieren Garnison zur baseline und wachsen je Profil; Anti-Farming durch Wiederaufbau."
   },
 
