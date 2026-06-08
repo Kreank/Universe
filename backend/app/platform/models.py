@@ -276,6 +276,27 @@ class NpcEmpire(Base):
     resources: Mapped[dict] = mapped_column(JSONB, default=dict)
     baseline: Mapped[dict] = mapped_column(JSONB, default=dict)
     last_action_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_attack_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class NpcAttack(Base):
+    """Eine eingehende NPC-Angriffsflotte auf einen Spieler-Planeten (im Anflug).
+
+    Isoliert vom Spieler-Flotten-System (Fleet) — NPCs besitzen keine Fleet-Zeilen.
+    Bei Ankunft (arrive_at) loest ein Scheduler-Job ``resolve_npc_attack`` den Kampf auf."""
+    __tablename__ = "npc_attacks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    npc_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("npc_empires.id", ondelete="CASCADE"))
+    target_player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"))
+    target_planet_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("planets.id", ondelete="CASCADE"))
+    target_galaxy: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_system: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_position: Mapped[int] = mapped_column(Integer, nullable=False)
+    fleet: Mapped[dict] = mapped_column(JSONB, default=dict)  # {type: count} der Angreifer
+    status: Mapped[str] = mapped_column(Text, default="incoming")  # 'incoming' | 'resolved'
+    arrive_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

@@ -15,6 +15,7 @@ import logging
 
 from sqlalchemy import select
 
+from app.npc.attack import maybe_launch_attack
 from app.npc.behavior import NpcContext
 from app.npc.expansion import first_free_position, should_expand
 from app.npc.profiles import build_tree
@@ -111,6 +112,10 @@ async def npc_behavior_tick() -> None:
     max_exp = int(exp_cfg.get("max_expansions_per_tick", 0))
     expansions_done = 0
 
+    atk_cfg = npc_cfg.get("attack", {})
+    max_attacks = int(atk_cfg.get("max_attacks_per_tick", 0))
+    attacks_done = 0
+
     async with session_scope() as session:
         npcs = (await session.execute(select(NpcEmpire))).scalars().all()
         # NPC-Dichte je System (inkl. im selben Tick neu gegruendeter).
@@ -159,5 +164,10 @@ async def npc_behavior_tick() -> None:
                 if await _try_expand(session, npc, exp_cfg, max_positions):
                     expansions_done += 1
                     system_counts[key] = system_counts.get(key, 0) + 1
+
+            # Angriff (aggressive NPCs): ungeschuetzten Spieler-Planeten attackieren.
+            if attacks_done < max_attacks:
+                if await maybe_launch_attack(session, npc, atk_cfg):
+                    attacks_done += 1
         await session.commit()
     log.info("NPC-Behavior-Tick: %d NPCs verarbeitet", len(npcs))

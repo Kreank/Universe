@@ -250,9 +250,27 @@ CREATE TABLE npc_empires (
     resources        JSONB NOT NULL DEFAULT '{}'::jsonb,
     baseline         JSONB NOT NULL DEFAULT '{}'::jsonb,   -- Soll-Garnison {fleet:{...}, defenses:{...}}
     last_action_at   TIMESTAMPTZ,                          -- Zeitpunkt der letzten NPC-Tick-Aktion
+    last_attack_at   TIMESTAMPTZ,                          -- Zeitpunkt des letzten ausgehenden Angriffs
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_npc_location ON npc_empires(galaxy, system, position);
+
+-- Eingehende NPC-Angriffe auf Spieler-Planeten (im Anflug; bei Ankunft aufgeloest).
+CREATE TABLE npc_attacks (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    npc_id           UUID NOT NULL REFERENCES npc_empires(id) ON DELETE CASCADE,
+    target_player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    target_planet_id UUID NOT NULL REFERENCES planets(id) ON DELETE CASCADE,
+    target_galaxy    INT NOT NULL,
+    target_system    INT NOT NULL,
+    target_position  INT NOT NULL,
+    fleet            JSONB NOT NULL DEFAULT '{}'::jsonb,    -- {type: count} der Angreifer
+    status           TEXT NOT NULL DEFAULT 'incoming',      -- 'incoming' | 'resolved'
+    arrive_at        TIMESTAMPTZ NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_npc_attacks_status ON npc_attacks(status);
+CREATE INDEX idx_npc_attacks_target ON npc_attacks(target_player_id);
 
 -- ---------------------------------------------------------------------
 --  Seed: ein paar NPC-Ziele fuer den Vertical-Slice-Loop (PvE)

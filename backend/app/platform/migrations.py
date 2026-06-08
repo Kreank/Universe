@@ -62,6 +62,25 @@ _STATEMENTS: list[str] = [
     "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS grade TEXT NOT NULL DEFAULT 'C'",
     # -- Feature: Truemmerfeld + Recycler-Harvest ----------------------------
     "ALTER TABLE universe_cells ADD COLUMN IF NOT EXISTS debris_field JSONB NOT NULL DEFAULT '{}'::jsonb",
+    # -- Feature: Eingehende NPC-Angriffe auf Spieler ------------------------
+    "ALTER TABLE npc_empires ADD COLUMN IF NOT EXISTS last_attack_at TIMESTAMPTZ",
+    """
+    CREATE TABLE IF NOT EXISTS npc_attacks (
+        id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        npc_id           UUID NOT NULL REFERENCES npc_empires(id) ON DELETE CASCADE,
+        target_player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        target_planet_id UUID NOT NULL REFERENCES planets(id) ON DELETE CASCADE,
+        target_galaxy    INT NOT NULL,
+        target_system    INT NOT NULL,
+        target_position  INT NOT NULL,
+        fleet            JSONB NOT NULL DEFAULT '{}'::jsonb,
+        status           TEXT NOT NULL DEFAULT 'incoming',
+        arrive_at        TIMESTAMPTZ NOT NULL,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_npc_attacks_status ON npc_attacks(status)",
+    "CREATE INDEX IF NOT EXISTS idx_npc_attacks_target ON npc_attacks(target_player_id)",
 ]
 
 

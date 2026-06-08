@@ -369,6 +369,17 @@
       "garrison": { "fleet": { "light_fighter": 20, "cruiser": 4 }, "defenses": { "rocket_launcher": 10, "light_laser": 5 } },
       "colony_resources": { "metal": 2000, "crystal": 1000, "deuterium": 500 }
     },
+    "attack": {
+      "_note": "Doku 08: 'aggressive' NPCs greifen ungeschuetzte Spieler-Planeten an (eingehender Angriff via npc_attacks-Tabelle, KEINE Fleet-Zeile). Throttle: cooldown_seconds je NPC + min_fleet_power (lohnendes Geschwader) + max_attacks_per_tick. Es wird nur ein Teil der Garnison (commit_fraction) entsandt; Ueberlebende kehren zurueck. Geschuetzte Spieler werden nie angegriffen. npc_tech = pauschale Angreifer-Tech.",
+      "enabled_profiles": ["aggressive"],
+      "min_fleet_power": 4000,
+      "commit_fraction": 0.6,
+      "max_attacks_per_tick": 2,
+      "cooldown_seconds": 10800,
+      "target_max_systems": 20,
+      "min_warning_seconds": 600,
+      "npc_tech": { "weapons_tech": 4, "shield_tech": 4, "armor_tech": 4 }
+    },
     "_note": "NPC-Behavior-Tick (Doku 08). NPCs regenerieren Garnison zur baseline und wachsen je Profil; Anti-Farming durch Wiederaufbau."
   },
 

@@ -15,7 +15,7 @@ import logging
 from sqlalchemy import select
 
 from app.platform.db import session_scope
-from app.platform.models import Building, Commander, Fleet, Research, ShipyardQueueItem
+from app.platform.models import Building, Commander, Fleet, NpcAttack, Research, ShipyardQueueItem
 from app.platform.scheduler import schedule_at
 
 log = logging.getLogger("universe.recovery")
@@ -28,6 +28,7 @@ async def recover_pending_jobs() -> None:
     from app.buildings.shipyard import complete_shipyard_build
     from app.commander.service import complete_training
     from app.fleet.service import fleet_arrive, fleet_return
+    from app.npc.attack import resolve_npc_attack
     from app.research.service import complete_research
 
     recovered = 0
@@ -87,6 +88,17 @@ async def recover_pending_jobs() -> None:
             schedule_at(
                 c.training_finishes_at, complete_training, str(c.id),
                 job_id=f"train:{c.id}",
+            )
+            recovered += 1
+
+        # -- Eingehende NPC-Angriffe (status 'incoming') -------------------
+        rows = (await session.execute(
+            select(NpcAttack).where(NpcAttack.status == "incoming")
+        )).scalars().all()
+        for atk in rows:
+            schedule_at(
+                atk.arrive_at, resolve_npc_attack, str(atk.id),
+                job_id=f"npc-attack:{atk.id}",
             )
             recovered += 1
 
