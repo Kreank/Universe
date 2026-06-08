@@ -193,3 +193,33 @@ def test_shield_tender_counters_stranding():
     assert r_bare["defender_drive_disabled"].get("cruiser", 0) >= 5    # ohne Tender: gestrandet
     assert r_tended["defender_drive_disabled"].get("cruiser", 0) < \
         r_bare["defender_drive_disabled"].get("cruiser", 0)            # Tender reduziert Stranding
+
+
+# ---- Schiff-Sondermechaniken: Stealth-Hinterhalt + Traeger-Drohnen (Doku 03b §9 / 03c) ----
+
+def test_stealth_corvette_opens_with_ambush_round():
+    """Tarnkappen-Korvette: der Angreifer eroeffnet mit einer Ueberraschungsrunde (Runde 0),
+    in der NUR der Angreifer feuert. Ohne Stealth gibt es diese Runde nicht."""
+    pirate = {"ships": {"stealth_corvette": 30}, "tech": {}, "attack_mult": 1.0}
+    prey = {"ships": {"cruiser": 5}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    r = simulate_battle(pirate, prey, 5, BALANCE)
+    first = r["rounds"][0]
+    assert first.get("ambush") is True
+    assert first["attacker_fire"] > 0 and first["defender_fire"] == 0.0
+    # Ohne Stealth: keine Ueberraschungsrunde.
+    r2 = simulate_battle({"ships": {"light_fighter": 30}, "tech": {}, "attack_mult": 1.0}, prey, 5, BALANCE)
+    assert r2["rounds"][0].get("ambush") is not True
+
+
+def test_carrier_launches_ephemeral_drones():
+    """Traeger startet Drohnen-Staffeln: sie kaempfen mit, zaehlen aber NICHT als eigene Schiffe.
+    Vergleich mit drones_per_carrier=0 isoliert den Drohnen-Beitrag."""
+    bal0 = copy.deepcopy(BALANCE)
+    bal0["combat"]["carrier"]["drones_per_carrier"] = 0
+    atk = {"ships": {"carrier": 5}, "tech": {}, "attack_mult": 1.0}
+    prey = {"ships": {"light_fighter": 40}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    with_d = simulate_battle(atk, prey, 7, BALANCE)
+    no_d = simulate_battle(atk, prey, 7, bal0)
+    assert "drone" not in with_d["attacker_survivors"]              # Drohnen sind ephemer
+    # Mit Drohnen verliert der Verteidiger mehr als ohne (die Staffeln kaempfen mit).
+    assert sum(with_d["defender_losses"].values()) > sum(no_d["defender_losses"].values())

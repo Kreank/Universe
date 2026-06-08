@@ -45,6 +45,9 @@ class Unit:
     boarder: bool = False
     point_defense: bool = False
     shield_projector: bool = False
+    stealth: bool = False
+    carrier: bool = False
+    launched: bool = False  # vom Traeger gestartete Drohne (ephemer, zaehlt nicht als Schiff)
     hull: float = 0.0
     shield: float = 0.0
     drive: float = 0.0
@@ -108,7 +111,29 @@ def _build_units(
                 prof.get("weapon_type"), drive_max, ridx,
                 bool(prof.get("interdictor", False)), bool(prof.get("boarder", False)),
                 bool(prof.get("point_defense", False)), bool(prof.get("shield_projector", False)),
+                bool(prof.get("stealth", False)), bool(prof.get("carrier", False)),
             ))
+    # Traeger starten Drohnen-Staffeln (ephemer): zaehlen nicht als eigene Schiffe.
+    carrier_cfg = catalogs.get("carrier_cfg", {})
+    drone_type = carrier_cfg.get("drone_type", "drone")
+    per_carrier = int(carrier_cfg.get("drones_per_carrier", 0))
+    drone_cfg = ship_cat.get(drone_type)
+    if per_carrier > 0 and drone_cfg is not None:
+        n_carriers = sum(1 for u in units if u.carrier)
+        if n_carriers > 0:
+            dprof = profile(drone_type)
+            d_attack = drone_cfg.get("attack", 0) * w * attack_mult
+            d_shield = drone_cfg.get("shield", 0) * s * attack_mult
+            d_hull = _hull_from_cost(drone_cfg["cost"]) * a
+            d_drive = float(dprof.get("drive", 0)) * drive_per_tier
+            d_ridx = order.index(dprof["range"]) if dprof.get("range") in order else 0
+            for _ in range(n_carriers * per_carrier):
+                u = Unit(
+                    drone_type, side, d_attack, d_shield, d_hull, dict(drone_cfg.get("rapidfire", {})),
+                    False, dprof.get("weapon_type"), d_drive, d_ridx,
+                )
+                u.launched = True
+                units.append(u)
     for typ, count in (defenses or {}).items():
         cfg = def_cat.get(typ)
         if cfg is None or count <= 0:
@@ -128,8 +153,11 @@ def _build_units(
 
 
 def _counts(units: list[Unit]) -> dict[str, int]:
+    """Zaehlt echte Schiffe je Typ. Ephemere (vom Traeger gestartete) Drohnen zaehlen NICHT."""
     out: dict[str, int] = {}
     for u in units:
+        if u.launched:
+            continue
         out[u.type] = out.get(u.type, 0) + 1
     return out
 
@@ -138,6 +166,8 @@ def _drive_disabled(units: list[Unit]) -> dict[str, int]:
     """Ueberlebende Einheiten mit lahmgelegtem Antrieb (drive 0, drive_max>0) -> 'mission kill'."""
     out: dict[str, int] = {}
     for u in units:
+        if u.launched:
+            continue
         if u.drive_max > 0 and u.drive <= 0:
             out[u.type] = out.get(u.type, 0) + 1
     return out
@@ -183,6 +213,10 @@ def simulate_battle(
     pd_block = int(escort.get("boarders_blocked_per_escort", 0))
     drive_repair_per = float(escort.get("drive_repair_per_projector", 0.0))
 
+    ambush_cfg = combat.get("ambush", {})
+    ambush_enabled = ambush_cfg.get("enabled", False)
+    ambush_dist = order.index(ambush_cfg["distance"]) if ambush_cfg.get("distance") in order else 0
+
     catalogs = {
         "ships": balance["ships"],
         "defenses": balance["defenses"],
@@ -190,6 +224,7 @@ def simulate_battle(
         "roster": balance.get("combat_roster", {}),
         "range_order": order,
         "drive_per_tier": combat.get("drive_integrity_per_tier", 100),
+        "carrier_cfg": combat.get("carrier", {}),
     }
 
     atk_units = _build_units(
@@ -313,6 +348,48 @@ def simulate_battle(
     atk_fled: list[Unit] = []
     def_fled: list[Unit] = []
 
+    def resolve(units: list[Unit]) -> tuple[list[Unit], dict[str, int]]:
+        """Explosionen/Zerstoerung. Ephemere Drohnen zaehlen NICHT als Verlust."""
+        survivors: list[Unit] = []
+        losses: dict[str, int] = {}
+        for u in units:
+            destroyed = False
+            if u.hull <= 0:
+                destroyed = True
+            elif u.hull < explosion_threshold * u.hull_max:
+                if rng.random() < (1.0 - u.hull / u.hull_max):
+                    destroyed = True
+            if destroyed:
+                if not u.launched:
+                    losses[u.type] = losses.get(u.type, 0) + 1
+            else:
+                survivors.append(u)
+        return survivors, losses
+
+    # Hinterhalt (Tarnkappe, Doku 03b §9): hat der Angreifer Stealth-Schiffe, eroeffnet er mit
+    # einer Ueberraschungsrunde aus dem Nahbereich -- nur der Angreifer feuert.
+    if ambush_enabled and atk_units and def_units and any(u.stealth for u in atk_units):
+        for u in atk_units:
+            u.shield = u.shield_max
+        for u in def_units:
+            u.shield = u.shield_max
+        ambush_fire = 0.0
+        for u in list(atk_units):
+            if not def_units:
+                break
+            f = fire_factor(u, ambush_dist)
+            if f is not None:
+                ambush_fire += fire(u, def_units, f)
+        def_units, amb_losses = resolve(def_units)
+        for t, c in amb_losses.items():
+            defender_losses_total[t] = defender_losses_total.get(t, 0) + c
+        rounds.append({
+            "round": 0, "distance": order[ambush_dist], "ambush": True,
+            "attacker_fire": round(ambush_fire, 1), "defender_fire": 0.0,
+            "attacker_losses": {}, "defender_losses": amb_losses,
+            "attacker_fled": 0, "defender_fled": 0,
+        })
+
     for rnd in range(1, max_rounds + 1):
         if not atk_units or not def_units:
             break
@@ -354,23 +431,7 @@ def simulate_battle(
         repair_drives(atk_units)
         repair_drives(def_units)
 
-        # Explosionen / Zerstoerung abwickeln.
-        def resolve(units: list[Unit]) -> tuple[list[Unit], dict[str, int]]:
-            survivors: list[Unit] = []
-            losses: dict[str, int] = {}
-            for u in units:
-                destroyed = False
-                if u.hull <= 0:
-                    destroyed = True
-                elif u.hull < explosion_threshold * u.hull_max:
-                    if rng.random() < (1.0 - u.hull / u.hull_max):
-                        destroyed = True
-                if destroyed:
-                    losses[u.type] = losses.get(u.type, 0) + 1
-                else:
-                    survivors.append(u)
-            return survivors, losses
-
+        # Explosionen / Zerstoerung abwickeln (resolve ist ausserhalb der Schleife definiert).
         atk_units, atk_losses = resolve(atk_units)
         def_units, def_losses = resolve(def_units)
         for t, c in atk_losses.items():
@@ -415,7 +476,7 @@ def simulate_battle(
             return victim_units
         kept: list[Unit] = []
         for u in victim_units:
-            if capacity > 0 and u.drive_max > 0 and u.drive <= 0:
+            if capacity > 0 and not u.launched and u.drive_max > 0 and u.drive <= 0:
                 captured[u.type] = captured.get(u.type, 0) + 1
                 capacity -= 1
             else:
