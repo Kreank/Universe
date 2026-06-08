@@ -33,7 +33,7 @@
     "crystal_mine":      { "cost": { "metal": 48,  "crystal": 24,  "deuterium": 0 },   "factor": 1.6, "prod_base": 20, "prod_growth": 1.1, "energy_base": 10, "energy_growth": 1.1 },
     "deuterium_synth":   { "cost": { "metal": 225, "crystal": 75,  "deuterium": 0 },   "factor": 1.5, "prod_base": 10, "prod_growth": 1.1, "energy_base": 20, "energy_growth": 1.1 },
     "solar_plant":       { "cost": { "metal": 75,  "crystal": 30,  "deuterium": 0 },   "factor": 1.5, "energy_prod_base": 20, "energy_prod_growth": 1.1 },
-    "fusion_reactor":    { "cost": { "metal": 900, "crystal": 360, "deuterium": 180 }, "factor": 1.8, "energy_prod_base": 30 },
+    "fusion_reactor":    { "cost": { "metal": 900, "crystal": 360, "deuterium": 180 }, "factor": 1.8, "energy_prod_base": 30, "deut_cost_base": 10, "deut_cost_growth": 1.1 },
     "robot_factory":     { "cost": { "metal": 400, "crystal": 120, "deuterium": 200 }, "factor": 2.0 },
     "shipyard":          { "cost": { "metal": 400, "crystal": 200, "deuterium": 100 }, "factor": 2.0 },
     "research_lab":      { "cost": { "metal": 200, "crystal": 400, "deuterium": 200 }, "factor": 2.0 },

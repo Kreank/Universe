@@ -90,10 +90,13 @@ def compute_production_and_energy(
     if solar_lvl > 0:
         produced += solar["energy_prod_base"] * solar_lvl * (solar["energy_prod_growth"] ** solar_lvl)
     fusion_lvl = lvl("fusion_reactor")
+    fusion_deut_use = 0.0
     if fusion_lvl > 0:
         fus = b["fusion_reactor"]
         # Doku 01 §4: 30 * lvl * (1.05 + 0.01*EnergieTech)^lvl
         produced += fus["energy_prod_base"] * fusion_lvl * ((1.05 + 0.01 * energy_tech) ** fusion_lvl)
+        # Fusionsreaktor verbrennt Deuterium (Doku 01 §4): deut_cost_base * lvl * growth^lvl pro Stunde.
+        fusion_deut_use = fus.get("deut_cost_base", 0) * fusion_lvl * (fus.get("deut_cost_growth", 1.0) ** fusion_lvl)
 
     factor = 1.0 if consumed <= 0 else min(1.0, produced / consumed)
 
@@ -103,6 +106,7 @@ def compute_production_and_energy(
         "consumed": round(consumed, 2),
         "balance": round(produced - consumed, 2),
         "factor": round(factor, 4),
+        "deuterium_burn": round(fusion_deut_use, 2),
     }
     return rates_raw, energy
 
@@ -123,6 +127,9 @@ def compute_rates(
     for key in RESOURCE_KEYS:
         # Minen werden gedrosselt, Grundeinkommen nicht; alles mit Speed skaliert.
         effective = rates_raw[key] * factor + float(base.get(key, 0))
+        # Fusionsreaktor verbrennt Deuterium (fixer Verbrauch, NICHT energie-gedrosselt).
+        if key == "deuterium":
+            effective -= energy.get("deuterium_burn", 0.0)
         rates[key] = round(effective * speed, 4)
 
     capacities = {

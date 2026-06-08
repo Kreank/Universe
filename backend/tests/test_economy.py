@@ -31,6 +31,28 @@ def test_energy_deficit_throttles_mine_rate():
     assert rates["metal"] >= 30 * speed - 0.01
 
 
+def test_fusion_reactor_burns_deuterium():
+    """Fusionsreaktor erzeugt Energie UND verbrennt Deuterium (Doku 01 §4, Tech-Debt #3).
+    Verbrauch ist fix (nicht energie-gedrosselt) und senkt die Netto-Deuterium-Rate."""
+    bal = get_balance()
+    speed = bal.speed
+    fus = bal.buildings["fusion_reactor"]
+    base_deut = float(bal.base_income.get("deuterium", 0))
+
+    no_fusion = {"deuterium_synth": 5, "solar_plant": 10}
+    with_fusion = {"deuterium_synth": 5, "solar_plant": 10, "fusion_reactor": 3}
+    r0, e0, _ = compute_rates(no_fusion, temp_max=40, energy_tech=0)
+    r1, e1, _ = compute_rates(with_fusion, temp_max=40, energy_tech=0)
+
+    # Fusionsreaktor erhoeht die Energie-Erzeugung ...
+    assert e1["produced"] > e0["produced"]
+    # ... meldet einen Deuterium-Verbrauch ...
+    burn = fus["deut_cost_base"] * 3 * (fus["deut_cost_growth"] ** 3)
+    assert abs(e1["deuterium_burn"] - round(burn, 2)) < 0.05
+    # ... und senkt die Netto-Deuterium-Rate genau um diesen Verbrauch (speed-skaliert).
+    assert abs((r0["deuterium"] - r1["deuterium"]) - round(burn * speed, 4)) < 0.1
+
+
 def test_lazy_growth_is_capped_at_capacity():
     """Repliziert die Lazy-Formel: amount = min(capacity, amount + rate * dt)."""
     buildings = {"metal_mine": 1, "crystal_mine": 1, "solar_plant": 1}
