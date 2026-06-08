@@ -1,8 +1,36 @@
-# 🛰️ Handoff — Universe (Stand 2026-06-07)
+# 🛰️ Handoff — Universe (Stand 2026-06-08)
 
 > Übergabe für die nächste Session. Projekt: browserbasiertes Weltraum-Aufbau-MMO
 > *Universe* (OGame-Tradition + persistentes Universum + KI-Crews als USP).
-> Repo: `D:/Privat/Universe/Universe` · Branch: `main` (lokal, kein Remote) · Working tree sauber.
+> Repo: `D:/Privat/Universe/Universe` · Branch: `master` (lokal, kein Remote).
+> ⚠ Working tree NICHT sauber: die **Asset-Umstellung** (gelöschte Platzhalter-SVGs,
+> neue `assets/`-Ordner) + Docs `03a/05a/06a` sind **uncommittet** (Nutzer generiert noch
+> Assets nach → bewusst NICHT committet). Aller Code/Balance/Docs dieser Session ist committet.
+
+---
+
+## 0. Diese Session (2026-06-08) — Rollen-Kampf Phase 1+2 + 4 asset-freie Features
+Alles verifiziert (29 Backend-Tests grün + End-to-End-DB-Smokes) und committet:
+```
+b175c3b feat(combat): Rollen-Kampf Phase 2 — Antriebs-Stufen + Disengage + Interdiktion
+4546bba feat(combat): Rollen-Kampf Phase 1 — Antrieb-Subsystem + Schadenstyp-Matrix + Reichweiten
+d900439 feat(economy): Fusionsreaktor verbrennt Deuterium (Tech-Debt #3)
+<debris>  feat(fleet): Truemmerfeld + Recycler-Harvest-Loop
+<colony>  feat(planets): Kolonisierung — colonize-Mission gruendet Planeten (Doku 06a)
+<npc>     feat(npc): NPC-Expansion — expansive NPCs gruenden neue Garnisonen (Tech-Debt #4 Teil 1)
+```
+- **Rollen-Kampf Phase 1+2 GEBAUT** (Doku 03b §6.1/§6.2): Antrieb als 3. Subsystem,
+  Schadenstyp×Subsystem-Matrix (`combat.damage_matrix`), Reichweiten-Bänder
+  (`combat.range_bands`), Antriebs-Stufen + Disengage + Interdiktions-Hook
+  (`combat.drive_stages`/`disengage`). Schiffsprofile in `combat_roster`. Engine datengetrieben.
+  Emergent live: unterlegene Angreifer ziehen sich zurück statt vernichtet zu werden.
+- **Fusionsreaktor** verbrennt jetzt Deuterium (Tech-Debt #3 erledigt).
+- **Trümmer/Recycler-Loop**: Kämpfe hinterlassen Trümmer (`universe_cells.debris_field`),
+  `recycle`-Mission sammelt sie ein.
+- **Kolonisierung**: `colonize`-Mission gründet echte Planeten (war Stub).
+- **NPC-Expansion**: expansive NPCs gründen Außenposten im eigenen System.
+- **Offen geblieben (bewusst):** NPC-**Aktivangriff** auf Spieler (braucht neuen
+  „eingehende-Angriffe/Spieler-als-Verteidiger"-Pfad — Fleet.player_id ist NOT NULL).
 
 ---
 
@@ -69,7 +97,9 @@ Stoppen: `docker compose stop` (Daten bleiben) · Komplett zurücksetzen inkl. D
 Nach Code-Änderungen neu bauen: `docker compose up -d --build game-server` (bzw. `frontend`).
 Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm start` mit Dev-Proxy).
 
-**Backend-Tests:** `docker compose cp ../backend/tests game-server:/app/tests && docker compose exec game-server python -m pytest tests/ -q` (8 Tests, grün).
+**Backend-Tests:** `docker compose cp ../backend/tests game-server:/app/tests && docker compose exec game-server python -m pytest tests/ -q` (29 Tests, grün).
+> ⚠ Mehrfaches `cp ../backend/tests` verschachtelt `tests/tests/` (Doppel-Zählung). Vor dem Lauf
+> `docker compose exec game-server sh -c 'rm -rf /app/tests'`, dann frisch kopieren.
 
 ---
 
@@ -116,10 +146,11 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
    persona-spezifische Funksprüche fehlen die Modelle →
    `ollama pull llama3.1:8b` + `ollama pull nomic-embed-text` (Host). Bis dahin Template-Fallback.
 2. ~~Werft-Queue ist In-Memory~~ → **ERLEDIGT** (persistent via `shipyard_queue` + Recovery).
-3. **Fusionsreaktor** erzeugt Energie, verbraucht aber noch **kein** Deuterium (Doku 01 §4).
-4. **NPC-Verhalten**: Behavior-Tick existiert jetzt (Regen/Wachstum der Garnison), aber NPCs
-   **greifen noch nicht aktiv an** und expandieren nicht auf neue Felder (nur Aufbau am Standort).
-   Default-Tick-Intervall 1 h (`balance.npc.tick_interval_seconds`).
+3. ~~Fusionsreaktor verbraucht kein Deuterium~~ → **ERLEDIGT (2026-06-08)**: verbrennt
+   `deut_cost_base·lvl·growth^lvl`/h (fix, nicht energie-gedrosselt).
+4. **NPC-Verhalten**: Behavior-Tick + **Expansion ERLEDIGT (2026-06-08)** (expansive NPCs gründen
+   Außenposten im eigenen System). **Offen:** NPCs **greifen noch nicht aktiv an** — das braucht
+   einen neuen „eingehende-Angriffe/Spieler-als-Verteidiger"-Pfad (s. §6). Tick-Intervall 1 h.
 5. **Spionage**: Aufklärung + Berichte stehen; **Gegen-Spionage / Sonden-Erkennung** beim Ziel
    fehlt noch (Doku 04 §6). Spieler-Planet-Resschen werden „roh" (ungelazy-refresht) gelesen.
 6. **PvP** weiterhin rudimentär; Ziele sind v. a. NPCs.
@@ -131,13 +162,16 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
     bei neuen Katalog-Schleifen beachten.
 
 ### Naechste grosse Brocken (designt/teil-gebaut → noch offen)
-- **Kampf (Roadmap `03a`):** Phase 1 (Roster) gebaut. Offen: **Trümmer-/Recycler-Loop**,
-  ⭐ **Interception** (Flotten im Flug abfangen, Tempo-basiert), **aktive Commander-Faehigkeiten**,
-  **Flaggschiff/Permadeath/Capture** vervollstaendigen, **Kampf-Simulator**,
-  Verteidigungs-Spezialmechanik (Schildkuppel max 1/Planet, ABM/IPM-Raketen).
-- **Planeten (`06a`):** Typen/Felder gebaut. Offen: **Gasplaneten + Exotische Materie**
-  (RESERVIERT, erst mit Allianzen/End-Forschung), Terraformer, **Kolonisierung** (colonize-Mission
-  hat noch keinen Planet-Erstellungs-Handler).
+- **Rollen-Kampf (`03b/03c`):** Phase 1+2 GEBAUT (s. §0). Offen: **Phase 3 Entern/Capture**
+  (gestrandet→kapern; `*_drive_disabled` wird schon getrackt — braucht aber das Enterschiff =
+  Phase-4-Asset), **Phase 4 Roster-Stat-Neutierung** (macht das Konter-Dreieck spürbar; braucht
+  neue Assets), **Phase 5 Söldner-/Markt-Layer**.
+- **Kampf (Roadmap `03a`):** ~~Trümmer-/Recycler-Loop~~ **ERLEDIGT**. Offen: ⭐ **Interception**
+  (Flotten im Flug abfangen — verschmilzt mit Disengage aus 03b §6.2), **aktive Commander-
+  Faehigkeiten**, **Flaggschiff/Permadeath/Capture**, **Kampf-Simulator** (nutzt jetzt die
+  reichere Engine!), Verteidigungs-Spezialmechanik (Schildkuppel max 1/Planet, ABM/IPM).
+- **Planeten (`06a`):** Typen/Felder + ~~Kolonisierung~~ **ERLEDIGT** (colonize gründet Planeten).
+  Offen: **Gasplaneten + Exotische Materie** (RESERVIERT), Terraformer.
 - **Commander (`05a`):** Grade gebaut. Offen: Grade auch via **Expeditionen** finden;
   aktive Faehigkeiten (Doku 05 §6).
 - **KI/LLM-Funksprüche** weiterhin bewusst aufgeschoben (Nutzer-Wunsch), bis der Rest rund ist.
@@ -146,24 +180,24 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 
 ## 6. Vorgeschlagene nächste Schritte (priorisiert)
 
-### ⭐ Headline für morgen: Rollen-Kampf-System bauen (Doku 03b/03c)
-Das große neue Design dieser Session: Schiffe als **Rollen mit Kontern** statt linearer Machtleiter.
-Vollständig spezifiziert in **`docs/systems/03b-role-based-combat.md`** (Mechanik + 4 Doktrinen) und
-**`docs/systems/03c-role-roster-spec.md`** (konkreter Roster + Asset-Liste). Build-Pfad (03b §6):
-1. **Phase 1 — Engine-Fundament** (`combat/engine.py` + `balance.json`): **Antrieb als 3. Subsystem**
-   (Integritäts-Stufen) + **Schadenstyp×Subsystem-Matrix** (Energie/Kinetik/Ionen/Rakete) +
-   **Reichweiten-Bänder** (Standoff/Initiative). Danach per Sim verifizierbar. ← *hier anfangen.*
-2. Phase 2 Stranden/Disengage/Interdiktion · 3 Entern/Capture (nur Schiffe+Fracht, **keine** Commander) ·
-   4 Rollen-Roster + Eskort-Konter (braucht neue Assets) · 5 Söldner-/Markt-Layer.
-- **Entscheidungen gelockt:** echte Reichweiten · Capture nur Schiffe · Söldner = Service · 4 Soft-Doktrinen
-  (Kriegsherr/Händler/Freibeuter/Pionier) · Kernmechaniken (Kolonisieren!) universell, Doktrin nur Boni.
+### ⭐ Kandidaten für die nächste Session
+Rollen-Kampf Phase 1+2 sind gebaut (s. §0). Naheliegende nächste Schritte:
+1. **Frontend an die neue Engine anbinden:** UI für `weapon_type`/Reichweite/Antriebs-Stufen in den
+   Schiff-Kacheln + Kampfbericht zeigt Distanz/Fliehen/`drive_disabled`. Der **Kampf-Simulator**
+   (Doku-Screen ohne Endpunkt) lohnt sich jetzt richtig — die Engine ist reich genug.
+2. **`recycle`/`colonize` im Frontend** wählbar machen (Backend-Missionen stehen, UI fehlt noch) —
+   sonst sind die neuen Loops nur per API erreichbar.
+3. **NPC-Aktivangriff** (größerer Brocken): neuer „eingehende-Angriffe/Spieler-als-Verteidiger"-Pfad.
+   Braucht: NPC-Flotten-Versand (Fleet.player_id ist NOT NULL → Schema/Handler), Combat mit Spieler
+   als Verteidiger, Verlust-/Beute-Anwendung am Spieler, Benachrichtigung. Designentscheidung offen.
+4. **Phase 3 Entern/Capture** & **Phase 4 Roster-Stat-Neutierung** — brauchen die neuen Rollen-Assets.
 
 ### Parallel / sonst offen
 - **Assets v0.2:** Nutzer generiert die **§11-Rollen-Assets** (`docs/ASSETS.md`: 12 neue Schiffe +
-  Waffen-/Status-Icons + Effekte). v0.1-Satz ist komplett produziert.
-- **Spielfluss real durchspielen** (frisches Konto) → Balance/Pacing tunen (`shared/balance.json`).
-- **NPC-Verhalten erweitern**: aktive Angriffe/Expansion · **Gegen-Spionage** (Tech-Debt #4/#5).
-- **Kolonisierung** (colonize-Mission hat noch keinen Planet-Erstellungs-Handler) · **Trümmer/Recycler-Loop**.
+  Waffen-/Status-Icons + Effekte) — DANN Working Tree (Asset-Umstellung) sauber committen.
+- **Spielfluss real durchspielen** (frisches Konto) → Balance/Pacing tunen (`shared/balance.json`),
+  inkl. der neuen Kampf-Zahlen (`combat.damage_matrix`/`range_bands`/`disengage`, kinetic-vs-shield 0.25).
+- **Gegen-Spionage** (Tech-Debt #5) · **aktive Commander-Fähigkeiten** (Doku 05 §6).
 - **LLM-Funksprüche** (Modelle pullen) — vom Nutzer bewusst aufgeschoben, bis der Rest „rund" ist.
 
 ---
