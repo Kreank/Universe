@@ -88,8 +88,15 @@ schlägt Linientanks (Überreichweite) → Flak/Linie schlägt Schwarm (Flächen
    Verteidiger). Result: `attacker_fled`/`defender_fled` + `*_drive_disabled` (= enterbar, Phase 3).
    Verifiziert: 14 Tests grün. **Offen (Phase 3+):** echte Prey-Flucht im Fleet-vs-Fleet (Interception
    aus 03a Phase 3) + Tempo-Wirkung der Antriebs-Stufen auf die Flugzeit (braucht Pro-Schiff-drive-Persistenz).
-3. **Entern/Capture:** `gestrandet`-Auflösung (Antrieb 0 → enterbar, schon getrackt), Enterschiff kapert Fracht/Schiff.
-4. **Rollen-Roster + Eskort-Konter:** neue Schiffstypen (s. §5 ✚) + Schild-Tender/Punktverteidigung. **Braucht neue Assets.**
+3. ✅ **GEBAUT (2026-06-08) — Entern/Capture:** überlebende Enterschiffe (`combat_roster.boarder`)
+   kapern gestrandete Gegner (Antrieb 0) nach der Rundenschleife — symmetrisch, unabhängig vom
+   Sieger; `balance.combat.boarding.capture_per_boarder`. Result: `attacker_captured`/`defender_captured`.
+   Service hängt gekaperte Schiffe an Flotte/Garnison (nur Schiffe, Commander nie). Verifiziert
+   (34 Tests + Sim + E2E). Offen: Fracht-Bonus für gekaperte Frachter (überlappt mit Plunder).
+4. ✅ **GEBAUT (2026-06-08) — Rollen-Roster:** alle 12 neuen Spezial-Schiffe (§5 ✚) integriert
+   (`balance.ships` + `combat_roster` + Frontend/Werft + Assets). Universell baubar. Offen:
+   Sondermechaniken (Drohnen-Start/Schild-Projektion/Stealth-Überraschung/Mining/Expedition) +
+   **Stat-Neutierung der ALTEN Artillerie** (Konter-Dreieck offener Kampf spürbar machen).
 5. **Spielstil-Layer:** Söldner-/Eskorten-Anheuern, Piraterie-Reputation (Wirtschafts-/Sozial-Schicht).
 
 ## 7. Entscheidungen

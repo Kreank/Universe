@@ -9,22 +9,27 @@
 
 ---
 
-## 0. Diese Session (2026-06-08) — Rollen-Kampf Phase 1+2 + 5 asset-freie Features
-Alles verifiziert (32 Backend-Tests grün + End-to-End-DB-Smokes) und committet:
+## 0. Diese Session (2026-06-08) — Rollen-Kampf Phase 1–4 + 5 asset-freie Features + Frontend
+Alles verifiziert (34 Backend-Tests grün + End-to-End-DB-Smokes) und committet:
 ```
-15a403c feat(npc): NPC-Aktivangriff auf Spieler (eingehende Angriffe, Tech-Debt #4 Teil 2)
-86132aa feat(npc): NPC-Expansion — expansive NPCs gruenden neue Garnisonen (Tech-Debt #4 Teil 1)
-e12cbe9 feat(planets): Kolonisierung — colonize-Mission gruendet Planeten (Doku 06a)
+b41135a feat(combat): Rollen-Kampf Phase 3 — Entern/Capture gestrandeter Schiffe
+d97ebf9 feat(combat): Rollen-Roster Phase 4 — 12 neue Spezial-Schiffe (Doku 03c)
+5bafcf5 feat(fleet): recycle/colonize waehlbar + eingehende NPC-Angriffe im Flotten-Screen
+15a403c feat(npc): NPC-Aktivangriff auf Spieler (eingehende Angriffe)
+86132aa feat(npc): NPC-Expansion — expansive NPCs gruenden neue Garnisonen
+e12cbe9 feat(planets): Kolonisierung — colonize-Mission gruendet Planeten
 edc6c03 feat(fleet): Truemmerfeld + Recycler-Harvest-Loop
-d900439 feat(economy): Fusionsreaktor verbrennt Deuterium (Tech-Debt #3)
+d900439 feat(economy): Fusionsreaktor verbrennt Deuterium
 b175c3b feat(combat): Rollen-Kampf Phase 2 — Antriebs-Stufen + Disengage + Interdiktion
 4546bba feat(combat): Rollen-Kampf Phase 1 — Antrieb-Subsystem + Schadenstyp-Matrix + Reichweiten
 ```
-- **Rollen-Kampf Phase 1+2 GEBAUT** (Doku 03b §6.1/§6.2): Antrieb als 3. Subsystem,
-  Schadenstyp×Subsystem-Matrix (`combat.damage_matrix`), Reichweiten-Bänder
-  (`combat.range_bands`), Antriebs-Stufen + Disengage + Interdiktions-Hook
-  (`combat.drive_stages`/`disengage`). Schiffsprofile in `combat_roster`. Engine datengetrieben.
-  Emergent live: unterlegene Angreifer ziehen sich zurück statt vernichtet zu werden.
+- **Rollen-Kampf Phase 1–4 GEBAUT** (Doku 03b): 3 Subsysteme + Schadenstyp×Subsystem-Matrix
+  (`combat.damage_matrix`) + Reichweiten-Bänder (`combat.range_bands`) · Antriebs-Stufen + Disengage
+  + Interdiktion (`combat.drive_stages`/`disengage`) · **Entern/Capture** (`combat.boarding`) · **12
+  neue Spezial-Schiffe** (`combat_roster`, in der Werft baubar, Assets integriert). Der volle
+  **Piraterie-Loop läuft**: EWAR-Ionen stranden → Interdiktor hält → Enterschiff kapert.
+- **Frontend:** `recycle`/`colonize` im Flotten-Versand wählbar + **eingehende Angriffe** als
+  Warn-Banner (`GET /api/incoming-attacks`); 12 neue Schiffe in der Werft (Kategorie „Rollen-Schiffe").
 - **Fusionsreaktor** verbrennt jetzt Deuterium (Tech-Debt #3 erledigt).
 - **Trümmer/Recycler-Loop**: Kämpfe hinterlassen Trümmer (`universe_cells.debris_field`),
   `recycle`-Mission sammelt sie ein.
@@ -164,10 +169,12 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
     bei neuen Katalog-Schleifen beachten.
 
 ### Naechste grosse Brocken (designt/teil-gebaut → noch offen)
-- **Rollen-Kampf (`03b/03c`):** Phase 1+2 GEBAUT (s. §0). Offen: **Phase 3 Entern/Capture**
-  (gestrandet→kapern; `*_drive_disabled` wird schon getrackt — braucht aber das Enterschiff =
-  Phase-4-Asset), **Phase 4 Roster-Stat-Neutierung** (macht das Konter-Dreieck spürbar; braucht
-  neue Assets), **Phase 5 Söldner-/Markt-Layer**.
+- **Rollen-Kampf (`03b/03c`):** Phase 1–4 GEBAUT (Subsysteme/Matrix/Reichweite · Antrieb/Disengage/
+  Interdiktion · **Entern/Capture** · **12-Schiff-Roster** integriert, in der Werft baubar). Der volle
+  Piraterie-Loop läuft: EWAR-Ionen stranden → Interdiktor hält → Enterschiff kapert. Offen:
+  **Phase 5 Söldner-/Markt-Layer**, **Sondermechaniken** (Drohnen-Start/Schild-Projektion/Stealth-
+  Überraschung/Mining/Expedition), **Stat-Neutierung der alten Artillerie** (Konter-Dreieck offener
+  Kampf), und die **Doktrinen** (Kriegsherr/Händler/Freibeuter/Pionier — Kosten-/Zeit-Boni).
 - **Kampf (Roadmap `03a`):** ~~Trümmer-/Recycler-Loop~~ **ERLEDIGT**. Offen: ⭐ **Interception**
   (Flotten im Flug abfangen — verschmilzt mit Disengage aus 03b §6.2), **aktive Commander-
   Faehigkeiten**, **Flaggschiff/Permadeath/Capture**, **Kampf-Simulator** (nutzt jetzt die
