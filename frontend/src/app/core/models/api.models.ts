@@ -207,7 +207,8 @@ export interface ShipyardBuildResponse {
 
 // --- Flotte -------------------------------------------------------------
 
-export type FleetMission = 'attack' | 'transport' | 'spy' | 'deploy' | 'recycle' | 'colonize';
+export type FleetMission =
+  | 'attack' | 'transport' | 'spy' | 'deploy' | 'recycle' | 'colonize' | 'mine' | 'expedition';
 export type FleetStatus = 'flying' | 'arrived' | 'returning' | 'returned';
 
 export interface Coordinate {

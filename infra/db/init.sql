@@ -15,7 +15,7 @@ CREATE TYPE resource_type   AS ENUM ('metal', 'crystal', 'deuterium', 'energy');
 CREATE TYPE commander_status AS ENUM ('active', 'training', 'wounded', 'captured', 'dead');
 CREATE TYPE commander_rank  AS ENUM ('cadet', 'officer', 'veteran', 'elite', 'legend');
 CREATE TYPE specialization  AS ENUM ('combat', 'logistics', 'spy', 'research', 'trade');
-CREATE TYPE fleet_mission   AS ENUM ('attack', 'transport', 'deploy', 'hold', 'colonize', 'spy', 'recycle', 'expedition', 'return');
+CREATE TYPE fleet_mission   AS ENUM ('attack', 'transport', 'deploy', 'hold', 'colonize', 'spy', 'recycle', 'expedition', 'return', 'mine');
 CREATE TYPE fleet_status    AS ENUM ('flying', 'arrived', 'returning', 'done');
 CREATE TYPE occupant_type   AS ENUM ('empty', 'player', 'npc', 'debris');
 CREATE TYPE transmission_type AS ENUM ('routine', 'reaction', 'demand', 'combat_report', 'big_moment', 'system', 'spy_report');

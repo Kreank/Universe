@@ -43,7 +43,7 @@ specialization_enum = ENUM(
 )
 fleet_mission_enum = ENUM(
     "attack", "transport", "deploy", "hold", "colonize", "spy",
-    "recycle", "expedition", "return",
+    "recycle", "expedition", "return", "mine",
     name="fleet_mission", create_type=False,
 )
 fleet_status_enum = ENUM(

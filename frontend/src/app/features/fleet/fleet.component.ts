@@ -207,7 +207,7 @@ export class FleetComponent {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly missions: FleetMission[] = [
-    'attack', 'transport', 'spy', 'deploy', 'recycle', 'colonize',
+    'attack', 'transport', 'spy', 'deploy', 'recycle', 'colonize', 'mine', 'expedition',
   ];
 
   // Pflicht-Schiff je Spezial-Mission (Backend erzwingt es; hier als Hinweis).
@@ -215,6 +215,8 @@ export class FleetComponent {
     spy: { type: 'spy_probe', label: 'Spionagesonde' },
     recycle: { type: 'recycler', label: 'Recycler' },
     colonize: { type: 'colony_ship', label: 'Kolonieschiff' },
+    mine: { type: 'miner', label: 'Bergbauschiff' },
+    expedition: { type: 'expedition_ship', label: 'Expeditions-Schiff' },
   };
 
   protected readonly incoming = signal<IncomingAttack[]>([]);

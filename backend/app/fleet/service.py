@@ -126,7 +126,7 @@ async def send_fleet(
 ) -> Fleet:
     """Sendet eine Flotte. Validiert Schiffe, Slots, Ziel-Schutz, zieht Sprit+Fracht ab."""
     bal = get_balance()
-    valid_missions = {"attack", "transport", "spy", "deploy", "recycle", "colonize"}
+    valid_missions = {"attack", "transport", "spy", "deploy", "recycle", "colonize", "mine", "expedition"}
     if mission not in valid_missions:
         raise ValueError(f"Mission muss eine von {sorted(valid_missions)} sein")
 
@@ -179,6 +179,24 @@ async def send_fleet(
         cs_type = c_cfg.get("ship_type", "colony_ship")
         if ships.get(cs_type, 0) < 1:
             raise RuntimeError(f"Kolonisierung benoetigt ein {cs_type}")
+
+    # Mining erfordert Bergbauschiffe in der Flotte.
+    if mission == "mine":
+        m_cfg = bal.data.get("mining", {})
+        mtype = m_cfg.get("ship_type", "miner")
+        if ships.get(mtype, 0) < m_cfg.get("min_ships", 1):
+            raise RuntimeError(
+                f"Mining benoetigt mindestens {m_cfg.get('min_ships', 1)} {mtype}"
+            )
+
+    # Expedition erfordert Expeditions-Schiffe in der Flotte.
+    if mission == "expedition":
+        e_cfg = bal.data.get("expedition", {})
+        etype = e_cfg.get("ship_type", "expedition_ship")
+        if ships.get(etype, 0) < e_cfg.get("min_ships", 1):
+            raise RuntimeError(
+                f"Expedition benoetigt mindestens {e_cfg.get('min_ships', 1)} {etype}"
+            )
 
     # Commander pruefen (falls angegeben).
     commander = None
@@ -329,7 +347,9 @@ async def recall_fleet(session: AsyncSession, player: Player, fleet_id: uuid.UUI
 async def fleet_arrive(fleet_id: str) -> None:
     """Anflug-Job: bei Angriff Kampf, bei Spionage Aufklaerung; danach Rueckflug."""
     from app.combat.service import resolve_attack
+    from app.fleet.expedition import resolve_expedition
     from app.fleet.harvest import resolve_harvest
+    from app.fleet.mining import resolve_mine
     from app.planets.colonize import resolve_colonize
     from app.universe.spionage import resolve_spy
 
@@ -349,6 +369,10 @@ async def fleet_arrive(fleet_id: str) -> None:
             await resolve_harvest(session, fleet)
         elif mission == "colonize":
             await resolve_colonize(session, fleet)
+        elif mission == "mine":
+            await resolve_mine(session, fleet)
+        elif mission == "expedition":
+            await resolve_expedition(session, fleet)
 
         # Nach Ankunft kehrt die Flotte zurueck (return_at bleibt wie geplant).
         fleet.status = "returning"

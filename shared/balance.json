@@ -258,6 +258,25 @@
     "colony_buildings": {}
   },
 
+  "mining": {
+    "_note": "Doku 03c: Mining-Mission ('mine'). Bergbauschiffe bauen im Zielsektor Erz ab; Ertrag je Schiff (metal/crystal), gedeckelt durch die Frachtkapazitaet der Flotte. Kostet Sprit + Zeit + Flottenslot. min_ships = benoetigte Bergbauschiffe.",
+    "ship_type": "miner",
+    "min_ships": 1,
+    "yield_per_miner": { "metal": 4000, "crystal": 2000 }
+  },
+
+  "expedition": {
+    "_note": "Doku 05/03c: Expeditions-Mission. Zufalls-Fund (gewichtet) bei Ankunft: Ressourcen / gefundene Schiffe / nichts / Gefahr (Verluste). Bereiche [min,max] werden seed-basiert gezogen. min_ships = benoetigte Expeditions-Schiffe.",
+    "ship_type": "expedition_ship",
+    "min_ships": 1,
+    "outcomes": [
+      { "weight": 35, "type": "resources", "metal": [2000, 25000], "crystal": [1000, 12000], "deuterium": [0, 6000] },
+      { "weight": 20, "type": "ships", "ship": "light_fighter", "count": [2, 15] },
+      { "weight": 30, "type": "nothing" },
+      { "weight": 15, "type": "hazard", "loss_pct": [10, 40] }
+    ]
+  },
+
   "commander": {
     "morale": {
       "min": 0, "max": 100, "start": 60, "base_target": 50,

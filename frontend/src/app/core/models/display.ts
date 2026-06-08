@@ -114,6 +114,8 @@ export const MISSION_META: Record<string, DisplayMeta> = {
   deploy: { label: 'Stationierung', glyph: '🚚' },
   recycle: { label: 'Recycling', glyph: '♻️' },
   colonize: { label: 'Kolonisieren', glyph: '🌱' },
+  mine: { label: 'Bergbau', glyph: '⛏️' },
+  expedition: { label: 'Expedition', glyph: '🧭' },
 };
 
 export const SPECIALIZATION_META: Record<string, DisplayMeta> = {
