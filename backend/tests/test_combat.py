@@ -142,3 +142,27 @@ def test_interdictor_suppresses_disengage():
     defender = {"ships": {"battleship": 50}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
     result = simulate_battle(attacker, defender, 3, bal)
     assert result["attacker_fled"] == {}                       # Fang-Feld: niemand entkommt
+
+
+# ---- Rollen-Kampf Phase 3 (Doku 03b §4/§7): Entern / Capture ----
+
+def test_boarder_captures_stranded_ships():
+    """Piraterie-Loop: EWAR-Fregatten (Ionen) stranden die Kreuzer (Antrieb 0, Huelle heil),
+    Enterschiffe kapern die Gestrandeten -> der Angreifer gewinnt die Schiffe."""
+    attacker = {"ships": {"ewar_frigate": 40, "boarder": 10}, "tech": {}, "attack_mult": 1.0}
+    defender = {"ships": {"cruiser": 8}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    result = simulate_battle(attacker, defender, 5, BALANCE)
+    captured = result["attacker_captured"].get("cruiser", 0)
+    assert captured > 0                                        # es wurde gekapert
+    # Gekaperte zaehlen NICHT mehr als Verteidiger-Ueberlebende.
+    assert captured + result["defender_survivors"].get("cruiser", 0) <= 8
+
+
+def test_no_capture_without_boarder():
+    """Ohne Enterschiff wird NICHT gekapert: EWAR strandet nur (Antrieb lahm), Kreuzer bleiben."""
+    attacker = {"ships": {"ewar_frigate": 40}, "tech": {}, "attack_mult": 1.0}
+    defender = {"ships": {"cruiser": 8}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    result = simulate_battle(attacker, defender, 5, BALANCE)
+    assert result["attacker_captured"] == {}
+    assert result["defender_survivors"].get("cruiser", 0) == 8     # alle ueberleben ...
+    assert result["defender_drive_disabled"].get("cruiser", 0) == 8  # ... aber gestrandet

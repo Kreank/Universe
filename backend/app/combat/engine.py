@@ -42,6 +42,7 @@ class Unit:
     drive_max: float
     range_idx: int
     interdictor: bool = False
+    boarder: bool = False
     hull: float = 0.0
     shield: float = 0.0
     drive: float = 0.0
@@ -102,7 +103,8 @@ def _build_units(
         for _ in range(int(count)):
             units.append(Unit(
                 typ, side, attack, shield, hull, dict(cfg.get("rapidfire", {})), False,
-                prof.get("weapon_type"), drive_max, ridx, bool(prof.get("interdictor", False)),
+                prof.get("weapon_type"), drive_max, ridx,
+                bool(prof.get("interdictor", False)), bool(prof.get("boarder", False)),
             ))
     for typ, count in (defenses or {}).items():
         cfg = def_cat.get(typ)
@@ -379,6 +381,30 @@ def simulate_battle(
         if not atk_units or not def_units:
             break
 
+    # --- Entern (Phase 3): Enterschiffe kapern GESTRANDETE Gegner (Antrieb 0) ---
+    # Greift unabhaengig vom Sieger (disable+board). Nur Schiffe; Geflohene sind raus.
+    boarding = combat.get("boarding", {})
+    cap_per = int(boarding.get("capture_per_boarder", 0))
+    attacker_captured: dict[str, int] = {}
+    defender_captured: dict[str, int] = {}
+
+    def board(boarding_units: list[Unit], victim_units: list[Unit], captured: dict[str, int]) -> list[Unit]:
+        capacity = sum(1 for u in boarding_units if u.boarder) * cap_per
+        if capacity <= 0:
+            return victim_units
+        kept: list[Unit] = []
+        for u in victim_units:
+            if capacity > 0 and u.drive_max > 0 and u.drive <= 0:
+                captured[u.type] = captured.get(u.type, 0) + 1
+                capacity -= 1
+            else:
+                kept.append(u)
+        return kept
+
+    if cap_per > 0:
+        def_units = board(atk_units, def_units, attacker_captured)   # Angreifer entert Verteidiger
+        atk_units = board(def_units, atk_units, defender_captured)   # Verteidiger entert Angreifer
+
     # Geflohene Einheiten ueberleben (kehren heim), zaehlen aber nicht als "haelt das Feld".
     attacker_survivors = _counts(atk_units + atk_fled)
     defender_survivors = _counts(def_units + def_fled)
@@ -408,4 +434,6 @@ def simulate_battle(
         "defender_drive_disabled": _drive_disabled(def_units),
         "attacker_fled": _counts(atk_fled),
         "defender_fled": _counts(def_fled),
+        "attacker_captured": attacker_captured,
+        "defender_captured": defender_captured,
     }

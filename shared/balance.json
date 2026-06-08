@@ -215,6 +215,10 @@
       "interdiction_per_unit": 0.2,
       "interdiction_cap": 1.0
     },
+    "boarding": {
+      "_note": "Doku 03b §4/§7: Enterschiffe (combat_roster.boarder=true) kapern am Ende des Kampfes GESTRANDETE Gegner (Antrieb 0). capture_per_boarder = gekaperte Schiffe je ueberlebendem Enterschiff. Kaperung = nur SCHIFFE (Commander nie). Greift unabhaengig vom Sieger (disable+board).",
+      "capture_per_boarder": 2
+    },
     "evacuation": {
       "_note": "Entkommen nur, wenn eigene Schiffe ueberleben (GDD §13 / Doku 04).",
       "base_chance": 0.30,

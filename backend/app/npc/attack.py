@@ -261,6 +261,11 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
             else:
                 row.count = surv
 
+        # Entern: vom Spieler (Verteidiger) gekaperte NPC-Schiffe stationieren.
+        for typ, n in result.get("defender_captured", {}).items():
+            if n > 0:
+                session.add(Ship(planet_id=planet.id, fleet_id=None, type=typ, count=int(n)))
+
         # -- Spieler-Verteidigung: Verluste + 70 % Regen --
         regen = bal.combat["defense_regen_ratio"]
         for row in def_rows:
@@ -309,9 +314,10 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
                     nres[key] = nres.get(key, 0) + loot[key]
                 npc.resources = nres
 
-        # -- NPC-Ueberlebende kehren in die Garnison zurueck --
+        # -- NPC-Ueberlebende (+ vom NPC gekaperte Spieler-Schiffe) kehren in die Garnison zurueck --
         if npc is not None:
-            npc.fleet = _merge_fleet(npc.fleet or {}, npc_survivors)
+            npc.fleet = _merge_fleet(_merge_fleet(npc.fleet or {}, npc_survivors),
+                                     result.get("attacker_captured", {}))
 
         # -- Kampfbericht + Benachrichtigung --
         situation = "defense_lost" if winner == "attacker" else (

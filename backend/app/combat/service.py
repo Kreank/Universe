@@ -215,6 +215,11 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         else:
             row.count = surv
 
+    # Entern: gekaperte Gegner-Schiffe der Angreifer-Flotte hinzufuegen (kehren heim).
+    for typ, n in result.get("attacker_captured", {}).items():
+        if n > 0:
+            session.add(Ship(planet_id=None, fleet_id=fleet.id, type=typ, count=int(n)))
+
     # Truemmer (beide Seiten, nur Schiffe).
     debris = _debris(atk_losses)
     def_debris = _debris(def_losses)
@@ -259,7 +264,12 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
             regenerated = math.floor(lost * regen)
             new_def[typ] = max(0, kept + regenerated)
         npc.defenses = new_def
-        npc.fleet = {t: c for t, c in result["defender_survivors"].items() if t in (npc.fleet or {})}
+        npc_fleet = {t: c for t, c in result["defender_survivors"].items() if t in (npc.fleet or {})}
+        # Entern: vom NPC gekaperte Angreifer-Schiffe seiner Garnison hinzufuegen.
+        for typ, n in result.get("defender_captured", {}).items():
+            if n > 0:
+                npc_fleet[typ] = npc_fleet.get(typ, 0) + int(n)
+        npc.fleet = npc_fleet
         npc.resources = npc_resources
 
     # -- Commander-Folgen ----------------------------------------------------
