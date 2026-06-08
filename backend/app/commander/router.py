@@ -46,6 +46,37 @@ async def get_span(
     return SpanOut(**span)
 
 
+@router.get("/player/doctrine")
+async def get_doctrine(
+    player: Player = Depends(get_current_player),
+) -> dict:
+    from app.platform.doctrine import options
+    dcfg = get_balance().data.get("doctrines", {})
+    return {
+        "current": player.doctrine,
+        "options": options(),
+        "switch_cost": dcfg.get("switch_cost", {}),
+        "switch_cooldown_seconds": dcfg.get("switch_cooldown_seconds", 0),
+        "changed_at": player.doctrine_changed_at,
+    }
+
+
+@router.post("/player/doctrine")
+async def set_player_doctrine(
+    body: dict,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    from app.platform.doctrine import set_doctrine
+    try:
+        result = await set_doctrine(session, player, str(body.get("doctrine", "")))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return result
+
+
 @router.get("/commanders/bonus-preview", response_model=list[BonusOut])
 async def bonus_preview(
     specialization: str = "combat",

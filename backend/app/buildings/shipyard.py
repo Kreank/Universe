@@ -141,16 +141,24 @@ async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: in
     if not _requirements_met(req, rlevels, blevels):
         raise RuntimeError("Vorbedingungen nicht erfuellt")
 
+    # Doktrin-Rabatt fuer Signatur-Schiffe (Kosten + Bauzeit).
+    cost_mult, time_mult = 1.0, 1.0
+    if category == "ship":
+        from app.platform.doctrine import signature_mult
+        from app.platform.models import Player
+        player = await session.get(Player, planet.player_id)
+        cost_mult, time_mult = signature_mult(player.doctrine if player else None, typ)
+
     unit_cost = catalog[typ]["cost"]
     total_cost = {
-        "metal": unit_cost.get("metal", 0) * count,
-        "crystal": unit_cost.get("crystal", 0) * count,
-        "deuterium": unit_cost.get("deuterium", 0) * count,
+        "metal": round(unit_cost.get("metal", 0) * count * cost_mult),
+        "crystal": round(unit_cost.get("crystal", 0) * count * cost_mult),
+        "deuterium": round(unit_cost.get("deuterium", 0) * count * cost_mult),
     }
     if not await spend_resources(session, planet, total_cost):
         raise RuntimeError("Nicht genug Ressourcen")
 
-    secs_each = build_seconds_each(unit_cost, blevels.get("shipyard", 0))
+    secs_each = max(1, int(round(build_seconds_each(unit_cost, blevels.get("shipyard", 0)) * time_mult)))
     finish = _now() + dt.timedelta(seconds=secs_each * count)
     item = ShipyardQueueItem(
         planet_id=planet.id,

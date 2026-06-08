@@ -77,6 +77,8 @@ class Player(Base):
     score: Mapped[int] = mapped_column(BigInteger, default=0)
     is_protected: Mapped[bool] = mapped_column(Boolean, default=True)
     vacation_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    doctrine: Mapped[str | None] = mapped_column(Text, nullable=True)  # Imperiums-Doktrin (Doku 03b §9)
+    doctrine_changed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Planet(Base):

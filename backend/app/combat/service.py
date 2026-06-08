@@ -23,6 +23,7 @@ from app.platform.models import (
     Commander,
     Fleet,
     NpcEmpire,
+    Player,
     Ship,
     UniverseCell,
 )
@@ -134,6 +135,10 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         "armor_tech": atk_research.get("armor_tech", 0),
     }
     attack_mult = _commander_mods(commander, len(attacker_ships))
+    # Doktrin-Bonus (z. B. Kriegsherr +10 % Waffenschaden) flottenweit.
+    from app.platform.doctrine import combat_attack_mult
+    attacker_player = await session.get(Player, fleet.player_id)
+    attack_mult *= combat_attack_mult(attacker_player.doctrine if attacker_player else None)
 
     # Schiffsklassen-spezifische Commander-Boni (Angriff/Schild je Schiffstyp, moral-skaliert).
     ship_bonuses: dict[str, dict[str, float]] = {}

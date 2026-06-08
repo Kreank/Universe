@@ -277,6 +277,22 @@
     ]
   },
 
+  "doctrines": {
+    "_note": "Imperiums-Doktrin (Doku 03b §9). Frueh waehlbar, Wechsel kostet switch_cost + Cooldown. Boni ueber Multiplikatoren; Signatur-Schiffe sind guenstiger/schneller. Fremde Linien bleiben baubar (keine harten Locks). Aktiv wirken aktuell: Flottenslots, Bau-Kosten/-Zeit der Signatur-Schiffe, Kampf-Angriff. (cargo_mult fuer Haendler ist als Feld vorgesehen, Markt-Layer folgt.)",
+    "switch_cost": { "metal": 50000, "crystal": 50000, "deuterium": 20000 },
+    "switch_cooldown_seconds": 604800,
+    "list": {
+      "warlord": { "label": "Kriegsherr", "fleet_slot_bonus": 1, "combat_attack_mult": 1.10, "signature_cost_mult": 0.85, "signature_time_mult": 0.85,
+        "signature_ships": ["battleship", "battlecruiser", "destroyer", "bomber", "carrier", "deathstar"] },
+      "trader": { "label": "Haendler", "fleet_slot_bonus": 0, "combat_attack_mult": 1.0, "cargo_mult": 1.25, "signature_cost_mult": 0.85, "signature_time_mult": 0.85,
+        "signature_ships": ["small_cargo", "large_cargo", "miner"] },
+      "pirate": { "label": "Freibeuter", "fleet_slot_bonus": 0, "combat_attack_mult": 1.0, "signature_cost_mult": 0.85, "signature_time_mult": 0.85,
+        "signature_ships": ["interdictor", "ewar_frigate", "boarder", "stealth_corvette"] },
+      "pioneer": { "label": "Pionier", "fleet_slot_bonus": 0, "combat_attack_mult": 1.0, "signature_cost_mult": 0.80, "signature_time_mult": 0.80,
+        "signature_ships": ["deep_scout", "expedition_ship", "colony_ship", "miner"] }
+    }
+  },
+
   "commander": {
     "morale": {
       "min": 0, "max": 100, "start": 60, "base_target": 50,

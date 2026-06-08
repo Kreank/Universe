@@ -68,9 +68,12 @@ def slowest_ship_speed(ships: dict[str, int]) -> float:
 
 
 async def fleet_slots(session: AsyncSession, player_id: uuid.UUID) -> int:
+    from app.platform.doctrine import fleet_slot_bonus
     research = await get_research_levels(session, player_id)
     bal = get_balance()
-    return bal.fleet["base_slots"] + bal.fleet["slots_per_computer_tech"] * research.get("computer_tech", 0)
+    base = bal.fleet["base_slots"] + bal.fleet["slots_per_computer_tech"] * research.get("computer_tech", 0)
+    player = await session.get(Player, player_id)
+    return base + fleet_slot_bonus(player.doctrine if player else None)
 
 
 async def active_fleet_count(session: AsyncSession, player_id: uuid.UUID) -> int:

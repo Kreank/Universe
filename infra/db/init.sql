@@ -32,7 +32,9 @@ CREATE TABLE players (
     last_active   TIMESTAMPTZ NOT NULL DEFAULT now(),
     score         BIGINT NOT NULL DEFAULT 0,
     is_protected  BOOLEAN NOT NULL DEFAULT TRUE,
-    vacation_until TIMESTAMPTZ
+    vacation_until TIMESTAMPTZ,
+    doctrine      TEXT,                                 -- Imperiums-Doktrin (Doku 03b §9)
+    doctrine_changed_at TIMESTAMPTZ
 );
 
 -- ---------------------------------------------------------------------

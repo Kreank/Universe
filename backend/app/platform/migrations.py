@@ -83,6 +83,9 @@ _STATEMENTS: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_npc_attacks_target ON npc_attacks(target_player_id)",
     # -- Feature: Mining-Mission (Bergbauschiff) ------------------------------
     "ALTER TYPE fleet_mission ADD VALUE IF NOT EXISTS 'mine'",
+    # -- Feature: Imperiums-Doktrinen ----------------------------------------
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS doctrine TEXT",
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS doctrine_changed_at TIMESTAMPTZ",
 ]
 
 
