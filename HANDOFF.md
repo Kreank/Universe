@@ -171,8 +171,9 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 ### Naechste grosse Brocken (designt/teil-gebaut → noch offen)
 - **Rollen-Kampf (`03b/03c`):** Phase 1–4 GEBAUT (Subsysteme/Matrix/Reichweite · Antrieb/Disengage/
   Interdiktion · **Entern/Capture** · **12-Schiff-Roster** integriert, in der Werft baubar). Der volle
-  Piraterie-Loop läuft: EWAR-Ionen stranden → Interdiktor hält → Enterschiff kapert. Offen:
-  **Phase 5 Söldner-/Markt-Layer**, **Sondermechaniken** (Drohnen-Start/Schild-Projektion/Stealth-
+  Piraterie-Loop läuft inkl. **Eskort-Kontern** (Eskort-Fregatte fängt Enterer ab, Schild-Tender
+  repariert Antriebe gegen Stranding) → vollständiges Schere-Stein-Papier. Offen:
+  **Phase 5 Söldner-/Markt-Layer**, restliche **Sondermechaniken** (Drohnen-Start/Stealth-
   Überraschung/Mining/Expedition), **Stat-Neutierung der alten Artillerie** (Konter-Dreieck offener
   Kampf), und die **Doktrinen** (Kriegsherr/Händler/Freibeuter/Pionier — Kosten-/Zeit-Boni).
 - **Kampf (Roadmap `03a`):** ~~Trümmer-/Recycler-Loop~~ **ERLEDIGT**. Offen: ⭐ **Interception**

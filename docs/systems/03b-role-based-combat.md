@@ -93,9 +93,12 @@ schlägt Linientanks (Überreichweite) → Flak/Linie schlägt Schwarm (Flächen
    Sieger; `balance.combat.boarding.capture_per_boarder`. Result: `attacker_captured`/`defender_captured`.
    Service hängt gekaperte Schiffe an Flotte/Garnison (nur Schiffe, Commander nie). Verifiziert
    (34 Tests + Sim + E2E). Offen: Fracht-Bonus für gekaperte Frachter (überlappt mit Plunder).
-4. ✅ **GEBAUT (2026-06-08) — Rollen-Roster:** alle 12 neuen Spezial-Schiffe (§5 ✚) integriert
-   (`balance.ships` + `combat_roster` + Frontend/Werft + Assets). Universell baubar. Offen:
-   Sondermechaniken (Drohnen-Start/Schild-Projektion/Stealth-Überraschung/Mining/Expedition) +
+4. ✅ **GEBAUT (2026-06-08) — Rollen-Roster + Eskort-Konter:** alle 12 neuen Spezial-Schiffe (§5 ✚)
+   integriert (`balance.ships` + `combat_roster` + Frontend/Werft + Assets, universell baubar). Die
+   **Eskort-Konter** stehen (`balance.combat.escort`): **Punktverteidigung** (Eskort-Fregatte) fängt
+   Enterer ab (neutralisiert Enter-Kapazität); **Schild-Tender** repariert Antriebe pro Runde (kontert
+   das Ionen-/Strand-Fenster). Damit ist die Piraterie-Schere-Stein-Papier komplett. Offen: restliche
+   Sondermechaniken (Drohnen-Start des Trägers, Stealth-Überraschungsrunde, Mining/Expedition) +
    **Stat-Neutierung der ALTEN Artillerie** (Konter-Dreieck offener Kampf spürbar machen).
 5. **Spielstil-Layer:** Söldner-/Eskorten-Anheuern, Piraterie-Reputation (Wirtschafts-/Sozial-Schicht).
 
