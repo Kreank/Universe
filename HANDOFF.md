@@ -9,15 +9,16 @@
 
 ---
 
-## 0. Diese Session (2026-06-08) — Rollen-Kampf Phase 1+2 + 4 asset-freie Features
-Alles verifiziert (29 Backend-Tests grün + End-to-End-DB-Smokes) und committet:
+## 0. Diese Session (2026-06-08) — Rollen-Kampf Phase 1+2 + 5 asset-freie Features
+Alles verifiziert (32 Backend-Tests grün + End-to-End-DB-Smokes) und committet:
 ```
+15a403c feat(npc): NPC-Aktivangriff auf Spieler (eingehende Angriffe, Tech-Debt #4 Teil 2)
+86132aa feat(npc): NPC-Expansion — expansive NPCs gruenden neue Garnisonen (Tech-Debt #4 Teil 1)
+e12cbe9 feat(planets): Kolonisierung — colonize-Mission gruendet Planeten (Doku 06a)
+edc6c03 feat(fleet): Truemmerfeld + Recycler-Harvest-Loop
+d900439 feat(economy): Fusionsreaktor verbrennt Deuterium (Tech-Debt #3)
 b175c3b feat(combat): Rollen-Kampf Phase 2 — Antriebs-Stufen + Disengage + Interdiktion
 4546bba feat(combat): Rollen-Kampf Phase 1 — Antrieb-Subsystem + Schadenstyp-Matrix + Reichweiten
-d900439 feat(economy): Fusionsreaktor verbrennt Deuterium (Tech-Debt #3)
-<debris>  feat(fleet): Truemmerfeld + Recycler-Harvest-Loop
-<colony>  feat(planets): Kolonisierung — colonize-Mission gruendet Planeten (Doku 06a)
-<npc>     feat(npc): NPC-Expansion — expansive NPCs gruenden neue Garnisonen (Tech-Debt #4 Teil 1)
 ```
 - **Rollen-Kampf Phase 1+2 GEBAUT** (Doku 03b §6.1/§6.2): Antrieb als 3. Subsystem,
   Schadenstyp×Subsystem-Matrix (`combat.damage_matrix`), Reichweiten-Bänder
@@ -29,8 +30,8 @@ d900439 feat(economy): Fusionsreaktor verbrennt Deuterium (Tech-Debt #3)
   `recycle`-Mission sammelt sie ein.
 - **Kolonisierung**: `colonize`-Mission gründet echte Planeten (war Stub).
 - **NPC-Expansion**: expansive NPCs gründen Außenposten im eigenen System.
-- **Offen geblieben (bewusst):** NPC-**Aktivangriff** auf Spieler (braucht neuen
-  „eingehende-Angriffe/Spieler-als-Verteidiger"-Pfad — Fleet.player_id ist NOT NULL).
+- **NPC-Aktivangriff**: aggressive NPCs greifen ungeschützte Spieler an (eigene
+  `npc_attacks`-Tabelle, Warnung + Kampf bei Ankunft, Beute/Verluste/Trümmer, Recovery-fest).
 
 ---
 
@@ -97,7 +98,7 @@ Stoppen: `docker compose stop` (Daten bleiben) · Komplett zurücksetzen inkl. D
 Nach Code-Änderungen neu bauen: `docker compose up -d --build game-server` (bzw. `frontend`).
 Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm start` mit Dev-Proxy).
 
-**Backend-Tests:** `docker compose cp ../backend/tests game-server:/app/tests && docker compose exec game-server python -m pytest tests/ -q` (29 Tests, grün).
+**Backend-Tests:** `docker compose cp ../backend/tests game-server:/app/tests && docker compose exec game-server python -m pytest tests/ -q` (32 Tests, grün).
 > ⚠ Mehrfaches `cp ../backend/tests` verschachtelt `tests/tests/` (Doppel-Zählung). Vor dem Lauf
 > `docker compose exec game-server sh -c 'rm -rf /app/tests'`, dann frisch kopieren.
 
@@ -148,9 +149,10 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 2. ~~Werft-Queue ist In-Memory~~ → **ERLEDIGT** (persistent via `shipyard_queue` + Recovery).
 3. ~~Fusionsreaktor verbraucht kein Deuterium~~ → **ERLEDIGT (2026-06-08)**: verbrennt
    `deut_cost_base·lvl·growth^lvl`/h (fix, nicht energie-gedrosselt).
-4. **NPC-Verhalten**: Behavior-Tick + **Expansion ERLEDIGT (2026-06-08)** (expansive NPCs gründen
-   Außenposten im eigenen System). **Offen:** NPCs **greifen noch nicht aktiv an** — das braucht
-   einen neuen „eingehende-Angriffe/Spieler-als-Verteidiger"-Pfad (s. §6). Tick-Intervall 1 h.
+4. ~~NPC-Verhalten: kein Aktivangriff/keine Expansion~~ → **ERLEDIGT (2026-06-08)**: Expansion
+   (expansive NPCs gründen Außenposten) + **Aktivangriff** (aggressive NPCs greifen ungeschützte
+   Spieler an — eigene `npc_attacks`-Tabelle, Warnung + Kampf bei Ankunft, Beute/Verluste/Trümmer,
+   Recovery-fest). Tick-Intervall 1 h (`balance.npc.tick_interval_seconds`).
 5. **Spionage**: Aufklärung + Berichte stehen; **Gegen-Spionage / Sonden-Erkennung** beim Ziel
    fehlt noch (Doku 04 §6). Spieler-Planet-Resschen werden „roh" (ungelazy-refresht) gelesen.
 6. **PvP** weiterhin rudimentär; Ziele sind v. a. NPCs.
@@ -187,9 +189,10 @@ Rollen-Kampf Phase 1+2 sind gebaut (s. §0). Naheliegende nächste Schritte:
    (Doku-Screen ohne Endpunkt) lohnt sich jetzt richtig — die Engine ist reich genug.
 2. **`recycle`/`colonize` im Frontend** wählbar machen (Backend-Missionen stehen, UI fehlt noch) —
    sonst sind die neuen Loops nur per API erreichbar.
-3. **NPC-Aktivangriff** (größerer Brocken): neuer „eingehende-Angriffe/Spieler-als-Verteidiger"-Pfad.
-   Braucht: NPC-Flotten-Versand (Fleet.player_id ist NOT NULL → Schema/Handler), Combat mit Spieler
-   als Verteidiger, Verlust-/Beute-Anwendung am Spieler, Benachrichtigung. Designentscheidung offen.
+3. ~~NPC-Aktivangriff~~ **GEBAUT (2026-06-08)** — eingehende Angriffe via `npc_attacks`-Tabelle
+   (`npc/attack.py`): aggressive NPCs greifen ungeschützte Spieler an, Warnung im Anflug, Kampf bei
+   Ankunft (Spieler = Verteidiger), Beute/Verluste/Trümmer, Recovery-fest. **Offen im Frontend:**
+   eingehende Angriffe anzeigen (Cockpit-Alert) — Backend pusht `combat_report` + Warn-Transmission.
 4. **Phase 3 Entern/Capture** & **Phase 4 Roster-Stat-Neutierung** — brauchen die neuen Rollen-Assets.
 
 ### Parallel / sonst offen
