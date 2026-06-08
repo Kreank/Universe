@@ -65,3 +65,43 @@ def test_shield_bounce_protects_against_tiny_hits():
     defender = {"ships": {"cruiser": 1}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
     result = simulate_battle(attacker, defender, 99, BALANCE)
     assert result["defender_survivors"].get("cruiser", 0) == 1
+
+
+# ---- Rollen-Kampf Phase 1 (Doku 03b): Subsysteme, Schadenstyp-Matrix, Reichweite ----
+
+def test_range_far_fires_before_near_engages():
+    """Reichweiten-Baender: in Runde 1 (Distanz 'far') feuert nur die Fern-Einheit.
+    Artillerie (destroyer, far) trifft, der Nah-Schwarm (light_fighter) kann noch nicht."""
+    attacker = {"ships": {"light_fighter": 30}, "tech": {}, "attack_mult": 1.0}
+    defender = {"ships": {"destroyer": 5}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    result = simulate_battle(attacker, defender, 5, BALANCE)
+    first = result["rounds"][0]
+    assert first["distance"] == "far"
+    assert first["attacker_fire"] == 0.0   # Nah-Schiffe ausserhalb der Reichweite
+    assert first["defender_fire"] > 0.0     # Fern-Artillerie hat Standoff-Vorteil
+
+
+def test_ion_disables_drive_without_destroying():
+    """Ionen-Waffe (ion_cannon) leert Schild + legt Antrieb lahm, toetet aber NICHT (hull 0).
+    Waffenlose Sonden koennen nicht zurueckfeuern -> Antrieb wird lahmgelegt, Huelle bleibt heil."""
+    attacker = {"ships": {"spy_probe": 5}, "tech": {}, "attack_mult": 1.0}
+    defender = {"ships": {}, "defenses": {"ion_cannon": 30}, "tech": {}, "attack_mult": 1.0}
+    result = simulate_battle(attacker, defender, 11, BALANCE)
+    # Sonden ueberleben (Ionen macht keinen Huellenschaden) ...
+    assert result["attacker_survivors"].get("spy_probe", 0) > 0
+    # ... aber ihr Antrieb ist lahmgelegt ("mission kill").
+    assert result["attacker_drive_disabled"].get("spy_probe", 0) > 0
+
+
+def test_energy_cracks_shield_kinetic_bounces():
+    """Schadenstyp-Matrix als Konter: gegen eine grosse Schildkuppel (Schild 10000) knackt eine
+    Energie-Flotte (cruiser) den Schild und zerstoert sie; eine gleich grosse kinetische Flotte
+    (battleship) prallt ab und kommt nicht durch — TROTZ hoeherer Rohgewalt (attack 1000 vs 400).
+    Die Matrix, nicht die rohe Feuerkraft, entscheidet."""
+    dome = {"ships": {}, "defenses": {"large_shield_dome": 1}, "tech": {}, "attack_mult": 1.0}
+    energy = {"ships": {"cruiser": 30}, "tech": {}, "attack_mult": 1.0}
+    kinetic = {"ships": {"battleship": 30}, "tech": {}, "attack_mult": 1.0}
+    e_res = simulate_battle(energy, dict(dome), 21, BALANCE)
+    k_res = simulate_battle(kinetic, dict(dome), 21, BALANCE)
+    assert e_res["winner"] == "attacker"               # Energie bricht den Schild -> Kuppel faellt
+    assert k_res["defender_survivors"].get("large_shield_dome", 0) == 1  # Kinetik prallt ab

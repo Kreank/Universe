@@ -66,8 +66,19 @@ schlägt Linientanks (Überreichweite) → Flak/Linie schlägt Schwarm (Flächen
 
 ## 6. Build-Pfad (Phasen, jede für sich testbar)
 
-1. **Engine-Evolution:** Antrieb als 3. Subsystem (Integritäts-Stufen) + **Schadenstyp×Subsystem-Matrix**.
-   Schiffe bekommen `weapon_type` + Schild/Antrieb/Hülle-Stats. Rapidfire bleibt als Schwarm-Mechanik optional.
+1. ✅ **GEBAUT (2026-06-08) — Engine-Evolution:** Antrieb als 3. Subsystem (`drive`, persistenter
+   Schaden → „mission kill", regeneriert NICHT) + **Schadenstyp×Subsystem-Matrix**
+   (`combat.damage_matrix`: energy/kinetic/ion/missile × {shield,drive,hull}) + **Reichweiten-Bänder**
+   (`combat.range_bands`: Distanz schließt sich far→near, Standoff-Strafe je Band). Schiffsprofile in
+   `combat_roster` (weapon_type/drive/range), Engine liest sie datengetrieben. Rapidfire bleibt.
+   Verifiziert: 11 Tests grün; Sim zeigt Standoff-Zerfall (Artillerie 20k→10k→5k) + Ionen-mission-kill.
+   - **Kinetik-vs-Schild = 0.25** (nicht 0.0 wie im Design-Ideal „prallt ab"): mit dem aktuellen
+     Dünn-Schild-Roster erzeugte 0.0 degenerierte Patt-Kämpfe. Tunebar Richtung 0, sobald
+     Ionen-/Schild-Strip-Schiffe existieren. In `balance.json` dokumentiert.
+   - **Konter-Dreieck noch gedämpft:** Schwarm killt Artillerie noch nicht (alte Destroyer-Stats =
+     500 Schild). Volle Wirkung erst nach **Stat-Neutierung des Rosters (Phase 4)** — Phase 1 liefert
+     den Mechanismus, nicht die finale Balance.
+   - *Ursprünglicher Plan:* Schiffe bekommen `weapon_type` + Schild/Antrieb/Hülle-Stats. Rapidfire optional.
 2. **Strand/Disengage/Interdiktion:** Disengage-Wurf, Antriebs-Stufen, Interdiktor-Feld → Flucht/Fang.
    (Verschmilzt mit der bereits geplanten **Interception** aus 03a Phase 3.)
 3. **Entern/Capture:** `gestrandet`-Auflösung, Enterschiff kapert Fracht/Schiff.
