@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.fleet.trade_pricing import price_of, simulate_swap
 from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
+from app.platform.db import session_scope
 from app.platform.models import (
     Fleet,
     NpcEmpire,
@@ -73,6 +74,67 @@ def ensure_market(npc, cfg: dict) -> dict:
     market = {"spec": spec, "stock": stock}
     npc.market = market  # neues dict -> Change-Tracking
     return market
+
+
+def drift_stock(current: float, setpoint: float, regen: float) -> int:
+    """Ein-Schritt-Drift eines Bestands Richtung Sollwert (rein, testbar).
+
+    new = current + (setpoint - current) * regen; auf ganze Zahl gerundet.
+    Bestand unter Soll steigt, ueber Soll faellt; ueber viele Ticks -> exakt Soll.
+    Ausgelagert aus ``market_regen_tick``, damit die Drift-Mathematik DB-frei testbar bleibt."""
+    current = float(current)
+    setpoint = float(setpoint)
+    result = round(current + (setpoint - current) * float(regen))
+    # Rundungs-Deadzone ueberwinden: nahe am Soll rundet der Schritt auf 0 und der Bestand
+    # bliebe ein paar Einheiten stecken. Dann einen 1er-Schritt Richtung Soll machen ->
+    # echte Konvergenz ohne Ueberschwingen (current ist stets ganzzahlig aus dem Vortick).
+    if result == round(current) and round(current) != round(setpoint):
+        result = round(current) + (1 if setpoint > current else -1)
+    return result
+
+
+def merchant_intel(npc, cfg: dict, now_iso: str) -> dict:
+    """Discovery-Intel eines Haendlers: {name, merchant, spec, prices:{r: price_of(...)}, prices_at}.
+
+    Setzt voraus, dass ``npc.market`` initialisiert ist (``ensure_market`` vorher aufrufen).
+    Reiner Snapshot der aktuellen Kurse je Ressource aus dem persistierten Bestand;
+    DRY-Quelle fuer Resolver (Schritt 10), Spawner-Auto-Discovery und Spionage."""
+    market = npc.market or {}
+    spec = market["spec"]
+    stock = market["stock"]
+    setpoint = market_setpoint(spec, cfg)
+    prices = {
+        r: round(price_of(r, stock[r], setpoint[r], cfg), 3)
+        for r in RESOURCES
+    }
+    return {
+        "name": npc.name,
+        "merchant": True,
+        "spec": spec,
+        "prices": prices,
+        "prices_at": now_iso,
+    }
+
+
+def route_risk_chance(distance: int, escort_power: float, cargo_value: float, cfg: dict) -> float:
+    """Ueberfall-Wahrscheinlichkeit einer Handelsflotte (0..max_chance), rein/testbar.
+
+    raw = base_chance_per_system * distance;
+    * (1 + min(1.0, cargo_value/cargo_value_ref))  -> reichere Fracht = fetteres Ziel (bis 2x);
+    * escort_power_for_half/(escort_power_for_half + escort_power)  -> Eskorte senkt
+      (bei escort_power == escort_power_for_half halbiert sich das Risiko);
+    geklemmt auf [0, max_chance]."""
+    rc = cfg["route_risk"]
+    raw = float(rc["base_chance_per_system"]) * float(distance)
+    # Frachtwert-Verstaerkung (bis Faktor 2 bei cargo_value >= cargo_value_ref).
+    value_ref = float(rc["cargo_value_ref"])
+    if value_ref > 0:
+        raw *= 1.0 + min(1.0, max(0.0, float(cargo_value)) / value_ref)
+    # Eskort-Daempfung (mehr Kampfkraft -> kleinerer Faktor).
+    half = float(rc["escort_power_for_half"])
+    escort_power = max(0.0, float(escort_power))
+    raw *= half / (half + escort_power)
+    return max(0.0, min(float(rc["max_chance"]), raw))
 
 
 # -- Reine Auftrags-Validierung (testbar, DB-frei) ----------------------------
@@ -220,19 +282,68 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
             cargo[offer_res] = cargo.get(offer_res, 0.0) + refund_offer
     fleet.cargo = cargo
 
+    # -- 9b) Routen-Risiko: ungeschuetzte Frachter werden auf dem Rueckweg ueberfallen --
+    # Reine Risiko-Rechnung (route_risk_chance) + EIN Zufallswurf (gewollt nicht-deterministisch;
+    # die Tests pruefen nur die reine Funktion, nicht diesen Wurf).
+    raided = False
+    lost: dict[str, int] = {}
+    route_cfg = cfg.get("route_risk")
+    if route_cfg and cargo:
+        # Lazy-Imports -> kein Modul-Zyklus (service/attack importieren trade nur lazy).
+        from app.fleet.service import compute_distance
+        from app.npc.attack import fleet_power
+
+        # Distanz Origin->Ziel; ohne Origin (z.B. Kolonie aufgeloest) Fallback-Distanz 1.
+        distance = 1
+        if fleet.origin_planet_id is not None:
+            origin = await session.get(Planet, fleet.origin_planet_id)
+            if origin is not None:
+                distance = compute_distance(
+                    (origin.galaxy, origin.system, origin.position),
+                    (fleet.target_galaxy, fleet.target_system, fleet.target_position),
+                )
+
+        # Eskort-Kampfkraft = Angriffsstaerke der mitgefuehrten (bewaffneten) Schiffe.
+        escort_power = fleet_power(ships, bal.ships)
+        # Frachtwert der heimkehrenden Ware (Marktwert ueber base_value).
+        cargo_value = received * float(cfg["base_value"][want_res])
+
+        chance = route_risk_chance(distance, escort_power, cargo_value, cfg)
+        if random.random() < chance:
+            raided = True
+            # Jede Cargo-Position um loss_fraction kuerzen (gerundet), neues dict setzen.
+            loss_fraction = float(route_cfg["loss_fraction"])
+            new_cargo: dict[str, float] = {}
+            for res, amount in cargo.items():
+                lost_amt = round(float(amount) * loss_fraction)
+                if lost_amt > 0:
+                    lost[res] = lost_amt
+                new_cargo[res] = round(float(amount) - lost_amt, 1)
+            fleet.cargo = new_cargo
+            cargo = new_cargo
+            # Separater Warn-Funkspruch.
+            loss_line = ", ".join(f"{amt:g} {res}" for res, amt in lost.items()) or "keine"
+            await create_system_transmission(
+                session,
+                player_id=fleet.player_id,
+                subject=f"⚠ Frachter ueberfallen ({coords})",
+                body=(
+                    f"Deine ungeschuetzte Handelsflotte wurde auf der Route von {npc.name} "
+                    f"({coords}) ueberfallen. Verlorene Fracht: {loss_line}.\n"
+                    f"Eine staerkere Eskorte (bewaffnete Schiffe) senkt das Ueberfall-Risiko."
+                ),
+                ttype="system",
+            )
+            log.info(
+                "Frachter ueberfallen: player=%s coords=%s chance=%.3f lost=%s",
+                fleet.player_id, coords, chance, lost,
+            )
+
     # -- 10) Preis-Snapshot in PlayerDiscovery (Upsert, Muster spionage.py) --
+    # Kurse aus dem soeben aktualisierten npc.market (Schritt 7) ziehen -> eine Wahrheit
+    # (DRY mit Spawner-Auto-Discovery und Spionage ueber merchant_intel).
     now = _now()
-    prices = {
-        r: round(price_of(r, new_stock[r], setpoint[r], cfg), 3)
-        for r in RESOURCES
-    }
-    intel = {
-        "name": npc.name,
-        "merchant": True,
-        "spec": spec,
-        "prices": prices,
-        "prices_at": now.isoformat(),
-    }
+    intel = merchant_intel(npc, cfg, now.isoformat())
     disc = (await session.execute(
         select(PlayerDiscovery).where(
             PlayerDiscovery.player_id == fleet.player_id,
@@ -288,9 +399,44 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         "received": received,
         "refund_offer": refund_offer,
         "reputation_level": level,
+        "raided": raided,
+        "lost": lost,
     }
     log.info(
         "Handel: player=%s npc=%s %s %g->%s %g rep=%d refund=%g",
         fleet.player_id, npc.name, offer_res, offer_amount, want_res, received, level, refund_offer,
     )
     return summary
+
+
+# -- Markt-Regen-Tick ---------------------------------------------------------
+
+async def market_regen_tick() -> None:
+    """Periodischer Job (balance.trade.market_tick_interval_seconds).
+
+    Laesst jeden Haendler-Bestand langsam zum Sollwert driften (``drift_stock``). Da die
+    Bestaende GETEILT sind (alle Spieler handeln am selben Markt), erholt sich ein leer-
+    gekaufter Bestand nur langsam -> der Kurs bleibt fuer Stunden verdorben (gewollte
+    Vergaenglichkeit/Konkurrenz). Eigener ``session_scope`` mit Commit am Ende; direkt
+    aufrufbar (Tests). JSONB als NEUES dict (SQLAlchemy-Change-Tracking)."""
+    cfg = get_balance().trade
+    regen = float(cfg["stock_regen_per_tick"])
+    touched = 0
+
+    async with session_scope() as session:
+        npcs = (await session.execute(
+            select(NpcEmpire).where(NpcEmpire.behavior_profile == "merchant")
+        )).scalars().all()
+        for npc in npcs:
+            market = ensure_market(npc, cfg)  # lazy init, falls leer
+            spec = market["spec"]
+            stock = market["stock"]
+            setpoint = market_setpoint(spec, cfg)
+            new_stock = {
+                res: drift_stock(stock[res], setpoint[res], regen) for res in RESOURCES
+            }
+            npc.market = {"spec": spec, "stock": new_stock}  # neues dict -> Change-Tracking
+            touched += 1
+        await session.commit()
+
+    log.info("Markt-Regen-Tick: %d Haendler-Markt/Maerkte aktualisiert", touched)

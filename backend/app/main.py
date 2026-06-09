@@ -19,6 +19,7 @@ from app.commander.router import router as commander_router
 from app.commander.service import morale_drift_tick
 from app.economy.router import router as economy_router
 from app.fleet.router import router as fleet_router
+from app.fleet.trade import market_regen_tick
 from app.messaging.router import router as messaging_router
 from app.npc.population import npc_population_tick
 from app.npc.service import npc_behavior_tick
@@ -59,6 +60,12 @@ async def lifespan(app: FastAPI):
         npc_population_tick,
         seconds=get_balance().npc["population"]["tick_interval_seconds"],
         job_id="npc-population",
+    )
+    # Markt-Regen-Tick: Haendler-Bestaende driften langsam zum Sollwert (balance.trade).
+    schedule_interval(
+        market_regen_tick,
+        seconds=get_balance().trade["market_tick_interval_seconds"],
+        job_id="market-regen",
     )
     log.info("game-server bereit")
     try:

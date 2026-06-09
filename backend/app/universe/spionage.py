@@ -85,6 +85,8 @@ async def _gather_target(
             "defenses": {k: int(v) for k, v in (npc.defenses or {}).items()},
             "resources": {k: int(v) for k, v in (npc.resources or {}).items()},
             "kind": "npc",
+            # NPC-Objekt durchreichen -> Haendler-Markt-Intel ohne erneuten Lookup.
+            "npc": npc,
         }
 
     # -- Spieler-Planet ----------------------------------------------------
@@ -200,6 +202,14 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
         intel["defenses"] = target["defenses"]
     if level >= 3:
         intel["resources"] = target["resources"]
+
+    # Haendler-NPC: Spec + aktuelle Kurse ins Intel mergen (Spionage deckt den Markt auf).
+    spy_npc = target.get("npc")
+    if spy_npc is not None and getattr(spy_npc, "behavior_profile", None) == "merchant":
+        # Lazy-Import -> kein Modul-Zyklus (trade.py importiert spionage.py nicht).
+        from app.fleet.trade import ensure_market, merchant_intel
+        ensure_market(spy_npc, bal.trade)
+        intel.update(merchant_intel(spy_npc, bal.trade, _now().isoformat()))
 
     # Discovery-Upsert (Ziel wird im Galaxie-Verzeichnis sichtbar).
     disc = (await session.execute(

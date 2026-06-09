@@ -21,6 +21,7 @@ import random
 
 from sqlalchemy import select
 
+from app.fleet.trade import ensure_market, merchant_intel
 from app.npc.expansion import first_free_position
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
@@ -245,6 +246,10 @@ async def npc_population_tick() -> None:
                 async with session.begin_nested():
                     await session.flush()  # npc.id fuer occupy_cell
                     await occupy_cell(session, galaxy, system, position, "npc", npc.id)
+                    # Haendler-Markt sofort initialisieren (lazy spaeter waere auch ok,
+                    # aber so liefert die Auto-Discovery direkt Spec + Kurse).
+                    if profile == "merchant":
+                        ensure_market(npc, get_balance().trade)
             except Exception:
                 log.warning(
                     "Populations-Spawn uebersprungen (Konflikt) @ %d:%d:%d",
@@ -264,6 +269,10 @@ async def npc_population_tick() -> None:
                 "ships_total": ships_total,
                 "defenses_total": defenses_total,
             }
+            # Haendler: Spec + aktuelle Kurse gleich mitliefern (Spieler sieht den Markt
+            # naher Haendler sofort, ohne erst handeln/spionieren zu muessen).
+            if profile == "merchant":
+                intel.update(merchant_intel(npc, get_balance().trade, now.isoformat()))
             level = 1 + ships_total // 10
             for pid, psys in player_planets:
                 if abs(psys - system) > auto_radius:

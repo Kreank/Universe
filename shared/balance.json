@@ -491,6 +491,16 @@
     "swap_steps": 40,
     "default_setpoint": { "metal": 2000000, "crystal": 1000000, "deuterium": 500000 },
     "min_stock_floor": 1000,
+    "stock_regen_per_tick": 0.1,
+    "market_tick_interval_seconds": 1800,
+    "route_risk": {
+      "_note": "Ungeschuetzte Handelsflotten werden auf der Route ueberfallen. chance = base_chance_per_system*distance, verstaerkt durch Frachtwert (bis 2x bei cargo_value_ref), gesenkt durch Eskort-Kampfkraft (escort_power_for_half halbiert), gedeckelt auf max_chance. Bei Treffer geht loss_fraction der Fracht verloren.",
+      "base_chance_per_system": 0.012,
+      "cargo_value_ref": 100000,
+      "escort_power_for_half": 5000,
+      "max_chance": 0.5,
+      "loss_fraction": 0.4
+    },
     "specializations": {
       "metal_world":        { "metal": 3.0, "crystal": 1.0, "deuterium": 0.4 },
       "crystal_hub":        { "metal": 1.0, "crystal": 3.0, "deuterium": 0.6 },
