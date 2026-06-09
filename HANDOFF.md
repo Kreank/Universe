@@ -20,10 +20,11 @@
 
 ---
 
-## 0a. Session 2026-06-09 (Forts.) — 3 Features gebaut + committet, Frontend-WIP des Nutzers getrennt
-**Alles verifiziert (55 Backend-Tests grün, Frontend-Build sauber) und gezielt committet** (nur eigene
+## 0a. Session 2026-06-09 (Forts.) — 4 Features gebaut + committet, Frontend-WIP des Nutzers getrennt
+**Alles verifiziert (69 Backend-Tests grün, Frontend-Build sauber) und gezielt committet** (nur eigene
 Dateien; die parallele Nutzer-WIP blieb unangetastet). Backend + Frontend live deployed.
 ```
+971a173 feat(npc): Populations-Spawner — lebendiges Universum (Dichte nahe Spielern)
 a8cb4ca feat(combat): Kampf-Simulator — Was-waere-wenn-Schlacht ohne Spielstand-Effekt
 39ee40c feat(shipyard): Rollen-Kampf-Profil in den Werft-Kacheln anzeigen
 ead08f8 feat(npc): eingehende Angriffe als Live-Cockpit-Alert (WS-Push) + Reload-fest
@@ -45,9 +46,20 @@ e518566 feat(techtree): Techbaum als echter Abhaengigkeits-Graph
   NPC-Tick pusht es NACH `session.commit()` als `attack_warning`-WS-Event; das Frontend war schon
   verdrahtet. Zusätzlich seedet `game-state` die Alerts beim Bootstrap aus `GET /api/incoming-attacks`
   (reload-fest, dedupe per location).
+- **Populations-Spawner (lebendiges Universum):** `npc/population.py` + `npc.population`-Config + Tick in
+  `main.py`. Hält nahe bei jedem Spieler (`radius_systems`) eine Ziel-NPC-Dichte (`target_per_player`),
+  spawnt gemischte Profile (aggressive Piraten / defensive Raid-Ziele / merchant / expansive), respawnt
+  zerstörte NPCs, Auto-Discovery naher Spawns. Behebt: Galaxie war mit nur 3 statischen defensiven Seeds
+  leer; aktiviert die gebauten NPC-Aktivangriff/Expansion-Features (brauchten aggressive/expansive NPCs).
+  Manueller Test-Tick lief: 3 Spawns nahe Spieler (1:87) inkl. Pirat 1:88, 1 Discovery angelegt. Reine
+  Helfer testbar (14 Tests). Tunebar: Dichte/Radius/Gewichte/Templates in `shared/balance.json`.
 - **Offen direkt hieran:** Live-Klickdurchlauf des Simulators im Browser (Build kompiliert, Endpoint 401-
   gated, aber kein End-to-End-UI-Test gefahren — kein Browser am Server). Simulator-v2-Ideen: Commander-/
   Doktrin-Boni wählbar, Varianz-Statistik über N Läufe, eigene Verteidigung simulieren.
+- **🎯 Nächstes geplantes Feature — HANDEL/MARKT:** Existiert NOCH NICHT (kein Endpoint/Service/Screen; das
+  `merchant`-Profil ist nur NPC-internes Aufbauverhalten). Nutzer-Wunsch: NPCs nicht nur bekämpfen, sondern
+  auch Handel treiben (PvE statt erzwungenem PvP). Eigenes System nötig: Handelsposten/Markt (Ressourcen
+  tauschen, ggf. mit merchant-NPCs). Spawner setzt bereits merchant-NPCs als künftige Handelspartner.
 
 ---
 
