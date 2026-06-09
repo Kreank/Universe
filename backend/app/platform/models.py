@@ -43,7 +43,7 @@ specialization_enum = ENUM(
 )
 fleet_mission_enum = ENUM(
     "attack", "transport", "deploy", "hold", "colonize", "spy",
-    "recycle", "expedition", "return", "mine",
+    "recycle", "expedition", "return", "mine", "trade",
     name="fleet_mission", create_type=False,
 )
 fleet_status_enum = ENUM(
@@ -170,6 +170,8 @@ class Fleet(Base):
     arrive_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     return_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cargo: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Auftrags-/Missionsdaten (z. B. Handel: {offer_res, offer_amount, want_res}).
+    mission_data: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -277,6 +279,8 @@ class NpcEmpire(Base):
     defenses: Mapped[dict] = mapped_column(JSONB, default=dict)
     resources: Mapped[dict] = mapped_column(JSONB, default=dict)
     baseline: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Haendler-Markt (nur fuer behavior_profile=='merchant'): {spec, stock:{metal,crystal,deuterium}}.
+    market: Mapped[dict] = mapped_column(JSONB, default=dict)
     last_action_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_attack_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -312,3 +316,18 @@ class PlayerDiscovery(Base):
     intel: Mapped[dict] = mapped_column(JSONB, default=dict)
     level: Mapped[int] = mapped_column(Integer, default=1)
     discovered_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class TradeReputation(Base):
+    """Handelsreputation eines Spielers bei einem Haendler-NPC.
+
+    ``volume`` ist das kumulierte Handelsvolumen (Marktwert der bisher angebotenen
+    Ware); daraus leitet sich die Reputationsstufe ab (volume // volume_per_level,
+    gedeckelt auf max_level), die die Haendler-Marge fuer Stammkunden senkt.
+    Composite-PK (player_id, npc_id) — Vorbild: PlayerDiscovery."""
+    __tablename__ = "trade_reputation"
+
+    player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), primary_key=True)
+    npc_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("npc_empires.id", ondelete="CASCADE"), primary_key=True)
+    volume: Mapped[float] = mapped_column(Float, default=0.0)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

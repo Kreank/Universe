@@ -43,6 +43,18 @@ async def send(
     player: Player = Depends(get_current_player),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    cargo = body.cargo
+    mission_data: dict = {}
+    # Handel: Angebots-Ressource faehrt als Fracht mit; Auftrag in mission_data.
+    if body.mission == "trade":
+        if body.offer_res is None or body.want_res is None or body.offer_amount is None:
+            raise HTTPException(status_code=422, detail="Handel benoetigt offer_res, offer_amount und want_res")
+        mission_data = {
+            "offer_res": body.offer_res,
+            "offer_amount": body.offer_amount,
+            "want_res": body.want_res,
+        }
+        cargo = {body.offer_res: body.offer_amount}
     try:
         fleet = await send_fleet(
             session,
@@ -51,9 +63,10 @@ async def send(
             target=(body.target.galaxy, body.target.system, body.target.position),
             mission=body.mission,
             ships=body.ships,
-            cargo=body.cargo,
+            cargo=cargo,
             commander_id=uuid.UUID(body.commander_id) if body.commander_id else None,
             speed_pct=body.speed_pct,
+            mission_data=mission_data,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

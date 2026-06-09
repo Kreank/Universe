@@ -15,7 +15,7 @@ CREATE TYPE resource_type   AS ENUM ('metal', 'crystal', 'deuterium', 'energy');
 CREATE TYPE commander_status AS ENUM ('active', 'training', 'wounded', 'captured', 'dead');
 CREATE TYPE commander_rank  AS ENUM ('cadet', 'officer', 'veteran', 'elite', 'legend');
 CREATE TYPE specialization  AS ENUM ('combat', 'logistics', 'spy', 'research', 'trade');
-CREATE TYPE fleet_mission   AS ENUM ('attack', 'transport', 'deploy', 'hold', 'colonize', 'spy', 'recycle', 'expedition', 'return', 'mine');
+CREATE TYPE fleet_mission   AS ENUM ('attack', 'transport', 'deploy', 'hold', 'colonize', 'spy', 'recycle', 'expedition', 'return', 'mine', 'trade');
 CREATE TYPE fleet_status    AS ENUM ('flying', 'arrived', 'returning', 'done');
 CREATE TYPE occupant_type   AS ENUM ('empty', 'player', 'npc', 'debris');
 CREATE TYPE transmission_type AS ENUM ('routine', 'reaction', 'demand', 'combat_report', 'big_moment', 'system', 'spy_report');
@@ -135,6 +135,7 @@ CREATE TABLE fleets (
     arrive_at    TIMESTAMPTZ NOT NULL,
     return_at    TIMESTAMPTZ,
     cargo        JSONB NOT NULL DEFAULT '{}'::jsonb,   -- {metal, crystal, deuterium}
+    mission_data JSONB NOT NULL DEFAULT '{}'::jsonb,   -- Auftragsdaten (Handel: {offer_res, offer_amount, want_res})
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_fleets_player ON fleets(player_id);
@@ -251,6 +252,7 @@ CREATE TABLE npc_empires (
     defenses         JSONB NOT NULL DEFAULT '{}'::jsonb,
     resources        JSONB NOT NULL DEFAULT '{}'::jsonb,
     baseline         JSONB NOT NULL DEFAULT '{}'::jsonb,   -- Soll-Garnison {fleet:{...}, defenses:{...}}
+    market           JSONB NOT NULL DEFAULT '{}'::jsonb,   -- Haendler-Markt {spec, stock:{...}} (nur merchant), lazy init
     last_action_at   TIMESTAMPTZ,                          -- Zeitpunkt der letzten NPC-Tick-Aktion
     last_attack_at   TIMESTAMPTZ,                          -- Zeitpunkt des letzten ausgehenden Angriffs
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -310,3 +312,16 @@ CREATE TABLE player_discoveries (
     PRIMARY KEY (player_id, galaxy, system, position)
 );
 CREATE INDEX idx_discoveries_player ON player_discoveries(player_id);
+
+-- ---------------------------------------------------------------------
+--  Handel: Reputation Spieler <-> Haendler-NPC (Anfliegen-Modell)
+-- ---------------------------------------------------------------------
+-- volume = kumuliertes Handelsvolumen (Marktwert der angebotenen Ware);
+-- daraus die Reputationsstufe -> niedrigere Marge fuer Stammkunden.
+CREATE TABLE trade_reputation (
+    player_id  UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    npc_id     UUID NOT NULL REFERENCES npc_empires(id) ON DELETE CASCADE,
+    volume     DOUBLE PRECISION NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (player_id, npc_id)
+);

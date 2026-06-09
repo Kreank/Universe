@@ -126,10 +126,15 @@ async def send_fleet(
     cargo: dict,
     commander_id: uuid.UUID | None,
     speed_pct: int,
+    mission_data: dict | None = None,
 ) -> Fleet:
-    """Sendet eine Flotte. Validiert Schiffe, Slots, Ziel-Schutz, zieht Sprit+Fracht ab."""
+    """Sendet eine Flotte. Validiert Schiffe, Slots, Ziel-Schutz, zieht Sprit+Fracht ab.
+
+    ``mission_data`` traegt missionsspezifische Auftragsdaten (z. B. Handel:
+    {offer_res, offer_amount, want_res}) und wird auf ``fleet.mission_data`` gesetzt."""
     bal = get_balance()
-    valid_missions = {"attack", "transport", "spy", "deploy", "recycle", "colonize", "mine", "expedition"}
+    mission_data = mission_data or {}
+    valid_missions = {"attack", "transport", "spy", "deploy", "recycle", "colonize", "mine", "expedition", "trade"}
     if mission not in valid_missions:
         raise ValueError(f"Mission muss eine von {sorted(valid_missions)} sein")
 
@@ -199,6 +204,42 @@ async def send_fleet(
         if ships.get(etype, 0) < e_cfg.get("min_ships", 1):
             raise RuntimeError(
                 f"Expedition benoetigt mindestens {e_cfg.get('min_ships', 1)} {etype}"
+            )
+
+    # Handel erfordert einen Haendler-NPC am Ziel + einen gueltigen Auftrag.
+    # Die Angebots-Ressource faehrt als Fracht mit (cargo wird vom Router gesetzt).
+    if mission == "trade":
+        from app.fleet.trade import validate_trade_order
+        cell = (await session.execute(
+            select(UniverseCell).where(
+                UniverseCell.galaxy == target[0],
+                UniverseCell.system == target[1],
+                UniverseCell.position == target[2],
+            )
+        )).scalar_one_or_none()
+        merchant: NpcEmpire | None = None
+        if cell and cell.occupant_type == "npc" and cell.ref_id:
+            merchant = await session.get(NpcEmpire, cell.ref_id)
+        if merchant is None:
+            merchant = (await session.execute(
+                select(NpcEmpire).where(
+                    NpcEmpire.galaxy == target[0],
+                    NpcEmpire.system == target[1],
+                    NpcEmpire.position == target[2],
+                )
+            )).scalar_one_or_none()
+        if merchant is None or merchant.behavior_profile != "merchant":
+            raise ValueError("Am Ziel ist kein Haendler")
+        order = validate_trade_order(mission_data, bal.trade)
+        if order is None:
+            raise ValueError("Ungueltiger Handelsauftrag")
+        # Angebot darf die Frachtkapazitaet der Flotte nicht uebersteigen.
+        from app.combat.service import _cargo_capacity
+        capacity = _cargo_capacity(ships)
+        _offer_res, offer_amount, _want_res = order
+        if offer_amount > capacity:
+            raise ValueError(
+                f"Angebot ({int(offer_amount)}) uebersteigt die Frachtkapazitaet ({int(capacity)})"
             )
 
     # Commander pruefen (falls angegeben).
@@ -274,6 +315,7 @@ async def send_fleet(
         arrive_at=arrive,
         return_at=return_at,
         cargo=cargo,
+        mission_data=mission_data,
     )
     session.add(fleet)
     await session.flush()
@@ -353,6 +395,7 @@ async def fleet_arrive(fleet_id: str) -> None:
     from app.fleet.expedition import resolve_expedition
     from app.fleet.harvest import resolve_harvest
     from app.fleet.mining import resolve_mine
+    from app.fleet.trade import resolve_trade
     from app.planets.colonize import resolve_colonize
     from app.universe.spionage import resolve_spy
 
@@ -376,6 +419,8 @@ async def fleet_arrive(fleet_id: str) -> None:
             await resolve_mine(session, fleet)
         elif mission == "expedition":
             await resolve_expedition(session, fleet)
+        elif mission == "trade":
+            await resolve_trade(session, fleet)
 
         # Nach Ankunft kehrt die Flotte zurueck (return_at bleibt wie geplant).
         fleet.status = "returning"

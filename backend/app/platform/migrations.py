@@ -86,6 +86,25 @@ _STATEMENTS: list[str] = [
     # -- Feature: Imperiums-Doktrinen ----------------------------------------
     "ALTER TABLE players ADD COLUMN IF NOT EXISTS doctrine TEXT",
     "ALTER TABLE players ADD COLUMN IF NOT EXISTS doctrine_changed_at TIMESTAMPTZ",
+    # -- Feature: Handel (Anfliegen-Modell) ----------------------------------
+    # ENUM-Wert MUSS vor seiner Nutzung committet sein. Da jede Anweisung im
+    # AUTOCOMMIT-Modus laeuft (siehe ensure_schema), ist 'trade' nach diesem
+    # Statement persistent und nutzbar — identisch zu 'mine' oben.
+    "ALTER TYPE fleet_mission ADD VALUE IF NOT EXISTS 'trade'",
+    # Auftragsdaten der Flotte (Handel: {offer_res, offer_amount, want_res}).
+    "ALTER TABLE fleets ADD COLUMN IF NOT EXISTS mission_data JSONB NOT NULL DEFAULT '{}'::jsonb",
+    # Haendler-Markt am NPC ({spec, stock:{...}}), lazy initialisiert.
+    "ALTER TABLE npc_empires ADD COLUMN IF NOT EXISTS market JSONB NOT NULL DEFAULT '{}'::jsonb",
+    # Handelsreputation Spieler<->Haendler (kumuliertes Volumen).
+    """
+    CREATE TABLE IF NOT EXISTS trade_reputation (
+        player_id  UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        npc_id     UUID NOT NULL REFERENCES npc_empires(id) ON DELETE CASCADE,
+        volume     DOUBLE PRECISION NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (player_id, npc_id)
+    )
+    """,
 ]
 
 

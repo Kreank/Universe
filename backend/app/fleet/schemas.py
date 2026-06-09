@@ -44,3 +44,8 @@ class SendFleetRequest(BaseModel):
     cargo: dict = Field(default_factory=dict)
     commander_id: str | None = None
     speed_pct: int = 100
+    # Handel (mission == 'trade'): die Angebots-Ressource faehrt als Fracht mit,
+    # getauscht wird gegen want_res zu dynamischen Preisen (Slippage).
+    offer_res: str | None = None
+    offer_amount: float | None = None
+    want_res: str | None = None
