@@ -344,6 +344,12 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
                     f"{int(loot['deuterium'])} Deuterium erbeutet.")
         await create_system_transmission(
             session, player_id=player.id, subject=subject, body=body, ttype="combat_report",
+            decision_payload={
+                "report_id": str(report_id),
+                "role": "defender",
+                "winner": winner,
+                "location": loc,
+            },
         )
 
         notify = {

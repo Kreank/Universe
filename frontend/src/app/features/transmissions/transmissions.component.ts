@@ -6,6 +6,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { Commander, DecisionChoice, Transmission } from '../../core/models/api.models';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { transmissionStyles } from './transmission.styles';
+import { CombatReportComponent } from './combat-report.component';
 
 /** Eine Einheit-Zeile im Spionagebericht (Glyph + deutscher Name + Anzahl). */
 interface IntelUnit {
@@ -37,7 +38,7 @@ interface SpyIntelView {
 @Component({
   selector: 'app-transmissions',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe],
+  imports: [DatePipe, CombatReportComponent],
   template: `
     <div class="head">
       <div>
@@ -160,6 +161,9 @@ interface SpyIntelView {
               </div>
             } @else {
               <div class="msg-actions">
+                @if (reportId(t); as rid) {
+                  <button class="btn btn-sm btn-primary" (click)="openReport(t, rid)">⚔️ Bericht öffnen</button>
+                }
                 @if (!t.read) {
                   <button class="btn btn-sm btn-ghost" (click)="markRead(t)">Als gelesen markieren</button>
                 }
@@ -174,6 +178,10 @@ interface SpyIntelView {
         {{ onlyUnread() ? 'Keine ungelesenen Funksprueche.' : 'Funkstille. Keine Transmissionen.' }}
       </p>
     }
+
+    @if (openReportId(); as rid) {
+      <app-combat-report [reportId]="rid" (close)="openReportId.set(null)" />
+    }
   `,
   styles: [transmissionStyles],
 })
@@ -184,6 +192,7 @@ export class TransmissionsComponent {
 
   protected readonly onlyUnread = signal(false);
   protected readonly deciding = signal<string | null>(null);
+  protected readonly openReportId = signal<string | null>(null);
 
   private readonly commanderMap = computed(
     () => new Map<string, Commander>(this.state.commanders().map((c) => [c.id, c])),
@@ -220,6 +229,24 @@ export class TransmissionsComponent {
         this.notify.warning('Fehler', err?.error?.detail ?? 'Entscheidung fehlgeschlagen.');
       },
     });
+  }
+
+  /** Extrahiert die report_id aus einem Kampfbericht-Funkspruch (sonst null). */
+  reportId(t: Transmission): string | null {
+    if (t.type !== 'combat_report') {
+      return null;
+    }
+    const p = t.decision_payload as Record<string, unknown> | null;
+    const id = p && typeof p === 'object' ? p['report_id'] : null;
+    return typeof id === 'string' ? id : null;
+  }
+
+  /** Öffnet den Kampfbericht-Viewer und markiert den Funkspruch als gelesen. */
+  openReport(t: Transmission, reportId: string): void {
+    this.openReportId.set(reportId);
+    if (!t.read) {
+      this.markRead(t);
+    }
   }
 
   markRead(t: Transmission): void {

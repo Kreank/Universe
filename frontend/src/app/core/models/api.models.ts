@@ -378,19 +378,38 @@ export interface DecisionResponse {
 
 export interface CombatRound {
   round: number;
+  /** Distanz-Band dieser Runde: 'near' | 'medium' | 'far'. */
+  distance?: string;
   attacker_fire: number;
   defender_fire: number;
   attacker_losses: Record<string, number>;
   defender_losses: Record<string, number>;
+  attacker_fled?: number;
+  defender_fled?: number;
+  /** Ueberraschungs-/Hinterhaltsrunde (Tarnkappe, round=0). */
+  ambush?: boolean;
 }
 
 export interface CombatReport {
   id: string;
   location: string;
-  attacker: unknown;
-  defender: unknown;
+  /** Perspektive des abrufenden Spielers. */
+  role: 'attacker' | 'defender';
+  npc_name?: string | null;
+  attacker: Record<string, number>;
+  defender: Record<string, number>;
   rounds: CombatRound[];
-  winner: string;
+  winner: 'attacker' | 'defender' | 'draw';
+  attacker_survivors: Record<string, number>;
+  defender_survivors: Record<string, number>;
+  attacker_losses: Record<string, number>;
+  defender_losses: Record<string, number>;
+  attacker_fled: Record<string, number>;
+  defender_fled: Record<string, number>;
+  attacker_captured: Record<string, number>;
+  defender_captured: Record<string, number>;
+  attacker_drive_disabled: Record<string, number>;
+  defender_drive_disabled: Record<string, number>;
   loot: Partial<ResourceCost>;
   debris: Partial<ResourceCost>;
   created_at: string;

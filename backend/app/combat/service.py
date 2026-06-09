@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.combat.engine import simulate_battle
 from app.economy.service import get_research_levels
-from app.messaging.service import after_combat_reaction
+from app.messaging.service import after_combat_reaction, create_system_transmission
 from app.platform.balance import get_balance
 from app.platform.models import (
     CombatReport,
@@ -322,6 +322,31 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
             "outcome": "win" if winner == "attacker" else "loss",
         },
         decisive=decisive,
+    )
+
+    # Postfach: anklickbarer Kampfbericht (offensiv). decision_payload traegt die report_id,
+    # damit das Frontend den vollen Report (Runden/Distanz/Verluste) nachladen kann.
+    won = winner == "attacker"
+    loot_line = (
+        f" Beute: {int(loot.get('metal', 0))} Metall / {int(loot.get('crystal', 0))} Kristall"
+        f" / {int(loot.get('deuterium', 0))} Deuterium."
+        if won and loot else ""
+    )
+    await create_system_transmission(
+        session,
+        player_id=fleet.player_id,
+        subject=f"Kampfbericht — {'Sieg' if won else 'Niederlage'} bei {location}",
+        body=(
+            f"Dein Angriff auf {enemy_name} bei {location} endete mit "
+            f"{'einem Sieg' if won else 'einer Niederlage'}.{loot_line}"
+        ),
+        ttype="combat_report",
+        decision_payload={
+            "report_id": str(report_id),
+            "role": "attacker",
+            "winner": winner,
+            "location": location,
+        },
     )
 
     # WS: Combat-Report ankuendigen.
