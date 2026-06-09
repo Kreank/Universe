@@ -87,6 +87,10 @@ class Balance:
         return self.data["npc"]
 
     @property
+    def trade(self) -> dict[str, Any]:
+        return self.data["trade"]
+
+    @property
     def starting_player(self) -> dict[str, Any]:
         return self.data["starting_player"]
 

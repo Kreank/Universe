@@ -482,6 +482,24 @@
     "_note": "NPC-Behavior-Tick (Doku 08). NPCs regenerieren Garnison zur baseline und wachsen je Profil; Anti-Farming durch Wiederaufbau."
   },
 
+  "trade": {
+    "_note": "Handelssystem (Anfliegen-Modell). Preis je Ressource bei einem Haendler = base_value * (setpoint/stock), geclamped auf [min_mult, max_mult]*base_value. Orders werden chunk-weise gegen den Bestand abgerechnet -> Slippage (grosse Order bewegt den Kurs). margin = Spanne zugunsten des Haendlers. specializations skalieren den Sollbestand je Ressource -> Preis-Differenziale zwischen Haendlern (Arbitrage). reputation senkt die margin fuer Stammkunden.",
+    "base_value": { "metal": 1.0, "crystal": 2.0, "deuterium": 3.0 },
+    "price_min_mult": 0.5,
+    "price_max_mult": 2.0,
+    "margin": 0.04,
+    "swap_steps": 40,
+    "default_setpoint": { "metal": 2000000, "crystal": 1000000, "deuterium": 500000 },
+    "min_stock_floor": 1000,
+    "specializations": {
+      "metal_world":        { "metal": 3.0, "crystal": 1.0, "deuterium": 0.4 },
+      "crystal_hub":        { "metal": 1.0, "crystal": 3.0, "deuterium": 0.6 },
+      "deuterium_refinery": { "metal": 0.6, "crystal": 0.8, "deuterium": 3.0 },
+      "generalist":         { "metal": 1.0, "crystal": 1.0, "deuterium": 1.0 }
+    },
+    "reputation": { "volume_per_level": 500000, "max_level": 5, "margin_reduction_per_level": 0.005 }
+  },
+
   "spy": {
     "probe_type": "spy_probe",
     "min_probes": 1,
