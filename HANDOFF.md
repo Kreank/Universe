@@ -56,10 +56,48 @@ e518566 feat(techtree): Techbaum als echter Abhaengigkeits-Graph
 - **Offen direkt hieran:** Live-Klickdurchlauf des Simulators im Browser (Build kompiliert, Endpoint 401-
   gated, aber kein End-to-End-UI-Test gefahren — kein Browser am Server). Simulator-v2-Ideen: Commander-/
   Doktrin-Boni wählbar, Varianz-Statistik über N Läufe, eigene Verteidigung simulieren.
-- **🎯 Nächstes geplantes Feature — HANDEL/MARKT:** Existiert NOCH NICHT (kein Endpoint/Service/Screen; das
-  `merchant`-Profil ist nur NPC-internes Aufbauverhalten). Nutzer-Wunsch: NPCs nicht nur bekämpfen, sondern
-  auch Handel treiben (PvE statt erzwungenem PvP). Eigenes System nötig: Handelsposten/Markt (Ressourcen
-  tauschen, ggf. mit merchant-NPCs). Spawner setzt bereits merchant-NPCs als künftige Handelspartner.
+- **HANDEL/MARKT — Backend GEBAUT diese Session** (war „existiert noch nicht"). Vollständig recherchiert,
+  durchdacht (kein 0815-Festkurs) und end-to-end verifiziert. Details unten in **§0b**. Offen nur noch das
+  Frontend-Auftragsformular → **`docs/trade-frontend-snippet.md`** (drop-in für `fleet-dispatch`).
+
+---
+
+## 0b. Session 2026-06-09 (Forts.) — HANDELSSYSTEM „Lebende Händler" (Backend komplett, 3 Schichten)
+**Recherchiert → durchdacht → gebaut.** Nutzer-Wunsch: NPCs nicht nur bekämpfen, sondern auch beliefern/
+behandeln (PvE statt erzwungenem PvP) — und **explizit KEIN 0815-Festkurs-Handel**. Web-Recherche (EVE/X4/
+Patrician/OGame-Kritik) → Design „Lebende Händler". **Backend verifiziert (107 Backend-Tests grün) + live.**
+```
+eaac967 feat(trade): lebende Maerkte + Routen-Risiko + Reputation-Sichtbarkeit
+16287ce feat(trade): Kern-Handelsschleife — Anfliegen, tauschen, heimkehren
+b22273e feat(trade): Preis-Kern — dynamische Preise mit Slippage (X4-Modell)
+```
+**Modell (Anfliegen):** Spieler schickt eine Flotte mit Angebots-Ressource zu einem `merchant`-NPC,
+tauscht zu dynamischen Preisen, kehrt mit der Ware heim. Mission `trade` (neu im fleet_mission-ENUM).
+- **Preis-Kern** (`fleet/trade_pricing.py`, rein/getestet): `price_of` = `base_value*(setpoint/stock)`,
+  geclamped → hoher Bestand billig, knapp teuer. `simulate_swap` rechnet chunk-weise → **Slippage in beide
+  Richtungen** (große Order bewegt den Kurs gegen den Spieler). Config `balance.json` `trade`: base_value
+  (M1/K2/D3), margin, swap_steps, 4 **Spezialisierungen** (metal_world/crystal_hub/deuterium_refinery/
+  generalist → Preis-Differenziale = **Arbitrage**), reputation.
+- **Kern-Schleife** (`fleet/trade.py` `resolve_trade`, Dispatch aus `fleet_arrive`): Händler am Ziel →
+  `ensure_market` (lazy init, zufällige Spec, stock=setpoint) → Reputation → Cargo-Kapazität → `simulate_swap`
+  → Bestand/Reputation/Fracht aktualisieren → **Preis-Snapshot in PlayerDiscovery** → Handels-Beleg-Funkspruch.
+  Schema (init.sql + idempotente Migration): `fleets.mission_data`, `npc_empires.market`, Tabelle
+  `trade_reputation`. Refund: nicht ausgegebenes Budget kommt als Angebots-Ressource zurück.
+- **Lebende/Risiko-Schicht:** `market_regen_tick` (Bestände driften langsam zum Soll; **geteilt** → leerkaufen
+  verdirbt den Kurs für Stunden = Vergänglichkeit/Konkurrenz). Spawner initialisiert Händler-Märkte + nimmt
+  Spec/Kurse in die Auto-Discovery. Spionage deckt bei Händlern Spec+Kurse auf (**Info-Asymmetrie**: Kurse
+  erst nach Besuch/Spionage sichtbar, als Schnappschuss). **Routen-Risiko** (`route_risk_chance`): ungeschützte
+  Frachter werden auf der Route überfallen (Teil der Fracht weg) — **Eskorte** (bewaffnete Schiffe) senkt es;
+  **Reputation/Stammkunden** senken die Marge.
+- **End-to-End verifiziert** (resolve_trade gegen reale DB, Rollback): 50k Metall → 15,5k Deuterium bei einem
+  metal_world-Händler; Slippage + Spezialisierung + Bestandsaktualisierung wirken. Belege/Warnungen erscheinen
+  **schon jetzt im Postfach** (System-Funksprüche) → Handel ist auch ohne UI nutzbar.
+- **OFFEN — Frontend-Auftragsformular:** gehört in `shared/components/fleet-dispatch.component.ts` (Nutzer-WIP).
+  Fertiges drop-in Snippet (Missions-Tab „Handel" + Biete/Erhalte + grobe Kurs-Vorschau aus dem Snapshot,
+  Modell-/display-Ergänzungen) liegt in **`docs/trade-frontend-snippet.md`**. Danach: Galaxie-Ansicht —
+  Händler-Badge 💱 + „Handeln"-Schnellaktion (ebenfalls als Snippet, da galaxy.component.ts Nutzer-WIP).
+- **Mögliche Trade-v2-Ideen:** Spieler-zu-Spieler-Handel (OGames Tod war der NPC-Automat — NPC-Kurse so
+  kalibrieren, dass P2P daneben lohnt), zeitlich begrenzte Nachfrage-Events, Markt-Übersichts-Screen.
 
 ---
 
