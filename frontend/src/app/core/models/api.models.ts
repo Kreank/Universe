@@ -456,6 +456,8 @@ export interface WsAttackWarning {
   type: 'attack_warning';
   location: string;
   arrive_at: string;
+  ships_total?: number;
+  attacker_name?: string;
 }
 
 export interface WsCombatReport {

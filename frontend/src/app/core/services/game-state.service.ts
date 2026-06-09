@@ -24,6 +24,8 @@ import { BUILDING_META, TECH_META, metaFor } from '../models/display';
 export interface AttackAlert {
   location: string;
   arriveAt: string;
+  shipsTotal?: number;
+  attackerName?: string;
 }
 
 /**
@@ -63,6 +65,33 @@ export class GameStateService {
     void this.reloadFleets();
     void this.reloadCommanders();
     void this.reloadTransmissions();
+    void this.reloadIncomingAttacks();
+  }
+
+  /** Offene NPC-Angriffe laden, damit das Cockpit sie auch nach Reload zeigt. */
+  async reloadIncomingAttacks(): Promise<void> {
+    try {
+      const incoming = await this.firstValue(this.api.getIncomingAttacks());
+      const seeded: AttackAlert[] = incoming.map((a) => ({
+        location: `${a.target.galaxy}:${a.target.system}:${a.target.position}`,
+        arriveAt: a.arrive_at,
+        shipsTotal: a.ships_total,
+        attackerName: a.attacker,
+      }));
+      this.attackAlerts.update((list) => {
+        const known = new Set(list.map((x) => x.location));
+        const merged = [...list];
+        for (const alert of seeded) {
+          if (!known.has(alert.location)) {
+            merged.push(alert);
+            known.add(alert.location);
+          }
+        }
+        return merged;
+      });
+    } catch {
+      // incoming-attacks optional
+    }
   }
 
   async loadPlanets(): Promise<void> {
@@ -182,10 +211,20 @@ export class GameStateService {
     });
 
     this.ws.on<WsAttackWarning>('attack_warning').subscribe((msg) => {
-      this.attackAlerts.update((list) => [
-        { location: msg.location, arriveAt: msg.arrive_at },
-        ...list,
-      ]);
+      this.attackAlerts.update((list) => {
+        if (list.some((x) => x.location === msg.location)) {
+          return list;
+        }
+        return [
+          {
+            location: msg.location,
+            arriveAt: msg.arrive_at,
+            shipsTotal: msg.ships_total,
+            attackerName: msg.attacker_name,
+          },
+          ...list,
+        ];
+      });
       this.notify.warning('Eingehender Angriff', `Ziel: ${msg.location}. Fleetsave pruefen!`);
     });
   }

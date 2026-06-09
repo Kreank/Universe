@@ -130,8 +130,13 @@ async def _find_attack_target(session: AsyncSession, npc: NpcEmpire, cfg: dict) 
 
 # -- Launch (aus dem NPC-Tick) -----------------------------------------------
 
-async def maybe_launch_attack(session: AsyncSession, npc: NpcEmpire, cfg: dict) -> bool:
-    """Versucht, einen Angriff zu starten. True, wenn eine Flotte entsandt wurde."""
+async def maybe_launch_attack(session: AsyncSession, npc: NpcEmpire, cfg: dict) -> dict | None:
+    """Versucht, einen Angriff zu starten.
+
+    Liefert bei Erfolg das Warn-Payload (fuer WS-Push NACH dem Commit durch den
+    Aufrufer), sonst ``None``. Pusht selbst NICHT (Transaktion noch offen ->
+    Phantom-Warnung bei Rollback). Ein Dict ist truthy, ``None`` falsy.
+    """
     bal = get_balance()
     ships = bal.ships
     now = _now()
@@ -185,7 +190,13 @@ async def maybe_launch_attack(session: AsyncSession, npc: NpcEmpire, cfg: dict) 
     )
     log.info("NPC %s greift %s an -> %d:%d:%d (ETA %ds)",
              npc.name, target.player_id, target.galaxy, target.system, target.position, int(secs))
-    return True
+    return {
+        "player_id": str(target.player_id),
+        "location": f"{target.galaxy}:{target.system}:{target.position}",
+        "arrive_at": arrive.isoformat(),
+        "ships_total": int(sum(commit.values())),
+        "attacker_name": npc.name,
+    }
 
 
 # -- Resolve (Scheduler-Job bei Ankunft) -------------------------------------

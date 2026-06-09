@@ -21,6 +21,7 @@ from app.npc.expansion import first_free_position, should_expand
 from app.npc.profiles import build_tree
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
+from app.platform.eventbus import event_bus
 from app.platform.models import NpcEmpire, Planet, UniverseCell
 from app.universe.service import occupy_cell
 
@@ -115,6 +116,7 @@ async def npc_behavior_tick() -> None:
     atk_cfg = npc_cfg.get("attack", {})
     max_attacks = int(atk_cfg.get("max_attacks_per_tick", 0))
     attacks_done = 0
+    pending_warnings: list[dict] = []
 
     async with session_scope() as session:
         npcs = (await session.execute(select(NpcEmpire))).scalars().all()
@@ -167,7 +169,19 @@ async def npc_behavior_tick() -> None:
 
             # Angriff (aggressive NPCs): ungeschuetzten Spieler-Planeten attackieren.
             if attacks_done < max_attacks:
-                if await maybe_launch_attack(session, npc, atk_cfg):
+                warning = await maybe_launch_attack(session, npc, atk_cfg)
+                if warning is not None:
                     attacks_done += 1
+                    pending_warnings.append(warning)
         await session.commit()
+
+    # WS-Warnungen erst NACH dem Commit pushen (keine Phantom-Warnung bei Rollback).
+    for w in pending_warnings:
+        await event_bus.publish_ws(w["player_id"], {
+            "type": "attack_warning",
+            "location": w["location"],
+            "arrive_at": w["arrive_at"],
+            "ships_total": w["ships_total"],
+            "attacker_name": w["attacker_name"],
+        })
     log.info("NPC-Behavior-Tick: %d NPCs verarbeitet", len(npcs))
