@@ -177,4 +177,14 @@ export class ApiService {
   getCombatReport(id: string): Observable<CombatReport> {
     return this.http.get<CombatReport>(`/api/combat-reports/${id}`);
   }
+
+  /** Was-waere-wenn-Schlacht: simuliert ohne Spielstand-Effekt (nutzt eigene Forschung). */
+  simulateCombat(body: {
+    attacker_ships: Record<string, number>;
+    defender_ships: Record<string, number>;
+    defender_defenses: Record<string, number>;
+    seed?: number | null;
+  }): Observable<CombatReport> {
+    return this.http.post<CombatReport>('/api/combat/simulate', body);
+  }
 }

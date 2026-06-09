@@ -33,7 +33,7 @@
     "crystal_mine":      { "cost": { "metal": 48,  "crystal": 24,  "deuterium": 0 },   "factor": 1.6, "prod_base": 20, "prod_growth": 1.1, "energy_base": 10, "energy_growth": 1.1 },
     "deuterium_synth":   { "cost": { "metal": 225, "crystal": 75,  "deuterium": 0 },   "factor": 1.5, "prod_base": 10, "prod_growth": 1.1, "energy_base": 20, "energy_growth": 1.1 },
     "solar_plant":       { "cost": { "metal": 75,  "crystal": 30,  "deuterium": 0 },   "factor": 1.5, "energy_prod_base": 20, "energy_prod_growth": 1.1 },
-    "fusion_reactor":    { "cost": { "metal": 900, "crystal": 360, "deuterium": 180 }, "factor": 1.8, "energy_prod_base": 30 },
+    "fusion_reactor":    { "cost": { "metal": 900, "crystal": 360, "deuterium": 180 }, "factor": 1.8, "energy_prod_base": 30, "deut_cost_base": 10, "deut_cost_growth": 1.1 },
     "robot_factory":     { "cost": { "metal": 400, "crystal": 120, "deuterium": 200 }, "factor": 2.0 },
     "shipyard":          { "cost": { "metal": 400, "crystal": 200, "deuterium": 100 }, "factor": 2.0 },
     "research_lab":      { "cost": { "metal": 200, "crystal": 400, "deuterium": 200 }, "factor": 2.0 },
@@ -85,8 +85,8 @@
 
   "ships": {
     "_note": "Huelle = (metall+kristall)/10. Werte OGame-nah, fuer Vertical Slice konkret. Alle Kampfschiffe haben Rapidfire 5 gegen Spionagesonde und Solarsatellit.",
-    "light_fighter":    { "cost": { "metal": 3000,    "crystal": 1000,    "deuterium": 0 },       "attack": 50,     "shield": 10,    "cargo": 50,      "speed": 12500, "fuel": 20,   "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "combustion_drive": 1 } },
-    "heavy_fighter":    { "cost": { "metal": 6000,    "crystal": 4000,    "deuterium": 0 },       "attack": 150,    "shield": 25,    "cargo": 100,     "speed": 10000, "fuel": 75,   "rapidfire": { "small_cargo": 3, "spy_probe": 5, "solar_satellite": 3 }, "requires": { "impulse_drive": 2, "armor_tech": 2 } },
+    "light_fighter":    { "cost": { "metal": 3000,    "crystal": 1000,    "deuterium": 0 },       "attack": 50,     "shield": 10,    "cargo": 50,      "speed": 12500, "fuel": 20,   "rapidfire": { "destroyer": 6, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "combustion_drive": 1 } },
+    "heavy_fighter":    { "cost": { "metal": 6000,    "crystal": 4000,    "deuterium": 0 },       "attack": 150,    "shield": 25,    "cargo": 100,     "speed": 10000, "fuel": 75,   "rapidfire": { "destroyer": 5, "small_cargo": 3, "spy_probe": 5, "solar_satellite": 3 }, "requires": { "impulse_drive": 2, "armor_tech": 2 } },
     "cruiser":          { "cost": { "metal": 20000,   "crystal": 7000,    "deuterium": 2000 },    "attack": 400,    "shield": 50,    "cargo": 800,     "speed": 15000, "fuel": 300,  "rapidfire": { "light_fighter": 6, "rocket_launcher": 10, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "impulse_drive": 4, "ion_tech": 2 } },
     "small_cargo":      { "cost": { "metal": 2000,    "crystal": 2000,    "deuterium": 0 },       "attack": 5,      "shield": 10,    "cargo": 5000,    "speed": 5000,  "fuel": 10,   "rapidfire": {}, "requires": { "combustion_drive": 2 } },
     "large_cargo":      { "cost": { "metal": 6000,    "crystal": 6000,    "deuterium": 0 },       "attack": 5,      "shield": 25,    "cargo": 25000,   "speed": 7500,  "fuel": 50,   "rapidfire": {}, "requires": { "combustion_drive": 6 } },
@@ -97,8 +97,22 @@
     "battleship":       { "cost": { "metal": 45000,   "crystal": 15000,   "deuterium": 0 },       "attack": 1000,   "shield": 200,   "cargo": 1500,    "speed": 10000, "fuel": 500,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "hyperspace_drive": 4 } },
     "battlecruiser":    { "cost": { "metal": 30000,   "crystal": 40000,   "deuterium": 15000 },   "attack": 700,    "shield": 400,   "cargo": 750,     "speed": 10000, "fuel": 250,  "rapidfire": { "small_cargo": 3, "large_cargo": 3, "heavy_fighter": 4, "cruiser": 4, "battleship": 7, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "hyperspace_tech": 5, "laser_tech": 12 } },
     "bomber":           { "cost": { "metal": 50000,   "crystal": 25000,   "deuterium": 0 },       "attack": 1000,   "shield": 500,   "cargo": 500,     "speed": 4000,  "fuel": 1000, "rapidfire": { "rocket_launcher": 20, "light_laser": 20, "heavy_laser": 10, "ion_cannon": 10, "gauss_cannon": 5, "plasma_turret": 5, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "impulse_drive": 6, "plasma_tech": 5 } },
-    "destroyer":        { "cost": { "metal": 60000,   "crystal": 50000,   "deuterium": 15000 },   "attack": 2000,   "shield": 500,   "cargo": 2000,    "speed": 5000,  "fuel": 1000, "rapidfire": { "light_laser": 10, "battlecruiser": 2, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "hyperspace_drive": 6, "plasma_tech": 5 } },
-    "deathstar":        { "cost": { "metal": 5000000, "crystal": 4000000, "deuterium": 1000000 }, "attack": 200000, "shield": 50000, "cargo": 1000000, "speed": 100,   "fuel": 1,    "rapidfire": { "small_cargo": 250, "large_cargo": 250, "light_fighter": 200, "heavy_fighter": 100, "cruiser": 33, "battleship": 30, "colony_ship": 250, "recycler": 250, "spy_probe": 1250, "solar_satellite": 1250, "bomber": 25, "destroyer": 5, "battlecruiser": 15, "rocket_launcher": 200, "light_laser": 200, "heavy_laser": 100, "gauss_cannon": 50, "ion_cannon": 100, "plasma_turret": 5 }, "requires": { "graviton_tech": 1, "hyperspace_drive": 7, "hyperspace_tech": 6 } }
+    "destroyer":        { "cost": { "metal": 20000,   "crystal": 15000,   "deuterium": 5000 },    "attack": 2200,   "shield": 120,   "cargo": 2000,    "speed": 5000,  "fuel": 1000, "rapidfire": { "light_laser": 10, "battlecruiser": 2, "spy_probe": 5, "solar_satellite": 5 }, "_note": "Artillerie/Glaskanone (Doku 03c, S2/A2/H2): hoher Fern-Schaden, DUENNE Huelle+Schild -> billig, aber ein heran-gekommener Schwarm (Rapidfire) knackt sie. Standoff schlaegt die Linie.", "requires": { "hyperspace_drive": 6, "plasma_tech": 5 } },
+    "deathstar":        { "cost": { "metal": 5000000, "crystal": 4000000, "deuterium": 1000000 }, "attack": 200000, "shield": 50000, "cargo": 1000000, "speed": 100,   "fuel": 1,    "rapidfire": { "small_cargo": 250, "large_cargo": 250, "light_fighter": 200, "heavy_fighter": 100, "cruiser": 33, "battleship": 30, "colony_ship": 250, "recycler": 250, "spy_probe": 1250, "solar_satellite": 1250, "bomber": 25, "destroyer": 5, "battlecruiser": 15, "rocket_launcher": 200, "light_laser": 200, "heavy_laser": 100, "gauss_cannon": 50, "ion_cannon": 100, "plasma_turret": 5, "drone": 200, "interceptor": 66, "stealth_corvette": 66, "escort_frigate": 30, "ewar_frigate": 33, "interdictor": 30, "boarder": 25, "carrier": 10, "shield_tender": 15, "miner": 50, "deep_scout": 100, "expedition_ship": 30 }, "requires": { "graviton_tech": 1, "hyperspace_drive": 7, "hyperspace_tech": 6 } },
+
+    "_note_roles": "Rollen-Roster (Doku 03c / Phase 4): neue Spezial-Rollen. Universell baubar (Doktrin-Verguenstigung spaeter). Sondermechaniken (Drohnen-Start/Schild-Projektion/Stealth/Mining/Expedition) folgen; Stats + Rolle (combat_roster) wirken bereits.",
+    "carrier":          { "cost": { "metal": 45000, "crystal": 20000, "deuterium": 5000 },  "attack": 150,  "shield": 400,  "cargo": 3000,  "speed": 6000,  "fuel": 600,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "hyperspace_drive": 5, "plasma_tech": 4 } },
+    "drone":            { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 0 },     "attack": 60,   "shield": 10,   "cargo": 0,     "speed": 13000, "fuel": 10,   "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "computer_tech": 4, "shipyard": 4 } },
+    "interdictor":      { "cost": { "metal": 18000, "crystal": 12000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 500,   "speed": 9000,  "fuel": 300,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "hyperspace_drive": 4, "ion_tech": 4 } },
+    "ewar_frigate":     { "cost": { "metal": 9000,  "crystal": 9000,  "deuterium": 3000 },  "attack": 400,  "shield": 50,   "cargo": 100,   "speed": 11000, "fuel": 200,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "ion_tech": 5, "impulse_drive": 4 } },
+    "boarder":          { "cost": { "metal": 30000, "crystal": 12000, "deuterium": 4000 },  "attack": 60,   "shield": 50,   "cargo": 5000,  "speed": 7000,  "fuel": 400,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "impulse_drive": 5, "armor_tech": 4 } },
+    "stealth_corvette": { "cost": { "metal": 8000,  "crystal": 8000,  "deuterium": 2000 },  "attack": 150,  "shield": 10,   "cargo": 100,   "speed": 16000, "fuel": 150,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "laser_tech": 6, "combustion_drive": 6 } },
+    "escort_frigate":   { "cost": { "metal": 18000, "crystal": 12000, "deuterium": 2000 },  "attack": 150,  "shield": 150,  "cargo": 300,   "speed": 10000, "fuel": 250,  "rapidfire": { "drone": 3, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "armor_tech": 3, "laser_tech": 4 } },
+    "shield_tender":    { "cost": { "metal": 20000, "crystal": 25000, "deuterium": 5000 },  "attack": 0,    "shield": 1000, "cargo": 200,   "speed": 6000,  "fuel": 400,  "rapidfire": {}, "requires": { "shield_tech": 6, "impulse_drive": 4 } },
+    "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 0 },     "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100,  "rapidfire": { "light_fighter": 3, "drone": 3, "stealth_corvette": 2, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "laser_tech": 5, "impulse_drive": 3 } },
+    "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 15000, "speed": 3000,  "fuel": 300,  "rapidfire": {}, "requires": { "combustion_drive": 4, "shipyard": 4 } },
+    "deep_scout":       { "cost": { "metal": 8000,  "crystal": 12000, "deuterium": 1000 },  "attack": 0,    "shield": 50,   "cargo": 100,   "speed": 14000, "fuel": 80,   "rapidfire": {}, "requires": { "spy_tech": 3, "impulse_drive": 4 } },
+    "expedition_ship":  { "cost": { "metal": 30000, "crystal": 20000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 10000, "speed": 6000,  "fuel": 800,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "hyperspace_drive": 4, "computer_tech": 6 } }
   },
 
   "defenses": {
@@ -115,6 +129,48 @@
     "interplanetary_missile": { "cost": { "metal": 12500, "crystal": 2500,  "deuterium": 10000 }, "attack": 12000, "shield": 1,     "rapidfire_against": {}, "requires": { "impulse_drive": 1, "shipyard": 4 } }
   },
 
+  "combat_roster": {
+    "_note": "Rollen-Kampf-Profil (Doku 03b/03c) je Einheit: weapon_type (Schadenstyp, null=feuert nicht) + drive (Antriebs-Tier 1-5, *drive_integrity_per_tier = Pool; 0=stationaer/immobil) + range (near/medium/far). Eintrag fehlt -> Standard kinetic/near/drive 3. Verteidigung: drive 0 (nie gestrandet, feuert immer).",
+    "light_fighter":   { "weapon_type": "kinetic", "drive": 5, "range": "near" },
+    "heavy_fighter":   { "weapon_type": "kinetic", "drive": 4, "range": "near" },
+    "cruiser":         { "weapon_type": "energy",  "drive": 4, "range": "medium" },
+    "small_cargo":     { "weapon_type": null,      "drive": 3, "range": "near" },
+    "large_cargo":     { "weapon_type": null,      "drive": 2, "range": "near" },
+    "colony_ship":     { "weapon_type": null,      "drive": 1, "range": "near" },
+    "recycler":        { "weapon_type": null,      "drive": 2, "range": "near" },
+    "solar_satellite": { "weapon_type": null,      "drive": 0, "range": "near" },
+    "spy_probe":       { "weapon_type": null,      "drive": 5, "range": "far" },
+    "battleship":      { "weapon_type": "kinetic", "drive": 2, "range": "medium" },
+    "battlecruiser":   { "weapon_type": "kinetic", "drive": 3, "range": "medium" },
+    "bomber":          { "weapon_type": "missile", "drive": 2, "range": "medium" },
+    "destroyer":       { "weapon_type": "kinetic", "drive": 2, "range": "far" },
+    "deathstar":       { "weapon_type": "kinetic", "drive": 1, "range": "medium" },
+
+    "carrier":          { "weapon_type": "kinetic", "drive": 2, "range": "medium", "carrier": true },
+    "drone":            { "weapon_type": "kinetic", "drive": 4, "range": "near" },
+    "interdictor":      { "weapon_type": "kinetic", "drive": 3, "range": "medium", "interdictor": true },
+    "ewar_frigate":     { "weapon_type": "ion",     "drive": 4, "range": "medium" },
+    "boarder":          { "weapon_type": "kinetic", "drive": 3, "range": "near", "boarder": true },
+    "stealth_corvette": { "weapon_type": "energy",  "drive": 5, "range": "near", "stealth": true },
+    "escort_frigate":   { "weapon_type": "kinetic", "drive": 3, "range": "medium", "point_defense": true },
+    "shield_tender":    { "weapon_type": null,      "drive": 2, "range": "medium", "shield_projector": true },
+    "interceptor":      { "weapon_type": "energy",  "drive": 5, "range": "near" },
+    "miner":            { "weapon_type": null,      "drive": 1, "range": "near" },
+    "deep_scout":       { "weapon_type": null,      "drive": 4, "range": "far", "sensor": true },
+    "expedition_ship":  { "weapon_type": "kinetic", "drive": 3, "range": "medium" },
+
+    "rocket_launcher":        { "weapon_type": "kinetic", "drive": 0, "range": "far" },
+    "light_laser":            { "weapon_type": "energy",  "drive": 0, "range": "far" },
+    "heavy_laser":            { "weapon_type": "energy",  "drive": 0, "range": "far" },
+    "gauss_cannon":           { "weapon_type": "kinetic", "drive": 0, "range": "far" },
+    "ion_cannon":             { "weapon_type": "ion",     "drive": 0, "range": "far" },
+    "plasma_turret":          { "weapon_type": "energy",  "drive": 0, "range": "far" },
+    "small_shield_dome":      { "weapon_type": null,      "drive": 0, "range": "far" },
+    "large_shield_dome":      { "weapon_type": null,      "drive": 0, "range": "far" },
+    "anti_ballistic_missile": { "weapon_type": null,      "drive": 0, "range": "far" },
+    "interplanetary_missile": { "weapon_type": "missile", "drive": 0, "range": "far" }
+  },
+
   "tech_bonus": {
     "weapons_per_level": 0.10,
     "shield_per_level": 0.10,
@@ -129,12 +185,111 @@
     "debris_from_defense": false,
     "plunder_ratio": 0.50,
     "defense_regen_ratio": 0.70,
+    "damage_matrix": {
+      "_note": "Rollen-Kampf (Doku 03b §3): weapon_type -> Effektivitaet gegen {shield, drive, hull}. Schild regeneriert pro Runde, Antrieb NICHT (mission kill). Kinetik ist absichtlich schwach gegen Schilde (Design: 'prallt ab'); 0.25 statt 0.0, damit der aktuelle Duenn-Schild-Roster keine Patt-Kaempfe erzeugt — tunebar Richtung 0, sobald Ionen-/Schild-Strip-Schiffe (Phase 4) existieren.",
+      "energy":  { "shield": 1.5,  "drive": 0.5,  "hull": 0.6 },
+      "kinetic": { "shield": 0.25, "drive": 0.75, "hull": 1.3 },
+      "ion":     { "shield": 1.4,  "drive": 1.6,  "hull": 0.0 },
+      "missile": { "shield": 0.5,  "drive": 0.7,  "hull": 1.2 }
+    },
+    "drive_integrity_per_tier": 100,
+    "range_bands": {
+      "_note": "Doku 03b §6.1: Distanz schliesst sich pro Runde (far->near). Ein Schiff feuert nur, wenn die Distanz <= seine Reichweite ist; feuert es naeher als seine optimale Reichweite, greift die Standoff-Strafe (Artillerie ist schwach im Nahkampf). Verteidigung ist stationaer -> feuert immer ohne Strafe.",
+      "order": ["near", "medium", "far"],
+      "start": "far",
+      "close_per_round": 1,
+      "standoff_penalty_per_band": 0.5
+    },
+    "drive_stages": {
+      "_note": "Doku 03b §2: Antriebs-Integritaet (drive/drive_max) -> Stufe. Steuert Flucht (can_flee) und Tempo (speed_factor, fuer spaetere Flugzeit-Wirkung). Gestrandet (0) = enterbar (Phase 3).",
+      "full":     { "min_ratio": 0.66, "speed_factor": 1.0, "can_flee": true,  "flee_factor": 1.0 },
+      "reduced":  { "min_ratio": 0.33, "speed_factor": 0.6, "can_flee": true,  "flee_factor": 0.5 },
+      "crippled": { "min_ratio": 0.0,  "speed_factor": 0.3, "can_flee": false, "flee_factor": 0.0 },
+      "stranded": { "min_ratio": -1.0, "speed_factor": 0.0, "can_flee": false, "flee_factor": 0.0 }
+    },
+    "disengage": {
+      "_note": "Doku 03b §4: Flucht-Wurf pro Runde fuer die unterlegene Seite (Power >= loser_power_ratio). Pro Schiff: base_chance * Antriebs-flee_factor * (1 - Interdiktion). Interdiktion = Anzahl gegnerischer Interdiktor-Einheiten (combat_roster.interdictor=true) * interdiction_per_unit (Phase 4). Angreifer darf standardmaessig fliehen (Rueckzug), Verteidiger nicht (haelt Stellung).",
+      "enabled": true,
+      "loser_power_ratio": 1.8,
+      "base_chance": 0.45,
+      "interdiction_per_unit": 0.2,
+      "interdiction_cap": 1.0
+    },
+    "boarding": {
+      "_note": "Doku 03b §4/§7: Enterschiffe (combat_roster.boarder=true) kapern am Ende des Kampfes GESTRANDETE Gegner (Antrieb 0). capture_per_boarder = gekaperte Schiffe je ueberlebendem Enterschiff. Kaperung = nur SCHIFFE (Commander nie). Greift unabhaengig vom Sieger (disable+board).",
+      "capture_per_boarder": 2
+    },
+    "escort": {
+      "_note": "Eskorten-Konter (Doku 03b §4). Punktverteidigung (combat_roster.point_defense=true) neutralisiert pro ueberlebendem Schiff X gegnerische Enter-Kapazitaet (schuetzt vor Kaperung). Schild-Tender (combat_roster.shield_projector=true) repariert pro Runde Antriebs-Integritaet der eigenen Schiffe (haelt Subsysteme online) -> kontert das Ionen-/Strand-Fenster.",
+      "boarders_blocked_per_escort": 1,
+      "drive_repair_per_projector": 80
+    },
+    "carrier": {
+      "_note": "Doku 03c: Traeger (combat_roster.carrier=true) starten zu Kampfbeginn Drohnen-Staffeln (drone_type). Drohnen sind EPHEMER (zaehlen nicht als eigene Schiffe, Verluste/Beute irrelevant) -- die Staerke steckt im Traeger.",
+      "drone_type": "drone",
+      "drones_per_carrier": 6
+    },
+    "ambush": {
+      "_note": "Doku 03b §9: hat der Angreifer Tarnkappen-Schiffe (combat_roster.stealth=true), eroeffnet er mit einer Ueberraschungsrunde aus dem Nahbereich -- nur der Angreifer feuert. KONTER: hat der Verteidiger >= detect_sensors Sensor-Schiffe (combat_roster.sensor=true), wird der Hinterhalt entdeckt und negiert.",
+      "enabled": true,
+      "distance": "near",
+      "detect_sensors": 1
+    },
     "evacuation": {
       "_note": "Entkommen nur, wenn eigene Schiffe ueberleben (GDD §13 / Doku 04).",
       "base_chance": 0.30,
       "rank_bonus": { "cadet": 0.0, "officer": 0.05, "veteran": 0.10, "elite": 0.20, "legend": 0.35 },
       "logistics_tech_bonus_per_level": 0.03,
       "survivor_ship_bonus_max": 0.25
+    }
+  },
+
+  "harvest": {
+    "_note": "Recycler-Mission: sammelt das Truemmerfeld (universe_cells.debris_field) am Zielort ein, begrenzt durch die Frachtkapazitaet der Flotte. min_collectors = benoetigte Recycler.",
+    "collector_type": "recycler",
+    "min_collectors": 1
+  },
+
+  "colonization": {
+    "_note": "Doku 06a: 'colonize'-Mission gruendet eine Kolonie auf einer leeren (oder reinen Truemmer-) Zelle. max_planets = Gesamtlimit inkl. Heimatplanet (Pionier-Doktrin erhoeht es spaeter). Das Kolonieschiff wird beim Gruenden verbraucht; mitgefuehrte Fracht wird zur Start-Ressource der Kolonie.",
+    "ship_type": "colony_ship",
+    "max_planets": 9,
+    "colony_resources": { "metal": 500, "crystal": 500, "deuterium": 0 },
+    "colony_buildings": {}
+  },
+
+  "mining": {
+    "_note": "Doku 03c: Mining-Mission ('mine'). Bergbauschiffe bauen im Zielsektor Erz ab; Ertrag je Schiff (metal/crystal), gedeckelt durch die Frachtkapazitaet der Flotte. Kostet Sprit + Zeit + Flottenslot. min_ships = benoetigte Bergbauschiffe.",
+    "ship_type": "miner",
+    "min_ships": 1,
+    "yield_per_miner": { "metal": 4000, "crystal": 2000 }
+  },
+
+  "expedition": {
+    "_note": "Doku 05/03c: Expeditions-Mission. Zufalls-Fund (gewichtet) bei Ankunft: Ressourcen / gefundene Schiffe / nichts / Gefahr (Verluste). Bereiche [min,max] werden seed-basiert gezogen. min_ships = benoetigte Expeditions-Schiffe.",
+    "ship_type": "expedition_ship",
+    "min_ships": 1,
+    "outcomes": [
+      { "weight": 35, "type": "resources", "metal": [2000, 25000], "crystal": [1000, 12000], "deuterium": [0, 6000] },
+      { "weight": 20, "type": "ships", "ship": "light_fighter", "count": [2, 15] },
+      { "weight": 30, "type": "nothing" },
+      { "weight": 15, "type": "hazard", "loss_pct": [10, 40] }
+    ]
+  },
+
+  "doctrines": {
+    "_note": "Imperiums-Doktrin (Doku 03b §9). Frueh waehlbar, Wechsel kostet switch_cost + Cooldown. Boni ueber Multiplikatoren; Signatur-Schiffe sind guenstiger/schneller. Fremde Linien bleiben baubar (keine harten Locks). Aktiv wirken aktuell: Flottenslots, Bau-Kosten/-Zeit der Signatur-Schiffe, Kampf-Angriff. (cargo_mult fuer Haendler ist als Feld vorgesehen, Markt-Layer folgt.)",
+    "switch_cost": { "metal": 50000, "crystal": 50000, "deuterium": 20000 },
+    "switch_cooldown_seconds": 604800,
+    "list": {
+      "warlord": { "label": "Kriegsherr", "fleet_slot_bonus": 1, "combat_attack_mult": 1.10, "signature_cost_mult": 0.85, "signature_time_mult": 0.85,
+        "signature_ships": ["battleship", "battlecruiser", "destroyer", "bomber", "carrier", "deathstar"] },
+      "trader": { "label": "Haendler", "fleet_slot_bonus": 0, "combat_attack_mult": 1.0, "cargo_mult": 1.25, "signature_cost_mult": 0.85, "signature_time_mult": 0.85,
+        "signature_ships": ["small_cargo", "large_cargo", "miner"] },
+      "pirate": { "label": "Freibeuter", "fleet_slot_bonus": 0, "combat_attack_mult": 1.0, "signature_cost_mult": 0.85, "signature_time_mult": 0.85,
+        "signature_ships": ["interdictor", "ewar_frigate", "boarder", "stealth_corvette"] },
+      "pioneer": { "label": "Pionier", "fleet_slot_bonus": 0, "combat_attack_mult": 1.0, "signature_cost_mult": 0.80, "signature_time_mult": 0.80,
+        "signature_ships": ["deep_scout", "expedition_ship", "colony_ship", "miner"] }
     }
   },
 
@@ -180,10 +335,10 @@
 
     "ship_classes": {
       "_note": "Schiffsklassen, auf die Commander-Boni zielen koennen (target).",
-      "fighter": ["light_fighter", "heavy_fighter"],
-      "cruiser": ["cruiser"],
-      "capital": ["battleship", "battlecruiser", "destroyer", "bomber", "deathstar"],
-      "civil": ["small_cargo", "large_cargo", "recycler", "colony_ship", "spy_probe", "solar_satellite"]
+      "fighter": ["light_fighter", "heavy_fighter", "interceptor", "drone", "stealth_corvette"],
+      "cruiser": ["cruiser", "escort_frigate", "ewar_frigate", "interdictor"],
+      "capital": ["battleship", "battlecruiser", "destroyer", "bomber", "deathstar", "carrier", "shield_tender", "boarder"],
+      "civil": ["small_cargo", "large_cargo", "recycler", "colony_ship", "spy_probe", "solar_satellite", "miner", "deep_scout", "expedition_ship"]
     },
 
     "combat_bonuses": {
@@ -285,6 +440,27 @@
       "aggressive": { "rebuild_defense": 0.3, "reinforce_fleet": 0.7, "growth_cap_mult": 1.5 },
       "expansive":  { "rebuild_defense": 0.3, "reinforce_fleet": 0.5, "growth_cap_mult": 2.0 },
       "merchant":   { "rebuild_defense": 0.2, "reinforce_fleet": 0.1, "growth_cap_mult": 1.0 }
+    },
+    "expansion": {
+      "_note": "Doku 08: 'expansive' NPCs gruenden auf einer freien Position im EIGENEN System eine neue NPC-Garnison. Throttle: hohe min_resources (nahe resource_cap) + Kosten (danach unter Schwelle) + max_per_system + max_expansions_per_tick. Determinismus: erste freie Position gewinnt; neue Garnison ist 'defensive' (kein Ketten-Wachstum).",
+      "enabled_profiles": ["expansive"],
+      "min_resources": { "metal": 45000, "crystal": 30000, "deuterium": 10000 },
+      "cost": { "metal": 35000, "crystal": 22000, "deuterium": 7000 },
+      "max_per_system": 4,
+      "max_expansions_per_tick": 3,
+      "garrison": { "fleet": { "light_fighter": 20, "cruiser": 4 }, "defenses": { "rocket_launcher": 10, "light_laser": 5 } },
+      "colony_resources": { "metal": 2000, "crystal": 1000, "deuterium": 500 }
+    },
+    "attack": {
+      "_note": "Doku 08: 'aggressive' NPCs greifen ungeschuetzte Spieler-Planeten an (eingehender Angriff via npc_attacks-Tabelle, KEINE Fleet-Zeile). Throttle: cooldown_seconds je NPC + min_fleet_power (lohnendes Geschwader) + max_attacks_per_tick. Es wird nur ein Teil der Garnison (commit_fraction) entsandt; Ueberlebende kehren zurueck. Geschuetzte Spieler werden nie angegriffen. npc_tech = pauschale Angreifer-Tech.",
+      "enabled_profiles": ["aggressive"],
+      "min_fleet_power": 4000,
+      "commit_fraction": 0.6,
+      "max_attacks_per_tick": 2,
+      "cooldown_seconds": 10800,
+      "target_max_systems": 20,
+      "min_warning_seconds": 600,
+      "npc_tech": { "weapons_tech": 4, "shield_tech": 4, "armor_tech": 4 }
     },
     "_note": "NPC-Behavior-Tick (Doku 08). NPCs regenerieren Garnison zur baseline und wachsen je Profil; Anti-Farming durch Wiederaufbau."
   },

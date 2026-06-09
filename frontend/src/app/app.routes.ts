@@ -50,6 +50,11 @@ export const routes: Routes = [
           import('./features/fleet/fleet.component').then((m) => m.FleetComponent),
       },
       {
+        path: 'combat-sim',
+        loadComponent: () =>
+          import('./features/combat-sim/combat-sim.component').then((m) => m.CombatSimComponent),
+      },
+      {
         path: 'galaxy',
         loadComponent: () =>
           import('./features/galaxy/galaxy.component').then((m) => m.GalaxyComponent),

@@ -64,7 +64,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
           <p class="state">Lade Kampfbericht …</p>
         } @else if (error()) {
           <p class="state err">{{ error() }}</p>
-        } @else if (report(); as r) {
+        } @else if (reportData(); as r) {
           <!-- Kopf + Ergebnis-Banner -------------------------------------- -->
           <header class="rep-head">
             <span class="rep-glyph">⚔️</span>
@@ -145,7 +145,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
           <!-- Runden-Verlauf ----------------------------------------------- -->
           <section class="rounds">
             <h3>Gefechtsverlauf</h3>
-            @for (rd of report()!.rounds; track $index) {
+            @for (rd of reportData()!.rounds; track $index) {
               <div class="round" [class.ambush]="rd.ambush">
                 <div class="r-head">
                   <span class="r-no">{{ rd.ambush ? '🥷 Hinterhalt' : 'Runde ' + rd.round }}</span>
@@ -269,22 +269,38 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
 export class CombatReportComponent {
   private readonly api = inject(ApiService);
 
-  readonly reportId = input.required<string>();
+  /** Lade-Modus: Report per ID vom Server holen (Postfach). */
+  readonly reportId = input<string | null>(null);
+  /** Direkt-Modus: bereits geladener Report (z. B. aus dem Simulator) — kein Fetch. */
+  readonly report = input<CombatReport | null>(null);
   readonly close = output<void>();
 
-  protected readonly report = signal<CombatReport | null>(null);
+  // Internes State-Signal (NICHT mit dem `report`-Input verwechseln): haelt den
+  // tatsaechlich angezeigten Report, egal ob vorgeladen oder per ID gefetcht.
+  protected readonly reportData = signal<CombatReport | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
   constructor() {
     effect(() => {
+      // Direkt-Modus hat Vorrang: vorgeladenen Report ohne Netzaufruf uebernehmen.
+      const preloaded = this.report();
+      if (preloaded) {
+        this.reportData.set(preloaded);
+        this.error.set(null);
+        this.loading.set(false);
+        return;
+      }
       const id = this.reportId();
+      if (!id) {
+        return;
+      }
       this.loading.set(true);
       this.error.set(null);
-      this.report.set(null);
+      this.reportData.set(null);
       this.api.getCombatReport(id).subscribe({
         next: (r) => {
-          this.report.set(r);
+          this.reportData.set(r);
           this.loading.set(false);
         },
         error: (err) => {
@@ -296,11 +312,11 @@ export class CombatReportComponent {
   }
 
   /** War der abrufende Spieler der Angreifer? */
-  protected readonly youAttacked = computed(() => this.report()?.role === 'attacker');
+  protected readonly youAttacked = computed(() => this.reportData()?.role === 'attacker');
 
   /** Ergebnis aus Spieler-Perspektive: 'win' | 'loss' | 'draw'. */
   protected readonly result = computed<'win' | 'loss' | 'draw'>(() => {
-    const r = this.report();
+    const r = this.reportData();
     if (!r || r.winner === 'draw') {
       return 'draw';
     }
@@ -312,7 +328,7 @@ export class CombatReportComponent {
   }
 
   protected resultText(): string {
-    const r = this.report();
+    const r = this.reportData();
     if (!r) {
       return '';
     }
@@ -334,7 +350,7 @@ export class CombatReportComponent {
 
   /** Beide Seiten als aufbereitete Sicht (Spieler-Seite zuerst). */
   protected readonly sides = computed<SideView[]>(() => {
-    const r = this.report();
+    const r = this.reportData();
     if (!r) {
       return [];
     }
@@ -372,7 +388,7 @@ export class CombatReportComponent {
 
   /** Größtes Feuer im Bericht -> Skala für die Balken. */
   private readonly maxFire = computed(() => {
-    const r = this.report();
+    const r = this.reportData();
     if (!r) {
       return 1;
     }
@@ -401,8 +417,8 @@ export class CombatReportComponent {
     return parts.length ? parts.join(' ') : null;
   }
 
-  protected readonly lootRows = computed(() => resRows(this.report()?.loot));
-  protected readonly debrisRows = computed(() => resRows(this.report()?.debris));
+  protected readonly lootRows = computed(() => resRows(this.reportData()?.loot));
+  protected readonly debrisRows = computed(() => resRows(this.reportData()?.debris));
 
   fmt(n: number): string {
     return Math.round(n).toLocaleString('de-DE');
