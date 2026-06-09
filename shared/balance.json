@@ -462,6 +462,23 @@
       "min_warning_seconds": 600,
       "npc_tech": { "weapons_tech": 4, "shield_tech": 4, "armor_tech": 4 }
     },
+    "population": {
+      "_note": "Populations-Spawner (lebendiges Universum): haelt nahe bei Spielern eine Ziel-NPC-Dichte. profile_weights = gewichtete Zufallswahl. templates je Profil liefern Start-fleet/defenses/resources + name_pool. baseline der NPCs = template fleet/defenses (damit sie nachbauen). auto_discover_radius: Spawns innerhalb X Systemen eines Spielers werden sofort sichtbar (Ziel-Verzeichnis), weiter entfernte brauchen weiter eine Sonde.",
+      "enabled": true,
+      "tick_interval_seconds": 900,
+      "galaxy": 1,
+      "radius_systems": 15,
+      "target_per_player": 6,
+      "max_spawns_per_tick": 3,
+      "auto_discover_radius": 8,
+      "profile_weights": { "aggressive": 0.35, "defensive": 0.30, "merchant": 0.20, "expansive": 0.15 },
+      "templates": {
+        "aggressive": { "name_pool": ["Piratenbande", "Freibeuter-Klan", "Korsaren-Nest", "Pluenderer-Schwarm", "Roter Komet"], "fleet": {"light_fighter": 12, "heavy_fighter": 4, "cruiser": 1}, "defenses": {"rocket_launcher": 6}, "resources": {"metal": 8000, "crystal": 4000, "deuterium": 1500} },
+        "defensive": { "name_pool": ["Verlassene Station", "Schmugglerbasis", "Treibendes Wrack", "Bergungsdepot", "Stiller Aussenposten"], "fleet": {"light_fighter": 6}, "defenses": {"rocket_launcher": 4, "light_laser": 2}, "resources": {"metal": 5000, "crystal": 2500, "deuterium": 800} },
+        "merchant": { "name_pool": ["Handelsgilde", "Freihaendler-Kontor", "Karawanen-Konvoi", "Sternenbasar", "Warenkonsortium"], "fleet": {"large_cargo": 4, "light_fighter": 3}, "defenses": {"rocket_launcher": 3}, "resources": {"metal": 12000, "crystal": 7000, "deuterium": 2500} },
+        "expansive": { "name_pool": ["Koloniale Vorhut", "Siedler-Allianz", "Pionier-Kompanie", "Expansions-Flotte"], "fleet": {"light_fighter": 8, "small_cargo": 2, "colony_ship": 1}, "defenses": {"rocket_launcher": 4}, "resources": {"metal": 9000, "crystal": 6000, "deuterium": 3000} }
+      }
+    },
     "_note": "NPC-Behavior-Tick (Doku 08). NPCs regenerieren Garnison zur baseline und wachsen je Profil; Anti-Farming durch Wiederaufbau."
   },
 

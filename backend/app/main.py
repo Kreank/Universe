@@ -20,6 +20,7 @@ from app.commander.service import morale_drift_tick
 from app.economy.router import router as economy_router
 from app.fleet.router import router as fleet_router
 from app.messaging.router import router as messaging_router
+from app.npc.population import npc_population_tick
 from app.npc.service import npc_behavior_tick
 from app.platform.balance import get_balance
 from app.platform.eventbus import event_bus
@@ -52,6 +53,12 @@ async def lifespan(app: FastAPI):
         npc_behavior_tick,
         seconds=get_balance().npc["tick_interval_seconds"],
         job_id="npc-behavior",
+    )
+    # NPC-Populations-Tick: haelt nahe bei Spielern eine Ziel-NPC-Dichte (balance.npc.population).
+    schedule_interval(
+        npc_population_tick,
+        seconds=get_balance().npc["population"]["tick_interval_seconds"],
+        job_id="npc-population",
     )
     log.info("game-server bereit")
     try:
