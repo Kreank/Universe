@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Universe">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="80%">
+      <stop offset="0%" stop-color="#13243f"/>
+      <stop offset="100%" stop-color="#0B1424"/>
+    </radialGradient>
+    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g fill="none" stroke="#2BE0E6" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" transform="translate(256 256)">
+    <circle r="66"/>
+    <ellipse rx="166" ry="66" transform="rotate(-25)"/>
+  </g>
+</svg>
