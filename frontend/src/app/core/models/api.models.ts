@@ -180,6 +180,9 @@ export interface ShipOption {
   can_build: boolean;
   requirements_met: boolean;
   requirements?: Requirement[];
+  weapon_type?: string | null;
+  drive?: number | null;
+  range?: string | null;
 }
 
 export interface BuildQueueItem {

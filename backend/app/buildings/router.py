@@ -118,6 +118,9 @@ def _to_ship_options(items: list[dict]) -> list[ShipOptionOut]:
             can_build=o["can_build"],
             requirements_met=o["requirements_met"],
             requirements=[RequirementOut(**r) for r in o.get("requirements", [])],
+            weapon_type=o.get("weapon_type"),
+            drive=o.get("drive"),
+            range=o.get("range"),
         )
         for o in items
     ]

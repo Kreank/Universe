@@ -10,7 +10,10 @@
 export interface DisplayMeta {
   label: string;
   glyph: string;
+  /** Kurz-Hinweis (Tooltip, eine Zeile). */
   blurb?: string;
+  /** Ausfuehrliche Beschreibung / "kleine Geschichte" fuer die Detail-Ansicht. */
+  desc?: string;
 }
 
 export const RESOURCE_META: Record<string, DisplayMeta> = {
@@ -96,6 +99,24 @@ export const DEFENSE_META: Record<string, DisplayMeta> = {
   large_shield_dome: { label: 'Grosse Schildkuppel', glyph: '🛡️', blurb: 'Max. 1 pro Planet.' },
   anti_ballistic_missile: { label: 'Abfangrakete', glyph: '🚀', blurb: 'Faengt Interplanetarraketen ab.' },
   interplanetary_missile: { label: 'Interplanetarrakete', glyph: '☄️', blurb: 'Zerstoert feindliche Verteidigung.' },
+};
+
+/**
+ * Waffen-Typen der Rollen-Kampf-Profile (balance.json `combat_roster`).
+ * `vs` haelt den statischen Effektivitaets-Hinweis (Design-fix, siehe `damage_matrix`).
+ */
+export const WEAPON_META: Record<string, { label: string; glyph: string; vs: string }> = {
+  kinetic: { label: 'Kinetik', glyph: '💥', vs: 'stark vs. Hülle, schwach vs. Schild' },
+  energy: { label: 'Energie', glyph: '⚡', vs: 'stark vs. Schild' },
+  ion: { label: 'Ionen', glyph: '🌀', vs: 'lähmt Antrieb/Subsysteme, 0 vs. Hülle' },
+  missile: { label: 'Raketen', glyph: '🚀', vs: 'stark vs. Hülle' },
+};
+
+/** Reichweiten-Baender (Farbsemantik konsistent zum Kampfbericht-Viewer). */
+export const RANGE_META: Record<string, { label: string; dot: string }> = {
+  near: { label: 'Nah', dot: '🔴' },
+  medium: { label: 'Mittel', dot: '🟡' },
+  far: { label: 'Fern', dot: '🔵' },
 };
 
 /** Planetentypen (aus der Position abgeleitet, Doku 06a). */

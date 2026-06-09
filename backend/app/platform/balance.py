@@ -67,6 +67,10 @@ class Balance:
         return self.data["combat"]
 
     @property
+    def combat_roster(self) -> dict[str, Any]:
+        return self.data.get("combat_roster", {})
+
+    @property
     def commander(self) -> dict[str, Any]:
         return self.data["commander"]
 

@@ -4,7 +4,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
-import { BUILDING_META, DEFENSE_META, SHIP_META, TECH_META, metaFor } from '../../core/models/display';
+import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_META, metaFor } from '../../core/models/display';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
@@ -131,6 +131,23 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
               <app-cost-line [cost]="s.cost" [available]="balances()" />
               <span class="muted small">⏱ {{ formatTime(s.build_seconds_each) }} / Stk.</span>
             </div>
+            @if (s.range || s.weapon_type) {
+              <div class="combat-stats">
+                @if (s.range) {
+                  <span class="cchip">{{ rangeMeta(s.range).dot }} {{ rangeMeta(s.range).label }}</span>
+                }
+                @if (s.weapon_type) {
+                  <span class="cchip tip" [attr.data-tip]="weaponMeta(s.weapon_type).vs">{{ weaponMeta(s.weapon_type).glyph }} {{ weaponMeta(s.weapon_type).label }}</span>
+                } @else {
+                  <span class="cchip">🛡 Unbewaffnet</span>
+                }
+                @if (s.drive === 0) {
+                  <span class="cchip">⚓ stationär</span>
+                } @else if (s.drive) {
+                  <span class="cchip">⚙ Antrieb {{ s.drive }}</span>
+                }
+              </div>
+            }
           </div>
 
           <div class="bld-action">
@@ -192,6 +209,11 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       .bld-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
       .bld-name { font-weight: 600; font-size: 0.95rem; }
       .bld-stats { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+      .combat-stats { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+      .cchip {
+        font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 6px;
+        background: rgba(255,255,255,0.05); color: #b9c6de; white-space: nowrap;
+      }
       .bld-action {
         flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end;
         gap: 0.3rem; min-width: 180px; max-width: 240px;
@@ -302,6 +324,9 @@ export class ShipyardComponent {
   unitMeta(type: string, category: ShipyardCategory) {
     return metaFor(category === 'defense' ? DEFENSE_META : SHIP_META, type);
   }
+
+  protected weaponMeta(t?: string | null) { return t ? (WEAPON_META[t] ?? { label: t, glyph: '•', vs: '' }) : { label: 'Unbewaffnet', glyph: '🛡', vs: '' }; }
+  protected rangeMeta(r?: string | null) { return RANGE_META[r ?? ''] ?? { label: r ?? '', dot: '•' }; }
 
   /** Klarname einer Voraussetzung (Tech ODER Gebaeude) inkl. benoetigter Stufe. */
   reqLabel(r: Requirement): string {

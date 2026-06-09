@@ -63,6 +63,9 @@ class ShipOptionOut(BaseModel):
     can_build: bool
     requirements_met: bool
     requirements: list[RequirementOut] = []
+    weapon_type: str | None = None
+    drive: int | None = None
+    range: str | None = None
 
 
 class BuildQueueItemOut(BaseModel):

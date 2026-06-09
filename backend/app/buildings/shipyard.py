@@ -74,6 +74,8 @@ async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
     rlevels = await get_research_levels(session, planet.player_id)
     shipyard_lvl = blevels.get("shipyard", 0)
 
+    roster = bal.combat_roster
+
     def build_options(catalog: dict) -> list[dict]:
         out = []
         for typ, cfg in catalog.items():
@@ -94,6 +96,9 @@ async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
                 "can_build": shipyard_lvl >= 1 and req_met,
                 "requirements_met": req_met,
                 "requirements": _requirement_list(req, rlevels, blevels),
+                "weapon_type": (roster.get(typ) or {}).get("weapon_type"),
+                "drive": (roster.get(typ) or {}).get("drive"),
+                "range": (roster.get(typ) or {}).get("range"),
             })
         return out
 
