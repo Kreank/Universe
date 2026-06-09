@@ -1,15 +1,51 @@
-# 🛰️ Handoff — Universe (Stand 2026-06-08)
+# 🛰️ Handoff — Universe (Stand 2026-06-09)
 
 > Übergabe für die nächste Session. Projekt: browserbasiertes Weltraum-Aufbau-MMO
 > *Universe* (OGame-Tradition + persistentes Universum + KI-Crews als USP).
-> Repo: `D:/Privat/Universe/Universe` · Branch: `master` (lokal, kein Remote).
-> ⚠ Working tree NICHT sauber: die **Asset-Umstellung** (gelöschte Platzhalter-SVGs,
-> neue `assets/`-Ordner) + Docs `03a/05a/06a` sind **uncommittet** (Nutzer generiert noch
-> Assets nach → bewusst NICHT committet). Aller Code/Balance/Docs dieser Session ist committet.
+> Server-Pfad: `/srv/storage/projects/universe` · Branch: `master` (lokal, kein Remote).
+> Live: `universe.tech-artist.de` · lokal Frontend `:4200`, API `:8100→8000`.
+> ⚠ Working tree NICHT sauber: **(a)** meine Kampfbericht-Frontend-Arbeit dieser Session
+> (6 Dateien, s. §0, NOCH NICHT committet — gezielt committen, NICHT `git add .`), **(b)** fremder
+> Vor-WIP `frontend/.../techtree.component.ts` + die **Asset-Umstellung** (Nutzer generiert noch
+> Assets nach). Beim Committen NUR die §0-Dateien nehmen.
+> ⚠ DB wurde zwischenzeitlich zurückgesetzt (`down -v`): der alte Test-Account
+> `admiral@universe.test` existiert NICHT mehr. Aktuell 1 echter Account
+> (`sascha-richter@hotmail.com`), **0 Kampfberichte** in der DB.
 
 ---
 
-## 0. Diese Session (2026-06-08) — Rollen-Kampf Phase 1–4 + 5 asset-freie Features + Frontend
+## 0. Diese Session (2026-06-09) — Kampfberichte im Frontend sichtbar (Read-Path der Engine)
+**Headline:** Die reiche Kampf-Engine (Phase 1–4) war im Frontend komplett unsichtbar — der
+Endpoint `GET /api/combat-reports/{id}` existierte, wurde aber NIE genutzt; im Postfach gab es nur
+ein ⚔️-Badge ohne Inhalt. Jetzt: voller **Kampfbericht-Viewer**. Kernmotiv (Nutzer): *man kann
+offline angegriffen werden und nimmt nicht selbst am Kampf teil* → der asynchrone Bericht ist die
+einzige Art, das nachzuvollziehen. **NOCH NICHT committet** (s. Warnung oben).
+
+- **Backend:**
+  - `combat/router.py`: Serialisierung in reine Funktion `serialize_combat_report(report, viewer_id)`
+    extrahiert; reicht jetzt die **volle** Engine-Ausgabe durch (Runden mit `distance`/`fled`/`ambush`,
+    `*_survivors`, `*_losses`, `*_captured`, `*_drive_disabled`) + `role` (Sicht des Abrufers) + `npc_name`.
+  - `combat/service.py`: offensiver Angriff erzeugt jetzt einen anklickbaren `combat_report`-Funkspruch
+    (`decision_payload={report_id, role:"attacker", winner, location}`) zusätzlich zur Persona-Reaktion.
+  - `npc/attack.py`: defensiver (auch **offline**) Kampf legt die `report_id` ins `decision_payload`.
+- **Frontend:**
+  - **NEU** `features/transmissions/combat-report.component.ts`: Modal-Viewer. Ergebnis-Banner aus
+    Spieler-Perspektive (Sieg/Abgewehrt/Durchbrochen/Niederlage), beide Flotten (eigene Seite „DU"-markiert:
+    Ausgang→Verluste/gekapert/gestrandet/geflohen), Runden-Timeline mit Distanz-Band (🔴 Nah/🟡 Mittel/
+    🔵 Fern) + Feuerbalken + Hinterhalt-Runde, Beute + Trümmerfeld.
+  - `api.models.ts`: `CombatReport`/`CombatRound` auf die reiche Form gebracht.
+  - `transmissions.component.ts`: „⚔️ Bericht öffnen" auf Kampfbericht-Funksprüchen → öffnet den Viewer
+    (markiert zugleich als gelesen). `create_system_transmission` pusht das `transmission`-WS-Event → Postfach
+    aktualisiert live.
+- **Verifiziert:** Frontend `--no-cache` Build sauber (keine TS-Fehler), game-server importiert sauber,
+  **52 Backend-Tests grün** (inkl. 4 neue `tests/test_combat_report.py` — Serialisierung aus Angreifer-
+  UND Verteidiger-Sicht), API + Frontend liefern 200. Frontend + game-server neu gebaut & deployed.
+- **Offen direkt hieran:** Live-Klickdurchlauf steht aus (0 Berichte in DB — frischer Account). Entweder
+  echten Kampf auslösen (ändert Spielstand) oder Wegwerf-Account durchspielen.
+
+---
+
+## 0b. Vorige Session (2026-06-08) — Rollen-Kampf Phase 1–4 + 5 asset-freie Features + Frontend
 Alles verifiziert (34 Backend-Tests grün + End-to-End-DB-Smokes) und committet:
 ```
 b41135a feat(combat): Rollen-Kampf Phase 3 — Entern/Capture gestrandeter Schiffe
@@ -198,10 +234,12 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 ## 6. Vorgeschlagene nächste Schritte (priorisiert)
 
 ### ⭐ Kandidaten für die nächste Session
-Rollen-Kampf Phase 1+2 sind gebaut (s. §0). Naheliegende nächste Schritte:
-1. **Frontend an die neue Engine anbinden:** UI für `weapon_type`/Reichweite/Antriebs-Stufen in den
-   Schiff-Kacheln + Kampfbericht zeigt Distanz/Fliehen/`drive_disabled`. Der **Kampf-Simulator**
-   (Doku-Screen ohne Endpunkt) lohnt sich jetzt richtig — die Engine ist reich genug.
+Rollen-Kampf Phase 1–4 sind gebaut (s. §0b). Naheliegende nächste Schritte:
+1. **Frontend an die neue Engine anbinden:** ~~Kampfbericht zeigt Distanz/Fliehen/`drive_disabled`~~
+   **ERLEDIGT (2026-06-09, s. §0)** — voller Kampfbericht-Viewer aus dem Postfach (offensiv + defensiv/
+   offline). **Offen:** UI für `weapon_type`/Reichweite/Antriebs-Stufen in den **Werft-Schiff-Kacheln**
+   + der **Kampf-Simulator** (Doku-Screen ohne Endpunkt — braucht neuen Backend-Endpoint, der
+   `simulate_battle` mit Spieler-Eingaben aufruft). Engine ist reich genug.
 2. ~~`recycle`/`colonize` im Frontend wählbar~~ **ERLEDIGT (2026-06-08)** — Missionen im
    Flotten-Versand wählbar (mit Pflicht-Schiff-Hinweis) + **eingehende Angriffe** als rotes
    Warn-Banner im Flotten-Screen (`GET /api/incoming-attacks`). Offen: Cockpit/Dashboard-Alert
@@ -238,6 +276,7 @@ Rollen-Kampf Phase 1+2 sind gebaut (s. §0). Naheliegende nächste Schritte:
 | **Spionage-Aufloesung** | `backend/app/universe/spionage.py` |
 | AI-Worker | `ai-worker/` (jobs/, prompts/) |
 | Frontend-Screens | `frontend/src/app/features/<screen>/` |
+| **Kampfbericht-Viewer (Modal) + Read-Path** | `frontend/.../transmissions/combat-report.component.ts` · `backend/app/combat/router.py` (`serialize_combat_report`) |
 | **⭐ Rollen-Kampf-System (Design, nächster Build)** | `docs/systems/03b-role-based-combat.md` · `03c-role-roster-spec.md` |
 | **Asset-Spezifikation (v0.1 produziert, §11 neu)** | `docs/ASSETS.md` |
 | Design-Doku | `docs/` (GDD, ARCHITECTURE, DESIGN_DECISIONS, systems/01–12 + 03a/03b/03c/05a/06a, adr/, ASSETS, STYLE_BIBLE) |
