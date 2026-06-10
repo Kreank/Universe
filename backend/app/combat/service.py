@@ -6,6 +6,7 @@ Im Vertical Slice sind die Ziele NPC-Imperien (Tabelle npc_empires); PvP-Verteid
 (Spielerplanet) werden rudimentaer unterstuetzt."""
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import math
 import random
@@ -15,18 +16,25 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.combat.engine import simulate_battle
-from app.economy.service import get_research_levels
+from app.economy.service import RESOURCE_KEYS, get_research_levels, refresh_resources
 from app.messaging.service import after_combat_reaction, create_system_transmission
 from app.platform.balance import get_balance
 from app.platform.models import (
     CombatReport,
     Commander,
+    Defense,
     Fleet,
     NpcEmpire,
+    Planet,
     Player,
+    Resource,
     Ship,
     UniverseCell,
 )
+
+
+def _now_utc() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
 
 log = logging.getLogger("universe.combat")
 
@@ -163,6 +171,10 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     )).scalar_one_or_none()
 
     npc: NpcEmpire | None = None
+    def_planet: Planet | None = None
+    def_player: Player | None = None
+    def_ship_rows: list[Ship] = []
+    def_rows: list[Defense] = []
     def_ships: dict[str, int] = {}
     def_defenses: dict[str, int] = {}
     def_tech = {"weapons_tech": 0, "shield_tech": 0, "armor_tech": 0}
@@ -171,7 +183,7 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
 
     if cell and cell.occupant_type == "npc" and cell.ref_id is not None:
         npc = await session.get(NpcEmpire, cell.ref_id)
-    if npc is None:
+    if npc is None and not (cell and cell.occupant_type == "player"):
         # Fallback: direkter Lookup nach Koordinaten (falls Zelle fehlt/inkonsistent).
         npc = (await session.execute(
             select(NpcEmpire).where(
@@ -185,8 +197,40 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         def_ships = dict(npc.fleet or {})
         def_defenses = dict(npc.defenses or {})
         npc_resources = dict(npc.resources or {})
+    elif cell is not None and cell.occupant_type == "player" and cell.ref_id is not None:
+        # PvP: Spieler-Planet als Verteidiger (Garnison + Verteidigung + Forschung).
+        def_planet = await session.get(Planet, cell.ref_id)
+        if def_planet is None:
+            return None
+        def_player = await session.get(Player, def_planet.player_id)
+        if def_player is None:
+            return None
+        # Neulingsschutz/Urlaub -> Angriff dreht ab, Flotte kehrt unveraendert heim.
+        vac = def_player.vacation_until
+        if def_player.is_protected or (vac is not None and vac > _now_utc()):
+            await create_system_transmission(
+                session, player_id=fleet.player_id,
+                subject=f"Angriff abgedreht ({fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position})",
+                body="Das Ziel steht unter Neulingsschutz/Urlaub. Deine Flotte dreht ab und kehrt heim.",
+                ttype="system",
+            )
+            return None
+        defender_player_id = def_player.id
+        # Wer angreift, verliert seinen eigenen Neulingsschutz (kein risikofreies Angreifen).
+        if attacker_player is not None and attacker_player.is_protected:
+            attacker_player.is_protected = False
+        def_ship_rows = (await session.execute(
+            select(Ship).where(Ship.planet_id == def_planet.id, Ship.fleet_id.is_(None))
+        )).scalars().all()
+        def_ships = {r.type: r.count for r in def_ship_rows if r.count > 0}
+        def_rows = (await session.execute(
+            select(Defense).where(Defense.planet_id == def_planet.id)
+        )).scalars().all()
+        def_defenses = {r.type: r.count for r in def_rows if r.count > 0}
+        d_research = await get_research_levels(session, def_player.id)
+        def_tech = {k: d_research.get(k, 0) for k in ("weapons_tech", "shield_tech", "armor_tech")}
     else:
-        # Kein NPC -> kein Kampf (leeres Ziel). Fleet kehrt einfach zurueck.
+        # Kein Verteidiger -> kein Kampf (leeres Ziel). Fleet kehrt einfach zurueck.
         return None
 
     seed = random.randrange(1, 2 ** 62)
@@ -251,13 +295,30 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     loot = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}
     if winner == "attacker":
         capacity = _cargo_capacity(atk_survivors)
-        loot = _compute_loot(npc_resources, capacity)
-        # Fracht der Flotte fuer die Rueckreise erhoehen.
-        cargo = dict(fleet.cargo or {})
-        for key in ("metal", "crystal", "deuterium"):
-            cargo[key] = cargo.get(key, 0) + loot[key]
-            npc_resources[key] = max(0.0, npc_resources.get(key, 0) - loot[key])
-        fleet.cargo = cargo
+        if npc is not None:
+            loot = _compute_loot(npc_resources, capacity)
+            cargo = dict(fleet.cargo or {})
+            for key in ("metal", "crystal", "deuterium"):
+                cargo[key] = cargo.get(key, 0) + loot[key]
+                npc_resources[key] = max(0.0, npc_resources.get(key, 0) - loot[key])
+            fleet.cargo = cargo
+        elif def_planet is not None:
+            # PvP-Pluenderung: aktuelle Ressourcen des Verteidiger-Planeten abziehen.
+            res = await refresh_resources(session, def_planet)
+            available = {k: res[k]["amount"] for k in RESOURCE_KEYS}
+            loot = _compute_loot(available, capacity)
+            res_rows = (await session.execute(
+                select(Resource).where(
+                    Resource.planet_id == def_planet.id, Resource.type.in_(RESOURCE_KEYS)
+                )
+            )).scalars().all()
+            by_type = {r.type: r for r in res_rows}
+            cargo = dict(fleet.cargo or {})
+            for key in RESOURCE_KEYS:
+                if key in by_type:
+                    by_type[key].amount = max(0.0, by_type[key].amount - loot[key])
+                cargo[key] = cargo.get(key, 0) + loot[key]
+            fleet.cargo = cargo
 
     # NPC aktualisieren: Schiffe = Ueberlebende, Verteidigung mit 70 % Regen.
     if npc is not None:
@@ -276,6 +337,23 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
                 npc_fleet[typ] = npc_fleet.get(typ, 0) + int(n)
         npc.fleet = npc_fleet
         npc.resources = npc_resources
+    elif def_planet is not None:
+        # PvP: Spieler-Garnison auf Ueberlebende, Verteidigung mit Regen, Kaperungen stationieren.
+        def_survivors = result["defender_survivors"]
+        for row in def_ship_rows:
+            surv = def_survivors.get(row.type, 0)
+            if surv <= 0:
+                await session.delete(row)
+            else:
+                row.count = surv
+        for typ, n in result.get("defender_captured", {}).items():
+            if n > 0:
+                session.add(Ship(planet_id=def_planet.id, fleet_id=None, type=typ, count=int(n)))
+        regen = bal.combat["defense_regen_ratio"]
+        for row in def_rows:
+            lost = def_losses.get(row.type, 0)
+            kept = row.count - lost
+            row.count = max(0, kept + math.floor(lost * regen))
 
     # -- Commander-Folgen ----------------------------------------------------
     commander_outcome = await _apply_commander(session, commander, situation, atk_survivors, loot, atk_research)
@@ -285,6 +363,9 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     outcome_json = dict(result)
     outcome_json["situation"] = situation
     outcome_json["commander_outcome"] = commander_outcome
+    if def_player is not None:
+        outcome_json["defender_kind"] = "player"
+        outcome_json["defender_name"] = def_player.display_name
     report = CombatReport(
         attacker_id=fleet.player_id,
         defender_id=defender_player_id,
@@ -298,7 +379,7 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     await session.flush()
     report_id = report.id
 
-    enemy_name = npc.name if npc else location
+    enemy_name = npc.name if npc else (def_player.display_name if def_player else location)
     summary = {
         "report_id": str(report_id),
         "location": location,
@@ -357,7 +438,40 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         "summary": summary,
     })
 
-    log.info("Kampf @ %s: winner=%s situation=%s", location, winner, situation)
+    # -- PvP: der angegriffene Spieler bekommt einen eigenen Bericht (offline-fest) --
+    if def_player is not None:
+        held = winner != "attacker"
+        atk_name = attacker_player.display_name if attacker_player else "Eine Feindflotte"
+        d_subject = "🛡 Angriff abgewehrt" if held else "💥 Planet angegriffen!"
+        d_loot_line = (
+            f" Erbeutet: {int(loot.get('metal', 0))} Metall / {int(loot.get('crystal', 0))} Kristall"
+            f" / {int(loot.get('deuterium', 0))} Deuterium."
+            if not held and loot else ""
+        )
+        d_body = (
+            f"{atk_name} hat deinen Planeten bei {location} angegriffen. "
+            + ("Deine Verteidigung hat gehalten." if held else f"Der Planet wurde geplündert.{d_loot_line}")
+        )
+        await create_system_transmission(
+            session,
+            player_id=def_player.id,
+            subject=f"{d_subject} ({location})",
+            body=d_body,
+            ttype="combat_report",
+            decision_payload={
+                "report_id": str(report_id),
+                "role": "defender",
+                "winner": winner,
+                "location": location,
+            },
+        )
+        await event_bus.publish_ws(def_player.id, {
+            "type": "combat_report",
+            "report_id": str(report_id),
+            "summary": {**summary, "role": "defender"},
+        })
+
+    log.info("Kampf @ %s: winner=%s situation=%s pvp=%s", location, winner, situation, def_player is not None)
     return summary
 
 
