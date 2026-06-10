@@ -29,6 +29,7 @@ import {
   BuildQueueItem,
   BuildingState,
   Fleet,
+  RankingEntry,
   ResearchState,
 } from '../../core/models/api.models';
 import { dashboardStyles } from './dashboard.styles';
@@ -39,6 +40,27 @@ import { dashboardStyles } from './dashboard.styles';
   imports: [RouterLink, ShortNumberPipe, CountdownComponent],
   template: `
     <h1>Dashboard</h1>
+
+    <!-- Imperiums-Punkte (OGame-Score) — prominent, verlinkt zur Rangliste -->
+    <a class="score-hero" routerLink="/ranking">
+      <img class="score-ico" src="assets/img/nav/ranking.png" alt="" (error)="onIcoError($event)" />
+      <div class="score-main">
+        <span class="score-label">Imperiums-Punkte</span>
+        <span class="score-value mono">{{ (me()?.points ?? 0) | shortNumber }}</span>
+      </div>
+      <div class="score-rank">
+        <span class="rank-big mono">#{{ me()?.rank ?? '–' }}</span>
+        <span class="faint small">von {{ totalPlayers() }}</span>
+      </div>
+      <div class="score-breakdown">
+        <span class="bd tip" data-tip="Gebäude">🏗️ {{ (me()?.buildings ?? 0) | shortNumber }}</span>
+        <span class="bd tip" data-tip="Forschung">🔬 {{ (me()?.research ?? 0) | shortNumber }}</span>
+        <span class="bd tip" data-tip="Flotte">🚀 {{ (me()?.fleet ?? 0) | shortNumber }}</span>
+        <span class="bd tip" data-tip="Verteidigung">🛡️ {{ (me()?.defense ?? 0) | shortNumber }}</span>
+      </div>
+      <span class="score-cta faint small">Rangliste →</span>
+    </a>
+
     @if (planet(); as p) {
       <p class="muted sub">
         {{ p.name }} · {{ planetType(p.planet_type).glyph }} {{ planetType(p.planet_type).label }} ·
@@ -231,7 +253,20 @@ export class DashboardComponent {
   protected readonly activeResearch = signal<ResearchState | null>(null);
   protected readonly shipyardQueue = signal<BuildQueueItem[]>([]);
 
+  // --- Imperiums-Punkte (Rangliste) ---
+  protected readonly me = signal<RankingEntry | null>(null);
+  protected readonly totalPlayers = signal(0);
+
   constructor() {
+    // Eigenen Score + Rang frisch laden (Server rechnet bei jedem Abruf neu).
+    this.api.getRanking().subscribe({
+      next: (r) => {
+        this.me.set(r.me);
+        this.totalPlayers.set(r.total_players);
+      },
+      error: () => {},
+    });
+
     // Reload der Timer, sobald ein anderer Planet aktiv wird.
     effect(() => {
       const id = this.state.activePlanetId();
@@ -325,4 +360,8 @@ export class DashboardComponent {
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   planetType = (t: string | undefined) => metaFor(PLANET_TYPE_META, t ?? 'normal');
   bandClass = (m: number) => this.balance.moraleBandClass(m);
+
+  protected onIcoError(event: Event): void {
+    (event.target as HTMLImageElement).style.display = 'none';
+  }
 }

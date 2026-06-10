@@ -56,6 +56,9 @@ Kampf/Flug einmal wirksam, dann Cooldown. Beispiele (Doku 05 §6):
 Kommandeur einem **Planeten** zuweisen (statt/neben Flotte): `economy_bonus.peak_pct_by_rank` (cadet 3 % …
 legend 10 %) auf Produktion (+ optional Forschungs-/Bau-Tempo je Spezialisierung). Moral-skaliert. Auch ein
 Gouverneur hat Unmut/Forderungen → auch „Daheim-Pflege" zählt. Gibt Nicht-Kämpfern Kommandeurs-Wert.
+- **NEU (Nutzer 2026-06-10):** dafür braucht das Kadetten-Training eine **eigene Kategorie „Verwaltung/
+  Gouverneur"** — neue Spezialisierung (specialization_enum-Wert, z. B. `admin`), planetenfokussiert (stärkere
+  economy/Forschungs-Boni, schwache Kampfboni). Sonst gäbe es keine darauf spezialisierten Kommandeure.
 
 ## 5. Zahlen (Defaults, tunebar in balance.commander)
 | Param | Default | Sinn |

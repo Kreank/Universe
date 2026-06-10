@@ -148,6 +148,9 @@ class Commander(Base):
     xp: Mapped[int] = mapped_column(Integer, default=0)
     morale: Mapped[int] = mapped_column(Integer, default=60)
     loyalty: Mapped[int] = mapped_column(Integer, default=100)
+    # Unmut-Akkumulator (0..100): waechst je staerker der Kommandeur; Schwelle -> Forderung.
+    unrest: Mapped[float] = mapped_column(Float, default=0.0)
+    last_demand_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     span_capacity: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[str] = mapped_column(commander_status_enum, default="active")
     training_finishes_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

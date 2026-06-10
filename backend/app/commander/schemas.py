@@ -29,6 +29,7 @@ class CommanderOut(BaseModel):
     xp: int
     morale: int
     loyalty: int
+    unrest: int = 0
     span_capacity: int
     status: str
     morale_band: MoraleBandOut

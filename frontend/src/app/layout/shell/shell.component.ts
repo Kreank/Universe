@@ -151,6 +151,7 @@ export class ShellComponent implements OnInit {
     { path: '/trade', label: 'Handel', glyph: '💱', icon: 'assets/img/nav/market.png' },
     { path: '/commanders', label: 'Kommandozentrale', glyph: '🎖️', icon: 'assets/img/nav/command.png' },
     { path: '/transmissions', label: 'Postfach', glyph: '📡', icon: 'assets/img/nav/mail.png' },
+    { path: '/ranking', label: 'Rangliste', glyph: '🏆', icon: 'assets/img/nav/ranking.png' },
   ];
 
   protected readonly resourceRows = computed(() => {

@@ -17,6 +17,7 @@ import {
   GalaxyTarget,
   Planet,
   PlanetDetail,
+  RankingResponse,
   ResearchResponse,
   ResearchStartResponse,
   ShipyardBuildRequest,
@@ -235,5 +236,10 @@ export class ApiService {
     seed?: number | null;
   }): Observable<CombatReport> {
     return this.http.post<CombatReport>('/api/combat/simulate', body);
+  }
+
+  // --- Rangliste ---
+  getRanking(limit = 100): Observable<RankingResponse> {
+    return this.http.get<RankingResponse>(`/api/ranking?limit=${limit}`);
   }
 }

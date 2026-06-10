@@ -83,6 +83,11 @@ export const routes: Routes = [
             (m) => m.TransmissionsComponent,
           ),
       },
+      {
+        path: 'ranking',
+        loadComponent: () =>
+          import('./features/ranking/ranking.component').then((m) => m.RankingComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

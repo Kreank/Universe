@@ -163,7 +163,22 @@ async def decide(
         commander = await session.get(Commander, t.commander_id)
         if commander is not None:
             commander.morale = max(0, min(100, commander.morale + morale_delta))
-            commander.loyalty = max(0, min(100, commander.loyalty + (morale_delta // 2)))
+            # Loyalitaets-/Unmut-Folgen (Zufriedenheits-Oekonomie).
+            sat = bal.commander.get("satisfaction", {})
+            fulfil = int(sat.get("loyalty_fulfil_gain", 12))
+            ignore = int(sat.get("loyalty_ignore_loss", 15))
+            relief = float(sat.get("relief_on_fulfil", 100))
+            import datetime as _dt
+            if body.choice == "accept":
+                loyalty_delta = fulfil
+                commander.unrest = max(0.0, float(commander.unrest or 0.0) - relief)
+            elif body.choice == "negotiate":
+                loyalty_delta = fulfil // 2
+                commander.unrest = max(0.0, float(commander.unrest or 0.0) - relief / 2)
+            else:  # reject -> Treue sinkt, Unmut bleibt (eskaliert nach Cooldown)
+                loyalty_delta = -ignore
+            commander.loyalty = max(0, min(100, commander.loyalty + loyalty_delta))
+            commander.last_demand_at = _dt.datetime.now(_dt.timezone.utc)
 
     t.requires_decision = False
     t.read = True

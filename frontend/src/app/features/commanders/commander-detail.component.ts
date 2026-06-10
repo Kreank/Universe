@@ -51,9 +51,13 @@ import { commanderDetailStyles } from './commander-detail.styles';
           <dl class="stats">
             <div><dt>XP</dt><dd class="mono">{{ c.xp }}</dd></div>
             <div><dt>Loyalitaet</dt><dd class="mono">{{ c.loyalty }}</dd></div>
+            <div><dt>Unmut</dt><dd class="mono" [class.warn]="(c.unrest ?? 0) >= 70">{{ c.unrest ?? 0 }}/100</dd></div>
             <div><dt>Span</dt><dd class="mono">{{ c.span_capacity }}</dd></div>
             <div><dt>Status</dt><dd>{{ statusLabel(c) }}</dd></div>
           </dl>
+          @if ((c.unrest ?? 0) >= 70) {
+            <p class="faint small">⚑ Wird bald eine Forderung stellen — erfüllen hebt die Treue, ignorieren senkt sie.</p>
+          }
 
           @if (c.training_finishes_at) {
             <div class="train-row">

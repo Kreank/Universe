@@ -30,6 +30,8 @@ from app.planets.derive import backfill_planets
 from app.platform.migrations import ensure_schema
 from app.platform.recovery import recover_pending_jobs
 from app.platform.scheduler import schedule_interval, shutdown_scheduler, start_scheduler
+from app.ranking.router import router as ranking_router
+from app.ranking.service import score_tick
 from app.research.router import router as research_router
 from app.universe.router import router as universe_router
 from app.ws import websocket_endpoint
@@ -75,7 +77,10 @@ async def lifespan(app: FastAPI):
         seconds=get_balance().trade["index"]["tick_interval_seconds"],
         job_id="trade-index",
     )
-    log.info("game-server bereit")
+    # Ranglisten-Score (Imperiumswert) periodisch neu berechnen. Wird zusaetzlich
+    # bei jedem /api/ranking-Abruf frisch gerechnet; der Tick haelt Player.score
+    # (Auth-Response/Topbar) auch ohne Ranglisten-Besuch aktuell.
+    schedule_interval(score_tick, minutes=5, job_id="ranking-score")
     try:
         yield
     finally:
@@ -106,6 +111,7 @@ for r in (
     commander_router,
     messaging_router,
     universe_router,
+    ranking_router,
 ):
     app.include_router(r, prefix="/api")
 

@@ -382,6 +382,22 @@
       "_note": "Wirtschafts-Commander: +bonus * (morale/100) auf Planetenproduktion.",
       "peak_pct_by_rank": { "cadet": 0.03, "officer": 0.05, "veteran": 0.07, "elite": 0.09, "legend": 0.10 }
     },
+    "satisfaction": {
+      "_note": "Zufriedenheits-Oekonomie (natuerlicher Overkill). Unmut waechst pro Tag (stuendlicher Tick) = base_gain_per_day * rank_mult * grade_potency * trait_mult; Schwelle demand_threshold -> trait-gefaerbte Forderung (Postfach-Entscheidung). Erfuellen hebt Loyalitaet + Unmut-Reset, Ignorieren senkt Loyalitaet. relief_on_win senkt Unmut bei Sieg. Starke Kommandeure sind beduerftiger -> man kann nicht beliebig viele zufriedenstellen.",
+      "base_gain_per_day": 6.0,
+      "rank_mult": { "cadet": 0.5, "officer": 0.8, "veteran": 1.2, "elite": 1.8, "legend": 2.5 },
+      "trait_mult": { "ambitious": 1.5, "greedy": 1.3, "hot_tempered": 1.3, "loyal": 0.4, "honorable": 0.9 },
+      "idle_unrest_per_hour": 0.3,
+      "demand_threshold": 100,
+      "relief_on_win": 25,
+      "relief_on_fulfil": 100,
+      "post_demand_cooldown_hours": 12,
+      "loyalty_start": 90,
+      "loyalty_fulfil_gain": 12,
+      "loyalty_ignore_loss": 15,
+      "mutiny_threshold": 30,
+      "defect_threshold": 15
+    },
     "academy": {
       "base_training_seconds": 600,
       "_note": "Mit Universe-Speed skaliert; hoehere Akademie-Stufe = schneller + hoeherer Start-Rang.",

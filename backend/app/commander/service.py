@@ -13,10 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.commander.bonuses import base_bonuses
 from app.economy.service import get_building_levels, get_research_levels, spend_resources
+from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
-from app.platform.models import Commander, Fleet, Planet
+from app.platform.models import Commander, Fleet, Planet, Transmission
 
 log = logging.getLogger("universe.commander")
 
@@ -158,6 +159,7 @@ async def commander_to_dict(session: AsyncSession, c: Commander) -> dict:
         "xp": c.xp,
         "morale": c.morale,
         "loyalty": c.loyalty,
+        "unrest": round(float(c.unrest or 0.0)),
         "span_capacity": c.span_capacity,
         "status": c.status,
         "morale_band": {"label": band["label"], "combat_mod": band["combat_mod"]},
@@ -295,8 +297,40 @@ async def complete_training(commander_id: str) -> None:
     log.info("Commander %s ausgebildet", commander_id)
 
 
+def _pick_demand(traits: list, morale: int) -> tuple[str, str, str]:
+    """Waehlt eine trait-gefaerbte Forderung -> (kind, subject_suffix, body)."""
+    t = set(traits or [])
+    if "ambitious" in t:
+        return ("promotion", "fordert Beförderung",
+                "verlangt ein eigenes Kommando bzw. eine Beförderung — sonst schwindet seine Treue.")
+    if "greedy" in t:
+        return ("loot_share", "fordert größeren Beuteanteil",
+                "verlangt einen größeren Anteil an der Beute künftiger Feldzüge.")
+    if "aggressive" in t or "hot_tempered" in t:
+        return ("action", "drängt auf einen Einsatz",
+                "will endlich in den Kampf geführt werden — Untätigkeit zehrt an ihm.")
+    if morale < 50:
+        return ("shore_leave", "fordert Landgang",
+                "ist erschöpft und verlangt Landurlaub im Heimathafen.")
+    return ("recognition", "fordert Anerkennung",
+            "fühlt sich übergangen und verlangt ein Zeichen der Anerkennung.")
+
+
+def commander_unrest_gain_per_hour(c: Commander, sat: dict, potency: dict) -> float:
+    """Reiner Unmut-Stundenzuwachs (ohne Idle) = base/24 * rank_mult * grade_potency * trait_mult."""
+    gain = float(sat["base_gain_per_day"]) / 24.0
+    gain *= float(sat["rank_mult"].get(c.rank, 1.0))
+    gain *= float(potency.get(c.grade, 1.0))
+    tmult = 1.0
+    for tr in (c.traits or []):
+        tmult *= float(sat["trait_mult"].get(tr, 1.0))
+    return gain * tmult
+
+
 async def morale_drift_tick() -> None:
-    """Stuendlicher Job: Moral driftet zum Basis-Ziel; Neglect-Decay bei Untaetigkeit."""
+    """Stuendlicher Job: Moral driftet zum Basis-Ziel; Neglect-Decay bei Untaetigkeit;
+    Unmut waechst (staerker je staerker der Kommandeur) und erzeugt bei Schwelle eine
+    trait-gefaerbte Forderung (Zufriedenheits-Oekonomie / natuerlicher Overkill)."""
     bal = get_balance()
     m = bal.commander["morale"]
     target = m["base_target"]
@@ -305,26 +339,69 @@ async def morale_drift_tick() -> None:
     idle_seconds = neglect["idle_days_before_decay"] * 86400
     decay_per_hour = neglect["decay_per_day"] / 24.0
     traits_cfg = bal.commander["personality_traits"]
+    sat = bal.commander["satisfaction"]
+    potency = bal.commander["grades"]["potency"]
+    threshold = float(sat["demand_threshold"])
+    cooldown = dt.timedelta(hours=float(sat["post_demand_cooldown_hours"]))
     now = _now()
 
     async with session_scope() as session:
         commanders = (await session.execute(
             select(Commander).where(Commander.status.in_(("active", "wounded")))
         )).scalars().all()
+        # Kommandeure mit bereits offener Forderung (eine zur Zeit).
+        open_demand = set((await session.execute(
+            select(Transmission.commander_id).where(
+                Transmission.type == "demand", Transmission.requires_decision.is_(True)
+            )
+        )).scalars().all())
+
+        demands = 0
         for c in commanders:
             decay_mult = 1.0
             for trait in (c.traits or []):
                 decay_mult *= traits_cfg.get(trait, {}).get("morale_decay_mult", 1.0)
 
             morale = float(c.morale)
-            # Drift zum Zielwert.
             morale += drift_rate * (target - morale)
-            # Neglect-Decay.
             last = c.last_active_at or now
             if last.tzinfo is None:
                 last = last.replace(tzinfo=dt.timezone.utc)
-            if (now - last).total_seconds() > idle_seconds:
+            idle = (now - last).total_seconds() > idle_seconds
+            if idle:
                 morale -= decay_per_hour * decay_mult
             c.morale = max(0, min(100, int(round(morale))))
+
+            # -- Unmut akkumulieren --
+            gain = commander_unrest_gain_per_hour(c, sat, potency)
+            if idle:
+                gain += float(sat["idle_unrest_per_hour"])
+            c.unrest = min(100.0, float(c.unrest or 0.0) + gain)
+
+            # -- Forderung erzeugen (Schwelle + Cooldown + keine offene) --
+            if c.unrest < threshold or c.id in open_demand:
+                continue
+            ld = c.last_demand_at
+            if ld is not None:
+                if ld.tzinfo is None:
+                    ld = ld.replace(tzinfo=dt.timezone.utc)
+                if now - ld < cooldown:
+                    continue
+            kind, suffix, body = _pick_demand(c.traits, c.morale)
+            await create_system_transmission(
+                session,
+                player_id=c.player_id,
+                subject=f"⚑ {c.name} {suffix}",
+                body=f"Kommandeur {c.name} {body}\n\nErfüllst du die Forderung, steigt seine Treue; "
+                     f"ignorierst du sie, sinkt sie — anhaltend niedrige Treue führt zu Meuterei oder Überlauf.",
+                ttype="demand",
+                commander_id=c.id,
+                requires_decision=True,
+                decision_payload={"kind": kind, "commander_id": str(c.id)},
+            )
+            c.last_demand_at = now
+            open_demand.add(c.id)
+            demands += 1
+
         await session.commit()
-    log.debug("Moral-Drift-Tick fertig (%d Commander)", len(commanders))
+    log.info("Moral/Unmut-Tick: %d Commander, %d neue Forderung(en)", len(commanders), demands)

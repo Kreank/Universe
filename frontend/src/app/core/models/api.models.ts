@@ -5,6 +5,25 @@
 
 export type ResourceKey = 'metal' | 'crystal' | 'deuterium';
 
+/** Ein Eintrag der Rangliste (Punktesystem, OGame-Stil). */
+export interface RankingEntry {
+  rank: number;
+  player_id: string;
+  display_name: string;
+  is_self: boolean;
+  points: number;
+  buildings: number;
+  research: number;
+  fleet: number;
+  defense: number;
+}
+
+export interface RankingResponse {
+  entries: RankingEntry[];
+  me: RankingEntry | null;
+  total_players: number;
+}
+
 export interface ResourceCost {
   metal: number;
   crystal: number;
@@ -350,6 +369,8 @@ export interface Commander {
   xp: number;
   morale: number;
   loyalty: number;
+  /** Unmut 0..100 — waechst je staerker der Kommandeur; Schwelle 100 -> Forderung. */
+  unrest?: number;
   span_capacity: number;
   status: string;
   morale_band: MoraleBand;

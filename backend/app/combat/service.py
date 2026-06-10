@@ -572,6 +572,10 @@ async def _apply_commander(
 
     commander.morale = max(0, min(100, commander.morale + morale_delta))
     commander.xp += xp_gain
+    # Einsatz befriedigt: Sieg senkt den Unmut (Zufriedenheits-Oekonomie).
+    if situation in ("victory", "crushing_victory", "close_win"):
+        relief = float(bal.commander.get("satisfaction", {}).get("relief_on_win", 25))
+        commander.unrest = max(0.0, float(getattr(commander, "unrest", 0.0) or 0.0) - relief)
     # Rangaufstieg nach XP-Schwellen.
     new_rank = bal.rank_for_xp(commander.xp)
     commander.rank = new_rank["key"]
