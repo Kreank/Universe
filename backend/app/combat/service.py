@@ -170,15 +170,21 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     attacker_player = await session.get(Player, fleet.player_id)
     attack_mult *= combat_attack_mult(attacker_player.doctrine if attacker_player else None)
 
-    # Aktive Kampf-Faehigkeit (scharfgeschaltet beim Versand) -> einmaliger Angriffs-Boost.
-    ability_used = None
-    if commander is not None and (fleet.mission_data or {}).get("use_ability"):
-        from app.commander.service import ready_ability
-        ab = ready_ability(commander, bal, _now_utc())
-        if ab and commander.specialization == "combat":
-            attack_mult *= (1.0 + float(ab["magnitude"]))
-            commander.last_ability_at = _now_utc()
-            ability_used = ab["label"]
+    # Scharfgeschaltete Faehigkeiten (RPG): Kampf-relevante Effekte anwenden.
+    armed_loss_reduction = 0.0
+    if commander is not None:
+        from app.commander.service import effective_ability, mark_ability_used
+        now_a = _now_utc()
+        for key in (fleet.mission_data or {}).get("ability_keys", []):
+            eff = effective_ability(commander, key, bal, now_a)
+            if not eff:
+                continue
+            if eff["kind"] == "attack_pct":
+                attack_mult *= (1.0 + eff["magnitude"])
+                mark_ability_used(commander, key, now_a)
+            elif eff["kind"] == "loss_reduction":
+                armed_loss_reduction += eff["magnitude"]
+                mark_ability_used(commander, key, now_a)
 
     # Schiffsklassen-spezifische Commander-Boni (Angriff/Schild je Schiffstyp, moral-skaliert).
     ship_bonuses: dict[str, dict[str, float]] = {}
@@ -299,7 +305,7 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     # -- Trait 'cautious': loss_reduction rettet einen Teil der eigenen Verluste --
     if commander is not None:
         traits_cfg = bal.commander["personality_traits"]
-        loss_red = 0.0
+        loss_red = armed_loss_reduction
         for tr in (commander.traits or []):
             loss_red += float(traits_cfg.get(tr, {}).get("loss_reduction", 0.0))
         if loss_red > 0:
@@ -645,10 +651,20 @@ async def _apply_commander(
     if situation in ("victory", "crushing_victory", "close_win"):
         relief = float(bal.commander.get("satisfaction", {}).get("relief_on_win", 25))
         commander.unrest = max(0.0, float(getattr(commander, "unrest", 0.0) or 0.0) - relief)
-    # Rangaufstieg nach XP-Schwellen.
+    # Rangaufstieg nach XP-Schwellen -> Skillpunkte (RPG-Entwicklung).
+    from app.commander.service import _rank_index
+    old_idx = _rank_index(commander.rank, bal)
     new_rank = bal.rank_for_xp(commander.xp)
     commander.rank = new_rank["key"]
     commander.span_capacity = max(commander.span_capacity, new_rank["span_contrib"])
+    new_idx = _rank_index(new_rank["key"], bal)
+    if new_idx > old_idx:
+        prog = bal.commander["ability_progression"]
+        gained = (new_idx - old_idx) * int(prog["skill_points_per_rank"])
+        grade_order = bal.commander["grades"]["order"]
+        if grade_order.index(commander.grade) >= grade_order.index(prog["grade_bonus_from"]):
+            gained += int(prog["grade_bonus_points"])
+        commander.skill_points = int(commander.skill_points or 0) + gained
 
     status = "active"
     # Permadeath/Evakuierung nur, wenn die Flotte des Commanders vernichtet ist.

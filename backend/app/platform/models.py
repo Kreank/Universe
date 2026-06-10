@@ -154,6 +154,11 @@ class Commander(Base):
     unrest: Mapped[float] = mapped_column(Float, default=0.0)
     last_demand_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_ability_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # RPG-Entwicklung: Skillpunkte (bei Rang-Up), erlernte Faehigkeiten [{key,level}],
+    # Cooldown-Zeitstempel je Faehigkeit {key: iso}.
+    skill_points: Mapped[int] = mapped_column(Integer, default=1)
+    abilities: Mapped[list] = mapped_column(JSONB, default=list)
+    ability_cooldowns: Mapped[dict] = mapped_column(JSONB, default=dict)
     span_capacity: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[str] = mapped_column(commander_status_enum, default="active")
     training_finishes_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

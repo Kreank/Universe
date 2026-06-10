@@ -401,10 +401,22 @@
       "defect_chance_per_day": 0.25,
       "mutiny_trait_mult": { "hot_tempered": 1.6, "aggressive": 1.2, "loyal": 0.15, "honorable": 0.6 }
     },
-    "abilities": {
-      "_note": "Eine Signatur-Faehigkeit je Spezialisierung, beim Flottenversand scharfgeschaltet (use_ability). Wirkt einmal, dann Cooldown (last_ability_at). min_rank gated. combat: +magnitude Angriff in der Schlacht; logistics: -magnitude Flugzeit. Macht die Wahl 'welcher Kommandeur fuer welchen Einsatz' taktisch.",
-      "combat":    { "label": "Konzentriertes Feuer", "min_rank": "veteran", "magnitude": 0.25, "cooldown_seconds": 7200 },
-      "logistics": { "label": "Eilmarsch",            "min_rank": "officer", "magnitude": 0.20, "cooldown_seconds": 7200 }
+    "ability_catalog": {
+      "_note": "Erlernbare Faehigkeiten (RPG-Entwicklung). Pro Stufe (max_level) staerker. kind steuert die Wirkung: attack_pct (Angriffs-Boost in der Schlacht), loss_reduction (rettet eigene Verluste), flight_pct (kuerzere Flugzeit), fuel_pct (weniger Sprit). sp_cost = Skillpunkte je Stufe. requires.min_rank gated. Beim Versand werden bis arm_slots erlernte Faehigkeiten scharfgeschaltet; Cooldown je Faehigkeit.",
+      "focused_fire":   { "label": "Konzentriertes Feuer", "category": "combat",    "kind": "attack_pct",     "per_level": 0.12, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "officer" }, "cooldown_seconds": 7200 },
+      "evasive":        { "label": "Ausweichmanöver",       "category": "combat",    "kind": "loss_reduction", "per_level": 0.10, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "veteran" }, "cooldown_seconds": 10800 },
+      "battle_drill":   { "label": "Gefechtsdrill",         "category": "general",   "kind": "attack_pct",     "per_level": 0.06, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "cadet" },   "cooldown_seconds": 7200 },
+      "forced_march":   { "label": "Eilmarsch",             "category": "logistics", "kind": "flight_pct",     "per_level": 0.10, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "cadet" },   "cooldown_seconds": 7200 },
+      "efficient_burn": { "label": "Sparflug",              "category": "logistics", "kind": "fuel_pct",       "per_level": 0.15, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "officer" }, "cooldown_seconds": 7200 }
+    },
+    "ability_progression": {
+      "_note": "arm_slots = wie viele erlernte Faehigkeiten je Einsatz scharfgeschaltet werden koennen. skill_points_per_rank beim Aufstieg; +grade_bonus_min_grade ab Grade. unlearn_refund = Anteil erstatteter Skillpunkte beim Verlernen.",
+      "arm_slots": { "cadet": 1, "officer": 1, "veteran": 2, "elite": 2, "legend": 3 },
+      "skill_points_per_rank": 1,
+      "grade_bonus_from": "A",
+      "grade_bonus_points": 1,
+      "unlearn_refund": 0.5,
+      "start_skill_points": 1
     },
     "governor": {
       "_note": "Kommandeur als Planeten-Gouverneur: Produktions-Bonus = economy_bonus.peak_pct_by_rank[rank] * (morale/100) * spec_mult. admin (Verwaltung) ist darauf spezialisiert.",

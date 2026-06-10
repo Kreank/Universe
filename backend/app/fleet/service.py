@@ -264,6 +264,12 @@ async def send_fleet(
         )).first() is not None
         if is_governor:
             raise RuntimeError("Dieser Kommandeur ist als Gouverneur eingesetzt — erst abberufen")
+        # Arm-Slots: nicht mehr Faehigkeiten scharfschalten als der Rang erlaubt.
+        ak = (mission_data or {}).get("ability_keys") or []
+        if ak:
+            from app.commander.service import arm_slots
+            if len(ak) > arm_slots(commander.rank, get_balance()):
+                raise RuntimeError("Mehr Faehigkeiten scharfgeschaltet als Arm-Slots verfuegbar")
 
     # Ziel-Neulingsschutz pruefen (kein Angriff auf geschuetzte Spieler).
     if mission == "attack":
@@ -301,14 +307,22 @@ async def send_fleet(
         _sb, speed_bonus = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(ships.keys()))
         if speed_bonus > 0:
             secs = int(round(secs / (1.0 + speed_bonus)))
-        # Aktive Logistik-Faehigkeit "Eilmarsch" scharfgeschaltet -> Flugzeit verkuerzt.
-        if mission_data and mission_data.get("use_ability") and commander.specialization == "logistics":
-            from app.commander.service import ready_ability
-            ab = ready_ability(commander, get_balance(), _now())
-            if ab:
-                secs = int(round(secs * (1.0 - float(ab["magnitude"]))))
-                commander.last_ability_at = _now()
     fuel = fuel_cost(ships, distance)
+
+    # Scharfgeschaltete Faehigkeiten (RPG): Eilmarsch (Flugzeit) / Sparflug (Sprit).
+    if commander is not None and mission_data:
+        from app.commander.service import effective_ability, mark_ability_used
+        now_a = _now()
+        for key in mission_data.get("ability_keys", []):
+            eff = effective_ability(commander, key, get_balance(), now_a)
+            if not eff:
+                continue
+            if eff["kind"] == "flight_pct":
+                secs = int(round(secs * (1.0 - eff["magnitude"])))
+                mark_ability_used(commander, key, now_a)
+            elif eff["kind"] == "fuel_pct":
+                fuel = fuel * (1.0 - eff["magnitude"])
+                mark_ability_used(commander, key, now_a)
 
     cargo = {
         "metal": float(cargo.get("metal", 0)),

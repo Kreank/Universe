@@ -153,6 +153,10 @@ _STATEMENTS: list[str] = [
     # Gouverneurs-Rolle: Verwaltungs-Spezialisierung + Planet-Gouverneur.
     "ALTER TYPE specialization ADD VALUE IF NOT EXISTS 'admin'",
     "ALTER TABLE planets ADD COLUMN IF NOT EXISTS governor_commander_id UUID REFERENCES commanders(id) ON DELETE SET NULL",
+    # RPG-Entwicklung: Skillpunkte + erlernte Faehigkeiten + Cooldowns.
+    "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS skill_points INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS abilities JSONB NOT NULL DEFAULT '[]'::jsonb",
+    "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS ability_cooldowns JSONB NOT NULL DEFAULT '{}'::jsonb",
 ]
 
 

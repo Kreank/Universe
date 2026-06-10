@@ -57,8 +57,8 @@ async def send(
             "escort_ids": body.escort_ids or [],
         }
         cargo = {body.offer_res: body.offer_amount}
-    if body.use_ability:
-        mission_data["use_ability"] = True
+    if body.ability_keys:
+        mission_data["ability_keys"] = body.ability_keys
     try:
         fleet = await send_fleet(
             session,

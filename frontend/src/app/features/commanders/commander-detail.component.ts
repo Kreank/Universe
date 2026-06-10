@@ -5,7 +5,8 @@ import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
-import { CommanderDetail, Planet } from '../../core/models/api.models';
+import { NotificationService } from '../../core/services/notification.service';
+import { AbilityCatalog, CommanderDetail, Planet } from '../../core/models/api.models';
 import {
   RANK_META,
   SPECIALIZATION_META,
@@ -96,6 +97,34 @@ import { commanderDetailStyles } from './commander-detail.styles';
             </div>
           }
 
+          <!-- Faehigkeiten (RPG-Entwicklung) -->
+          <div class="abilities-panel">
+            <div class="panel-title">⚡ Fähigkeiten — {{ c.skill_points ?? 0 }} Skillpunkte · {{ c.arm_slots ?? 1 }} Slots</div>
+            @for (a of abilityList(); track a.key) {
+              <div class="ability-row" [class.learned]="a.level > 0">
+                <div class="ab-main">
+                  <span class="ab-name">{{ a.def.label }}</span>
+                  <span class="faint small">{{ a.def.category }} · {{ effectText(a.def) }}@if (a.level > 0) { · Stufe {{ a.level }}/{{ a.def.max_level }} }</span>
+                </div>
+                <div class="ab-act">
+                  @if (a.level < a.def.max_level) {
+                    <button class="btn btn-ghost btn-sm" type="button"
+                      [disabled]="(c.skill_points ?? 0) < a.def.sp_cost || !rankOk(c, a.def)"
+                      (click)="trainAbility(a.key)">
+                      {{ a.level === 0 ? 'Lernen' : 'Steigern' }} ({{ a.def.sp_cost }} SP)
+                    </button>
+                  } @else {
+                    <span class="chip">max</span>
+                  }
+                  @if (a.level > 0) {
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="forgetAbility(a.key)">Verlernen</button>
+                  }
+                </div>
+              </div>
+            }
+            <p class="faint small">Skillpunkte gibt es beim Rang-Aufstieg. Erlernte Fähigkeiten schaltest du beim Flottenversand scharf (bis Slots).</p>
+          </div>
+
           <div class="persona">
             <div class="panel-title">Persona</div>
             <p class="small">{{ c.persona.background }}</p>
@@ -138,6 +167,7 @@ export class CommanderDetailComponent {
   private readonly api = inject(ApiService);
   private readonly balance = inject(BalanceService);
   private readonly state = inject(GameStateService);
+  private readonly notify = inject(NotificationService);
 
   /** Route-Parameter via withComponentInputBinding. */
   readonly id = input<string>('');
@@ -146,6 +176,58 @@ export class CommanderDetailComponent {
   protected readonly loading = signal(true);
   protected readonly planets = this.state.planets;
   protected readonly govPlanet = signal<string | null>(null);
+  protected readonly abilityCatalog = signal<AbilityCatalog | null>(null);
+
+  /** Katalog als sortierte Liste mit aktueller Stufe des Kommandeurs. */
+  protected readonly abilityList = computed(() => {
+    const cat = this.abilityCatalog()?.catalog ?? {};
+    const learned = new Map((this.commander()?.abilities ?? []).map((a) => [a.key, a.level]));
+    return Object.entries(cat).map(([key, def]) => ({
+      key,
+      def,
+      level: learned.get(key) ?? 0,
+    }));
+  });
+
+  private readonly RANK_ORDER = ['cadet', 'officer', 'veteran', 'elite', 'legend'];
+
+  effectText(def: AbilityCatalog['catalog'][string]): string {
+    const pct = Math.round(def.per_level * 100);
+    switch (def.kind) {
+      case 'attack_pct': return `+${pct}% Angriff/Stufe`;
+      case 'loss_reduction': return `−${pct}% eigene Verluste/Stufe`;
+      case 'flight_pct': return `−${pct}% Flugzeit/Stufe`;
+      case 'fuel_pct': return `−${pct}% Sprit/Stufe`;
+      default: return `${pct}%/Stufe`;
+    }
+  }
+
+  rankOk(c: CommanderDetail, def: AbilityCatalog['catalog'][string]): boolean {
+    const need = def.requires?.min_rank ?? 'cadet';
+    return this.RANK_ORDER.indexOf(c.rank) >= this.RANK_ORDER.indexOf(need);
+  }
+
+  trainAbility(key: string): void {
+    const c = this.commander();
+    if (!c) {
+      return;
+    }
+    this.api.trainAbility(c.id, key).subscribe({
+      next: (updated) => this.commander.set(updated),
+      error: (err) => this.notify.warning('Nicht möglich', err?.error?.detail ?? 'Fehler.'),
+    });
+  }
+
+  forgetAbility(key: string): void {
+    const c = this.commander();
+    if (!c) {
+      return;
+    }
+    this.api.forgetAbility(c.id, key).subscribe({
+      next: (updated) => this.commander.set(updated),
+      error: (err) => this.notify.warning('Nicht möglich', err?.error?.detail ?? 'Fehler.'),
+    });
+  }
 
   /** Planet, den dieser Kommandeur aktuell als Gouverneur verwaltet (falls vorhanden). */
   protected readonly governedPlanet = computed<Planet | null>(() => {
@@ -159,6 +241,7 @@ export class CommanderDetailComponent {
   constructor() {
     // Reagiert auf den ueber die Route gebundenen :id-Parameter.
     effect(() => this.load(this.id()));
+    this.api.getAbilityCatalog().subscribe((c) => this.abilityCatalog.set(c));
   }
 
   assignGovernor(): void {

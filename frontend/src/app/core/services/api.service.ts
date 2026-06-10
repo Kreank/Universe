@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
+  AbilityCatalog,
   BuildingsResponse,
   CombatReport,
   Commander,
@@ -199,6 +200,18 @@ export class ApiService {
 
   getSpan(): Observable<SpanInfo> {
     return this.http.get<SpanInfo>('/api/player/span');
+  }
+
+  getAbilityCatalog(): Observable<AbilityCatalog> {
+    return this.http.get<AbilityCatalog>('/api/commanders/ability-catalog');
+  }
+
+  trainAbility(commanderId: string, key: string): Observable<CommanderDetail> {
+    return this.http.post<CommanderDetail>(`/api/commanders/${commanderId}/abilities/train`, { key });
+  }
+
+  forgetAbility(commanderId: string, key: string): Observable<CommanderDetail> {
+    return this.http.post<CommanderDetail>(`/api/commanders/${commanderId}/abilities/forget`, { key });
   }
 
   /** Gouverneur eines Planeten setzen (commanderId) oder entfernen (null). */

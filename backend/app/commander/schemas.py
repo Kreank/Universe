@@ -30,6 +30,9 @@ class CommanderOut(BaseModel):
     morale: int
     loyalty: int
     unrest: int = 0
+    skill_points: int = 0
+    abilities: list[dict] = []
+    arm_slots: int = 1
     span_capacity: int
     status: str
     morale_band: MoraleBandOut

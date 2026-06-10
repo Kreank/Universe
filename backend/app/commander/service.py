@@ -160,6 +160,9 @@ async def commander_to_dict(session: AsyncSession, c: Commander) -> dict:
         "morale": c.morale,
         "loyalty": c.loyalty,
         "unrest": round(float(c.unrest or 0.0)),
+        "skill_points": int(c.skill_points or 0),
+        "abilities": c.abilities or [],
+        "arm_slots": arm_slots(c.rank, get_balance()),
         "span_capacity": c.span_capacity,
         "status": c.status,
         "morale_band": {"label": band["label"], "combat_mod": band["combat_mod"]},
@@ -302,21 +305,46 @@ def _rank_index(rank: str, bal) -> int:
     return order.index(rank) if rank in order else 0
 
 
-def ready_ability(commander, bal, now: dt.datetime) -> dict | None:
-    """Signatur-Faehigkeit der Spezialisierung, falls Rang-gated freigeschaltet + nicht im Cooldown.
-    Liefert das ability-cfg (mit 'label'/'magnitude') oder None."""
-    ab = bal.commander.get("abilities", {}).get(commander.specialization)
-    if not ab:
+def ability_def(key: str, bal) -> dict | None:
+    return bal.commander.get("ability_catalog", {}).get(key)
+
+
+def arm_slots(rank: str, bal) -> int:
+    return int(bal.commander["ability_progression"]["arm_slots"].get(rank, 1))
+
+
+def commander_ability_level(commander, key: str) -> int:
+    for a in (commander.abilities or []):
+        if a.get("key") == key:
+            return int(a.get("level", 0))
+    return 0
+
+
+def effective_ability(commander, key: str, bal, now: dt.datetime) -> dict | None:
+    """Liefert {kind, magnitude} einer erlernten, einsatzbereiten Faehigkeit (Cooldown frei),
+    sonst None. magnitude = per_level * Stufe."""
+    ab = ability_def(key, bal)
+    lvl = commander_ability_level(commander, key)
+    if not ab or lvl <= 0:
         return None
-    if _rank_index(commander.rank, bal) < _rank_index(ab["min_rank"], bal):
-        return None
-    last = commander.last_ability_at
-    if last is not None:
-        if last.tzinfo is None:
-            last = last.replace(tzinfo=dt.timezone.utc)
-        if (now - last).total_seconds() < float(ab["cooldown_seconds"]):
-            return None
-    return ab
+    cd = (commander.ability_cooldowns or {}).get(key)
+    if cd:
+        try:
+            t = dt.datetime.fromisoformat(cd)
+        except ValueError:
+            t = None
+        if t is not None:
+            if t.tzinfo is None:
+                t = t.replace(tzinfo=dt.timezone.utc)
+            if (now - t).total_seconds() < float(ab["cooldown_seconds"]):
+                return None
+    return {"key": key, "kind": ab["kind"], "magnitude": float(ab["per_level"]) * lvl, "label": ab["label"]}
+
+
+def mark_ability_used(commander, key: str, now: dt.datetime) -> None:
+    cds = dict(commander.ability_cooldowns or {})
+    cds[key] = now.isoformat()
+    commander.ability_cooldowns = cds  # neues dict -> JSONB-Change-Tracking
 
 
 def governor_production_mult(commander, bal) -> float:

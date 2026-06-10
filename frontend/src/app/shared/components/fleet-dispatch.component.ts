@@ -161,11 +161,16 @@ import { IconTileComponent } from './icon-tile.component';
             <input type="range" min="10" max="100" step="10" [ngModel]="speed()" (ngModelChange)="speed.set($event)" />
           </div>
         </div>
-        @if (commanderId()) {
-          <label class="escort-row small">
-            <input type="checkbox" [ngModel]="useAbility()" (ngModelChange)="useAbility.set($event)" />
-            ⚡ Kommandeur-Fähigkeit einsetzen (sofern verfügbar & bereit)
-          </label>
+        @if (commanderId() && commanderAbilities().abilities.length) {
+          <div class="escorts">
+            <div class="cargo-title">⚡ Fähigkeiten scharf ({{ armed().size }}/{{ commanderAbilities().slots }})</div>
+            @for (a of commanderAbilities().abilities; track a.key) {
+              <label class="escort-row small">
+                <input type="checkbox" [checked]="armed().has(a.key)" (change)="toggleArmed(a.key)" />
+                {{ abilityLabel(a.key) }} · Stufe {{ a.level }}
+              </label>
+            }
+          </div>
         }
 
         <div class="actions">
@@ -283,8 +288,32 @@ export class FleetDispatchComponent {
   });
   protected readonly commanderId = signal<string | null>(null);
   protected readonly speed = signal(100);
-  protected readonly useAbility = signal(false);
+  protected readonly armed = signal<Set<string>>(new Set());
+  protected readonly abilityCatalog = signal<Record<string, { label: string }>>({});
   protected readonly sending = signal(false);
+
+  /** Erlernte Faehigkeiten des gewaehlten Kommandeurs (fuer die Scharfschalt-Auswahl). */
+  protected readonly commanderAbilities = computed(() => {
+    const id = this.commanderId();
+    const c = this.assignableCommanders().find((x) => x.id === id);
+    return c ? { abilities: c.abilities ?? [], slots: c.arm_slots ?? 1 } : { abilities: [], slots: 1 };
+  });
+
+  toggleArmed(key: string): void {
+    this.armed.update((s) => {
+      const next = new Set(s);
+      if (next.has(key)) {
+        next.delete(key);
+      } else if (next.size < this.commanderAbilities().slots) {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  abilityLabel(key: string): string {
+    return this.abilityCatalog()[key]?.label ?? key;
+  }
 
   // --- Handel ---
   protected readonly offerRes = signal<'metal' | 'crystal' | 'deuterium'>('metal');
@@ -362,6 +391,8 @@ export class FleetDispatchComponent {
     this.api.getTradeIndex().subscribe((idx) => this.globalIndex.set(idx));
     // Eskort-Angebote (fuer die Routen-Auswahl im Handel) laden.
     this.api.getEscortOffers().subscribe((list) => this.escortOffers.set(list));
+    // Faehigkeiten-Katalog (fuer Labels der Scharfschalt-Auswahl).
+    this.api.getAbilityCatalog().subscribe((c) => this.abilityCatalog.set(c.catalog as Record<string, { label: string }>));
     // Kurs-Schnappschuss/Typ des Zielhaendlers laden (Handelszentrum vs. Legacy).
     effect(() => {
       const t = this.target();
@@ -442,7 +473,7 @@ export class FleetDispatchComponent {
       cargo,
       commander_id: this.commanderId(),
       speed_pct: this.speed(),
-      use_ability: this.useAbility(),
+      ability_keys: [...this.armed()],
     };
     if (this.mission() === 'trade') {
       // Angebots-Ressource faehrt als Fracht mit; der Server baut Cargo + mission_data.

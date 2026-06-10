@@ -278,8 +278,25 @@ export interface FleetSendRequest {
   want_res?: 'metal' | 'crystal' | 'deuterium';
   /** Gewaehlte Eskort-Patrouillen (StationedFleet-IDs), die die Route decken. */
   escort_ids?: string[];
-  /** Aktive Kommandeur-Faehigkeit scharfschalten (Angriffs-Boost / Eilmarsch). */
-  use_ability?: boolean;
+  /** Scharfzuschaltende erlernte Kommandeur-Faehigkeiten (Keys, bis arm_slots). */
+  ability_keys?: string[];
+}
+
+/** Ein Eintrag im Faehigkeiten-Katalog (RPG-Entwicklung). */
+export interface AbilityDef {
+  label: string;
+  category: string;
+  kind: string;
+  per_level: number;
+  max_level: number;
+  sp_cost: number;
+  requires?: { min_rank?: string };
+  cooldown_seconds: number;
+}
+
+export interface AbilityCatalog {
+  catalog: Record<string, AbilityDef>;
+  progression: { arm_slots?: Record<string, number>; unlearn_refund?: number };
 }
 
 export interface GalaxyCell {
@@ -375,6 +392,10 @@ export interface Commander {
   loyalty: number;
   /** Unmut 0..100 — waechst je staerker der Kommandeur; Schwelle 100 -> Forderung. */
   unrest?: number;
+  /** RPG-Entwicklung: Skillpunkte, erlernte Faehigkeiten, Arm-Slots. */
+  skill_points?: number;
+  abilities?: { key: string; level: number }[];
+  arm_slots?: number;
   span_capacity: number;
   status: string;
   morale_band: MoraleBand;

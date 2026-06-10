@@ -46,6 +46,80 @@ async def get_span(
     return SpanOut(**span)
 
 
+@router.get("/commanders/ability-catalog")
+async def ability_catalog(player: Player = Depends(get_current_player)) -> dict:
+    """Erlernbare Faehigkeiten (RPG) + Progressions-Parameter fuer das UI."""
+    cat = dict(get_balance().commander.get("ability_catalog", {}))
+    cat.pop("_note", None)
+    return {"catalog": cat, "progression": get_balance().commander.get("ability_progression", {})}
+
+
+@router.post("/commanders/{commander_id}/abilities/train")
+async def train_ability(
+    commander_id: uuid.UUID,
+    body: dict,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Erlernt eine Faehigkeit (Stufe 1) bzw. steigert sie um eine Stufe (kostet Skillpunkte)."""
+    from app.commander.service import _rank_index, ability_def, commander_ability_level
+
+    key = body.get("key")
+    c = await session.get(Commander, commander_id)
+    if c is None or c.player_id != player.id:
+        raise HTTPException(status_code=404, detail="Kommandeur nicht gefunden")
+    bal = get_balance()
+    ab = ability_def(key, bal)
+    if ab is None:
+        raise HTTPException(status_code=404, detail="Faehigkeit unbekannt")
+    if _rank_index(c.rank, bal) < _rank_index(ab.get("requires", {}).get("min_rank", "cadet"), bal):
+        raise HTTPException(status_code=409, detail="Rang zu niedrig fuer diese Faehigkeit")
+    cur = commander_ability_level(c, key)
+    if cur >= int(ab["max_level"]):
+        raise HTTPException(status_code=409, detail="Faehigkeit bereits auf Maximalstufe")
+    cost = int(ab.get("sp_cost", 1))
+    if int(c.skill_points or 0) < cost:
+        raise HTTPException(status_code=409, detail="Nicht genug Skillpunkte")
+    c.skill_points = int(c.skill_points or 0) - cost
+    abilities = [dict(a) for a in (c.abilities or [])]
+    for a in abilities:
+        if a.get("key") == key:
+            a["level"] = cur + 1
+            break
+    else:
+        abilities.append({"key": key, "level": 1})
+    c.abilities = abilities
+    await session.commit()
+    return await commander_to_dict(session, c)
+
+
+@router.post("/commanders/{commander_id}/abilities/forget")
+async def forget_ability(
+    commander_id: uuid.UUID,
+    body: dict,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Verlernt eine Faehigkeit; erstattet einen Teil der Skillpunkte."""
+    from app.commander.service import ability_def, commander_ability_level
+
+    key = body.get("key")
+    c = await session.get(Commander, commander_id)
+    if c is None or c.player_id != player.id:
+        raise HTTPException(status_code=404, detail="Kommandeur nicht gefunden")
+    cur = commander_ability_level(c, key)
+    if cur <= 0:
+        raise HTTPException(status_code=404, detail="Faehigkeit nicht erlernt")
+    bal = get_balance()
+    ab = ability_def(key, bal) or {"sp_cost": 1}
+    refund_ratio = float(bal.commander["ability_progression"].get("unlearn_refund", 0.5))
+    refund = int(round(cur * int(ab.get("sp_cost", 1)) * refund_ratio))
+    c.skill_points = int(c.skill_points or 0) + refund
+    c.abilities = [a for a in (c.abilities or []) if a.get("key") != key]
+    await session.commit()
+    return await commander_to_dict(session, c)
+
+
 @router.put("/planets/{planet_id}/governor")
 async def set_governor(
     planet_id: uuid.UUID,

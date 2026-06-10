@@ -52,5 +52,5 @@ class SendFleetRequest(BaseModel):
     want_res: str | None = None
     # Gewaehlte Eskort-Patrouillen (StationedFleet-IDs), die die Route decken sollen.
     escort_ids: list[str] = Field(default_factory=list)
-    # Aktive Kommandeur-Faehigkeit scharfschalten (combat: Angriffs-Boost, logistics: Eilmarsch).
-    use_ability: bool = False
+    # Scharfzuschaltende erlernte Kommandeur-Faehigkeiten (Keys; bis arm_slots).
+    ability_keys: list[str] = Field(default_factory=list)
