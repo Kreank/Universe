@@ -218,4 +218,16 @@ async def complete_shipyard_build(queue_item_id: str) -> None:
 
         await session.delete(item)
 
+        # WS: Werft-Fertigstellung -> Frontend laedt Werft + Planet automatisch neu.
+        from app.platform.eventbus import event_bus
+        owner = await session.get(Planet, pid)
+        if owner is not None:
+            await event_bus.publish_ws(owner.player_id, {
+                "type": "shipyard_complete",
+                "planet_id": str(pid),
+                "ship_type": typ,
+                "count": count,
+                "category": category,
+            })
+
     log.info("Werft fertig: %sx %s (%s) auf %s", count, typ, category, pid)

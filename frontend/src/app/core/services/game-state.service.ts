@@ -48,6 +48,12 @@ export class GameStateService {
   readonly transmissions = signal<Transmission[]>([]);
   readonly attackAlerts = signal<AttackAlert[]>([]);
 
+  // Versions-Zaehler: zaehlen bei Fertigstellungs-WS-Events hoch, damit Feature-Seiten
+  // (Gebaeude/Forschung/Werft) ihre Listen automatisch neu laden (ueber ihren load-effect).
+  readonly buildingsVersion = signal(0);
+  readonly researchVersion = signal(0);
+  readonly shipyardVersion = signal(0);
+
   readonly unreadTransmissions = computed(
     () => this.transmissions().filter((t) => !t.read).length,
   );
@@ -183,11 +189,19 @@ export class GameStateService {
       const label = metaFor(BUILDING_META, msg.building).label;
       this.notify.success('Bau abgeschlossen', `${label} ist jetzt Stufe ${msg.level}.`);
       void this.reloadActivePlanet();
+      this.buildingsVersion.update((v) => v + 1);
     });
 
     this.ws.on<WsResearchComplete>('research_complete').subscribe((msg) => {
       const label = metaFor(TECH_META, msg.tech).label;
       this.notify.success('Forschung abgeschlossen', `${label} Stufe ${msg.level} erreicht.`);
+      void this.reloadActivePlanet();
+      this.researchVersion.update((v) => v + 1);
+    });
+
+    this.ws.on<{ type: string }>('shipyard_complete').subscribe(() => {
+      void this.reloadActivePlanet();
+      this.shipyardVersion.update((v) => v + 1);
     });
 
     this.ws.on<WsFleetArrived>('fleet_arrived').subscribe((msg) => {

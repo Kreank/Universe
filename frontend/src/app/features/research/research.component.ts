@@ -1,13 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { Requirement, ResearchOption, ResearchResponse, ResearchState } from '../../core/models/api.models';
 import { BUILDING_META, TECH_META, metaFor } from '../../core/models/display';
 import { techIcon } from '../../core/models/icon-assets';
-import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
-import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { DetailPopupComponent } from '../../shared/components/detail-popup.component';
+import { BuildTileComponent } from '../../shared/components/build-tile.component';
+import { TabBarComponent } from '../../shared/components/tab-bar.component';
 import { NotificationService } from '../../core/services/notification.service';
 
 interface ResearchRow {
@@ -28,7 +28,7 @@ interface ResearchGroup {
 const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string[] }[] = [
   {
     key: 'drive',
-    label: 'Antriebe & Reichweite',
+    label: 'Antrieb & Reichweite',
     glyph: '🚀',
     types: [
       'energy_tech',
@@ -36,8 +36,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       'impulse_drive',
       'hyperspace_drive',
       'hyperspace_tech',
-      'spy_tech',
-      'computer_tech',
+      'hyperspace_interdiction',
     ],
   },
   {
@@ -50,22 +49,38 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       'armor_tech',
       'laser_tech',
       'ion_tech',
+      'ion_disruptors',
       'plasma_tech',
+      'boarding_doctrine',
       'graviton_tech',
     ],
   },
   {
     key: 'command',
-    label: 'Fuehrung & Crew',
+    label: 'Führung & Crew',
     glyph: '🎖️',
-    types: ['command_doctrine', 'logistics_tech', 'crew_psychology'],
+    types: [
+      'command_doctrine',
+      'logistics_tech',
+      'crew_psychology',
+      'leadership_doctrine',
+      'tactical_academy',
+      'computer_tech',
+      'spy_tech',
+    ],
+  },
+  {
+    key: 'economy',
+    label: 'Wirtschaft & Expansion',
+    glyph: '⛏️',
+    types: ['mining_efficiency', 'storage_tech', 'astrophysics', 'expedition_tech'],
   },
 ];
 
 @Component({
   selector: 'app-research',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CostLineComponent, CountdownComponent, IconTileComponent, DetailPopupComponent],
+  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent],
   template: `
     <h1>Forschung</h1>
     <p class="muted sub">
@@ -83,53 +98,48 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
     @if (loading()) {
       <p class="empty-state">Lade Techbaum…</p>
     } @else {
-      @for (group of groups(); track group.key) {
-        <section class="card cat">
-          <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
-          <div class="bld-list">
-            @for (t of group.rows; track t.type) {
-              <div class="bld-row" [class.busy]="t.finishesAt">
-                <div class="bld-art clickable" (click)="openDetail(t)" title="Details ansehen">
-                  <app-icon-tile [glyph]="meta(t.type).glyph" [src]="techIcon(t.type)" [size]="46" variant="muted" />
-                  <span class="lvl" [class.zero]="t.level === 0" title="Stufe">{{ t.level }}</span>
-                </div>
-
-                <div class="bld-info">
-                  <div class="bld-name clickable" (click)="openDetail(t)" title="Details ansehen">{{ meta(t.type).label }} <span class="info-dot">ⓘ</span></div>
-                  @if (t.option) {
-                    <div class="bld-stats">
-                      <app-cost-line [cost]="t.option.cost" [available]="balances()" />
-                      <span class="muted small">⏱ {{ formatTime(t.option.research_seconds) }}</span>
-                    </div>
+      <app-tab-bar [tabs]="tabDefs()" [active]="activeTab()" (select)="activeTab.set($event)" />
+      @if (activeGroup(); as group) {
+        <div class="tile-grid">
+          @for (t of group.rows; track t.type) {
+            <app-build-tile
+              [iconSrc]="techIcon(t.type)"
+              [glyph]="meta(t.type).glyph"
+              [name]="meta(t.type).label"
+              [badge]="t.level"
+              badgeTip="Stufe"
+              variant="muted"
+              [cost]="t.option?.cost ?? null"
+              [available]="balances()"
+              [timeSeconds]="t.option?.research_seconds ?? null"
+              [busy]="!!t.finishesAt"
+              (openDetail)="openDetail(t)"
+            >
+              <ng-container action>
+                @if (t.finishesAt) {
+                  <span class="building-badge">⏳ In Forschung</span>
+                  <app-countdown [target]="t.finishesAt" />
+                } @else if (t.option) {
+                  <button
+                    class="btn btn-primary btn-sm full"
+                    type="button"
+                    [disabled]="!canStart(t) || pending() === t.type || researchBusy()"
+                    (click)="start(t.type)"
+                  >
+                    {{ pending() === t.type ? '…' : 'Erforschen → ' + t.option.next_level }}
+                  </button>
+                  @if (!t.option.requirements_met) {
+                    <span class="hint warn small">{{ missingReqText(t.option) }}</span>
+                  } @else if (!t.option.can_afford) {
+                    <span class="hint warn small">Zu teuer</span>
+                  } @else if (researchBusy()) {
+                    <span class="hint small">Labor belegt</span>
                   }
-                </div>
-
-                <div class="bld-action">
-                  @if (t.finishesAt) {
-                    <span class="building-badge">⏳ In Forschung</span>
-                    <app-countdown [target]="t.finishesAt" />
-                  } @else if (t.option) {
-                    <button
-                      class="btn btn-primary btn-sm"
-                      type="button"
-                      [disabled]="!canStart(t) || pending() === t.type || researchBusy()"
-                      (click)="start(t.type)"
-                    >
-                      {{ pending() === t.type ? '…' : 'Erforschen → ' + t.option.next_level }}
-                    </button>
-                    @if (!t.option.requirements_met) {
-                      <span class="hint warn small">{{ missingReqText(t.option) }}</span>
-                    } @else if (!t.option.can_afford) {
-                      <span class="hint warn small">Zu teuer</span>
-                    } @else if (researchBusy()) {
-                      <span class="hint small">Labor belegt</span>
-                    }
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        </section>
+                }
+              </ng-container>
+            </app-build-tile>
+          }
+        </div>
       }
     }
 
@@ -270,6 +280,16 @@ export class ResearchComponent {
   protected readonly activeResearch = computed(() => this.rows().find((r) => r.finishesAt) ?? null);
   protected readonly researchBusy = computed(() => this.activeResearch() !== null);
 
+  // -- Reiter (Kategorie-Tabs) --
+  protected readonly activeTab = signal<string>('drive');
+  protected readonly tabDefs = computed(() =>
+    this.groups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, count: g.rows.length })),
+  );
+  protected readonly activeGroup = computed(() => {
+    const gs = this.groups();
+    return gs.find((g) => g.key === this.activeTab()) ?? gs[0] ?? null;
+  });
+
   protected readonly balances = computed(() => {
     const res = this.state.activePlanet()?.resources;
     return res
@@ -278,7 +298,10 @@ export class ResearchComponent {
   });
 
   constructor() {
-    this.load();
+    effect(() => {
+      this.state.researchVersion(); // bei Forschungs-Fertigstellung automatisch neu laden
+      this.load();
+    });
   }
 
   private load(): void {

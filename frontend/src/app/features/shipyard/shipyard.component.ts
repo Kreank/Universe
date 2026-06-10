@@ -1,15 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NgTemplateOutlet } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
-import { Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
+import { PlanetUnit, Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
 import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_META, metaFor } from '../../core/models/display';
 import { rangeIcon, weaponIcon } from '../../core/models/icon-assets';
-import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
-import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { DetailPopupComponent, DetailTag } from '../../shared/components/detail-popup.component';
+import { BuildTileComponent } from '../../shared/components/build-tile.component';
+import { TabBarComponent } from '../../shared/components/tab-bar.component';
 import { NotificationService } from '../../core/services/notification.service';
 
 interface SelectedUnit {
@@ -78,7 +77,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
 @Component({
   selector: 'app-shipyard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, NgTemplateOutlet, CostLineComponent, CountdownComponent, IconTileComponent, DetailPopupComponent],
+  imports: [FormsModule, CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent],
   template: `
     <h1>Werft & Verteidigung</h1>
     <p class="muted sub">Baue Schiffe und Verteidigungsanlagen auf {{ state.activePlanet()?.name ?? '—' }}.</p>
@@ -101,73 +100,53 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
         }
       </section>
 
-      @for (group of shipGroups(); track group.key) {
-        <section class="card cat">
-          <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
-          <div class="bld-list">
-            @for (s of group.ships; track s.type) {
-              <ng-container *ngTemplateOutlet="unitCard; context: { $implicit: s, cat: 'ship' }" />
-            }
-          </div>
-        </section>
-      }
-
-      <section class="card cat">
-        <h2 class="cat-title">🛡️ Verteidigung</h2>
-        <div class="bld-list">
-          @for (s of d.defenses; track s.type) {
-            <ng-container *ngTemplateOutlet="unitCard; context: { $implicit: s, cat: 'defense' }" />
+      <app-tab-bar [tabs]="tabDefs()" [active]="activeTab()" (select)="activeTab.set($event)" />
+      @if (activeView(); as view) {
+        <div class="tile-grid">
+          @for (s of view.items; track s.type) {
+            <app-build-tile
+              [iconSrc]="'assets/img/' + (view.cat === 'ship' ? 'ships' : 'defenses') + '/' + s.type + '.png'"
+              [glyph]="unitMeta(s.type, view.cat).glyph"
+              [name]="unitMeta(s.type, view.cat).label"
+              [badge]="ownedCount(s.type, view.cat)"
+              badgeTip="Bestand"
+              [cost]="s.cost"
+              [available]="balances()"
+              [timeSeconds]="s.build_seconds_each"
+              [variant]="view.cat === 'defense' ? 'magenta' : 'accent'"
+              [locked]="!s.requirements_met"
+              (openDetail)="openDetail(s, view.cat)"
+            >
+              <ng-container action>
+                <div class="qty-row">
+                  <input
+                    type="number"
+                    min="1"
+                    [ngModel]="unitCount(s.type)"
+                    (ngModelChange)="setCount(s.type, $event)"
+                    [disabled]="!buildable(s)"
+                    aria-label="Anzahl"
+                  />
+                  <button
+                    class="btn btn-sm"
+                    [class.btn-primary]="buildable(s)"
+                    type="button"
+                    [disabled]="!buildable(s) || pending() === s.type"
+                    (click)="build(s.type, view.cat)"
+                  >
+                    {{ pending() === s.type ? '…' : 'Bauen' }}
+                  </button>
+                </div>
+                @if (!s.requirements_met) {
+                  <span class="hint warn small">{{ missingReqText(s) }}</span>
+                } @else if (!s.can_build) {
+                  <span class="hint warn small">Zu wenig Ressourcen</span>
+                }
+              </ng-container>
+            </app-build-tile>
           }
         </div>
-      </section>
-
-      <ng-template #unitCard let-s let-cat="cat">
-        <div class="bld-row">
-          <div class="bld-art clickable" (click)="openDetail(s, cat)" title="Details ansehen">
-            <app-icon-tile
-              [glyph]="unitMeta(s.type, cat).glyph"
-              [src]="'assets/img/' + (cat === 'ship' ? 'ships' : 'defenses') + '/' + s.type + '.png'"
-              [size]="46"
-              [variant]="cat === 'defense' ? 'magenta' : 'accent'"
-            />
-          </div>
-
-          <div class="bld-info">
-            <div class="bld-name clickable" (click)="openDetail(s, cat)" title="Details ansehen">{{ unitMeta(s.type, cat).label }} <span class="info-dot">ⓘ</span></div>
-            <div class="bld-stats">
-              <app-cost-line [cost]="s.cost" [available]="balances()" />
-              <span class="muted small">⏱ {{ formatTime(s.build_seconds_each) }} / Stk.</span>
-            </div>
-          </div>
-
-          <div class="bld-action">
-            <div class="qty-row">
-              <input
-                type="number"
-                min="1"
-                [ngModel]="unitCount(s.type)"
-                (ngModelChange)="setCount(s.type, $event)"
-                [disabled]="!buildable(s)"
-                aria-label="Anzahl"
-              />
-              <button
-                class="btn btn-sm"
-                [class.btn-primary]="buildable(s)"
-                type="button"
-                [disabled]="!buildable(s) || pending() === s.type"
-                (click)="build(s.type, cat)"
-              >
-                {{ pending() === s.type ? '…' : 'Bauen' }}
-              </button>
-            </div>
-            @if (!s.requirements_met) {
-              <span class="hint warn small">{{ missingReqText(s) }}</span>
-            } @else if (!s.can_build) {
-              <span class="hint warn small">Zu wenig Ressourcen</span>
-            }
-          </div>
-        </div>
-      </ng-template>
+      }
     } @else {
       <p class="empty-state">Keine Werft auf diesem Planeten.</p>
     }
@@ -290,9 +269,37 @@ export class ShipyardComponent {
     return groups;
   });
 
+  // -- Reiter: Schiff-Kategorien + Verteidigung --
+  protected readonly activeTab = signal<string>('');
+  protected readonly tabDefs = computed(() => {
+    const tabs = this.shipGroups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, count: g.ships.length }));
+    const defenses = this.data()?.defenses ?? [];
+    if (defenses.length) {
+      tabs.push({ key: 'defense', label: 'Verteidigung', glyph: '🛡️', count: defenses.length });
+    }
+    return tabs;
+  });
+  protected readonly activeView = computed<{ cat: ShipyardCategory; items: ShipOption[] } | null>(() => {
+    const tab = this.activeTab();
+    if (tab === 'defense') {
+      return { cat: 'defense', items: this.data()?.defenses ?? [] };
+    }
+    const groups = this.shipGroups();
+    const g = groups.find((x) => x.key === tab) ?? groups[0] ?? null;
+    return g ? { cat: 'ship', items: g.ships } : null;
+  });
+
+  /** Aktueller Bestand eines Schiff-/Verteidigungstyps auf dem aktiven Planeten (Eck-Badge). */
+  ownedCount(type: string, cat: ShipyardCategory): number {
+    const p = this.state.activePlanet();
+    const list: PlanetUnit[] = (cat === 'defense' ? p?.defenses : p?.ships) ?? [];
+    return list.find((u) => u.type === type)?.count ?? 0;
+  }
+
   constructor() {
     effect(() => {
       const id = this.state.activePlanetId();
+      this.state.shipyardVersion(); // bei Werft-Fertigstellung automatisch neu laden
       if (id) {
         this.load(id);
       }
