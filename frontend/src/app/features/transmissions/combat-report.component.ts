@@ -12,11 +12,13 @@ import { DatePipe } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { CombatReport, CombatRound } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
+import { IconTileComponent } from '../../shared/components/icon-tile.component';
 
-/** Eine Einheit-Zeile (Glyph + Name + Anzahl) im Kampfbericht. */
+/** Eine Einheit-Zeile (Bild/Glyph + Name + Anzahl) im Kampfbericht. */
 interface UnitRow {
   label: string;
   glyph: string;
+  icon: string | null;
   count: number;
 }
 
@@ -54,7 +56,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
 @Component({
   selector: 'app-combat-report',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe],
+  imports: [DatePipe, IconTileComponent],
   template: `
     <div class="overlay" (click)="close.emit()">
       <div class="panel" (click)="$event.stopPropagation()">
@@ -100,7 +102,8 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
                   <div class="urows">
                     @for (u of s.initial; track u.label) {
                       <span class="unit" title="{{ u.label }}">
-                        <span class="ug">{{ u.glyph }}</span>{{ u.count }}
+                        <app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="26"
+                          [variant]="s.isYou ? 'accent' : 'magenta'" />{{ u.count }}
                       </span>
                     }
                   </div>
@@ -110,7 +113,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
                   <div class="sub-block losses">
                     <span class="sb-label">💥 Verluste</span>
                     @for (u of s.losses; track u.label) {
-                      <span class="unit">{{ u.glyph }} {{ u.count }}× {{ u.label }}</span>
+                      <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
                     }
                   </div>
                 }
@@ -118,7 +121,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
                   <div class="sub-block captured">
                     <span class="sb-label">🪝 Gekapert</span>
                     @for (u of s.captured; track u.label) {
-                      <span class="unit">{{ u.glyph }} {{ u.count }}× {{ u.label }}</span>
+                      <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
                     }
                   </div>
                 }
@@ -126,7 +129,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
                   <div class="sub-block stranded">
                     <span class="sb-label">⚓ Gestrandet (Antrieb tot)</span>
                     @for (u of s.stranded; track u.label) {
-                      <span class="unit">{{ u.glyph }} {{ u.count }}× {{ u.label }}</span>
+                      <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
                     }
                   </div>
                 }
@@ -134,7 +137,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
                   <div class="sub-block fled">
                     <span class="sb-label">🏃 Geflohen</span>
                     @for (u of s.fled; track u.label) {
-                      <span class="unit">{{ u.glyph }} {{ u.count }}× {{ u.label }}</span>
+                      <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
                     }
                   </div>
                 }
@@ -236,7 +239,8 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
     .sub-block { display: flex; flex-wrap: wrap; gap: 0.35rem 0.55rem; align-items: center; margin-top: 0.4rem;
       font-size: 0.78rem; }
     .sb-label { font-size: 0.72rem; color: #8b96ad; width: 100%; }
-    .sub-block .unit { color: #c3cce0; }
+    .sub-block .unit { color: #c3cce0; display: inline-flex; align-items: center; gap: 0.28rem; }
+    .u-ico-sm { flex: 0 0 auto; }
     .sub-block.captured .unit { color: #9ad7ff; }
     .sub-block.stranded .unit { color: #ffd28a; }
     .sub-block.losses .unit { color: #ff9b9b; }
@@ -436,8 +440,10 @@ function rows(map: Record<string, number> | undefined | null): UnitRow[] {
     if (n <= 0) {
       continue;
     }
-    const meta = SHIP_META[key] ? metaFor(SHIP_META, key) : metaFor(DEFENSE_META, key);
-    out.push({ label: meta.label, glyph: meta.glyph, count: n });
+    const isShip = !!SHIP_META[key];
+    const meta = isShip ? metaFor(SHIP_META, key) : metaFor(DEFENSE_META, key);
+    const icon = `assets/img/${isShip ? 'ships' : 'defenses'}/${key}.png`;
+    out.push({ label: meta.label, glyph: meta.glyph, icon, count: n });
   }
   return out.sort((a, b) => b.count - a.count);
 }
@@ -463,7 +469,7 @@ function resRows(map: Record<string, number> | undefined | null): UnitRow[] {
   for (const k of ['metal', 'crystal', 'deuterium'] as const) {
     const n = Number(map[k]) || 0;
     if (n > 0) {
-      out.push({ label: RES_META[k].label, glyph: RES_META[k].glyph, count: n });
+      out.push({ label: RES_META[k].label, glyph: RES_META[k].glyph, icon: null, count: n });
     }
   }
   return out;
