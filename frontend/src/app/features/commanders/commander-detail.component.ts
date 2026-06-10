@@ -131,30 +131,44 @@ import { commanderDetailStyles } from './commander-detail.styles';
 
           <!-- Faehigkeiten (RPG-Entwicklung) -->
           <div class="abilities-panel">
-            <div class="panel-title">⚡ Fähigkeiten — {{ c.skill_points ?? 0 }} Skillpunkte · {{ c.arm_slots ?? 1 }} Slots</div>
-            @for (a of abilityList(); track a.key) {
-              <div class="ability-row" [class.learned]="a.level > 0">
-                <div class="ab-main">
-                  <span class="ab-name">{{ a.def.label }}</span>
-                  <span class="faint small">{{ a.def.category }} · {{ effectText(a.def) }}@if (a.level > 0) { · Stufe {{ a.level }}/{{ a.def.max_level }} }</span>
+            <div class="ab-head">
+              <span class="panel-title">⚡ Fähigkeiten</span>
+              <span class="sp-badge" title="Skillpunkte">{{ c.skill_points ?? 0 }} SP</span>
+              <span class="slot-badge" title="gleichzeitig scharfschaltbar">{{ c.arm_slots ?? 1 }} Slots</span>
+            </div>
+            <div class="ability-grid">
+              @for (a of abilityList(); track a.key) {
+                <div class="ability-card" [class.learned]="a.level > 0" [class.locked]="!rankOk(c, a.def)">
+                  <div class="ac-top">
+                    <span class="ac-glyph" [attr.data-cat]="a.def.category">{{ catGlyph(a.def.category) }}</span>
+                    <span class="ac-name">{{ a.def.label }}</span>
+                    <span class="ac-pips" [attr.title]="'Stufe ' + a.level + '/' + a.def.max_level">
+                      @for (i of pipArray(a.def.max_level); track i) {
+                        <span class="pip" [class.on]="i < a.level"></span>
+                      }
+                    </span>
+                  </div>
+                  <div class="ac-effect">{{ effectText(a.def) }}</div>
+                  <div class="ac-foot">
+                    @if (!rankOk(c, a.def)) {
+                      <span class="ac-req">ab {{ rank(a.def.requires?.min_rank ?? 'cadet').label }}</span>
+                    } @else if (a.level < a.def.max_level) {
+                      <button class="btn btn-primary btn-sm" type="button"
+                        [disabled]="(c.skill_points ?? 0) < a.def.sp_cost"
+                        (click)="trainAbility(a.key)">
+                        {{ a.level === 0 ? 'Lernen' : 'Steigern' }} · {{ a.def.sp_cost }} SP
+                      </button>
+                    } @else {
+                      <span class="ac-max">★ max</span>
+                    }
+                    @if (a.level > 0) {
+                      <button class="btn btn-ghost btn-sm" type="button" (click)="forgetAbility(a.key)">Verlernen</button>
+                    }
+                  </div>
                 </div>
-                <div class="ab-act">
-                  @if (a.level < a.def.max_level) {
-                    <button class="btn btn-ghost btn-sm" type="button"
-                      [disabled]="(c.skill_points ?? 0) < a.def.sp_cost || !rankOk(c, a.def)"
-                      (click)="trainAbility(a.key)">
-                      {{ a.level === 0 ? 'Lernen' : 'Steigern' }} ({{ a.def.sp_cost }} SP)
-                    </button>
-                  } @else {
-                    <span class="chip">max</span>
-                  }
-                  @if (a.level > 0) {
-                    <button class="btn btn-ghost btn-sm" type="button" (click)="forgetAbility(a.key)">Verlernen</button>
-                  }
-                </div>
-              </div>
-            }
-            <p class="faint small">Skillpunkte gibt es beim Rang-Aufstieg. Erlernte Fähigkeiten schaltest du beim Flottenversand scharf (bis Slots).</p>
+              }
+            </div>
+            <p class="faint small">Skillpunkte gibt's beim Rang-Aufstieg. Erlernte Fähigkeiten schaltest du beim Flottenversand scharf (bis Slots).</p>
           </div>
 
           <div class="persona">
@@ -282,6 +296,12 @@ export class CommanderDetailComponent {
     const tgt = b.target === 'all' ? 'alle Schiffe' : this.classLabel(b.target);
     return `${this.signedPct(b.pct)} ${stat} auf ${tgt}\n(passiver Basiswert — wächst mit Rang/Güteklasse, im Kampf mit Moral skaliert; nicht über Skillpunkte)`;
   }
+
+  private readonly CAT_GLYPH: Record<string, string> = {
+    combat: '⚔', logistics: '📦', spy: '🛰️', research: '🔬', admin: '🏛️', general: '✦',
+  };
+  catGlyph = (c: string) => this.CAT_GLYPH[c] ?? '✦';
+  pipArray = (n: number) => Array.from({ length: n }, (_, i) => i);
 
   effectText(def: AbilityCatalog['catalog'][string]): string {
     const pct = Math.round(def.per_level * 100);
