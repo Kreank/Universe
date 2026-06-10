@@ -38,7 +38,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
 
       <!-- Eigenes Profil -->
       <div class="card">
-        <div class="card-title">Mein Handelsangebot</div>
+        <div class="panel-title">Mein Handelsangebot</div>
         <label class="toggle">
           <input type="checkbox" [ngModel]="enabled()" (ngModelChange)="enabled.set($event)" />
           <span>Handel aktiviert — andere sehen mein Angebot in der Galaxie</span>
@@ -90,7 +90,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
 
       <!-- Partner-Verzeichnis -->
       <div class="card">
-        <div class="card-title">Handelspartner ({{ partners().length }})</div>
+        <div class="panel-title">Handelspartner ({{ partners().length }})</div>
         @if (partners().length === 0) {
           <p class="muted small">Aktuell bietet kein anderer Spieler Handel an.</p>
         }
@@ -119,7 +119,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
 
       <!-- Meine Patrouillen (Stationierung + Eskort-Angebot) -->
       <div class="card">
-        <div class="card-title">🛡 Meine Patrouillen ({{ stationed().length }})</div>
+        <div class="panel-title">🛡 Meine Patrouillen ({{ stationed().length }})</div>
         @if (stationed().length === 0) {
           <p class="muted small">Keine stationierten Flotten. Schicke in der Galaxie eine Flotte mit Mission „Stationierung" (🚚 → Versand → Stationierung) in eine Region, die du schützen willst.</p>
         }
@@ -150,8 +150,8 @@ type Res = 'metal' | 'crystal' | 'deuterium';
               </label>
               @if (s.intercept_enabled) {
                 <span class="small">Abfang-Radius
-                  <input class="mini" type="number" min="0" max="30" [ngModel]="s.intercept_radius" (ngModelChange)="updateIntercept(s, { intercept_radius: +$event || 0 })" />
-                  Sys — fängt durchreisende Feindflotten in dieser Galaxie ab
+                  <input class="mini" type="number" min="0" max="15" [ngModel]="s.intercept_radius" (ngModelChange)="updateIntercept(s, { intercept_radius: +$event || 0 })" />
+                  Sys — fängt durchreisende Feindflotten ab (Basis-Max 5, höher per Forschung „Hyperraum-Interdiktion")
                 </span>
               }
               <button class="btn btn-ghost btn-sm" type="button" (click)="recall(s)">↩ Zurückrufen</button>
@@ -162,7 +162,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
 
       <!-- Eskort-Angebote anderer Spieler -->
       <div class="card">
-        <div class="card-title">🛰 Eskort-Angebote ({{ offers().length }})</div>
+        <div class="panel-title">🛰 Eskort-Angebote ({{ offers().length }})</div>
         @if (offers().length === 0) {
           <p class="muted small">Aktuell bietet niemand Geleitschutz an.</p>
         }
@@ -310,8 +310,12 @@ export class TradeComponent implements OnInit {
 
   updateIntercept(s: StationedFleet, patch: Partial<StationedFleet>): void {
     const merged = { ...s, ...patch };
+    let radius = merged.intercept_radius;
+    if (merged.intercept_enabled && (!radius || radius <= 0)) {
+      radius = 1; // sinnvoller lokaler Default beim Aktivieren
+    }
     this.api
-      .setInterceptMode(s.id, { enabled: merged.intercept_enabled, radius: merged.intercept_radius })
+      .setInterceptMode(s.id, { enabled: merged.intercept_enabled, radius })
       .subscribe({
         next: (updated) => {
           this.stationed.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));

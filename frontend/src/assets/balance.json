@@ -9,8 +9,8 @@
     "speed": 7,
     "_speed_note": "Korridor 5-10 (GDD §12). 7 = modern/zugaenglich. Multipliziert Produktion UND Flottentempo.",
     "base_income": { "metal": 30, "crystal": 15, "deuterium": 0 },
-    "galaxies": 3,
-    "systems_per_galaxy": 100,
+    "galaxies": 8,
+    "systems_per_galaxy": 200,
     "positions_per_system": 15
   },
 
@@ -41,7 +41,22 @@
     "crystal_storage":   { "cost": { "metal": 1000,"crystal": 500, "deuterium": 0 },   "factor": 2.0 },
     "deuterium_tank":    { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 0 },   "factor": 2.0 },
     "command_academy":   { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 500 }, "factor": 2.0, "_note": "USP: bildet Commander aus" },
-    "command_center":    { "cost": { "metal": 5000,"crystal": 3000,"deuterium": 1000 },"factor": 2.0, "_note": "USP: erhoeht Span-of-Control" }
+    "command_center":    { "cost": { "metal": 5000,"crystal": 3000,"deuterium": 1000 },"factor": 2.0, "_note": "USP: erhoeht Span-of-Control" },
+    "sensorphalanx":     { "cost": { "metal": 20000,"crystal": 40000,"deuterium": 20000 },"factor": 2.0, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Mond-only. Scannt fremde Flottenbewegungen zu/von Zielen in Reichweite (Level^2-1 Systeme)." },
+    "moon_base":         { "cost": { "metal": 20000,"crystal": 40000,"deuterium": 0 },    "factor": 2.0, "moon_only": true, "moon_fields_per_level": 3, "_note": "Mondbasis: Fundament, jede Stufe +Felder auf dem Mond." },
+    "jump_gate":         { "cost": { "metal": 2000000,"crystal": 4000000,"deuterium": 2000000 }, "factor": 2.0, "moon_only": true, "requires": { "gravity_lab": 1 }, "_note": "Sprungtor: instanter Flottensprung zwischen zwei eigenen Monden." },
+    "orbital_battery":   { "cost": { "metal": 30000,"crystal": 15000,"deuterium": 5000 }, "factor": 1.7, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Orbitalbatterie: verteidigt beim Angriff den gebundenen Planeten mit (Mond feuert herab)." },
+    "shield_dome_moon":  { "cost": { "metal": 50000,"crystal": 50000,"deuterium": 0 },    "factor": 2.0, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Schildkuppel: legt im Planetenkampf einen Zusatzschild ueber die Verteidiger." },
+    "gravity_lab":       { "cost": { "metal": 100000,"crystal": 80000,"deuterium": 40000 },"factor": 2.2, "moon_only": true, "requires": { "moon_base": 2 }, "_note": "Gravitationslabor: Voraussetzung fuer das Sprungtor (hoehere Kriegsfuehrung)." }
+  },
+  "moon": {
+    "_note": "Monde entstehen aus Truemmerfeldern nach einem Kampf an einem Spieler-Planeten: chance = min(max_chance, debris_total/value_per_chance). Gebunden an den Planeten (gleiche Koordinate), keine Minen, wenige Felder (base_fields + moon_base*moon_fields_per_level). Tragen Kriegsfuehrungs-Gebaeude.",
+    "max_chance": 0.20,
+    "value_per_chance": 1000000,
+    "base_fields": 1,
+    "orbital_battery_units_per_level": 8,
+    "shield_dome_tech_per_level": 2,
+    "jump_gate_cooldown_seconds": 3600
   },
 
   "storage": {
@@ -62,6 +77,18 @@
     "_formula_cost": "base * 2^(lvl-1)",
     "divisor": 1000,
     "one_at_a_time": true,
+    "effects": {
+      "_note": "Pro-Stufe-Skalare der Nicht-Kampf-Techs (Kampf-Skalare stehen in combat.*). Werden in commander/economy/colonize/expedition gelesen.",
+      "crew_psychology_target_per_level": 2,
+      "crew_psychology_decay_reduction_per_level": 0.10,
+      "logistics_morale_regen_per_level": 0.08,
+      "leadership_unrest_reduction_per_level": 0.10,
+      "academy_xp_per_level": 0.10,
+      "mining_per_level": 0.02,
+      "storage_per_level": 0.05,
+      "astrophysics_colonies_per_level": 1,
+      "expedition_per_level": 0.10
+    },
     "techs": {
       "energy_tech":        { "cost": { "metal": 0,    "crystal": 800,  "deuterium": 400 }, "requires": { "research_lab": 1 } },
       "combustion_drive":   { "cost": { "metal": 400,  "crystal": 0,    "deuterium": 600 }, "requires": { "energy_tech": 1 } },
@@ -79,7 +106,16 @@
       "plasma_tech":        { "cost": { "metal": 2000,  "crystal": 4000,  "deuterium": 1000 },  "requires": { "research_lab": 4, "energy_tech": 8, "laser_tech": 10, "ion_tech": 5 }, "effect": "Plasmawerfer sowie Bomber und Zerstoerer." },
       "hyperspace_tech":    { "cost": { "metal": 0,     "crystal": 4000,  "deuterium": 2000 },  "requires": { "research_lab": 7, "energy_tech": 5, "shield_tech": 5 }, "effect": "Grundlage fuer Hyperraumantrieb und Grosskampfschiffe." },
       "hyperspace_drive":   { "cost": { "metal": 10000, "crystal": 20000, "deuterium": 6000 },  "requires": { "research_lab": 7, "hyperspace_tech": 3 }, "effect": "Antrieb schwerer Kriegsschiffe (Schlachtschiff, Zerstoerer)." },
-      "graviton_tech":      { "cost": { "metal": 0,     "crystal": 0,     "deuterium": 300000 },"requires": { "research_lab": 12, "hyperspace_tech": 6 }, "effect": "Benoetigt enorme Energie. Ermoeglicht den Bau des Todessterns." }
+      "graviton_tech":      { "cost": { "metal": 0,     "crystal": 0,     "deuterium": 300000 },"requires": { "research_lab": 12, "hyperspace_tech": 6 }, "effect": "Benoetigt enorme Energie. Ermoeglicht den Bau des Todessterns." },
+      "hyperspace_interdiction": { "cost": { "metal": 6000, "crystal": 9000, "deuterium": 3000 }, "requires": { "research_lab": 8, "hyperspace_tech": 4, "ion_tech": 4 }, "effect": "Hyperraum-Interdiktionsfeld: +1 Abfang-Reichweite je Stufe und hoehere Fang-Chance der Patrouillen." },
+      "ion_disruptors":     { "cost": { "metal": 3000, "crystal": 5000, "deuterium": 1500 }, "requires": { "research_lab": 6, "ion_tech": 6 }, "effect": "Verstaerkte Ionenwaffen: +10% Schild-Strip/Antriebsschaden je Stufe und staerkere Verteidigungs-Lahmlegung." },
+      "boarding_doctrine":  { "cost": { "metal": 4000, "crystal": 2000, "deuterium": 1000 }, "requires": { "research_lab": 5, "armor_tech": 5, "impulse_drive": 5 }, "effect": "Enter-Taktik: +1 gekapertes Schiff je Enterschiff und Stufe." },
+      "leadership_doctrine": { "cost": { "metal": 1500, "crystal": 2500, "deuterium": 1000 }, "requires": { "research_lab": 4, "command_doctrine": 2 }, "effect": "Fuehrungsdoktrin: senkt den Unmut-Aufbau der Kommandeure je Stufe (seltener Forderungen/Meuterei)." },
+      "tactical_academy":   { "cost": { "metal": 2000, "crystal": 2000, "deuterium": 1500 }, "requires": { "research_lab": 5, "command_doctrine": 3, "computer_tech": 2 }, "effect": "Taktische Akademie: +10% XP-Gewinn der Kommandeure je Stufe." },
+      "mining_efficiency":  { "cost": { "metal": 800, "crystal": 1200, "deuterium": 0 }, "requires": { "research_lab": 2, "energy_tech": 2 }, "effect": "Bergbau-Effizienz: +2% Metall-/Kristall-/Deuterium-Foerderung je Stufe." },
+      "storage_tech":       { "cost": { "metal": 1000, "crystal": 500, "deuterium": 0 }, "requires": { "research_lab": 1 }, "effect": "Speichertechnik: +5% Lagerkapazitaet je Stufe." },
+      "astrophysics":       { "cost": { "metal": 4000, "crystal": 8000, "deuterium": 4000 }, "requires": { "research_lab": 6, "impulse_drive": 3, "spy_tech": 2 }, "effect": "Astrophysik: erlaubt +1 Kolonie je Stufe (Expansion)." },
+      "expedition_tech":    { "cost": { "metal": 5000, "crystal": 5000, "deuterium": 5000 }, "requires": { "research_lab": 7, "hyperspace_drive": 4, "computer_tech": 6 }, "effect": "Expeditionstechnik: +10% Expeditions-Ertrag je Stufe." }
     }
   },
 
@@ -109,7 +145,7 @@
     "stealth_corvette": { "cost": { "metal": 8000,  "crystal": 8000,  "deuterium": 2000 },  "attack": 150,  "shield": 10,   "cargo": 100,   "speed": 16000, "fuel": 150,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "laser_tech": 6, "combustion_drive": 6 } },
     "escort_frigate":   { "cost": { "metal": 18000, "crystal": 12000, "deuterium": 2000 },  "attack": 150,  "shield": 150,  "cargo": 300,   "speed": 10000, "fuel": 250,  "rapidfire": { "drone": 3, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "armor_tech": 3, "laser_tech": 4 } },
     "shield_tender":    { "cost": { "metal": 20000, "crystal": 25000, "deuterium": 5000 },  "attack": 0,    "shield": 1000, "cargo": 200,   "speed": 6000,  "fuel": 400,  "rapidfire": {}, "requires": { "shield_tech": 6, "impulse_drive": 4 } },
-    "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 0 },     "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100,  "rapidfire": { "light_fighter": 3, "drone": 3, "stealth_corvette": 2, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "laser_tech": 5, "impulse_drive": 3 } },
+    "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 0 },     "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100,  "rapidfire": { "light_fighter": 4, "heavy_fighter": 3, "drone": 4, "stealth_corvette": 2, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "laser_tech": 5, "impulse_drive": 3 } },
     "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 15000, "speed": 3000,  "fuel": 300,  "rapidfire": {}, "requires": { "combustion_drive": 4, "shipyard": 4 } },
     "deep_scout":       { "cost": { "metal": 8000,  "crystal": 12000, "deuterium": 1000 },  "attack": 0,    "shield": 50,   "cargo": 100,   "speed": 14000, "fuel": 80,   "rapidfire": {}, "requires": { "spy_tech": 3, "impulse_drive": 4 } },
     "expedition_ship":  { "cost": { "metal": 30000, "crystal": 20000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 10000, "speed": 6000,  "fuel": 800,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "hyperspace_drive": 4, "computer_tech": 6 } }
@@ -126,7 +162,8 @@
     "small_shield_dome":      { "cost": { "metal": 10000, "crystal": 10000, "deuterium": 0 },     "attack": 1,     "shield": 2000,  "rapidfire_against": {}, "requires": { "shield_tech": 2 } },
     "large_shield_dome":      { "cost": { "metal": 50000, "crystal": 50000, "deuterium": 0 },     "attack": 1,     "shield": 10000, "rapidfire_against": {}, "requires": { "shield_tech": 6 } },
     "anti_ballistic_missile": { "cost": { "metal": 8000,  "crystal": 0,     "deuterium": 2000 },  "attack": 1,     "shield": 1,     "rapidfire_against": {}, "requires": { "shipyard": 1 } },
-    "interplanetary_missile": { "cost": { "metal": 12500, "crystal": 2500,  "deuterium": 10000 }, "attack": 12000, "shield": 1,     "rapidfire_against": {}, "requires": { "impulse_drive": 1, "shipyard": 4 } }
+    "interplanetary_missile": { "cost": { "metal": 12500, "crystal": 2500,  "deuterium": 10000 }, "attack": 12000, "shield": 1,     "rapidfire_against": {}, "requires": { "impulse_drive": 1, "shipyard": 4 } },
+    "orbital_gun":            { "cost": { "metal": 30000, "crystal": 15000, "deuterium": 5000 },  "attack": 1500,  "shield": 250,   "rapidfire_against": {}, "virtual": true, "_note": "Virtuell: kommt von der Mond-Orbitalbatterie, nicht direkt baubar. Verteidigt den Planeten mit." }
   },
 
   "combat_roster": {
@@ -185,6 +222,12 @@
     "debris_from_defense": false,
     "plunder_ratio": 0.50,
     "defense_regen_ratio": 0.70,
+    "defense_disable": {
+      "_note": "Ionen legen Verteidigung lahm (Doku 03b §3, C): Verteidigungsanlagen erhalten eine System-Integritaet (statt unverwundbar). Ionen-Treffer (drive-Schaden der damage_matrix) setzen sie herab; bei <= 0 ist das Geschuetz fuer den Rest der Schlacht LAHMGELEGT und feuert nicht mehr. Toetet das Geschuetz nicht (Huelle bleibt) -> Ionen sind der Tueroeffner. ion_disruptor_per_level: Forschung 'ion_disruptors' der Angreifer-Seite erhoeht Ionen-Schild-/Antriebswirkung je Stufe.",
+      "enabled": true,
+      "integrity": 140,
+      "ion_disruptor_per_level": 0.10
+    },
     "damage_matrix": {
       "_note": "Rollen-Kampf (Doku 03b §3): weapon_type -> Effektivitaet gegen {shield, drive, hull}. Schild regeneriert pro Runde, Antrieb NICHT (mission kill). Kinetik ist absichtlich schwach gegen Schilde (Design: 'prallt ab'); 0.25 statt 0.0, damit der aktuelle Duenn-Schild-Roster keine Patt-Kaempfe erzeugt — tunebar Richtung 0, sobald Ionen-/Schild-Strip-Schiffe (Phase 4) existieren.",
       "energy":  { "shield": 1.5,  "drive": 0.5,  "hull": 0.6 },
@@ -216,8 +259,9 @@
       "interdiction_cap": 1.0
     },
     "boarding": {
-      "_note": "Doku 03b §4/§7: Enterschiffe (combat_roster.boarder=true) kapern am Ende des Kampfes GESTRANDETE Gegner (Antrieb 0). capture_per_boarder = gekaperte Schiffe je ueberlebendem Enterschiff. Kaperung = nur SCHIFFE (Commander nie). Greift unabhaengig vom Sieger (disable+board).",
-      "capture_per_boarder": 2
+      "_note": "Doku 03b §4/§7: Enterschiffe (combat_roster.boarder=true) kapern am Ende des Kampfes GESTRANDETE Gegner (Antrieb 0). capture_per_boarder = gekaperte Schiffe je ueberlebendem Enterschiff. capture_per_doctrine_level erhoeht das je Stufe der Forschung 'boarding_doctrine' der Enter-Seite. Kaperung = nur SCHIFFE (Commander nie).",
+      "capture_per_boarder": 2,
+      "capture_per_doctrine_level": 1
     },
     "escort": {
       "_note": "Eskorten-Konter (Doku 03b §4). Punktverteidigung (combat_roster.point_defense=true) neutralisiert pro ueberlebendem Schiff X gegnerische Enter-Kapazitaet (schuetzt vor Kaperung). Schild-Tender (combat_roster.shield_projector=true) repariert pro Runde Antriebs-Integritaet der eigenen Schiffe (haelt Subsysteme online) -> kontert das Ionen-/Strand-Fenster.",
@@ -225,9 +269,9 @@
       "drive_repair_per_projector": 80
     },
     "carrier": {
-      "_note": "Doku 03c: Traeger (combat_roster.carrier=true) starten zu Kampfbeginn Drohnen-Staffeln (drone_type). Drohnen sind EPHEMER (zaehlen nicht als eigene Schiffe, Verluste/Beute irrelevant) -- die Staerke steckt im Traeger.",
+      "_note": "Option A (2026-06-10): Traeger laden beim Angriffs-Flottenstart automatisch ECHTE Drohnen aus der Garnison nach, bis zu drone_capacity je Traeger (send_fleet). Diese kaempfen als normale Schiffe mit echten Verlusten. Keine ephemeren Drohnen mehr.",
       "drone_type": "drone",
-      "drones_per_carrier": 6
+      "drone_capacity": 8
     },
     "ambush": {
       "_note": "Doku 03b §9: hat der Angreifer Tarnkappen-Schiffe (combat_roster.stealth=true), eroeffnet er mit einer Ueberraschungsrunde aus dem Nahbereich -- nur der Angreifer feuert. KONTER: hat der Verteidiger >= detect_sensors Sensor-Schiffe (combat_roster.sensor=true), wird der Hinterhalt entdeckt und negiert.",
@@ -241,6 +285,16 @@
       "rank_bonus": { "cadet": 0.0, "officer": 0.05, "veteran": 0.10, "elite": 0.20, "legend": 0.35 },
       "logistics_tech_bonus_per_level": 0.03,
       "survivor_ship_bonus_max": 0.25
+    },
+    "interception": {
+      "_note": "Abfangen im Flug (A, dedizierte Patrouille + Interdiktor). Eine StationedFleet mit intercept_enabled faengt feindliche Flotten ab, deren galaxie-interne Route ihr System (+/- intercept_radius) kreuzt. MIT Interdiktor (combat_roster.interdictor) in der Patrouille = sicherer Stopp (chance 1.0). OHNE = base_chance + chance_per_interceptor je Abfangjaeger (interceptor) in der Patrouille, gedeckelt auf chance_cap (so offen wie moeglich, kein harter Filter). Inter-Galaxie-Fluege haben keinen modellierten Pfad -> nur am Ziel fangbar. Patrouille ist Aggressor (kann nicht fliehen), die abgefangene Flotte darf fliehen (vom Interdiktor unterdrueckt). Ueberlebt die Flotte, fliegt sie weiter.",
+      "enabled": true,
+      "base_chance": 0.40,
+      "chance_per_interceptor": 0.06,
+      "chance_cap": 0.95,
+      "max_radius": 5,
+      "radius_per_interdiction_level": 1,
+      "chance_per_interdiction_level": 0.08
     }
   },
 
@@ -331,7 +385,7 @@
       "overstretch_penalty_per_excess": 0.08,
       "_overstretch_note": "Pro Geschwader ueber Span: -8% effektive Kampfkraft (Koordinationsstrafe)."
     },
-    "specializations": ["combat", "logistics", "spy", "research", "trade"],
+    "specializations": ["combat", "logistics", "spy", "research", "trade", "admin"],
 
     "ship_classes": {
       "_note": "Schiffsklassen, auf die Commander-Boni zielen koennen (target).",
@@ -349,7 +403,8 @@
         "logistics": { "primary": "speed",  "secondary": "shield", "favored_class": "civil" },
         "spy":       { "primary": "speed",  "secondary": "attack", "favored_class": "civil" },
         "research":  { "primary": "shield", "secondary": "speed",  "favored_class": "cruiser" },
-        "trade":     { "primary": "speed",  "secondary": "shield", "favored_class": "civil" }
+        "trade":     { "primary": "speed",  "secondary": "shield", "favored_class": "civil" },
+        "admin":     { "primary": "shield", "secondary": "shield", "favored_class": "civil" }
       },
       "base": { "primary_pct": 0.10, "secondary_pct": 0.05, "favored_class_pct": 0.10 },
       "rank_scale": { "cadet": 0.6, "officer": 0.8, "veteran": 1.0, "elite": 1.3, "legend": 1.6 },
@@ -380,6 +435,50 @@
     "economy_bonus": {
       "_note": "Wirtschafts-Commander: +bonus * (morale/100) auf Planetenproduktion.",
       "peak_pct_by_rank": { "cadet": 0.03, "officer": 0.05, "veteran": 0.07, "elite": 0.09, "legend": 0.10 }
+    },
+    "satisfaction": {
+      "_note": "Zufriedenheits-Oekonomie (natuerlicher Overkill). Unmut waechst pro Tag (stuendlicher Tick) = base_gain_per_day * rank_mult * grade_potency * trait_mult; Schwelle demand_threshold -> trait-gefaerbte Forderung (Postfach-Entscheidung). Erfuellen hebt Loyalitaet + Unmut-Reset, Ignorieren senkt Loyalitaet. relief_on_win senkt Unmut bei Sieg. Starke Kommandeure sind beduerftiger -> man kann nicht beliebig viele zufriedenstellen.",
+      "base_gain_per_day": 6.0,
+      "rank_mult": { "cadet": 0.5, "officer": 0.8, "veteran": 1.2, "elite": 1.8, "legend": 2.5 },
+      "trait_mult": { "ambitious": 1.5, "greedy": 1.3, "hot_tempered": 1.3, "loyal": 0.4, "honorable": 0.9 },
+      "idle_unrest_per_hour": 0.3,
+      "demand_threshold": 100,
+      "relief_on_win": 25,
+      "relief_on_fulfil": 100,
+      "post_demand_cooldown_hours": 12,
+      "loyalty_start": 90,
+      "loyalty_fulfil_gain": 12,
+      "loyalty_ignore_loss": 15,
+      "mutiny_threshold": 30,
+      "defect_threshold": 15,
+      "defect_chance_per_day": 0.25,
+      "mutiny_trait_mult": { "hot_tempered": 1.6, "aggressive": 1.2, "loyal": 0.15, "honorable": 0.6 }
+    },
+    "ability_catalog": {
+      "_note": "Erlernbare Faehigkeiten (RPG-Entwicklung). Pro Stufe (max_level) staerker. kind steuert die Wirkung: attack_pct (Angriffs-Boost in der Schlacht), loss_reduction (rettet eigene Verluste), flight_pct (kuerzere Flugzeit), fuel_pct (weniger Sprit). sp_cost = Skillpunkte je Stufe. requires.min_rank gated. Beim Versand werden bis arm_slots erlernte Faehigkeiten scharfgeschaltet; Cooldown je Faehigkeit.",
+      "focused_fire":   { "label": "Konzentriertes Feuer", "category": "combat",    "kind": "attack_pct",     "per_level": 0.12, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "officer" }, "cooldown_seconds": 7200 },
+      "evasive":        { "label": "Ausweichmanöver",       "category": "combat",    "kind": "loss_reduction", "per_level": 0.10, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "veteran" }, "cooldown_seconds": 10800 },
+      "battle_drill":   { "label": "Gefechtsdrill",         "category": "general",   "kind": "attack_pct",     "per_level": 0.06, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "cadet" },   "cooldown_seconds": 7200 },
+      "forced_march":   { "label": "Eilmarsch",             "category": "logistics", "kind": "flight_pct",     "per_level": 0.10, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "cadet" },   "cooldown_seconds": 7200 },
+      "efficient_burn": { "label": "Sparflug",              "category": "logistics", "kind": "fuel_pct",       "per_level": 0.15, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "officer" }, "cooldown_seconds": 7200 }
+    },
+    "ability_progression": {
+      "_note": "arm_slots = wie viele erlernte Faehigkeiten je Einsatz scharfgeschaltet werden koennen. skill_points_per_rank beim Aufstieg; +grade_bonus_min_grade ab Grade. unlearn_refund = Anteil erstatteter Skillpunkte beim Verlernen.",
+      "arm_slots": { "cadet": 1, "officer": 1, "veteran": 2, "elite": 2, "legend": 3 },
+      "skill_points_per_rank": 1,
+      "grade_bonus_from": "A",
+      "grade_bonus_points": 1,
+      "unlearn_refund": 0.5,
+      "start_skill_points": 1
+    },
+    "trait_training": {
+      "_note": "Charakter-Zucht an der Akademie (Ressourcen-Kosten, sofort). reroll = neue Zufalls-Traits; replace = einen Trait durch einen gewuenschten ersetzen (teurer). Kadetten-Training kann gegen Aufpreis einen Wunsch-Trait garantieren.",
+      "reroll_cost": { "metal": 30000, "crystal": 20000, "deuterium": 10000 },
+      "replace_cost": { "metal": 60000, "crystal": 40000, "deuterium": 20000 }
+    },
+    "governor": {
+      "_note": "Kommandeur als Planeten-Gouverneur: Produktions-Bonus = economy_bonus.peak_pct_by_rank[rank] * (morale/100) * spec_mult. admin (Verwaltung) ist darauf spezialisiert.",
+      "spec_mult": { "admin": 1.6, "trade": 1.1, "logistics": 1.0, "research": 1.0, "combat": 0.6, "spy": 0.8 }
     },
     "academy": {
       "base_training_seconds": 600,
@@ -462,7 +561,73 @@
       "min_warning_seconds": 600,
       "npc_tech": { "weapons_tech": 4, "shield_tech": 4, "armor_tech": 4 }
     },
+    "population": {
+      "_note": "Populations-Spawner (lebendiges Universum): haelt nahe bei Spielern eine Ziel-NPC-Dichte. profile_weights = gewichtete Zufallswahl. templates je Profil liefern Start-fleet/defenses/resources + name_pool. baseline der NPCs = template fleet/defenses (damit sie nachbauen). auto_discover_radius: Spawns innerhalb X Systemen eines Spielers werden sofort sichtbar (Ziel-Verzeichnis), weiter entfernte brauchen weiter eine Sonde.",
+      "enabled": true,
+      "tick_interval_seconds": 900,
+      "galaxy": 1,
+      "radius_systems": 15,
+      "target_per_player": 6,
+      "max_spawns_per_tick": 3,
+      "auto_discover_radius": 8,
+      "profile_weights": { "aggressive": 0.35, "defensive": 0.30, "merchant": 0.20, "expansive": 0.15 },
+      "templates": {
+        "aggressive": { "name_pool": ["Piratenbande", "Freibeuter-Klan", "Korsaren-Nest", "Pluenderer-Schwarm", "Roter Komet"], "fleet": {"light_fighter": 12, "heavy_fighter": 4, "cruiser": 1}, "defenses": {"rocket_launcher": 6}, "resources": {"metal": 8000, "crystal": 4000, "deuterium": 1500} },
+        "defensive": { "name_pool": ["Verlassene Station", "Schmugglerbasis", "Treibendes Wrack", "Bergungsdepot", "Stiller Aussenposten"], "fleet": {"light_fighter": 6}, "defenses": {"rocket_launcher": 4, "light_laser": 2}, "resources": {"metal": 5000, "crystal": 2500, "deuterium": 800} },
+        "merchant": { "name_pool": ["Handelsgilde", "Freihaendler-Kontor", "Karawanen-Konvoi", "Sternenbasar", "Warenkonsortium"], "fleet": {"large_cargo": 4, "light_fighter": 3}, "defenses": {"rocket_launcher": 3}, "resources": {"metal": 12000, "crystal": 7000, "deuterium": 2500} },
+        "expansive": { "name_pool": ["Koloniale Vorhut", "Siedler-Allianz", "Pionier-Kompanie", "Expansions-Flotte"], "fleet": {"light_fighter": 8, "small_cargo": 2, "colony_ship": 1}, "defenses": {"rocket_launcher": 4}, "resources": {"metal": 9000, "crystal": 6000, "deuterium": 3000} }
+      }
+    },
     "_note": "NPC-Behavior-Tick (Doku 08). NPCs regenerieren Garnison zur baseline und wachsen je Profil; Anti-Farming durch Wiederaufbau."
+  },
+
+  "trade": {
+    "_note": "Handelssystem (Anfliegen-Modell). Preis je Ressource bei einem Haendler = base_value * (setpoint/stock), geclamped auf [min_mult, max_mult]*base_value. Orders werden chunk-weise gegen den Bestand abgerechnet -> Slippage (grosse Order bewegt den Kurs). margin = Spanne zugunsten des Haendlers. specializations skalieren den Sollbestand je Ressource -> Preis-Differenziale zwischen Haendlern (Arbitrage). reputation senkt die margin fuer Stammkunden.",
+    "base_value": { "metal": 1.0, "crystal": 2.0, "deuterium": 3.0 },
+    "price_min_mult": 0.5,
+    "price_max_mult": 2.0,
+    "margin": 0.04,
+    "swap_steps": 40,
+    "default_setpoint": { "metal": 2000000, "crystal": 1000000, "deuterium": 500000 },
+    "min_stock_floor": 1000,
+    "stock_regen_per_tick": 0.1,
+    "market_tick_interval_seconds": 1800,
+    "route_risk": {
+      "_note": "Ungeschuetzte Handelsflotten werden auf der Route ueberfallen. chance = base_chance_per_system*distance, verstaerkt durch Frachtwert (bis 2x bei cargo_value_ref), gesenkt durch Eskort-Kampfkraft (escort_power_for_half halbiert), gedeckelt auf max_chance. Bei Treffer geht loss_fraction der Fracht verloren.",
+      "base_chance_per_system": 0.012,
+      "cargo_value_ref": 100000,
+      "escort_power_for_half": 5000,
+      "max_chance": 0.5,
+      "loss_fraction": 0.4
+    },
+    "specializations": {
+      "metal_world":        { "metal": 3.0, "crystal": 1.0, "deuterium": 0.4 },
+      "crystal_hub":        { "metal": 1.0, "crystal": 3.0, "deuterium": 0.6 },
+      "deuterium_refinery": { "metal": 0.6, "crystal": 0.8, "deuterium": 3.0 },
+      "generalist":         { "metal": 1.0, "crystal": 1.0, "deuterium": 1.0 }
+    },
+    "reputation": { "volume_per_level": 500000, "max_level": 5, "margin_reduction_per_level": 0.005 },
+    "index": {
+      "_note": "Globaler Handelskurs der unangreifbaren Handelszentren (behavior_profile 'trade_center'). Kurs_r = base_value_r * (neutral_r + V_r) / (vorrat_r + V_r), gespeist in price_of via synthetischem Markt (setpoint = neutral+V, stock = weltvorrat+V). neutral_r = neutral_per_player_r * aktive_spieler -> skaliert mit Population, kein Einzelner dominiert. virtual_reserve V gross gegenueber Fruehphasen-Vorrat -> Kurs nahe base_value und stabil bei wenig Spielern; wirkt zugleich als Order-Tiefe (Slippage). Weltvorrat = liquider Spieler-Vorrat (Gebaeude/Schiffe sind aus dem Umlauf), EMA-geglaettet ueber Ticks. Spread = margin (oben).",
+      "neutral_per_player": { "metal": 2000000, "crystal": 1000000, "deuterium": 500000 },
+      "virtual_reserve":    { "metal": 8000000, "crystal": 4000000, "deuterium": 2000000 },
+      "smoothing_alpha": 0.25,
+      "tick_interval_seconds": 600,
+      "target_centers": 6,
+      "center_name_pool": ["Handelszentrum Aurora", "Handelszentrum Meridian", "Handelszentrum Solace", "Handelszentrum Concord", "Handelszentrum Bazaar", "Handelszentrum Nexus", "Handelszentrum Halcyon", "Handelszentrum Tranquil"]
+    }
+  },
+
+  "phalanx": {
+    "_note": "Sensorphalanx (Gebaeude): Scannt fremde Flottenbewegungen zu/von einem Ziel in Reichweite. range_systems = level^2 - 1 (gleiche Galaxie). Jeder Scan kostet Deuterium am scannenden Planeten. intercept_window_seconds = wie lange eine angekommene Handels-/Transportflotte am Ziel fangbar bleibt.",
+    "scan_cost_deuterium": 5000,
+    "intercept_window_seconds": 60
+  },
+
+  "escort": {
+    "_note": "Stationierte Eskort-Patrouillen (deploy). Ein Trader waehlt beim Versand Eskort-Angebote, die seine Route decken (Stationssystem im Routen-Intervall +/- escort_radius), und zahlt fee_pct des Frachtwerts an den Anbieter; die Patrouillen-Kampfkraft daempft das Routenrisiko. region_radius = Default-Deckungsradius, max_fee_pct = Gebuehren-Obergrenze.",
+    "region_radius": 5,
+    "max_fee_pct": 0.10
   },
 
   "spy": {

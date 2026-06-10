@@ -63,7 +63,7 @@ interface NavItem {
             >
               @for (p of planets(); track p.id) {
                 <option [value]="p.id">
-                  {{ p.name }} [{{ p.galaxy }}:{{ p.system }}:{{ p.position }}]
+                  {{ p.planet_type === 'moon' ? '🌑 ' : '' }}{{ p.name }} [{{ p.galaxy }}:{{ p.system }}:{{ p.position }}]
                 </option>
               }
             </select>
@@ -120,7 +120,7 @@ interface NavItem {
                 [class.active]="p.id === state.activePlanetId()"
                 (click)="selectColony(p.id)"
               >
-                <span class="colony-name">{{ p.name }}</span>
+                <span class="colony-name">{{ p.planet_type === 'moon' ? '🌑 ' : '' }}{{ p.name }}</span>
                 <span class="colony-coords mono">[{{ p.galaxy }}:{{ p.system }}:{{ p.position }}]</span>
               </button>
             }

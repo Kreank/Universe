@@ -8,6 +8,7 @@ import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/mode
 import { transmissionStyles } from './transmission.styles';
 import { CombatReportComponent } from './combat-report.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
+import { TabBarComponent } from '../../shared/components/tab-bar.component';
 
 /** Eine Einheit-Zeile im Spionagebericht (Glyph + deutscher Name + Anzahl). */
 interface IntelUnit {
@@ -39,22 +40,17 @@ interface SpyIntelView {
 @Component({
   selector: 'app-transmissions',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, CombatReportComponent, MessageComposeComponent],
+  imports: [DatePipe, CombatReportComponent, MessageComposeComponent, TabBarComponent],
   template: `
-    <div class="head">
-      <div>
-        <h1>Postfach · Funksprueche</h1>
-        <p class="muted sub">Eingehende Transmissionen und Crew-Forderungen.</p>
-      </div>
-      <div class="filters">
-        <button class="btn btn-sm" [class.btn-primary]="!onlyUnread()" (click)="onlyUnread.set(false)">Alle</button>
-        <button class="btn btn-sm" [class.btn-primary]="onlyUnread()" (click)="onlyUnread.set(true)">
-          Ungelesen ({{ state.unreadTransmissions() }})
-        </button>
-        <button class="btn btn-sm btn-ghost" [disabled]="!readCount()" (click)="deleteRead()">
-          🗑 Gelesene löschen{{ readCount() ? ' (' + readCount() + ')' : '' }}
-        </button>
-      </div>
+    <h1>Postfach · Funksprüche</h1>
+    <p class="sub">Eingehende Transmissionen und Crew-Forderungen.</p>
+
+    <div class="bar-row">
+      <app-tab-bar [tabs]="filterTabs()" [active]="onlyUnread() ? 'unread' : 'all'"
+        (select)="onlyUnread.set($event === 'unread')" />
+      <button class="btn btn-sm btn-ghost del-read" [disabled]="!readCount()" (click)="deleteRead()">
+        🗑 Gelesene löschen{{ readCount() ? ' (' + readCount() + ')' : '' }}
+      </button>
     </div>
 
     @if (visible().length) {
@@ -204,6 +200,10 @@ export class TransmissionsComponent {
   private readonly notify = inject(NotificationService);
 
   protected readonly onlyUnread = signal(false);
+  protected readonly filterTabs = computed(() => [
+    { key: 'all', label: 'Alle', glyph: '📨' },
+    { key: 'unread', label: 'Ungelesen', glyph: '●', count: this.state.unreadTransmissions() },
+  ]);
   protected readonly deciding = signal<string | null>(null);
   protected readonly openReportId = signal<string | null>(null);
   protected readonly composeReply = signal<{ id: string; name: string; subject: string } | null>(null);

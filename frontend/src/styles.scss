@@ -114,6 +114,42 @@ a {
   gap: 1rem;
 }
 
+/* OGame-artiges Kachel-Raster: gleich grosse quadratische Boxen, automatisch umbrechend. */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.7rem;
+  align-items: stretch;
+}
+@media (min-width: 900px) {
+  .tile-grid { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
+}
+
+/* Reiter / Kategorie-Tabs (gemeinsame Optik ueber alle Screens). */
+.tab-bar {
+  display: flex; flex-wrap: wrap; gap: 0.35rem;
+  margin: 0.2rem 0 0.9rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+.tab-bar .tab {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.4rem 0.8rem; border-radius: 999px;
+  border: 1px solid var(--border); background: rgba(255, 255, 255, 0.02);
+  color: var(--text-dim); cursor: pointer; font-size: 0.86rem;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+.tab-bar .tab:hover { border-color: var(--border-strong); color: var(--text); }
+.tab-bar .tab.active {
+  border-color: var(--accent); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: var(--glow);
+}
+.tab-bar .tab .tab-count {
+  font-size: 0.72rem; font-family: var(--mono); color: var(--text-faint);
+}
+.tab-bar .tab.active .tab-count { color: var(--accent); }
+
 .muted {
   color: var(--text-dim);
 }
@@ -123,6 +159,9 @@ a {
 .mono {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+}
+.full {
+  width: 100%;
 }
 
 /* --- Buttons --- */

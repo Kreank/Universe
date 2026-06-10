@@ -45,6 +45,7 @@ def compute_production_and_energy(
     buildings: dict[str, int],
     temp_max: int,
     energy_tech: int,
+    mining_level: int = 0,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """Berechnet (Minen-Roh-Produktion pro Stunde bei speed=1) und die Energie-Bilanz.
 
@@ -73,12 +74,15 @@ def compute_production_and_energy(
             return 0.0
         return cfg["energy_base"] * level * (cfg["energy_growth"] ** level)
 
+    # Bergbau-Effizienz (Forschung): +X% Minen-Foerderung je Stufe.
+    mining_mult = 1.0 + float(bal.data["research"].get("effects", {}).get("mining_per_level", 0)) * int(mining_level)
+
     # -- Roh-Produktion der Minen (pro Stunde, speed=1) ----------------------
-    metal_raw = prod("metal_mine")
-    crystal_raw = prod("crystal_mine")
+    metal_raw = prod("metal_mine") * mining_mult
+    crystal_raw = prod("crystal_mine") * mining_mult
     # Deuterium-Synthese: temperaturabhaengiger Faktor (heiss = weniger)
     deut_temp_factor = 1.36 - 0.004 * temp_max
-    deut_raw = prod("deuterium_synth") * deut_temp_factor
+    deut_raw = prod("deuterium_synth") * deut_temp_factor * mining_mult
 
     # -- Energie: Verbrauch der Minen ----------------------------------------
     consumed = energy_use("metal_mine") + energy_use("crystal_mine") + energy_use("deuterium_synth")
@@ -115,11 +119,13 @@ def compute_rates(
     buildings: dict[str, int],
     temp_max: int,
     energy_tech: int,
+    mining_level: int = 0,
+    storage_level: int = 0,
 ) -> tuple[dict[str, float], dict[str, float], dict[str, float]]:
     """Liefert (effektive Stundenraten inkl. Grundeinkommen & Speed, energy, capacities)."""
     bal = get_balance()
     speed = bal.speed
-    rates_raw, energy = compute_production_and_energy(buildings, temp_max, energy_tech)
+    rates_raw, energy = compute_production_and_energy(buildings, temp_max, energy_tech, mining_level)
     factor = energy["factor"]
     base = bal.base_income
 
@@ -132,8 +138,10 @@ def compute_rates(
             effective -= energy.get("deuterium_burn", 0.0)
         rates[key] = round(effective * speed, 4)
 
+    # Speichertechnik (Forschung): +X% Lagerkapazitaet je Stufe.
+    store_mult = 1.0 + float(bal.data["research"].get("effects", {}).get("storage_per_level", 0)) * int(storage_level)
     capacities = {
-        key: bal.storage_capacity(int(buildings.get(STORAGE_BUILDING[key], 0)))
+        key: bal.storage_capacity(int(buildings.get(STORAGE_BUILDING[key], 0))) * store_mult
         for key in RESOURCE_KEYS
     }
     return rates, energy, capacities
@@ -148,7 +156,10 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     buildings = await get_building_levels(session, planet.id)
     research = await get_research_levels(session, planet.player_id)
     energy_tech = research.get("energy_tech", 0)
-    new_rates, energy, capacities = compute_rates(buildings, planet.temp_max, energy_tech)
+    new_rates, energy, capacities = compute_rates(
+        buildings, planet.temp_max, energy_tech,
+        research.get("mining_efficiency", 0), research.get("storage_tech", 0),
+    )
 
     # Gouverneur-Bonus (Kommandeur auf dem Planeten) auf die Produktionsrate.
     if getattr(planet, "governor_commander_id", None):
@@ -227,8 +238,12 @@ async def add_resources(session: AsyncSession, planet: Planet, gain: dict[str, f
     """Schreibt Ressourcen gut (gedeckelt auf Kapazitaet). Z. B. Rueckgabe von Fracht."""
     await refresh_resources(session, planet)
     buildings = await get_building_levels(session, planet.id)
+    research = await get_research_levels(session, planet.player_id)
+    store_mult = 1.0 + float(
+        get_balance().data["research"].get("effects", {}).get("storage_per_level", 0)
+    ) * int(research.get("storage_tech", 0))
     capacities = {
-        key: get_balance().storage_capacity(int(buildings.get(STORAGE_BUILDING[key], 0)))
+        key: get_balance().storage_capacity(int(buildings.get(STORAGE_BUILDING[key], 0))) * store_mult
         for key in RESOURCE_KEYS
     }
     rows = (await session.execute(

@@ -44,6 +44,13 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
     if not outcomes:
         return None
 
+    # Expeditionstechnik-Forschung erhoeht den Ressourcen-Ertrag (+X% je Stufe).
+    from app.economy.service import get_research_levels
+    research = await get_research_levels(session, fleet.player_id)
+    exp_mult = 1.0 + float(bal.data["research"].get("effects", {}).get("expedition_per_level", 0)) * int(
+        research.get("expedition_tech", 0)
+    )
+
     rng = random.Random(random.randrange(1, 2 ** 62))
     total_w = sum(float(o.get("weight", 0)) for o in outcomes)
     outcome = pick_outcome(outcomes, rng.random() * total_w)
@@ -54,7 +61,7 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
     }
 
     if otype == "resources":
-        gain = {k: _rand_range(rng, outcome.get(k, 0)) for k in ("metal", "crystal", "deuterium")}
+        gain = {k: int(round(_rand_range(rng, outcome.get(k, 0)) * exp_mult)) for k in ("metal", "crystal", "deuterium")}
         cargo = dict(fleet.cargo or {})
         for k in ("metal", "crystal", "deuterium"):
             cargo[k] = round(cargo.get(k, 0) + gain[k], 1)

@@ -16,6 +16,7 @@ import {
   SHIP_META,
   TECH_META,
   metaFor,
+  TECH_EFFECTS,
 } from '../../core/models/display';
 import { techIcon } from '../../core/models/icon-assets';
 import { CostLineComponent } from './cost-line.component';
@@ -85,6 +86,9 @@ interface RapidFireRow {
               <span class="lvl-chip">Stufe {{ level() }}</span>
             }
             <span class="kind-chip">{{ kindLabel() }}</span>
+            @if (techEffect(); as te) {
+              <span class="branch-chip">{{ te.branch }}</span>
+            }
           </div>
         </header>
 
@@ -102,6 +106,19 @@ interface RapidFireRow {
 
         @if (effect(); as e) {
           <div class="effect">★ {{ e }}</div>
+        }
+
+        @if (techEffect(); as te) {
+          <div class="effect">★ {{ te.summary }}</div>
+          @if (levelEffectLine(); as le) {
+            <div class="lvl-effect">
+              <span class="le-label">{{ le.label }}</span>
+              <span class="mono">{{ le.current }}</span>
+              <span class="le-arrow">→</span>
+              <span class="mono le-next">{{ le.next }}</span>
+              <span class="le-hint faint">(nächste Stufe)</span>
+            </div>
+          }
         }
 
         @if (stats().length) {
@@ -158,8 +175,9 @@ interface RapidFireRow {
             <div class="block-title">🔓 Schaltet frei</div>
             <div class="req-list">
               @for (u of unlocks(); track u.type) {
-                <span class="req unlock">
+                <span class="req unlock" [attr.data-tip]="u.kind + (u.reqLevel > 1 ? ' · ab Stufe ' + u.reqLevel : '')">
                   <span class="rf-glyph">{{ u.glyph }}</span> {{ u.label }}
+                  @if (u.reqLevel > 1) { <span class="req-lvl mono">St. {{ u.reqLevel }}</span> }
                 </span>
               }
             </div>
@@ -253,6 +271,24 @@ interface RapidFireRow {
         color: var(--text-dim); background: rgba(255,255,255,0.04);
       }
       .lvl-chip { color: var(--accent); border-color: var(--accent-dim); }
+      .branch-chip {
+        font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;
+        padding: 0.12rem 0.5rem; border-radius: 99px;
+        color: #ffd24a; border: 1px solid rgba(255,210,74,0.4); background: rgba(255,210,74,0.08);
+      }
+
+      .lvl-effect {
+        margin-top: 0.4rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+        font-size: 0.9rem;
+      }
+      .le-label { color: var(--text-dim); }
+      .le-arrow { color: var(--text-dim); }
+      .le-next { color: var(--accent); font-weight: 700; }
+      .le-hint { font-size: 0.74rem; }
+      .req-lvl {
+        margin-left: 0.3rem; font-size: 0.72rem; color: var(--accent);
+        border: 1px solid var(--accent-dim); border-radius: 99px; padding: 0 0.35rem;
+      }
 
       .tag-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.8rem; }
       .tag {
@@ -417,6 +453,23 @@ export class DetailPopupComponent {
     return typeof e === 'string' ? e : null;
   });
 
+  /** Effekt-Metadaten einer Forschung (Zweig + Zusammenfassung + Pro-Stufe-Effekt). */
+  protected readonly techEffect = computed(() =>
+    this.kind() === 'tech' ? (TECH_EFFECTS[this.type()] ?? null) : null,
+  );
+
+  /** "Aktuell -> naechste Stufe" fuer numerische Forschungs-Effekte. */
+  protected readonly levelEffectLine = computed<{ label: string; current: string; next: string } | null>(() => {
+    const te = this.techEffect();
+    if (!te?.levelEffect) {
+      return null;
+    }
+    const { label, perLevel, unit, base = 0 } = te.levelEffect;
+    const lvl = this.level() ?? 0;
+    const fmt = (n: number) => (unit === '%' ? `+${n}${unit}` : `${n}${unit}`);
+    return { label, current: fmt(base + perLevel * lvl), next: fmt(base + perLevel * (lvl + 1)) };
+  });
+
   protected readonly stats = computed<StatRow[]>(() => {
     const e = this.entry();
     if (!e) {
@@ -475,17 +528,18 @@ export class DetailPopupComponent {
   });
 
   /** Items, die dieses Objekt als Voraussetzung haben (Vorwaerts-Abhaengigkeiten). */
-  protected readonly unlocks = computed<{ type: string; label: string; glyph: string }[]>(() => {
+  protected readonly unlocks = computed<{ type: string; label: string; glyph: string; reqLevel: number; kind: string }[]>(() => {
     const b = this.balance.value;
     if (!b) {
       return [];
     }
     const t = this.type();
-    const out: { type: string; label: string; glyph: string }[] = [];
+    const out: { type: string; label: string; glyph: string; reqLevel: number; kind: string }[] = [];
     const seen = new Set<string>();
     const scan = (
       map: Record<string, Record<string, unknown>> | undefined,
       metaMap: Record<string, { label: string; glyph: string }>,
+      kind: string,
     ) => {
       for (const [key, entry] of Object.entries(map ?? {})) {
         if (key === t || seen.has(key)) {
@@ -494,15 +548,16 @@ export class DetailPopupComponent {
         const req = entry?.['requires'];
         if (req && typeof req === 'object' && (req as Record<string, unknown>)[t] != null) {
           const m = metaFor(metaMap, key);
-          out.push({ type: key, label: m.label, glyph: m.glyph });
+          const reqLevel = Number((req as Record<string, unknown>)[t]) || 1;
+          out.push({ type: key, label: m.label, glyph: m.glyph, reqLevel, kind });
           seen.add(key);
         }
       }
     };
-    scan(b.research?.techs as Record<string, Record<string, unknown>>, TECH_META);
-    scan(b.ships as Record<string, Record<string, unknown>>, SHIP_META);
-    scan(b.defenses as Record<string, Record<string, unknown>>, DEFENSE_META);
-    scan(b.buildings as Record<string, Record<string, unknown>>, BUILDING_META);
+    scan(b.research?.techs as Record<string, Record<string, unknown>>, TECH_META, 'Forschung');
+    scan(b.ships as Record<string, Record<string, unknown>>, SHIP_META, 'Schiff');
+    scan(b.defenses as Record<string, Record<string, unknown>>, DEFENSE_META, 'Verteidigung');
+    scan(b.buildings as Record<string, Record<string, unknown>>, BUILDING_META, 'Gebäude');
     return out;
   });
 

@@ -211,18 +211,19 @@ def test_stealth_corvette_opens_with_ambush_round():
     assert r2["rounds"][0].get("ambush") is not True
 
 
-def test_carrier_launches_ephemeral_drones():
-    """Traeger startet Drohnen-Staffeln: sie kaempfen mit, zaehlen aber NICHT als eigene Schiffe.
-    Vergleich mit drones_per_carrier=0 isoliert den Drohnen-Beitrag."""
-    bal0 = copy.deepcopy(BALANCE)
-    bal0["combat"]["carrier"]["drones_per_carrier"] = 0
-    atk = {"ships": {"carrier": 5}, "tech": {}, "attack_mult": 1.0}
-    prey = {"ships": {"light_fighter": 40}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
-    with_d = simulate_battle(atk, prey, 7, BALANCE)
-    no_d = simulate_battle(atk, prey, 7, bal0)
-    assert "drone" not in with_d["attacker_survivors"]              # Drohnen sind ephemer
-    # Mit Drohnen verliert der Verteidiger mehr als ohne (die Staffeln kaempfen mit).
-    assert sum(with_d["defender_losses"].values()) > sum(no_d["defender_losses"].values())
+def test_carrier_drones_are_real_no_ephemeral():
+    """Option A (2026-06-10): Traeger spawnen KEINE ephemeren Drohnen mehr. Ein Traeger ohne
+    gebaute Drohnen ist nur ein Schiff; ECHTE Drohnen in der Flotte kaempfen mit (echte
+    Verluste) und zaehlen als eigene Einheiten. (Das Mitladen aus der Garnison passiert
+    in fleet.service.send_fleet und wird dort separat abgedeckt.)"""
+    prey = {"ships": {"light_fighter": 60}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    solo = simulate_battle({"ships": {"carrier": 5}, "tech": {}, "attack_mult": 1.0}, prey, 7, BALANCE)
+    with_d = simulate_battle({"ships": {"carrier": 5, "drone": 40}, "tech": {}, "attack_mult": 1.0}, prey, 7, BALANCE)
+    # Kein ephemerer Schwarm: der Traeger allein richtet deutlich weniger an als mit echten Drohnen.
+    assert sum(with_d["defender_losses"].values()) > sum(solo["defender_losses"].values())
+    # Echte Drohnen zaehlen als eigene Schiffe; ein Traeger ohne Drohnen hat keine.
+    assert with_d["attacker_initial"].get("drone", 0) == 40
+    assert "drone" not in solo["attacker_initial"]
 
 
 # ---- Konter-Dreieck (Doku 03c §6): Artillerie-Glaskanone + Standoff ----

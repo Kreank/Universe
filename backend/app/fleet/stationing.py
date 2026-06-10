@@ -170,16 +170,95 @@ async def gather_interception_defenders(
 # -- Rueckruf + Eskort-Angebot ------------------------------------------------
 
 def station_out(st: StationedFleet) -> dict:
+    roster = get_balance().data.get("combat_roster", {})
+    ships = st.ships or {}
+    has_interdictor = any(bool(roster.get(t, {}).get("interdictor")) for t in ships)
     return {
         "id": str(st.id),
         "coords": f"{st.galaxy}:{st.system}:{st.position}",
         "galaxy": st.galaxy, "system": st.system, "position": st.position,
-        "ships": st.ships or {},
-        "ships_total": sum((st.ships or {}).values()),
+        "ships": ships,
+        "ships_total": sum(ships.values()),
         "escort_enabled": st.escort_enabled,
         "escort_radius": st.escort_radius,
         "escort_fee_pct": st.escort_fee_pct,
+        "intercept_enabled": bool(getattr(st, "intercept_enabled", False)),
+        "intercept_radius": int(getattr(st, "intercept_radius", 0) or 0),
+        "has_interdictor": has_interdictor,
+        "interceptors": int(ships.get("interceptor", 0)),
     }
+
+
+def intercept_radius_cap(research: dict | None = None) -> int:
+    """Maximaler Abfang-Radius = Basis-Cap + Hyperraum-Interdiktion-Forschung."""
+    icfg = get_balance().data.get("combat", {}).get("interception", {})
+    base = int(icfg.get("max_radius", 5))
+    lvl = int((research or {}).get("hyperspace_interdiction", 0))
+    return base + int(icfg.get("radius_per_interdiction_level", 0)) * lvl
+
+
+def set_intercept_mode(st: StationedFleet, enabled: bool, radius: int, max_radius: int | None = None) -> None:
+    """Setzt/aktualisiert den Abfang-Modus einer Patrouille (Radius-Cap aus balance + Forschung)."""
+    cap = max_radius if max_radius is not None else intercept_radius_cap()
+    st.intercept_enabled = bool(enabled)
+    st.intercept_radius = max(0, min(int(cap), int(radius or 0)))
+
+
+async def create_home_patrol(
+    session: AsyncSession, player: Player, planet_id, ships_req: dict, radius: int,
+    max_radius: int | None = None,
+) -> StationedFleet:
+    """Stellt Garnisons-Schiffe eines eigenen Planeten SOFORT (ohne Flug) als Abfang-Patrouille
+    im EIGENEN System auf. Reuset die StationedFleet-/Abfang-Mechanik (intercept_enabled an)."""
+    import uuid as _uuid
+
+    try:
+        pid = planet_id if isinstance(planet_id, _uuid.UUID) else _uuid.UUID(str(planet_id))
+    except (ValueError, TypeError) as exc:
+        raise ValueError("Ungueltige Planeten-ID") from exc
+    planet = await session.get(Planet, pid)
+    if planet is None or planet.player_id != player.id:
+        raise ValueError("Planet nicht gefunden")
+
+    want = {t: int(c) for t, c in (ships_req or {}).items() if int(c) > 0}
+    if not want:
+        raise ValueError("Keine Schiffe ausgewaehlt")
+
+    rows = (await session.execute(
+        select(Ship).where(Ship.planet_id == planet.id, Ship.fleet_id.is_(None))
+    )).scalars().all()
+    avail = {r.type: r for r in rows}
+    moved: dict[str, int] = {}
+    for typ, cnt in want.items():
+        row = avail.get(typ)
+        take = min(cnt, row.count) if row else 0
+        if take <= 0:
+            continue
+        moved[typ] = take
+        row.count -= take
+        if row.count <= 0:
+            await session.delete(row)
+    if not moved:
+        raise ValueError("Schiffe nicht in der Garnison verfuegbar")
+
+    cap = max_radius if max_radius is not None else intercept_radius_cap()
+    st = StationedFleet(
+        owner_id=player.id, home_planet_id=planet.id,
+        galaxy=planet.galaxy, system=planet.system, position=planet.position,
+        ships=moved, intercept_enabled=True, intercept_radius=max(0, min(int(cap), int(radius or 0))),
+    )
+    session.add(st)
+    await session.flush()
+    coords = f"{planet.galaxy}:{planet.system}:{planet.position}"
+    await create_system_transmission(
+        session, player_id=player.id,
+        subject=f"Heim-Patrouille aktiv ({coords})",
+        body=f"Deine Patrouille bei {coords} fängt durchreisende Feindflotten im Umkreis ab. "
+             f"Rückruf bringt die Schiffe zurück in die Garnison.",
+        ttype="system",
+    )
+    log.info("Heim-Patrouille: player=%s %s @ %s", player.id, moved, coords)
+    return st
 
 
 async def recall_station(session: AsyncSession, player: Player, station_id) -> Fleet:

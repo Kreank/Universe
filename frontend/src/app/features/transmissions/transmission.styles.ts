@@ -3,9 +3,13 @@ export const transmissionStyles = `
     display: flex; align-items: flex-start; justify-content: space-between;
     gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
   }
-  .sub { margin-top: -0.3rem; font-size: 0.85rem; }
+  .sub { margin-top: -0.3rem; margin-bottom: 0.8rem; font-size: 0.85rem; color: var(--text-dim); }
   .small { font-size: 0.76rem; }
   .filters { display: flex; gap: 0.4rem; }
+  .bar-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .bar-row app-tab-bar { flex: 1 1 auto; }
+  .bar-row .tab-bar { margin: 0; border-bottom: 0; padding-bottom: 0; }
+  .del-read { margin-left: auto; }
 
   .list { grid-template-columns: 1fr; gap: 0.8rem; max-width: 760px; }
   .msg { position: relative; border-left: 3px solid var(--border); }

@@ -148,6 +148,10 @@ export class ApiService {
     return this.http.get<StationedFleet[]>('/api/stationed');
   }
 
+  patrolHome(planetId: string, body: { ships: Record<string, number>; radius: number }): Observable<StationedFleet> {
+    return this.http.post<StationedFleet>(`/api/planets/${planetId}/patrol`, body);
+  }
+
   recallStation(id: string): Observable<{ ok: boolean }> {
     return this.http.post<{ ok: boolean }>(`/api/stationed/${id}/recall`, {});
   }

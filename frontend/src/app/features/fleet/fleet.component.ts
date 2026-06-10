@@ -9,6 +9,7 @@ import {
   GalaxyCell,
   IncomingAttack,
   PlanetUnit,
+  StationedFleet,
 } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
 import { missionIcon } from '../../core/models/icon-assets';
@@ -131,6 +132,12 @@ import { fleetStyles } from './fleet.styles';
             <button class="btn btn-primary full" type="button" [disabled]="!canSend() || sending()" (click)="send()">
               {{ sending() ? 'Sende…' : '🚀 Flotte starten' }}
             </button>
+            <button class="btn btn-ghost full" type="button"
+              [disabled]="!hasSelection() || !state.activePlanetId() || sending()"
+              title="Stellt die ausgewaehlten Schiffe sofort als Abfang-Patrouille im eigenen System auf (kein Flug)."
+              (click)="patrolHome()">
+              ⚔ Eigenes System patrouillieren
+            </button>
             @if (!hasSelection()) {
               <span class="hint small">Mindestens ein Schiff auswaehlen.</span>
             }
@@ -159,6 +166,31 @@ import { fleetStyles } from './fleet.styles';
           }
         } @else {
           <p class="muted small">Keine Flotten unterwegs.</p>
+        }
+      </section>
+
+      <!-- Patrouillen (stationiert) -->
+      <section class="card running">
+        <div class="panel-title">🛡 Meine Patrouillen</div>
+        @if (stationed().length) {
+          @for (s of stationed(); track s.id) {
+            <div class="fleet-row">
+              <div class="fleet-info">
+                <span class="mono small">[{{ s.coords }}]</span>
+                <span class="chip">{{ s.ships_total }} Schiffe</span>
+                @if (s.intercept_enabled) {
+                  <span class="chip">⚔ Abfangen · Radius {{ s.intercept_radius }}</span>
+                } @else {
+                  <span class="chip muted">Abfangen aus</span>
+                }
+              </div>
+              <div class="fleet-act">
+                <button class="btn btn-danger btn-sm" type="button" (click)="recallPatrol(s)">↩ Rueckruf</button>
+              </div>
+            </div>
+          }
+        } @else {
+          <p class="muted small">Keine stationierten Patrouillen. Schiffe auswaehlen → „⚔ Eigenes System patrouillieren".</p>
         }
       </section>
 
@@ -221,6 +253,7 @@ export class FleetComponent {
   };
 
   protected readonly incoming = signal<IncomingAttack[]>([]);
+  protected readonly stationed = signal<StationedFleet[]>([]);
 
   // Sende-Formular
   protected readonly selection = signal<Record<string, number>>({});
@@ -305,6 +338,25 @@ export class FleetComponent {
     });
 
     this.loadIncoming();
+    this.loadStationed();
+  }
+
+  loadStationed(): void {
+    this.api.getStationed().subscribe({
+      next: (rows) => this.stationed.set(rows),
+      error: () => this.stationed.set([]),
+    });
+  }
+
+  recallPatrol(s: StationedFleet): void {
+    this.api.recallStation(s.id).subscribe({
+      next: () => {
+        this.notify.success('Rueckruf gestartet', `Patrouille von [${s.coords}] kehrt in die Garnison zurueck.`);
+        this.loadStationed();
+        void this.state.reloadFleets();
+      },
+      error: (err) => this.notify.warning('Rueckruf fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
+    });
   }
 
   loadIncoming(): void {
@@ -359,6 +411,33 @@ export class FleetComponent {
           this.notify.warning('Start fehlgeschlagen', err?.error?.detail ?? 'Fehler.');
         },
       });
+  }
+
+  patrolHome(): void {
+    const origin = this.state.activePlanetId();
+    if (!origin || !this.hasSelection()) {
+      return;
+    }
+    const ships: Record<string, number> = {};
+    for (const [type, n] of Object.entries(this.selection())) {
+      if (n > 0) {
+        ships[type] = n;
+      }
+    }
+    this.sending.set(true);
+    this.api.patrolHome(origin, { ships, radius: 1 }).subscribe({
+      next: () => {
+        this.sending.set(false);
+        this.selection.set({});
+        this.notify.success('Patrouille aktiv', 'Deine Schiffe patrouillieren jetzt das eigene System.');
+        void this.state.reloadActivePlanet();
+        this.loadStationed();
+      },
+      error: (err) => {
+        this.sending.set(false);
+        this.notify.warning('Patrouille fehlgeschlagen', err?.error?.detail ?? 'Fehler.');
+      },
+    });
   }
 
   recall(fleetId: string): void {

@@ -3,10 +3,10 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { BuildingOption, BuildingState, BuildingsResponse } from '../../core/models/api.models';
 import { BUILDING_META, metaFor } from '../../core/models/display';
-import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
-import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { DetailPopupComponent } from '../../shared/components/detail-popup.component';
+import { BuildTileComponent } from '../../shared/components/build-tile.component';
+import { TabBarComponent } from '../../shared/components/tab-bar.component';
 import { NotificationService } from '../../core/services/notification.service';
 
 interface BuildingRow {
@@ -35,7 +35,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
 @Component({
   selector: 'app-buildings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CostLineComponent, CountdownComponent, IconTileComponent, DetailPopupComponent],
+  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent],
   template: `
     <h1>Gebaeude</h1>
     <p class="muted sub">
@@ -50,73 +50,68 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
     } @else if (rows().length === 0) {
       <p class="empty-state">Keine Gebaeudedaten verfuegbar.</p>
     } @else {
-      @for (group of groups(); track group.key) {
-        <section class="card cat">
-          <h2 class="cat-title">{{ group.glyph }} {{ group.label }}</h2>
-          <div class="bld-list">
-            @for (b of group.rows; track b.type) {
-              <div class="bld-row" [class.busy]="b.finishesAt">
-                <div class="bld-art clickable" (click)="openDetail(b)" title="Details ansehen">
-                  <app-icon-tile [glyph]="meta(b.type).glyph" [src]="'assets/img/buildings/' + b.type + '.png'" [size]="46" />
-                  <span class="lvl" [class.zero]="b.level === 0" title="Stufe">{{ b.level }}</span>
-                </div>
+      <app-tab-bar [tabs]="tabDefs()" [active]="activeTab()" (select)="activeTab.set($event)" />
+      @if (activeGroup(); as group) {
+        <div class="tile-grid">
+          @for (b of group.rows; track b.type) {
+            <app-build-tile
+              [iconSrc]="'assets/img/buildings/' + b.type + '.png'"
+              [glyph]="meta(b.type).glyph"
+              [name]="meta(b.type).label"
+              [badge]="b.level"
+              badgeTip="Stufe"
+              [cost]="b.option?.cost ?? null"
+              [available]="balances()"
+              [timeSeconds]="b.option?.build_seconds ?? null"
+              [busy]="!!b.finishesAt"
+              (openDetail)="openDetail(b)"
+            >
+              @if (b.option && (b.option.energy_now !== 0 || b.option.energy_delta !== 0)) {
+                <span stats class="energy small"
+                  [class.produces]="b.option.energy_now > 0"
+                  [class.consumes]="b.option.energy_now < 0"
+                  [attr.data-tip]="energyTip(b.option)">
+                  ⚡ {{ energyLabel(b.option.energy_now) }}@if (b.option.energy_delta !== 0) {<span class="delta"> (Δ {{ signed(b.option.energy_delta) }})</span>}
+                </span>
+              }
 
-                <div class="bld-info">
-                  <div class="bld-name clickable" (click)="openDetail(b)" title="Details ansehen">{{ meta(b.type).label }} <span class="info-dot">ⓘ</span></div>
+              <ng-container action>
+                @if (b.finishesAt) {
+                  <span class="building-badge">⏳ Im Bau</span>
+                  <app-countdown [target]="b.finishesAt" />
+                } @else {
                   @if (b.option) {
-                    <div class="bld-stats">
-                      <app-cost-line [cost]="b.option.cost" [available]="balances()" />
-                      <span class="muted small">⏱ {{ formatTime(b.option.build_seconds) }}</span>
-                      @if (b.option.energy_now !== 0 || b.option.energy_delta !== 0) {
-                        <span class="energy small"
-                          [class.produces]="b.option.energy_now > 0"
-                          [class.consumes]="b.option.energy_now < 0"
-                          [attr.data-tip]="energyTip(b.option)">
-                          ⚡ {{ energyLabel(b.option.energy_now) }}@if (b.option.energy_delta !== 0) {<span class="delta"> (Δ {{ signed(b.option.energy_delta) }})</span>}
-                        </span>
-                      }
-                    </div>
-                  }
-                </div>
-
-                <div class="bld-action">
-                  @if (b.finishesAt) {
-                    <span class="building-badge">⏳ Im Bau</span>
-                    <app-countdown [target]="b.finishesAt" />
-                  } @else {
-                    @if (b.option) {
-                      <button
-                        class="btn btn-primary btn-sm"
-                        type="button"
-                        [disabled]="!canUpgrade(b) || pending() === b.type || anyBuilding()"
-                        (click)="upgrade(b.type)"
-                      >
-                        {{ pending() === b.type ? '…' : 'Ausbauen → ' + b.option.next_level }}
-                      </button>
-                      @if (!b.option.requirements_met) {
-                        <span class="hint warn small">Voraussetzung fehlt</span>
-                      } @else if (!b.option.can_afford) {
-                        <span class="hint warn small">Zu teuer</span>
-                      } @else if (anyBuilding()) {
-                        <span class="hint small">Bauschleife belegt</span>
-                      }
-                    }
-                    @if (b.level > 0) {
-                      <button
-                        class="btn btn-ghost btn-sm demolish"
-                        type="button"
-                        [disabled]="pending() === b.type || anyBuilding()"
-                        (click)="demolish(b.type)"
-                      >
-                        Abreissen → {{ b.level - 1 }}
-                      </button>
+                    <button
+                      class="btn btn-primary btn-sm full"
+                      type="button"
+                      [disabled]="!canUpgrade(b) || pending() === b.type || anyBuilding()"
+                      (click)="upgrade(b.type)"
+                    >
+                      {{ pending() === b.type ? '…' : 'Ausbauen → ' + b.option.next_level }}
+                    </button>
+                    @if (!b.option.requirements_met) {
+                      <span class="hint warn small">Voraussetzung fehlt</span>
+                    } @else if (!b.option.can_afford) {
+                      <span class="hint warn small">Zu teuer</span>
+                    } @else if (anyBuilding()) {
+                      <span class="hint small">Bauschleife belegt</span>
                     }
                   }
-                </div>
-              </div>
-            }
-          </div>
-        </section>
+                  @if (b.level > 0) {
+                    <button
+                      class="btn btn-ghost btn-sm demolish full"
+                      type="button"
+                      [disabled]="pending() === b.type || anyBuilding()"
+                      (click)="demolish(b.type)"
+                    >
+                      Abreissen → {{ b.level - 1 }}
+                    </button>
+                  }
+                }
+              </ng-container>
+            </app-build-tile>
+          }
+        </div>
       }
     }
 
@@ -263,6 +258,16 @@ export class BuildingsComponent {
     return groups;
   });
 
+  // -- Reiter (Kategorie-Tabs) --
+  protected readonly activeTab = signal<string>('resource');
+  protected readonly tabDefs = computed(() =>
+    this.groups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, count: g.rows.length })),
+  );
+  protected readonly activeGroup = computed(() => {
+    const gs = this.groups();
+    return gs.find((g) => g.key === this.activeTab()) ?? gs[0] ?? null;
+  });
+
   protected readonly anyBuilding = computed(() => this.rows().some((r) => r.finishesAt));
 
   /** Feld-Budget des aktiven Planeten (Modell A: 1 Feld pro Gebaeudestufe). */
@@ -281,6 +286,7 @@ export class BuildingsComponent {
   constructor() {
     effect(() => {
       const id = this.state.activePlanetId();
+      this.state.buildingsVersion(); // bei Bau-Fertigstellung automatisch neu laden
       if (id) {
         this.load(id);
       }

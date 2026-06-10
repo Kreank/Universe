@@ -99,6 +99,10 @@ interface DispatchCtx {
                   </div>
                 } @else if (isOwn(c)) {
                   <span class="chip own">dein Planet</span>
+                } @else if (c.occupant_type === 'empty') {
+                  <div class="acts">
+                    <button class="ic col" type="button" (click)="openDispatch(cellCoord(c), null, 'colonize')" title="Hier kolonisieren (Kolonieschiff nötig)">🌱</button>
+                  </div>
                 }
               </div>
             }

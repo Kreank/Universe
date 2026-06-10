@@ -115,27 +115,9 @@ def _build_units(
                 bool(prof.get("stealth", False)), bool(prof.get("carrier", False)),
                 bool(prof.get("sensor", False)),
             ))
-    # Traeger starten Drohnen-Staffeln (ephemer): zaehlen nicht als eigene Schiffe.
-    carrier_cfg = catalogs.get("carrier_cfg", {})
-    drone_type = carrier_cfg.get("drone_type", "drone")
-    per_carrier = int(carrier_cfg.get("drones_per_carrier", 0))
-    drone_cfg = ship_cat.get(drone_type)
-    if per_carrier > 0 and drone_cfg is not None:
-        n_carriers = sum(1 for u in units if u.carrier)
-        if n_carriers > 0:
-            dprof = profile(drone_type)
-            d_attack = drone_cfg.get("attack", 0) * w * attack_mult
-            d_shield = drone_cfg.get("shield", 0) * s * attack_mult
-            d_hull = _hull_from_cost(drone_cfg["cost"]) * a
-            d_drive = float(dprof.get("drive", 0)) * drive_per_tier
-            d_ridx = order.index(dprof["range"]) if dprof.get("range") in order else 0
-            for _ in range(n_carriers * per_carrier):
-                u = Unit(
-                    drone_type, side, d_attack, d_shield, d_hull, dict(drone_cfg.get("rapidfire", {})),
-                    False, dprof.get("weapon_type"), d_drive, d_ridx,
-                )
-                u.launched = True
-                units.append(u)
+    # Option A (2026-06-10): Traeger starten KEINE ephemeren Drohnen mehr. Drohnen sind
+    # echte Schiffe, die der Traeger beim Flottenstart aus der Garnison mitlaedt
+    # (fleet.service.send_fleet) und die hier als normale Einheiten (oben) kaempfen.
     def_integrity = float(catalogs.get("defense_integrity", 0.0))
     for typ, count in (defenses or {}).items():
         cfg = def_cat.get(typ)
@@ -237,6 +219,13 @@ def simulate_battle(
         float(disable_cfg.get("integrity", 0)) if disable_cfg.get("enabled", False) else 0.0
     )
 
+    # Forschungs-skalierte Kampf-Boni (aus dem per-Seite uebergebenen tech-Dict).
+    atk_tech_d = attacker.get("tech", {}) or {}
+    def_tech_d = defender.get("tech", {}) or {}
+    ion_per = float(disable_cfg.get("ion_disruptor_per_level", 0.0))
+    atk_ion_mult = 1.0 + ion_per * int(atk_tech_d.get("ion_disruptors", 0))
+    def_ion_mult = 1.0 + ion_per * int(def_tech_d.get("ion_disruptors", 0))
+
     catalogs = {
         "ships": balance["ships"],
         "defenses": balance["defenses"],
@@ -272,6 +261,11 @@ def simulate_battle(
         m = matrix.get(unit.weapon_type)
         if m is None:
             return 0.0  # Einheit ohne (gueltigen) Waffentyp feuert nicht
+        # Ionen-Disruptoren-Forschung verstaerkt die Ionen-Wirkung (Schild-Strip + Antrieb).
+        if unit.weapon_type == "ion":
+            mult = atk_ion_mult if unit.side == "attacker" else def_ion_mult
+            if mult != 1.0:
+                m = {"shield": m["shield"] * mult, "drive": m["drive"] * mult, "hull": m["hull"]}
         base = unit.attack * penalty
         dealt = 0.0
         chain = True
@@ -490,11 +484,15 @@ def simulate_battle(
     # --- Entern (Phase 3): Enterschiffe kapern GESTRANDETE Gegner (Antrieb 0) ---
     # Greift unabhaengig vom Sieger (disable+board). Nur Schiffe; Geflohene sind raus.
     boarding = combat.get("boarding", {})
-    cap_per = int(boarding.get("capture_per_boarder", 0))
+    cap_base = int(boarding.get("capture_per_boarder", 0))
+    cap_per_doc = int(boarding.get("capture_per_doctrine_level", 0))
+    # Enter-Doktrin-Forschung der ENTERNDEN Seite erhoeht die Kaper-Kapazitaet je Schiff.
+    atk_cap_per = cap_base + cap_per_doc * int(atk_tech_d.get("boarding_doctrine", 0))
+    def_cap_per = cap_base + cap_per_doc * int(def_tech_d.get("boarding_doctrine", 0))
     attacker_captured: dict[str, int] = {}
     defender_captured: dict[str, int] = {}
 
-    def board(boarding_units: list[Unit], victim_units: list[Unit], captured: dict[str, int]) -> list[Unit]:
+    def board(boarding_units: list[Unit], victim_units: list[Unit], captured: dict[str, int], cap_per: int) -> list[Unit]:
         capacity = sum(1 for u in boarding_units if u.boarder) * cap_per
         # Punktverteidigung der Opfer-Seite (Eskort-Fregatten) faengt Enterer ab.
         capacity -= sum(1 for u in victim_units if u.point_defense) * pd_block
@@ -509,9 +507,9 @@ def simulate_battle(
                 kept.append(u)
         return kept
 
-    if cap_per > 0:
-        def_units = board(atk_units, def_units, attacker_captured)   # Angreifer entert Verteidiger
-        atk_units = board(def_units, atk_units, defender_captured)   # Verteidiger entert Angreifer
+    if cap_base > 0 or cap_per_doc > 0:
+        def_units = board(atk_units, def_units, attacker_captured, atk_cap_per)   # Angreifer entert Verteidiger
+        atk_units = board(def_units, atk_units, defender_captured, def_cap_per)   # Verteidiger entert Angreifer
 
     # Geflohene Einheiten ueberleben (kehren heim), zaehlen aber nicht als "haelt das Feld".
     attacker_survivors = _counts(atk_units + atk_fled)

@@ -405,12 +405,24 @@ async def morale_drift_tick() -> None:
     cooldown = dt.timedelta(hours=float(sat["post_demand_cooldown_hours"]))
     defect_threshold = float(sat.get("defect_threshold", 15))
     defect_per_hour = float(sat.get("defect_chance_per_day", 0.25)) / 24.0
+    # Forschungs-Skalare (Kommando/Crew-Zweig): Moral-Ziel/Neglect (crew_psychology),
+    # Moral-Erholung (logistics_tech), Unmut-Daempfung (leadership_doctrine).
+    reff = bal.data["research"].get("effects", {})
+    cp_target = float(reff.get("crew_psychology_target_per_level", 0))
+    cp_decay_red = float(reff.get("crew_psychology_decay_reduction_per_level", 0))
+    lg_regen = float(reff.get("logistics_morale_regen_per_level", 0))
+    ld_unrest_red = float(reff.get("leadership_unrest_reduction_per_level", 0))
     now = _now()
 
     async with session_scope() as session:
         commanders = (await session.execute(
             select(Commander).where(Commander.status.in_(("active", "wounded")))
         )).scalars().all()
+        # Forschung je Spieler (einmal pro Spieler) fuer die Kommando/Crew-Techs.
+        from app.economy.service import get_research_levels
+        research_by_player: dict = {}
+        for pid in {c.player_id for c in commanders}:
+            research_by_player[pid] = await get_research_levels(session, pid)
         # Kommandeure mit bereits offener Forderung (eine zur Zeit).
         open_demand = set((await session.execute(
             select(Transmission.commander_id).where(
@@ -444,21 +456,30 @@ async def morale_drift_tick() -> None:
             for trait in (c.traits or []):
                 decay_mult *= traits_cfg.get(trait, {}).get("morale_decay_mult", 1.0)
 
+            res = research_by_player.get(c.player_id, {})
+            cp_lvl = int(res.get("crew_psychology", 0))
+            lg_lvl = int(res.get("logistics_tech", 0))
+            ld_lvl = int(res.get("leadership_doctrine", 0))
+
             morale = float(c.morale)
-            eff_target = min(100.0, target + charisma_bonus.get(c.player_id, 0.0))
-            morale += drift_rate * (eff_target - morale)
+            # crew_psychology hebt das (sustained) Moral-Ziel; logistics_tech beschleunigt die Erholung.
+            eff_target = min(100.0, target + charisma_bonus.get(c.player_id, 0.0) + cp_target * cp_lvl)
+            eff_drift = drift_rate * (1.0 + lg_regen * lg_lvl)
+            morale += eff_drift * (eff_target - morale)
             last = c.last_active_at or now
             if last.tzinfo is None:
                 last = last.replace(tzinfo=dt.timezone.utc)
             idle = (now - last).total_seconds() > idle_seconds
             if idle:
-                morale -= decay_per_hour * decay_mult
+                # crew_psychology daempft den Neglect-Verfall (gut betreute Crews halten durch).
+                morale -= decay_per_hour * decay_mult * max(0.0, 1.0 - cp_decay_red * cp_lvl)
             c.morale = max(0, min(100, int(round(morale))))
 
-            # -- Unmut akkumulieren --
+            # -- Unmut akkumulieren (leadership_doctrine daempft den Aufbau) --
             gain = commander_unrest_gain_per_hour(c, sat, potency)
             if idle:
                 gain += float(sat["idle_unrest_per_hour"])
+            gain *= max(0.0, 1.0 - ld_unrest_red * ld_lvl)
             c.unrest = min(100.0, float(c.unrest or 0.0) + gain)
 
             # -- Ueberlauf: anhaltend niedrige Treue + untaetig --
