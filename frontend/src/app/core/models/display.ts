@@ -306,7 +306,7 @@ export const DEFENSE_META: Record<string, DisplayMeta> = {
 export const WEAPON_META: Record<string, { label: string; glyph: string; vs: string }> = {
   kinetic: { label: 'Kinetik', glyph: '💥', vs: 'stark vs. Hülle, schwach vs. Schild' },
   energy: { label: 'Energie', glyph: '⚡', vs: 'stark vs. Schild' },
-  ion: { label: 'Ionen', glyph: '🌀', vs: 'lähmt Antrieb/Subsysteme, 0 vs. Hülle' },
+  ion: { label: 'Ionen', glyph: '🌀', vs: 'lähmt Antrieb + legt Verteidigung lahm, 0 vs. Hülle' },
   missile: { label: 'Raketen', glyph: '🚀', vs: 'stark vs. Hülle' },
 };
 

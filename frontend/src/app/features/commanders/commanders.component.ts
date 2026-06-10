@@ -108,7 +108,7 @@ interface GradesConfig {
           <span class="bonus-head faint small">Erwartetes Profil (Kadett, ohne Traits)</span>
           <div class="bonus-chips">
             @for (b of preview(); track b.stat + b.target) {
-              <span class="chip bonus" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
+              <span class="chip bonus tip" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
                 {{ statGlyph(b.stat) }} {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
               </span>
             } @empty {
@@ -186,7 +186,7 @@ interface GradesConfig {
                   <span class="bonus-head faint small">Boni (bei voller Moral){{ c.focus ? ' · Fokus: ' + classLabel(c.focus) : '' }}</span>
                   <div class="bonus-chips">
                     @for (b of c.bonuses; track b.stat + b.target) {
-                      <span class="chip bonus" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
+                      <span class="chip bonus tip" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
                         {{ statGlyph(b.stat) }} {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
                       </span>
                     }
@@ -365,6 +365,6 @@ export class CommandersComponent {
   bonusTip(b: { stat: string; target: string; pct: number }): string {
     const stat = CommandersComponent.STAT_LABEL[b.stat] ?? b.stat;
     const tgt = b.target === 'all' ? 'alle Schiffe' : this.classLabel(b.target);
-    return `${this.signedPct(b.pct)} ${stat} auf ${tgt}\n(Basiswert — im Kampf mit der Moral skaliert)`;
+    return `${this.signedPct(b.pct)} ${stat} auf ${tgt}\n(passiver Basiswert — wächst mit Rang/Güteklasse, im Kampf mit Moral skaliert; nicht über Skillpunkte)`;
   }
 }

@@ -152,6 +152,10 @@ export class ApiService {
     return this.http.post<{ ok: boolean }>(`/api/stationed/${id}/recall`, {});
   }
 
+  setInterceptMode(id: string, body: { enabled: boolean; radius: number }): Observable<StationedFleet> {
+    return this.http.put<StationedFleet>(`/api/stationed/${id}/intercept`, body);
+  }
+
   setEscortOffer(id: string, body: { enabled: boolean; radius: number; fee_pct: number }): Observable<StationedFleet> {
     return this.http.put<StationedFleet>(`/api/stationed/${id}/escort`, body);
   }

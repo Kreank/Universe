@@ -51,6 +51,20 @@ import { commanderDetailStyles } from './commander-detail.styles';
             <p class="faint small">Kampf-Modifikator: {{ (c.morale_band.combat_mod * 100).toFixed(0) }}%</p>
           </div>
 
+          @if (c.bonuses?.length) {
+            <div class="bonuses">
+              <div class="panel-title">Passive Boni (bei voller Moral){{ c.focus ? ' · Fokus: ' + classLabel(c.focus) : '' }}</div>
+              <div class="bonus-chips">
+                @for (b of c.bonuses; track b.stat + b.target) {
+                  <span class="chip bonus tip" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
+                    {{ statGlyph(b.stat) }} {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
+                  </span>
+                }
+              </div>
+              <p class="faint small">Wachsen mit Rang/Güteklasse + Moral (nicht über Skillpunkte). Wirken automatisch im Kampf/Tempo.</p>
+            </div>
+          }
+
           <dl class="stats">
             <div><dt>XP</dt><dd class="mono">{{ c.xp }}</dd></div>
             <div><dt>Loyalitaet</dt><dd class="mono">{{ c.loyalty }}</dd></div>
@@ -252,6 +266,22 @@ export class CommanderDetailComponent {
   }
 
   private readonly RANK_ORDER = ['cadet', 'officer', 'veteran', 'elite', 'legend'];
+
+  private readonly STAT_GLYPH: Record<string, string> = { attack: '⚔', shield: '🛡', speed: '💨' };
+  private readonly STAT_LABEL: Record<string, string> = { attack: 'Angriff', shield: 'Schild', speed: 'Tempo' };
+  private readonly CLASS_LABEL: Record<string, string> = {
+    all: 'alle Schiffe', fighter: 'Jaeger', cruiser: 'Kreuzer', capital: 'Grosskampfschiffe', civil: 'zivile Schiffe',
+  };
+  statGlyph = (s: string) => this.STAT_GLYPH[s] ?? '•';
+  classLabel = (t: string) => this.CLASS_LABEL[t] ?? t;
+  targetLabel = (t: string) => (t === 'all' ? '' : '· ' + this.classLabel(t));
+  signedPct = (p: number) => (p > 0 ? '+' : '') + Math.round(p * 100) + '%';
+
+  bonusTip(b: { stat: string; target: string; pct: number }): string {
+    const stat = this.STAT_LABEL[b.stat] ?? b.stat;
+    const tgt = b.target === 'all' ? 'alle Schiffe' : this.classLabel(b.target);
+    return `${this.signedPct(b.pct)} ${stat} auf ${tgt}\n(passiver Basiswert — wächst mit Rang/Güteklasse, im Kampf mit Moral skaliert; nicht über Skillpunkte)`;
+  }
 
   effectText(def: AbilityCatalog['catalog'][string]): string {
     const pct = Math.round(def.per_level * 100);

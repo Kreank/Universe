@@ -495,6 +495,10 @@ export interface StationedFleet {
   escort_enabled: boolean;
   escort_radius: number;
   escort_fee_pct: number;
+  intercept_enabled: boolean;
+  intercept_radius: number;
+  has_interdictor: boolean;
+  interceptors: number;
 }
 
 /** Ein aktives Eskort-Angebot im Verzeichnis. */

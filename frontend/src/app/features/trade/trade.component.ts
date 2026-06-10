@@ -141,6 +141,19 @@ type Res = 'metal' | 'crystal' | 'deuterium';
                   <input class="mini" type="number" min="0" max="10" step="0.5" [ngModel]="s.escort_fee_pct * 100" (ngModelChange)="updateEscort(s, { escort_fee_pct: (+$event || 0) / 100 })" />%
                 </span>
               }
+              <label class="toggle small">
+                <input type="checkbox" [ngModel]="s.intercept_enabled" (ngModelChange)="updateIntercept(s, { intercept_enabled: $event })" />
+                ⚔ Abfangen
+                @if (s.has_interdictor) { <span class="tag-ok">Interdiktor: sicherer Stopp</span> }
+                @else if (s.interceptors > 0) { <span class="muted">{{ s.interceptors }}× Abfangjäger → höhere Chance</span> }
+                @else { <span class="muted">nur Chance (Interdiktor/Abfangjäger erhöhen sie)</span> }
+              </label>
+              @if (s.intercept_enabled) {
+                <span class="small">Abfang-Radius
+                  <input class="mini" type="number" min="0" max="30" [ngModel]="s.intercept_radius" (ngModelChange)="updateIntercept(s, { intercept_radius: +$event || 0 })" />
+                  Sys — fängt durchreisende Feindflotten in dieser Galaxie ab
+                </span>
+              }
               <button class="btn btn-ghost btn-sm" type="button" (click)="recall(s)">↩ Zurückrufen</button>
             </div>
           </div>
@@ -214,6 +227,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
       .escort-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.35rem; }
       .escort-edit .toggle { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
       .mini { width: 56px; min-height: 26px; padding: 0.15rem 0.3rem; }
+      .tag-ok { font-size: 0.72rem; color: #06101e; background: var(--accent); padding: 1px 6px; border-radius: 99px; }
     `,
   ],
 })
@@ -291,6 +305,18 @@ export class TradeComponent implements OnInit {
           this.stationed.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));
         },
         error: (err) => this.notify.warning('Eskorte fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
+      });
+  }
+
+  updateIntercept(s: StationedFleet, patch: Partial<StationedFleet>): void {
+    const merged = { ...s, ...patch };
+    this.api
+      .setInterceptMode(s.id, { enabled: merged.intercept_enabled, radius: merged.intercept_radius })
+      .subscribe({
+        next: (updated) => {
+          this.stationed.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+        },
+        error: (err) => this.notify.warning('Abfang-Modus fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
       });
   }
 
