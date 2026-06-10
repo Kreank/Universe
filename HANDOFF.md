@@ -24,6 +24,38 @@
 
 ---
 
+## -2. Session 2026-06-10 (Forts.) — HANDELS-REDESIGN: NPC-Handelszentren (Phase 1 fertig + live)
+**Design mit Nutzer durchgesprochen, Phase 1 (NPC-Seite) gebaut, 115/115 Tests gruen, deployed.**
+```
+2824928 feat(trade): Handelszentren im UI — Kurs immer sichtbar
+80cdd86 feat(trade): unangreifbare Handelszentren mit globalem Kurs-Index
+```
+**Gemeinsam beschlossenes Gesamtmodell (zwei Handelsarten):**
+- **NPC-Handel (Phase 1, FERTIG):** neutrale, **unangreifbare** „Handelszentren" (behavior_profile
+  `trade_center`) quoten einen **universumsweiten** Kurs. `Kurs_r = base_value_r*(neutral_r+V_r)/(weltvorrat_r+V_r)`.
+  weltvorrat = liquider Spieler-Vorrat (EMA-geglaettet), neutral_r = neutral_per_player_r*aktive_spieler
+  (skaliert mit Population), virtual_reserve V gross -> stabil + nahe base bei wenig Spielern, zugleich
+  Order-Tiefe. **Trick:** als synthetischer Markt (setpoint=neutral+V, stock=vorrat+V) in den vorhandenen
+  `price_of`/`simulate_swap` gespeist -> Slippage automatisch, keine neue Swap-Logik. Spread = `margin`
+  (Spieler-P2P kann immer unterbieten -> kein OGame-Automat). Module: `fleet/trade_index.py`,
+  `WorldMarket`-Singleton (Migration), `index_tick`, `ensure_trade_centers` (seedet 6, fuer alle sichtbar),
+  Unangreifbar in `send_fleet`, `GET /api/trade/index`. balance: `trade.index`. Frontend: Kurs IMMER
+  sichtbar (kein „erst aufklaeren"), 💱-Handelszentrum-Badge, „Angreifen" an Zentren aus.
+- **P2P-Handel (Phase 2, OFFEN — naechstes):** **klassisch wie OGame, KEIN Automat.** Spieler werben einen
+  **unverbindlichen** Kurs (Leitfaden) + an/aus-Checkbox; finden sich in der Galaxie; **handeln Kurs im
+  Chat aus**; Abwicklung = zwei normale `transport`-Flotten (Ress hin, Ress zurueck). **Kein Escrow noetig**
+  (Fracht ist beim Start abgebucht + physisch unterwegs; Vertrauen/Ruf regeln Betrug sozial). Fehlt: (a)
+  Spieler-Handelsprofil (Flag + Werbe-Kurs, default = globaler Index), (b) Galaxie-Anzeige am Spieler-Planeten,
+  (c) **Chat** — existiert NICHT (messaging/ ist nur Postfach); fuer Verhandlung reicht async (auf Postfach-
+  Infra aufbauen), Echtzeit spaeter. Transport an fremde Spieler-Planeten geht bereits (service.py).
+- **Entschieden:** Handelszentren flatly unangreifbar (statt adaptiver Ueber-Deff); lokale Arbitrage zwischen
+  Zentren entfaellt bewusst (ein globaler Kurs = verlaesslicher Leitfaden auch fuer P2P). Legacy-`merchant`-
+  Pfad bleibt im Code, wird aber nicht mehr aktiv gespawnt.
+- **Trade-v2-Ideen (spaeter):** zeitlich begrenzte Nachfrage-Events, Markt-Uebersichts-Screen, Flavor-Deff
+  an Zentren (optischer „schwer bewacht"-Eindruck), Nachfrage-Komponente im Index (Flow statt nur Bestand).
+
+---
+
 ## -1. Session 2026-06-10 — Nutzer-WIP committet + Handels-Frontend implementiert
 **Beide auf Live deployed, Build sauber.** Reihenfolge: erst die hängende Frontend-WIP fertig, dann Handel.
 ```
