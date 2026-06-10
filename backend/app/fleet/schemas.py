@@ -30,6 +30,7 @@ class FleetOut(BaseModel):
 class IncomingAttackOut(BaseModel):
     id: uuid.UUID
     attacker: str
+    kind: str = "npc"  # 'npc' | 'player'
     origin: str | None = None
     target: TargetCoords
     ships_total: int

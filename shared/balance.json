@@ -41,7 +41,8 @@
     "crystal_storage":   { "cost": { "metal": 1000,"crystal": 500, "deuterium": 0 },   "factor": 2.0 },
     "deuterium_tank":    { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 0 },   "factor": 2.0 },
     "command_academy":   { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 500 }, "factor": 2.0, "_note": "USP: bildet Commander aus" },
-    "command_center":    { "cost": { "metal": 5000,"crystal": 3000,"deuterium": 1000 },"factor": 2.0, "_note": "USP: erhoeht Span-of-Control" }
+    "command_center":    { "cost": { "metal": 5000,"crystal": 3000,"deuterium": 1000 },"factor": 2.0, "_note": "USP: erhoeht Span-of-Control" },
+    "sensorphalanx":     { "cost": { "metal": 20000,"crystal": 40000,"deuterium": 20000 },"factor": 2.0, "_note": "Scannt fremde Flottenbewegungen zu/von Zielen in Reichweite (Level^2-1 Systeme). Voraussetzung fuers Flotten-Abfangen." }
   },
 
   "storage": {
@@ -517,6 +518,12 @@
       "target_centers": 6,
       "center_name_pool": ["Handelszentrum Aurora", "Handelszentrum Meridian", "Handelszentrum Solace", "Handelszentrum Concord", "Handelszentrum Bazaar", "Handelszentrum Nexus", "Handelszentrum Halcyon", "Handelszentrum Tranquil"]
     }
+  },
+
+  "phalanx": {
+    "_note": "Sensorphalanx (Gebaeude): Scannt fremde Flottenbewegungen zu/von einem Ziel in Reichweite. range_systems = level^2 - 1 (gleiche Galaxie). Jeder Scan kostet Deuterium am scannenden Planeten. intercept_window_seconds = wie lange eine angekommene Handels-/Transportflotte am Ziel fangbar bleibt.",
+    "scan_cost_deuterium": 5000,
+    "intercept_window_seconds": 60
   },
 
   "spy": {

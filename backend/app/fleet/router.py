@@ -91,6 +91,31 @@ async def recall(
     return await fleet_to_dict(session, fleet)
 
 
+class PhalanxScanRequest(BaseModel):
+    galaxy: int
+    system: int
+    position: int
+
+
+@router.post("/phalanx/scan")
+async def phalanx_scan_endpoint(
+    body: PhalanxScanRequest,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Scannt Flottenbewegungen zu/von einer Koordinate (Sensorphalanx in Reichweite noetig)."""
+    from app.fleet.phalanx import phalanx_scan
+
+    try:
+        result = await phalanx_scan(session, player, body.galaxy, body.system, body.position)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return result
+
+
 @router.get("/trade/index")
 async def trade_index(
     player: Player = Depends(get_current_player),

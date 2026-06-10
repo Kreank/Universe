@@ -8,7 +8,7 @@ import logging
 import math
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy.service import add_resources, get_research_levels, spend_resources
@@ -342,7 +342,11 @@ async def send_fleet(
 
 
 async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> list[dict]:
-    """Eingehende NPC-Angriffe auf die Planeten des Spielers (im Anflug), naechste zuerst."""
+    """Eingehende Angriffe auf die Planeten des Spielers (NPC + Spieler), naechste zuerst.
+
+    NPC-Angriffe stammen aus ``npc_attacks``; Spieler-Angriffe sind fremde Fleet-Zeilen
+    mission='attack' im Anflug (status 'flying') auf einen eigenen Planeten — sie machen
+    Fleetsave moeglich (rechtzeitig die eigene Flotte wegschicken)."""
     rows = (await session.execute(
         select(NpcAttack)
         .where(NpcAttack.target_player_id == player_id, NpcAttack.status == "incoming")
@@ -352,8 +356,9 @@ async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> 
     for a in rows:
         npc = await session.get(NpcEmpire, a.npc_id)
         out.append({
-            "id": a.id,
+            "id": str(a.id),
             "attacker": npc.name if npc else "Unbekannte Flotte",
+            "kind": "npc",
             "origin": f"{npc.galaxy}:{npc.system}:{npc.position}" if npc else None,
             "target": {
                 "galaxy": a.target_galaxy,
@@ -363,6 +368,43 @@ async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> 
             "ships_total": sum((a.fleet or {}).values()),
             "arrive_at": a.arrive_at,
         })
+
+    # -- Eingehende SPIELER-Angriffsflotten auf eigene Planeten --
+    my_planets = (await session.execute(
+        select(Planet).where(Planet.player_id == player_id)
+    )).scalars().all()
+    coords = {(p.galaxy, p.system, p.position) for p in my_planets}
+    if coords:
+        atk_fleets = (await session.execute(
+            select(Fleet).where(
+                Fleet.mission == "attack",
+                Fleet.status == "flying",
+                Fleet.player_id != player_id,
+            ).order_by(Fleet.arrive_at.asc())
+        )).scalars().all()
+        for f in atk_fleets:
+            if (f.target_galaxy, f.target_system, f.target_position) not in coords:
+                continue
+            attacker = await session.get(Player, f.player_id)
+            origin = await session.get(Planet, f.origin_planet_id) if f.origin_planet_id else None
+            ships_total = int((await session.execute(
+                select(func.coalesce(func.sum(Ship.count), 0)).where(Ship.fleet_id == f.id)
+            )).scalar_one() or 0)
+            out.append({
+                "id": str(f.id),
+                "attacker": attacker.display_name if attacker else "Feindflotte",
+                "kind": "player",
+                "origin": f"{origin.galaxy}:{origin.system}:{origin.position}" if origin else None,
+                "target": {
+                    "galaxy": f.target_galaxy,
+                    "system": f.target_system,
+                    "position": f.target_position,
+                },
+                "ships_total": ships_total,
+                "arrive_at": f.arrive_at,
+            })
+
+    out.sort(key=lambda x: x["arrive_at"])
     return out
 
 
