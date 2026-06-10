@@ -17,6 +17,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    SmallInteger,
     Text,
 )
 from sqlalchemy.dialects.postgresql import ENUM, JSONB, UUID
@@ -284,6 +285,21 @@ class NpcEmpire(Base):
     last_action_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_attack_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class WorldMarket(Base):
+    """Singleton (id=1) fuer den globalen Handelsindex.
+
+    Haelt den EMA-geglaetteten liquiden Weltvorrat je Ressource (Summe ueber alle
+    Spieler-Planeten) + die zugrunde gelegte aktive Spielerzahl. Der Kurs der
+    Handelszentren (behavior_profile 'trade_center') wird hieraus abgeleitet
+    (siehe app.fleet.trade_index). Vom Index-Tick periodisch aktualisiert."""
+    __tablename__ = "world_market"
+
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, default=1)
+    supply: Mapped[dict] = mapped_column(JSONB, default=dict)
+    players: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class NpcAttack(Base):

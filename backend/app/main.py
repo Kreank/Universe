@@ -20,8 +20,9 @@ from app.commander.service import morale_drift_tick
 from app.economy.router import router as economy_router
 from app.fleet.router import router as fleet_router
 from app.fleet.trade import market_regen_tick
+from app.fleet.trade_index import index_tick
 from app.messaging.router import router as messaging_router
-from app.npc.population import npc_population_tick
+from app.npc.population import ensure_trade_centers, npc_population_tick
 from app.npc.service import npc_behavior_tick
 from app.platform.balance import get_balance
 from app.platform.eventbus import event_bus
@@ -66,6 +67,13 @@ async def lifespan(app: FastAPI):
         market_regen_tick,
         seconds=get_balance().trade["market_tick_interval_seconds"],
         job_id="market-regen",
+    )
+    # Unangreifbare Handelszentren seeden (idempotent) + globalen Handelsindex aktualisieren.
+    await ensure_trade_centers()
+    schedule_interval(
+        index_tick,
+        seconds=get_balance().trade["index"]["tick_interval_seconds"],
+        job_id="trade-index",
     )
     log.info("game-server bereit")
     try:

@@ -507,7 +507,16 @@
       "deuterium_refinery": { "metal": 0.6, "crystal": 0.8, "deuterium": 3.0 },
       "generalist":         { "metal": 1.0, "crystal": 1.0, "deuterium": 1.0 }
     },
-    "reputation": { "volume_per_level": 500000, "max_level": 5, "margin_reduction_per_level": 0.005 }
+    "reputation": { "volume_per_level": 500000, "max_level": 5, "margin_reduction_per_level": 0.005 },
+    "index": {
+      "_note": "Globaler Handelskurs der unangreifbaren Handelszentren (behavior_profile 'trade_center'). Kurs_r = base_value_r * (neutral_r + V_r) / (vorrat_r + V_r), gespeist in price_of via synthetischem Markt (setpoint = neutral+V, stock = weltvorrat+V). neutral_r = neutral_per_player_r * aktive_spieler -> skaliert mit Population, kein Einzelner dominiert. virtual_reserve V gross gegenueber Fruehphasen-Vorrat -> Kurs nahe base_value und stabil bei wenig Spielern; wirkt zugleich als Order-Tiefe (Slippage). Weltvorrat = liquider Spieler-Vorrat (Gebaeude/Schiffe sind aus dem Umlauf), EMA-geglaettet ueber Ticks. Spread = margin (oben).",
+      "neutral_per_player": { "metal": 2000000, "crystal": 1000000, "deuterium": 500000 },
+      "virtual_reserve":    { "metal": 8000000, "crystal": 4000000, "deuterium": 2000000 },
+      "smoothing_alpha": 0.25,
+      "tick_interval_seconds": 600,
+      "target_centers": 6,
+      "center_name_pool": ["Handelszentrum Aurora", "Handelszentrum Meridian", "Handelszentrum Solace", "Handelszentrum Concord", "Handelszentrum Bazaar", "Handelszentrum Nexus", "Handelszentrum Halcyon", "Handelszentrum Tranquil"]
+    }
   },
 
   "spy": {

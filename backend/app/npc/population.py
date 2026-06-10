@@ -22,10 +22,11 @@ import random
 from sqlalchemy import select
 
 from app.fleet.trade import ensure_market, merchant_intel
+from app.fleet.trade_index import compute_supply, count_active_players, index_prices
 from app.npc.expansion import first_free_position
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
-from app.platform.models import NpcEmpire, Planet, PlayerDiscovery, UniverseCell
+from app.platform.models import NpcEmpire, Planet, Player, PlayerDiscovery, UniverseCell
 from app.universe.service import occupy_cell
 
 log = logging.getLogger("universe.npc")
@@ -286,6 +287,98 @@ async def npc_population_tick() -> None:
         await session.commit()
 
     log.info("NPC-Populations-Tick: %d NPC(s) gespawnt (Galaxie %d)", spawned, galaxy)
+
+
+async def ensure_trade_centers() -> None:
+    """Garantiert ``balance.trade.index.target_centers`` unangreifbare Handelszentren.
+
+    Anders als die Dichte-Spawns (nahe Spielern, respawnend) sind Handelszentren feste,
+    persistente Infrastruktur: ueber die Galaxien gestreut, einmal geseedet, fuer ALLE
+    Spieler sichtbar (oeffentlicher globaler Kurs). Idempotent — seedet nur das Defizit
+    zur Zielzahl. Profil ``trade_center`` (unangreifbar, siehe fleet/service.py)."""
+    bal = get_balance()
+    idx = bal.trade["index"]
+    target = int(idx.get("target_centers", 0))
+    if target <= 0:
+        return
+    galaxies = bal.galaxies
+    max_systems = bal.systems_per_galaxy
+    max_positions = bal.positions_per_system
+    name_pool = list(idx.get("center_name_pool", []))
+    rng = random.Random()
+    created = 0
+
+    async with session_scope() as session:
+        existing = (await session.execute(
+            select(NpcEmpire).where(NpcEmpire.behavior_profile == "trade_center")
+        )).scalars().all()
+        deficit = target - len(existing)
+        if deficit <= 0:
+            return
+
+        used_names = {n.name for n in existing}
+        # Aktuelle Index-Kurse fuer den Discovery-Snapshot (live kommt aus dem Endpoint).
+        supply = await compute_supply(session)
+        players = await count_active_players(session)
+        prices = index_prices(supply, players, bal.trade)
+        all_players = (await session.execute(select(Player.id))).scalars().all()
+        now = _now()
+
+        for n in range(deficit):
+            # Galaxien gleichmaessig bestuecken; freie (system, position) suchen.
+            galaxy = (len(existing) + n) % max(galaxies, 1) + 1
+            placed = False
+            for _attempt in range(40):
+                system = rng.randint(1, max_systems)
+                position = rng.randint(1, max_positions)
+                name = next(
+                    (nm for nm in name_pool if nm not in used_names),
+                    f"Handelszentrum {galaxy}-{system}",
+                )
+                npc = NpcEmpire(
+                    name=name,
+                    behavior_profile="trade_center",
+                    galaxy=galaxy,
+                    system=system,
+                    position=position,
+                    fleet={},
+                    defenses={},
+                    resources={},
+                    baseline={},
+                    last_action_at=now,
+                )
+                session.add(npc)
+                try:
+                    async with session.begin_nested():
+                        await session.flush()
+                        await occupy_cell(session, galaxy, system, position, "npc", npc.id)
+                except Exception:
+                    session.expunge(npc)
+                    continue
+                used_names.add(name)
+                placed = True
+                # Oeffentlich sichtbar: fuer alle Spieler discovern (globaler Kurs).
+                intel = {
+                    "name": name,
+                    "ships_total": 0,
+                    "defenses_total": 0,
+                    "merchant": True,
+                    "trade_center": True,
+                    "spec": "trade_center",
+                    "prices": prices,
+                    "prices_at": now.isoformat(),
+                }
+                for pid in all_players:
+                    await _upsert_discovery(session, pid, galaxy, system, position, intel, 3, now)
+                created += 1
+                break
+            if not placed:
+                log.warning("Handelszentrum-Seed: keine freie Position in Galaxie %d", galaxy)
+
+        await session.commit()
+
+    if created:
+        log.info("Handelszentren geseedet: %d neu (Ziel %d)", created, target)
 
 
 async def _upsert_discovery(

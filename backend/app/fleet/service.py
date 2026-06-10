@@ -228,7 +228,7 @@ async def send_fleet(
                     NpcEmpire.position == target[2],
                 )
             )).scalar_one_or_none()
-        if merchant is None or merchant.behavior_profile != "merchant":
+        if merchant is None or merchant.behavior_profile not in ("merchant", "trade_center"):
             raise ValueError("Am Ziel ist kein Haendler")
         order = validate_trade_order(mission_data, bal.trade)
         if order is None:
@@ -266,6 +266,11 @@ async def send_fleet(
                 tgt_player = await session.get(Player, tgt_planet.player_id)
                 if tgt_player and tgt_player.is_protected:
                     raise RuntimeError("Ziel steht unter Neulingsschutz")
+        # Handelszentren sind unangreifbar (neutrale Infrastruktur).
+        if cell and cell.occupant_type == "npc" and cell.ref_id:
+            tgt_npc = await session.get(NpcEmpire, cell.ref_id)
+            if tgt_npc and tgt_npc.behavior_profile == "trade_center":
+                raise RuntimeError("Handelszentren sind neutral und koennen nicht angegriffen werden")
 
     # Distanz, Tempo, Sprit.
     origin = (planet.galaxy, planet.system, planet.position)

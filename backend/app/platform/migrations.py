@@ -105,6 +105,17 @@ _STATEMENTS: list[str] = [
         PRIMARY KEY (player_id, npc_id)
     )
     """,
+    # Globaler Handelsindex: ein-Zeilen-Singleton mit EMA-geglaettetem Weltvorrat
+    # (liquider Spieler-Vorrat je Ressource) -> speist den Kurs der Handelszentren.
+    """
+    CREATE TABLE IF NOT EXISTS world_market (
+        id           SMALLINT PRIMARY KEY DEFAULT 1,
+        supply       JSONB NOT NULL DEFAULT '{}'::jsonb,
+        players      INTEGER NOT NULL DEFAULT 1,
+        updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CONSTRAINT world_market_singleton CHECK (id = 1)
+    )
+    """,
 ]
 
 

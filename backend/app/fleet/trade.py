@@ -22,6 +22,7 @@ import random
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.fleet.trade_index import index_market_for
 from app.fleet.trade_pricing import price_of, simulate_swap
 from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
@@ -205,7 +206,7 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
             )
         )).scalar_one_or_none()
 
-    if npc is None or npc.behavior_profile != "merchant":
+    if npc is None or npc.behavior_profile not in ("merchant", "trade_center"):
         await create_system_transmission(
             session,
             player_id=fleet.player_id,
@@ -217,11 +218,17 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         log.info("Handel ohne Haendler: player=%s coords=%s", fleet.player_id, coords)
         return None
 
-    # -- 2) Markt (lazy init) --
-    market = ensure_market(npc, cfg)
-    spec = market["spec"]
-    stock = dict(market["stock"])
-    setpoint = market_setpoint(spec, cfg)
+    # -- 2) Markt: Handelszentrum -> globaler Index (synthetischer Markt aus dem
+    #        Weltvorrat); Legacy-Haendler -> lokaler Bestand (lazy init) --
+    is_center = npc.behavior_profile == "trade_center"
+    if is_center:
+        stock, setpoint = await index_market_for(session, cfg)
+        spec = "trade_center"
+    else:
+        market = ensure_market(npc, cfg)
+        spec = market["spec"]
+        stock = dict(market["stock"])
+        setpoint = market_setpoint(spec, cfg)
 
     # -- 3) Auftrag validieren --
     order = validate_trade_order(fleet.mission_data, cfg)
@@ -263,9 +270,11 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         reputation_level=level, cargo_capacity=capacity,
     )
 
-    # -- 7) Haendler-Bestand aktualisieren (neues dict, ganze Zahlen) --
-    new_stock = {**stock, **{r: round(v) for r, v in result["new_stock"].items()}}
-    npc.market = {"spec": spec, "stock": new_stock}
+    # -- 7) Haendler-Bestand aktualisieren (nur Legacy-lokaler Markt; ein Handelszentrum
+    #        hat keinen persistenten Bestand -> sein Index folgt im naechsten Tick dem Weltvorrat) --
+    if not is_center:
+        new_stock = {**stock, **{r: round(v) for r, v in result["new_stock"].items()}}
+        npc.market = {"spec": spec, "stock": new_stock}
 
     # -- 8) Reputation hochzaehlen --
     rep.volume = float(rep.volume) + float(result["value_in"])
@@ -343,7 +352,17 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
     # Kurse aus dem soeben aktualisierten npc.market (Schritt 7) ziehen -> eine Wahrheit
     # (DRY mit Spawner-Auto-Discovery und Spionage ueber merchant_intel).
     now = _now()
-    intel = merchant_intel(npc, cfg, now.isoformat())
+    if is_center:
+        intel = {
+            "name": npc.name,
+            "merchant": True,
+            "trade_center": True,
+            "spec": "trade_center",
+            "prices": {r: round(price_of(r, stock[r], setpoint[r], cfg), 3) for r in RESOURCES},
+            "prices_at": now.isoformat(),
+        }
+    else:
+        intel = merchant_intel(npc, cfg, now.isoformat())
     disc = (await session.execute(
         select(PlayerDiscovery).where(
             PlayerDiscovery.player_id == fleet.player_id,

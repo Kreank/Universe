@@ -88,3 +88,26 @@ async def recall(
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return await fleet_to_dict(session, fleet)
+
+
+@router.get("/trade/index")
+async def trade_index(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Oeffentlicher, immer sichtbarer globaler Handelskurs der Handelszentren.
+
+    Kurs je Ressource (Wert/Einheit) aus dem EMA-geglaetteten Weltvorrat. Damit
+    braucht das Handels-UI keine Aufklaerung mehr — der Kurs ist immer abrufbar."""
+    from app.fleet.trade_index import get_world_market, index_prices
+    from app.platform.balance import get_balance
+
+    wm = await get_world_market(session)
+    bal = get_balance()
+    prices = index_prices(wm.supply or {}, wm.players or 1, bal.trade)
+    return {
+        "prices": prices,
+        "base_value": bal.trade["base_value"],
+        "players": wm.players or 1,
+        "updated_at": wm.updated_at.isoformat() if wm.updated_at else None,
+    }
