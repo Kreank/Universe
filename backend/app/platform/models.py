@@ -326,6 +326,10 @@ class StationedFleet(Base):
     escort_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     escort_radius: Mapped[int] = mapped_column(Integer, default=0)
     escort_fee_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    # Abfang-Modus (A): faengt feindliche Flotten ab, deren galaxie-interne Route das
+    # Stations-System (+/- intercept_radius) kreuzt (balance.combat.interception).
+    intercept_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    intercept_radius: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

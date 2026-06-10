@@ -168,6 +168,12 @@ interface GradesConfig {
                   <span class="fill" [style.width.%]="c.morale"></span>
                 </div>
               </div>
+              @if (c.loyalty < 30 || (c.unrest ?? 0) >= 80) {
+                <div class="risk small">
+                  @if (c.loyalty < 30) { <span class="chip warn">⚠ Treue {{ c.loyalty }} — Meuterei/Überlauf-Risiko</span> }
+                  @if ((c.unrest ?? 0) >= 80) { <span class="chip warn">⚑ Forderung steht bevor</span> }
+                </div>
+              }
 
               <div class="traits">
                 @for (t of c.traits; track t) {

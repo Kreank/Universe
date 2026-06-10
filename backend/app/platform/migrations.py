@@ -143,6 +143,9 @@ _STATEMENTS: list[str] = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_stationed_owner ON stationed_fleets(owner_id)",
     "CREATE INDEX IF NOT EXISTS idx_stationed_coords ON stationed_fleets(galaxy, system, position)",
+    # Abfang-Modus der Patrouillen (A): Abfangen durchreisender Feindflotten.
+    "ALTER TABLE stationed_fleets ADD COLUMN IF NOT EXISTS intercept_enabled BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE stationed_fleets ADD COLUMN IF NOT EXISTS intercept_radius INTEGER NOT NULL DEFAULT 0",
     # Kommandeur-Zufriedenheit: Unmut-Akkumulator + Zeitpunkt der letzten Forderung.
     "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS unrest DOUBLE PRECISION NOT NULL DEFAULT 0",
     "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS last_demand_at TIMESTAMPTZ",

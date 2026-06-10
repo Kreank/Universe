@@ -110,7 +110,7 @@
     "stealth_corvette": { "cost": { "metal": 8000,  "crystal": 8000,  "deuterium": 2000 },  "attack": 150,  "shield": 10,   "cargo": 100,   "speed": 16000, "fuel": 150,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "laser_tech": 6, "combustion_drive": 6 } },
     "escort_frigate":   { "cost": { "metal": 18000, "crystal": 12000, "deuterium": 2000 },  "attack": 150,  "shield": 150,  "cargo": 300,   "speed": 10000, "fuel": 250,  "rapidfire": { "drone": 3, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "armor_tech": 3, "laser_tech": 4 } },
     "shield_tender":    { "cost": { "metal": 20000, "crystal": 25000, "deuterium": 5000 },  "attack": 0,    "shield": 1000, "cargo": 200,   "speed": 6000,  "fuel": 400,  "rapidfire": {}, "requires": { "shield_tech": 6, "impulse_drive": 4 } },
-    "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 0 },     "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100,  "rapidfire": { "light_fighter": 3, "drone": 3, "stealth_corvette": 2, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "laser_tech": 5, "impulse_drive": 3 } },
+    "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 0 },     "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100,  "rapidfire": { "light_fighter": 4, "heavy_fighter": 3, "drone": 4, "stealth_corvette": 2, "spy_probe": 5, "solar_satellite": 5 }, "requires": { "laser_tech": 5, "impulse_drive": 3 } },
     "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 15000, "speed": 3000,  "fuel": 300,  "rapidfire": {}, "requires": { "combustion_drive": 4, "shipyard": 4 } },
     "deep_scout":       { "cost": { "metal": 8000,  "crystal": 12000, "deuterium": 1000 },  "attack": 0,    "shield": 50,   "cargo": 100,   "speed": 14000, "fuel": 80,   "rapidfire": {}, "requires": { "spy_tech": 3, "impulse_drive": 4 } },
     "expedition_ship":  { "cost": { "metal": 30000, "crystal": 20000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 10000, "speed": 6000,  "fuel": 800,  "rapidfire": { "spy_probe": 5, "solar_satellite": 5 }, "requires": { "hyperspace_drive": 4, "computer_tech": 6 } }
@@ -186,6 +186,11 @@
     "debris_from_defense": false,
     "plunder_ratio": 0.50,
     "defense_regen_ratio": 0.70,
+    "defense_disable": {
+      "_note": "Ionen legen Verteidigung lahm (Doku 03b §3, C): Verteidigungsanlagen erhalten eine System-Integritaet (statt unverwundbar). Ionen-Treffer (drive-Schaden der damage_matrix) setzen sie herab; bei <= 0 ist das Geschuetz fuer den Rest der Schlacht LAHMGELEGT und feuert nicht mehr. Toetet das Geschuetz nicht (Huelle bleibt) -> Ionen sind der Tueroeffner, zerstoeren tut weiter Kinetik/Plasma. Schild-Tender (shield_projector) der Verteidigung repariert die Integritaet wieder.",
+      "enabled": true,
+      "integrity": 140
+    },
     "damage_matrix": {
       "_note": "Rollen-Kampf (Doku 03b §3): weapon_type -> Effektivitaet gegen {shield, drive, hull}. Schild regeneriert pro Runde, Antrieb NICHT (mission kill). Kinetik ist absichtlich schwach gegen Schilde (Design: 'prallt ab'); 0.25 statt 0.0, damit der aktuelle Duenn-Schild-Roster keine Patt-Kaempfe erzeugt — tunebar Richtung 0, sobald Ionen-/Schild-Strip-Schiffe (Phase 4) existieren.",
       "energy":  { "shield": 1.5,  "drive": 0.5,  "hull": 0.6 },
@@ -242,6 +247,14 @@
       "rank_bonus": { "cadet": 0.0, "officer": 0.05, "veteran": 0.10, "elite": 0.20, "legend": 0.35 },
       "logistics_tech_bonus_per_level": 0.03,
       "survivor_ship_bonus_max": 0.25
+    },
+    "interception": {
+      "_note": "Abfangen im Flug (A, dedizierte Patrouille + Interdiktor). Eine StationedFleet mit intercept_enabled faengt feindliche Flotten ab, deren galaxie-interne Route ihr System (+/- intercept_radius) kreuzt. MIT Interdiktor (combat_roster.interdictor) in der Patrouille = sicherer Stopp (chance 1.0). OHNE = base_chance + chance_per_interceptor je Abfangjaeger (interceptor) in der Patrouille, gedeckelt auf chance_cap (so offen wie moeglich, kein harter Filter). Inter-Galaxie-Fluege haben keinen modellierten Pfad -> nur am Ziel fangbar. Patrouille ist Aggressor (kann nicht fliehen), die abgefangene Flotte darf fliehen (vom Interdiktor unterdrueckt). Ueberlebt die Flotte, fliegt sie weiter.",
+      "enabled": true,
+      "base_chance": 0.40,
+      "chance_per_interceptor": 0.06,
+      "chance_cap": 0.95,
+      "max_radius": 30
     }
   },
 
@@ -417,6 +430,11 @@
       "grade_bonus_points": 1,
       "unlearn_refund": 0.5,
       "start_skill_points": 1
+    },
+    "trait_training": {
+      "_note": "Charakter-Zucht an der Akademie (Ressourcen-Kosten, sofort). reroll = neue Zufalls-Traits; replace = einen Trait durch einen gewuenschten ersetzen (teurer). Kadetten-Training kann gegen Aufpreis einen Wunsch-Trait garantieren.",
+      "reroll_cost": { "metal": 30000, "crystal": 20000, "deuterium": 10000 },
+      "replace_cost": { "metal": 60000, "crystal": 40000, "deuterium": 20000 }
     },
     "governor": {
       "_note": "Kommandeur als Planeten-Gouverneur: Produktions-Bonus = economy_bonus.peak_pct_by_rank[rank] * (morale/100) * spec_mult. admin (Verwaltung) ist darauf spezialisiert.",

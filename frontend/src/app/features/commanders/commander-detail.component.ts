@@ -71,8 +71,26 @@ import { commanderDetailStyles } from './commander-detail.styles';
 
           <div class="traits">
             @for (t of c.traits; track t) {
-              <span class="chip trait tip" [attr.data-tip]="trait(t).label"><img class="chip-ico" [src]="traitIcon(t)" alt="" (error)="hideImg($event)" />{{ trait(t).label }}</span>
+              <span class="chip trait tip" [attr.data-tip]="trait(t).label + ' — ' + traitEffect(t)"><img class="chip-ico" [src]="traitIcon(t)" alt="" (error)="hideImg($event)" />{{ trait(t).label }}</span>
             }
+          </div>
+
+          <!-- Charakter-Zucht (Trait-Reroll/Ersatz, Ressourcen-Kosten) -->
+          <div class="trait-train">
+            <div class="panel-title">🧬 Charakter-Zucht</div>
+            <button class="btn btn-ghost btn-sm" type="button" (click)="reroll()">Traits neu würfeln</button>
+            <div class="replace-row">
+              <select [ngModel]="desiredTrait()" (ngModelChange)="desiredTrait.set($event)">
+                <option [ngValue]="null">— Wunsch-Trait —</option>
+                @for (k of allTraits(); track k) { <option [ngValue]="k">{{ trait(k).label }}</option> }
+              </select>
+              <select [ngModel]="dropTrait()" (ngModelChange)="dropTrait.set($event)">
+                <option [ngValue]="null">— ersetzt (beliebig) —</option>
+                @for (t of c.traits; track t) { <option [ngValue]="t">{{ trait(t).label }}</option> }
+              </select>
+              <button class="btn btn-ghost btn-sm" type="button" [disabled]="!desiredTrait()" (click)="replaceTrait()">Ersetzen</button>
+            </div>
+            <p class="faint small">Reroll = neue Zufalls-Traits; Ersetzen = einen gezielt tauschen. Kostet Ressourcen am Heimatplaneten.</p>
           </div>
 
           <!-- Gouverneurs-Posten -->
@@ -188,6 +206,50 @@ export class CommanderDetailComponent {
       level: learned.get(key) ?? 0,
     }));
   });
+
+  protected readonly desiredTrait = signal<string | null>(null);
+  protected readonly dropTrait = signal<string | null>(null);
+
+  /** Kurzbeschreibung der echten Trait-Wirkung (Sichtbarkeit). */
+  private readonly TRAIT_EFFECT: Record<string, string> = {
+    aggressive: '+Angriff, höheres Eigenrisiko (Permadeath)',
+    cautious: 'rettet einen Teil eigener Verluste',
+    loyal: 'kaum Überlauf, langsamer Moralverfall',
+    ambitious: '+25% XP, fordert Beförderung',
+    greedy: '+Moral bei Beute, fordert Beuteanteil',
+    honorable: '+Moral bei fairem Ziel, Malus bei Bashing',
+    charismatic: 'hebt die Team-Moral',
+    hot_tempered: '+Angriff, instabil, Meuterei-Risiko',
+  };
+
+  protected readonly allTraits = computed(() => Object.keys(this.TRAIT_EFFECT));
+
+  traitEffect(key: string): string {
+    return this.TRAIT_EFFECT[key] ?? '';
+  }
+
+  reroll(): void {
+    const c = this.commander();
+    if (!c) return;
+    this.api.retrainTraits(c.id, 'reroll').subscribe({
+      next: (u) => this.commander.set(u),
+      error: (e) => this.notify.warning('Reroll fehlgeschlagen', e?.error?.detail ?? 'Fehler.'),
+    });
+  }
+
+  replaceTrait(): void {
+    const c = this.commander();
+    const desired = this.desiredTrait();
+    if (!c || !desired) return;
+    this.api.retrainTraits(c.id, 'replace', desired, this.dropTrait() ?? undefined).subscribe({
+      next: (u) => {
+        this.commander.set(u);
+        this.desiredTrait.set(null);
+        this.dropTrait.set(null);
+      },
+      error: (e) => this.notify.warning('Ersetzen fehlgeschlagen', e?.error?.detail ?? 'Fehler.'),
+    });
+  }
 
   private readonly RANK_ORDER = ['cadet', 'officer', 'veteran', 'elite', 'legend'];
 

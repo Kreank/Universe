@@ -136,6 +136,7 @@ def _build_units(
                 )
                 u.launched = True
                 units.append(u)
+    def_integrity = float(catalogs.get("defense_integrity", 0.0))
     for typ, count in (defenses or {}).items():
         cfg = def_cat.get(typ)
         if cfg is None or count <= 0:
@@ -149,7 +150,7 @@ def _build_units(
         for _ in range(int(count)):
             units.append(Unit(
                 typ, side, attack, shield, hull, dict(cfg.get("rapidfire_against", {})), True,
-                prof.get("weapon_type"), 0.0, ridx, bool(prof.get("interdictor", False)),
+                prof.get("weapon_type"), def_integrity, ridx, bool(prof.get("interdictor", False)),
             ))
     return units
 
@@ -165,12 +166,21 @@ def _counts(units: list[Unit]) -> dict[str, int]:
 
 
 def _drive_disabled(units: list[Unit]) -> dict[str, int]:
-    """Ueberlebende Einheiten mit lahmgelegtem Antrieb (drive 0, drive_max>0) -> 'mission kill'."""
+    """Ueberlebende SCHIFFE mit lahmgelegtem Antrieb (drive 0, drive_max>0) -> 'mission kill'."""
     out: dict[str, int] = {}
     for u in units:
-        if u.launched:
+        if u.launched or u.is_defense:
             continue
         if u.drive_max > 0 and u.drive <= 0:
+            out[u.type] = out.get(u.type, 0) + 1
+    return out
+
+
+def _defense_disabled(units: list[Unit]) -> dict[str, int]:
+    """Ueberlebende VERTEIDIGUNG, deren Integritaet durch Ionen auf 0 ist (feuert nicht mehr)."""
+    out: dict[str, int] = {}
+    for u in units:
+        if u.is_defense and u.drive_max > 0 and u.drive <= 0:
             out[u.type] = out.get(u.type, 0) + 1
     return out
 
@@ -220,6 +230,13 @@ def simulate_battle(
     ambush_dist = order.index(ambush_cfg["distance"]) if ambush_cfg.get("distance") in order else 0
     detect_sensors = int(ambush_cfg.get("detect_sensors", 0))
 
+    # Ionen-Lahmlegung von Verteidigung (C): Verteidigung bekommt eine System-Integritaet
+    # (wie ein Antriebs-Pool), die Ionen-Treffer herabsetzen; bei <= 0 feuert sie nicht mehr.
+    disable_cfg = combat.get("defense_disable", {})
+    defense_integrity = (
+        float(disable_cfg.get("integrity", 0)) if disable_cfg.get("enabled", False) else 0.0
+    )
+
     catalogs = {
         "ships": balance["ships"],
         "defenses": balance["defenses"],
@@ -228,6 +245,7 @@ def simulate_battle(
         "range_order": order,
         "drive_per_tier": combat.get("drive_integrity_per_tier", 100),
         "carrier_cfg": combat.get("carrier", {}),
+        "defense_integrity": defense_integrity,
     }
 
     atk_units = _build_units(
@@ -300,6 +318,9 @@ def simulate_battle(
         Verteidigung ist stationaer -> feuert immer ohne Strafe. Schiffe feuern nur, wenn die
         Distanz <= ihrer Reichweite liegt; naeher als optimal -> Standoff-Strafe je Band."""
         if unit.is_defense:
+            # Lahmgelegte Verteidigung (Ionen haben die Integritaet auf 0 gedrueckt) feuert nicht.
+            if unit.drive_max > 0 and unit.drive <= 0:
+                return None
             return 1.0
         if distance > unit.range_idx:
             return None  # noch ausserhalb der eigenen Reichweite
@@ -481,7 +502,7 @@ def simulate_battle(
             return victim_units
         kept: list[Unit] = []
         for u in victim_units:
-            if capacity > 0 and not u.launched and u.drive_max > 0 and u.drive <= 0:
+            if capacity > 0 and not u.launched and not u.is_defense and u.drive_max > 0 and u.drive <= 0:
                 captured[u.type] = captured.get(u.type, 0) + 1
                 capacity -= 1
             else:
@@ -519,6 +540,7 @@ def simulate_battle(
         "defender_losses": defender_losses_total,
         "attacker_drive_disabled": _drive_disabled(atk_units),
         "defender_drive_disabled": _drive_disabled(def_units),
+        "defender_defense_disabled": _defense_disabled(def_units),
         "attacker_fled": _counts(atk_fled),
         "defender_fled": _counts(def_fled),
         "attacker_captured": attacker_captured,

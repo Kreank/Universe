@@ -120,6 +120,62 @@ async def forget_ability(
     return await commander_to_dict(session, c)
 
 
+@router.post("/commanders/{commander_id}/retrain-traits")
+async def retrain_traits(
+    commander_id: uuid.UUID,
+    body: dict,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Charakter-Zucht (Ressourcen-Kosten am Heimatplaneten):
+    body = {mode: 'reroll'|'replace', trait?: <gewuenscht>, drop?: <zu ersetzen>}."""
+    import random as _random
+
+    from app.economy.service import spend_resources
+
+    c = await session.get(Commander, commander_id)
+    if c is None or c.player_id != player.id:
+        raise HTTPException(status_code=404, detail="Kommandeur nicht gefunden")
+    bal = get_balance()
+    tt = bal.commander.get("trait_training", {})
+    trait_keys = list(bal.commander["personality_traits"].keys())
+    mode = body.get("mode", "reroll")
+
+    # Kosten am Heimatplaneten (bzw. erstem Planeten) abziehen.
+    home = (await session.execute(
+        select(Planet).where(Planet.player_id == player.id)
+        .order_by(Planet.is_homeworld.desc(), Planet.created_at.asc())
+    )).scalars().first()
+    if home is None:
+        raise HTTPException(status_code=409, detail="Kein Planet fuer die Ausbildung")
+
+    if mode == "reroll":
+        cost = tt.get("reroll_cost", {})
+        if not await spend_resources(session, home, cost):
+            raise HTTPException(status_code=409, detail="Nicht genug Ressourcen fuer Reroll")
+        c.traits = _random.sample(trait_keys, k=_random.randint(1, 2))
+    elif mode == "replace":
+        desired = body.get("trait")
+        if desired not in trait_keys:
+            raise HTTPException(status_code=422, detail="Unbekannter Wunsch-Trait")
+        cost = tt.get("replace_cost", {})
+        if not await spend_resources(session, home, cost):
+            raise HTTPException(status_code=409, detail="Nicht genug Ressourcen fuer Trait-Ersatz")
+        traits = list(c.traits or [])
+        drop = body.get("drop")
+        if drop in traits:
+            traits.remove(drop)
+        elif traits:
+            traits.pop(0)
+        if desired not in traits:
+            traits.append(desired)
+        c.traits = traits[:2]
+    else:
+        raise HTTPException(status_code=400, detail="Ungueltiger Modus")
+    await session.commit()
+    return await commander_to_dict(session, c)
+
+
 @router.put("/planets/{planet_id}/governor")
 async def set_governor(
     planet_id: uuid.UUID,
