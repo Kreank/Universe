@@ -252,6 +252,13 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
         def_defenses = {r.type: r.count for r in def_rows if r.count > 0}
         research = await get_research_levels(session, player.id)
         def_tech = {k: research.get(k, 0) for k in ("weapons_tech", "shield_tech", "armor_tech")}
+        # Mond-Unterstuetzung (Orbitalbatterie + Schildkuppel) verteidigt den Planeten mit.
+        from app.planets.moon import moon_defense_support
+        _extra_def, _shield_bonus = await moon_defense_support(session, planet, bal)
+        for _t, _n in _extra_def.items():
+            def_defenses[_t] = def_defenses.get(_t, 0) + _n
+        if _shield_bonus:
+            def_tech["shield_tech"] = def_tech.get("shield_tech", 0) + _shield_bonus
 
         seed = random.randrange(1, 2 ** 62)
         attacker = {"ships": commit, "tech": dict(bal.npc["attack"].get("npc_tech", {})), "attack_mult": 1.0}
@@ -305,6 +312,11 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
             field["metal"] = round(field.get("metal", 0) + debris["metal"], 1)
             field["crystal"] = round(field.get("crystal", 0) + debris["crystal"], 1)
             cell.debris_field = field
+
+        # Mond-Entstehung aus dem Truemmerfeld am verteidigten Planeten.
+        if debris["metal"] > 0 or debris["crystal"] > 0:
+            from app.planets.moon import maybe_form_moon
+            await maybe_form_moon(session, planet, debris["metal"], debris["crystal"])
 
         # -- Beute (nur bei NPC-Sieg): Spieler-Ressourcen pluendern --
         loot = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}

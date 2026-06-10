@@ -373,6 +373,14 @@ async def send_fleet(
     schedule_at(arrive, fleet_arrive, str(fleet.id), job_id=f"fleet-arrive:{fleet.id}")
     schedule_at(return_at, fleet_return, str(fleet.id), job_id=f"fleet-return:{fleet.id}")
 
+    # Abfangen im Flug (A): feindliche Abfang-Patrouillen auf der galaxie-internen Route
+    # planen einen Abfang-Job. Defensiv — ein Fehler darf den Flottenstart nie blockieren.
+    try:
+        from app.fleet.interception import schedule_interceptions_for_fleet
+        await schedule_interceptions_for_fleet(session, fleet)
+    except Exception:  # noqa: BLE001
+        log.exception("Abfang-Planung fuer Flotte %s fehlgeschlagen (ignoriert)", fleet.id)
+
     # Verteidiger-Vorwarnung bei Spieler-Angriff (ermoeglicht Fleetsave).
     if mission == "attack":
         tcell = (await session.execute(
@@ -395,6 +403,61 @@ async def send_fleet(
 
     log.info("Flotte %s gesendet -> %s (mission=%s)", fleet.id, target, mission)
     return fleet
+
+
+async def jump_fleet(
+    session: AsyncSession, player: Player, from_moon_id: uuid.UUID, to_moon_id: uuid.UUID, ships: dict[str, int]
+) -> dict:
+    """Sprungtor: versetzt Schiffe SOFORT zwischen zwei eigenen Monden (kein Flug/Sprit, Cooldown)."""
+    from app.economy.service import get_building_levels
+
+    bal = get_balance()
+    if from_moon_id == to_moon_id:
+        raise ValueError("Quell- und Zielmond muessen verschieden sein")
+    src = await session.get(Planet, from_moon_id)
+    dst = await session.get(Planet, to_moon_id)
+    for m in (src, dst):
+        if m is None or m.player_id != player.id or m.planet_type != "moon":
+            raise ValueError("Mond nicht gefunden")
+        levels = await get_building_levels(session, m.id)
+        if levels.get("jump_gate", 0) < 1:
+            raise RuntimeError("Beide Monde benoetigen ein Sprungtor")
+    # Cooldown am Quell-Sprungtor.
+    cd = float(bal.data["moon"]["jump_gate_cooldown_seconds"])
+    last = src.last_jump_at
+    if last is not None:
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=dt.timezone.utc)
+        wait = cd - (_now() - last).total_seconds()
+        if wait > 0:
+            raise RuntimeError(f"Sprungtor im Cooldown ({int(wait)}s)")
+
+    ships = {t: int(c) for t, c in ships.items() if int(c) > 0}
+    if not ships:
+        raise ValueError("Keine Schiffe gewaehlt")
+    # Schiffe aus der Quell-Garnison nehmen.
+    rows = (await session.execute(
+        select(Ship).where(Ship.planet_id == src.id, Ship.fleet_id.is_(None))
+    )).scalars().all()
+    by_type = {r.type: r for r in rows}
+    for typ, count in ships.items():
+        if by_type.get(typ) is None or by_type[typ].count < count:
+            raise RuntimeError(f"Zu wenige Schiffe vom Typ {typ}")
+    for typ, count in ships.items():
+        src_row = by_type[typ]
+        src_row.count -= count
+        if src_row.count == 0:
+            await session.delete(src_row)
+        existing = (await session.execute(
+            select(Ship).where(Ship.planet_id == dst.id, Ship.fleet_id.is_(None), Ship.type == typ)
+        )).scalars().first()
+        if existing:
+            existing.count += count
+        else:
+            session.add(Ship(planet_id=dst.id, fleet_id=None, type=typ, count=count))
+    src.last_jump_at = _now()
+    log.info("Sprung: player=%s %s -> %s ships=%s", player.id, src.id, dst.id, ships)
+    return {"ok": True, "next_jump_at": (src.last_jump_at + dt.timedelta(seconds=cd)).isoformat()}
 
 
 async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> list[dict]:

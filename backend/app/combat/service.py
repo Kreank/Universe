@@ -159,11 +159,9 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
                 return {"mutiny": True, "location": loc}
 
     atk_research = await get_research_levels(session, fleet.player_id)
-    atk_tech = {
-        "weapons_tech": atk_research.get("weapons_tech", 0),
-        "shield_tech": atk_research.get("shield_tech", 0),
-        "armor_tech": atk_research.get("armor_tech", 0),
-    }
+    # Volles Forschungs-Dict an die Engine: deckt Waffen/Schild/Panzerung UND die
+    # forschungs-skalierten Kampf-Techs (ion_disruptors, boarding_doctrine, …) ab.
+    atk_tech = dict(atk_research)
     attack_mult = _commander_mods(commander, len(attacker_ships))
     # Doktrin-Bonus (z. B. Kriegsherr +10 % Waffenschaden) flottenweit.
     from app.platform.doctrine import combat_attack_mult
@@ -267,7 +265,14 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         )).scalars().all()
         def_defenses = {r.type: r.count for r in def_rows if r.count > 0}
         d_research = await get_research_levels(session, def_player.id)
-        def_tech = {k: d_research.get(k, 0) for k in ("weapons_tech", "shield_tech", "armor_tech")}
+        def_tech = dict(d_research)
+        # Mond-Unterstuetzung: Orbitalbatterie + Schildkuppel verteidigen den Planeten mit.
+        from app.planets.moon import moon_defense_support
+        _extra_def, _shield_bonus = await moon_defense_support(session, def_planet, bal)
+        for _t, _n in _extra_def.items():
+            def_defenses[_t] = def_defenses.get(_t, 0) + _n
+        if _shield_bonus:
+            def_tech["shield_tech"] = def_tech.get("shield_tech", 0) + _shield_bonus
     else:
         # Abfangen am Ziel: fangbare durchreisende Flotten (Ankunftsfenster) + Patrouillen.
         from app.fleet.stationing import gather_interception_defenders
@@ -359,6 +364,11 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         field["metal"] = round(field.get("metal", 0) + debris["metal"], 1)
         field["crystal"] = round(field.get("crystal", 0) + debris["crystal"], 1)
         tgt_cell.debris_field = field
+
+    # Mond-Entstehung aus dem Truemmerfeld (nur an einem Spieler-Planeten).
+    if def_planet is not None and (debris["metal"] > 0 or debris["crystal"] > 0):
+        from app.planets.moon import maybe_form_moon
+        await maybe_form_moon(session, def_planet, debris["metal"], debris["crystal"])
 
     # Beute (nur bei Sieg des Angreifers).
     loot = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}
@@ -633,6 +643,9 @@ async def _apply_commander(
 
     # -- Trait-Effekte (Doku 05 §3): xp_mult, greedy/honorable Moral-Reaktionen --
     xp_mult = 1.0
+    # Taktische Akademie (Forschung): +XP-Gewinn je Stufe.
+    _aca_per = float(bal.data["research"].get("effects", {}).get("academy_xp_per_level", 0))
+    xp_mult *= 1.0 + _aca_per * int(research.get("tactical_academy", 0))
     for tr in ctraits:
         tc = traits_cfg.get(tr, {})
         xp_mult *= float(tc.get("xp_mult", 1.0))

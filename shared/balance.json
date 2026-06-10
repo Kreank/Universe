@@ -9,8 +9,8 @@
     "speed": 7,
     "_speed_note": "Korridor 5-10 (GDD §12). 7 = modern/zugaenglich. Multipliziert Produktion UND Flottentempo.",
     "base_income": { "metal": 30, "crystal": 15, "deuterium": 0 },
-    "galaxies": 3,
-    "systems_per_galaxy": 100,
+    "galaxies": 8,
+    "systems_per_galaxy": 200,
     "positions_per_system": 15
   },
 
@@ -42,7 +42,21 @@
     "deuterium_tank":    { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 0 },   "factor": 2.0 },
     "command_academy":   { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 500 }, "factor": 2.0, "_note": "USP: bildet Commander aus" },
     "command_center":    { "cost": { "metal": 5000,"crystal": 3000,"deuterium": 1000 },"factor": 2.0, "_note": "USP: erhoeht Span-of-Control" },
-    "sensorphalanx":     { "cost": { "metal": 20000,"crystal": 40000,"deuterium": 20000 },"factor": 2.0, "_note": "Scannt fremde Flottenbewegungen zu/von Zielen in Reichweite (Level^2-1 Systeme). Voraussetzung fuers Flotten-Abfangen." }
+    "sensorphalanx":     { "cost": { "metal": 20000,"crystal": 40000,"deuterium": 20000 },"factor": 2.0, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Mond-only. Scannt fremde Flottenbewegungen zu/von Zielen in Reichweite (Level^2-1 Systeme)." },
+    "moon_base":         { "cost": { "metal": 20000,"crystal": 40000,"deuterium": 0 },    "factor": 2.0, "moon_only": true, "moon_fields_per_level": 3, "_note": "Mondbasis: Fundament, jede Stufe +Felder auf dem Mond." },
+    "jump_gate":         { "cost": { "metal": 2000000,"crystal": 4000000,"deuterium": 2000000 }, "factor": 2.0, "moon_only": true, "requires": { "gravity_lab": 1 }, "_note": "Sprungtor: instanter Flottensprung zwischen zwei eigenen Monden." },
+    "orbital_battery":   { "cost": { "metal": 30000,"crystal": 15000,"deuterium": 5000 }, "factor": 1.7, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Orbitalbatterie: verteidigt beim Angriff den gebundenen Planeten mit (Mond feuert herab)." },
+    "shield_dome_moon":  { "cost": { "metal": 50000,"crystal": 50000,"deuterium": 0 },    "factor": 2.0, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Schildkuppel: legt im Planetenkampf einen Zusatzschild ueber die Verteidiger." },
+    "gravity_lab":       { "cost": { "metal": 100000,"crystal": 80000,"deuterium": 40000 },"factor": 2.2, "moon_only": true, "requires": { "moon_base": 2 }, "_note": "Gravitationslabor: Voraussetzung fuer das Sprungtor (hoehere Kriegsfuehrung)." }
+  },
+  "moon": {
+    "_note": "Monde entstehen aus Truemmerfeldern nach einem Kampf an einem Spieler-Planeten: chance = min(max_chance, debris_total/value_per_chance). Gebunden an den Planeten (gleiche Koordinate), keine Minen, wenige Felder (base_fields + moon_base*moon_fields_per_level). Tragen Kriegsfuehrungs-Gebaeude.",
+    "max_chance": 0.20,
+    "value_per_chance": 1000000,
+    "base_fields": 1,
+    "orbital_battery_units_per_level": 8,
+    "shield_dome_tech_per_level": 2,
+    "jump_gate_cooldown_seconds": 3600
   },
 
   "storage": {
@@ -63,6 +77,18 @@
     "_formula_cost": "base * 2^(lvl-1)",
     "divisor": 1000,
     "one_at_a_time": true,
+    "effects": {
+      "_note": "Pro-Stufe-Skalare der Nicht-Kampf-Techs (Kampf-Skalare stehen in combat.*). Werden in commander/economy/colonize/expedition gelesen.",
+      "crew_psychology_target_per_level": 2,
+      "crew_psychology_decay_reduction_per_level": 0.10,
+      "logistics_morale_regen_per_level": 0.08,
+      "leadership_unrest_reduction_per_level": 0.10,
+      "academy_xp_per_level": 0.10,
+      "mining_per_level": 0.02,
+      "storage_per_level": 0.05,
+      "astrophysics_colonies_per_level": 1,
+      "expedition_per_level": 0.10
+    },
     "techs": {
       "energy_tech":        { "cost": { "metal": 0,    "crystal": 800,  "deuterium": 400 }, "requires": { "research_lab": 1 } },
       "combustion_drive":   { "cost": { "metal": 400,  "crystal": 0,    "deuterium": 600 }, "requires": { "energy_tech": 1 } },
@@ -80,7 +106,16 @@
       "plasma_tech":        { "cost": { "metal": 2000,  "crystal": 4000,  "deuterium": 1000 },  "requires": { "research_lab": 4, "energy_tech": 8, "laser_tech": 10, "ion_tech": 5 }, "effect": "Plasmawerfer sowie Bomber und Zerstoerer." },
       "hyperspace_tech":    { "cost": { "metal": 0,     "crystal": 4000,  "deuterium": 2000 },  "requires": { "research_lab": 7, "energy_tech": 5, "shield_tech": 5 }, "effect": "Grundlage fuer Hyperraumantrieb und Grosskampfschiffe." },
       "hyperspace_drive":   { "cost": { "metal": 10000, "crystal": 20000, "deuterium": 6000 },  "requires": { "research_lab": 7, "hyperspace_tech": 3 }, "effect": "Antrieb schwerer Kriegsschiffe (Schlachtschiff, Zerstoerer)." },
-      "graviton_tech":      { "cost": { "metal": 0,     "crystal": 0,     "deuterium": 300000 },"requires": { "research_lab": 12, "hyperspace_tech": 6 }, "effect": "Benoetigt enorme Energie. Ermoeglicht den Bau des Todessterns." }
+      "graviton_tech":      { "cost": { "metal": 0,     "crystal": 0,     "deuterium": 300000 },"requires": { "research_lab": 12, "hyperspace_tech": 6 }, "effect": "Benoetigt enorme Energie. Ermoeglicht den Bau des Todessterns." },
+      "hyperspace_interdiction": { "cost": { "metal": 6000, "crystal": 9000, "deuterium": 3000 }, "requires": { "research_lab": 8, "hyperspace_tech": 4, "ion_tech": 4 }, "effect": "Hyperraum-Interdiktionsfeld: +1 Abfang-Reichweite je Stufe und hoehere Fang-Chance der Patrouillen." },
+      "ion_disruptors":     { "cost": { "metal": 3000, "crystal": 5000, "deuterium": 1500 }, "requires": { "research_lab": 6, "ion_tech": 6 }, "effect": "Verstaerkte Ionenwaffen: +10% Schild-Strip/Antriebsschaden je Stufe und staerkere Verteidigungs-Lahmlegung." },
+      "boarding_doctrine":  { "cost": { "metal": 4000, "crystal": 2000, "deuterium": 1000 }, "requires": { "research_lab": 5, "armor_tech": 5, "impulse_drive": 5 }, "effect": "Enter-Taktik: +1 gekapertes Schiff je Enterschiff und Stufe." },
+      "leadership_doctrine": { "cost": { "metal": 1500, "crystal": 2500, "deuterium": 1000 }, "requires": { "research_lab": 4, "command_doctrine": 2 }, "effect": "Fuehrungsdoktrin: senkt den Unmut-Aufbau der Kommandeure je Stufe (seltener Forderungen/Meuterei)." },
+      "tactical_academy":   { "cost": { "metal": 2000, "crystal": 2000, "deuterium": 1500 }, "requires": { "research_lab": 5, "command_doctrine": 3, "computer_tech": 2 }, "effect": "Taktische Akademie: +10% XP-Gewinn der Kommandeure je Stufe." },
+      "mining_efficiency":  { "cost": { "metal": 800, "crystal": 1200, "deuterium": 0 }, "requires": { "research_lab": 2, "energy_tech": 2 }, "effect": "Bergbau-Effizienz: +2% Metall-/Kristall-/Deuterium-Foerderung je Stufe." },
+      "storage_tech":       { "cost": { "metal": 1000, "crystal": 500, "deuterium": 0 }, "requires": { "research_lab": 1 }, "effect": "Speichertechnik: +5% Lagerkapazitaet je Stufe." },
+      "astrophysics":       { "cost": { "metal": 4000, "crystal": 8000, "deuterium": 4000 }, "requires": { "research_lab": 6, "impulse_drive": 3, "spy_tech": 2 }, "effect": "Astrophysik: erlaubt +1 Kolonie je Stufe (Expansion)." },
+      "expedition_tech":    { "cost": { "metal": 5000, "crystal": 5000, "deuterium": 5000 }, "requires": { "research_lab": 7, "hyperspace_drive": 4, "computer_tech": 6 }, "effect": "Expeditionstechnik: +10% Expeditions-Ertrag je Stufe." }
     }
   },
 
@@ -127,7 +162,8 @@
     "small_shield_dome":      { "cost": { "metal": 10000, "crystal": 10000, "deuterium": 0 },     "attack": 1,     "shield": 2000,  "rapidfire_against": {}, "requires": { "shield_tech": 2 } },
     "large_shield_dome":      { "cost": { "metal": 50000, "crystal": 50000, "deuterium": 0 },     "attack": 1,     "shield": 10000, "rapidfire_against": {}, "requires": { "shield_tech": 6 } },
     "anti_ballistic_missile": { "cost": { "metal": 8000,  "crystal": 0,     "deuterium": 2000 },  "attack": 1,     "shield": 1,     "rapidfire_against": {}, "requires": { "shipyard": 1 } },
-    "interplanetary_missile": { "cost": { "metal": 12500, "crystal": 2500,  "deuterium": 10000 }, "attack": 12000, "shield": 1,     "rapidfire_against": {}, "requires": { "impulse_drive": 1, "shipyard": 4 } }
+    "interplanetary_missile": { "cost": { "metal": 12500, "crystal": 2500,  "deuterium": 10000 }, "attack": 12000, "shield": 1,     "rapidfire_against": {}, "requires": { "impulse_drive": 1, "shipyard": 4 } },
+    "orbital_gun":            { "cost": { "metal": 30000, "crystal": 15000, "deuterium": 5000 },  "attack": 1500,  "shield": 250,   "rapidfire_against": {}, "virtual": true, "_note": "Virtuell: kommt von der Mond-Orbitalbatterie, nicht direkt baubar. Verteidigt den Planeten mit." }
   },
 
   "combat_roster": {
@@ -187,9 +223,10 @@
     "plunder_ratio": 0.50,
     "defense_regen_ratio": 0.70,
     "defense_disable": {
-      "_note": "Ionen legen Verteidigung lahm (Doku 03b §3, C): Verteidigungsanlagen erhalten eine System-Integritaet (statt unverwundbar). Ionen-Treffer (drive-Schaden der damage_matrix) setzen sie herab; bei <= 0 ist das Geschuetz fuer den Rest der Schlacht LAHMGELEGT und feuert nicht mehr. Toetet das Geschuetz nicht (Huelle bleibt) -> Ionen sind der Tueroeffner, zerstoeren tut weiter Kinetik/Plasma. Schild-Tender (shield_projector) der Verteidigung repariert die Integritaet wieder.",
+      "_note": "Ionen legen Verteidigung lahm (Doku 03b §3, C): Verteidigungsanlagen erhalten eine System-Integritaet (statt unverwundbar). Ionen-Treffer (drive-Schaden der damage_matrix) setzen sie herab; bei <= 0 ist das Geschuetz fuer den Rest der Schlacht LAHMGELEGT und feuert nicht mehr. Toetet das Geschuetz nicht (Huelle bleibt) -> Ionen sind der Tueroeffner. ion_disruptor_per_level: Forschung 'ion_disruptors' der Angreifer-Seite erhoeht Ionen-Schild-/Antriebswirkung je Stufe.",
       "enabled": true,
-      "integrity": 140
+      "integrity": 140,
+      "ion_disruptor_per_level": 0.10
     },
     "damage_matrix": {
       "_note": "Rollen-Kampf (Doku 03b §3): weapon_type -> Effektivitaet gegen {shield, drive, hull}. Schild regeneriert pro Runde, Antrieb NICHT (mission kill). Kinetik ist absichtlich schwach gegen Schilde (Design: 'prallt ab'); 0.25 statt 0.0, damit der aktuelle Duenn-Schild-Roster keine Patt-Kaempfe erzeugt — tunebar Richtung 0, sobald Ionen-/Schild-Strip-Schiffe (Phase 4) existieren.",
@@ -222,8 +259,9 @@
       "interdiction_cap": 1.0
     },
     "boarding": {
-      "_note": "Doku 03b §4/§7: Enterschiffe (combat_roster.boarder=true) kapern am Ende des Kampfes GESTRANDETE Gegner (Antrieb 0). capture_per_boarder = gekaperte Schiffe je ueberlebendem Enterschiff. Kaperung = nur SCHIFFE (Commander nie). Greift unabhaengig vom Sieger (disable+board).",
-      "capture_per_boarder": 2
+      "_note": "Doku 03b §4/§7: Enterschiffe (combat_roster.boarder=true) kapern am Ende des Kampfes GESTRANDETE Gegner (Antrieb 0). capture_per_boarder = gekaperte Schiffe je ueberlebendem Enterschiff. capture_per_doctrine_level erhoeht das je Stufe der Forschung 'boarding_doctrine' der Enter-Seite. Kaperung = nur SCHIFFE (Commander nie).",
+      "capture_per_boarder": 2,
+      "capture_per_doctrine_level": 1
     },
     "escort": {
       "_note": "Eskorten-Konter (Doku 03b §4). Punktverteidigung (combat_roster.point_defense=true) neutralisiert pro ueberlebendem Schiff X gegnerische Enter-Kapazitaet (schuetzt vor Kaperung). Schild-Tender (combat_roster.shield_projector=true) repariert pro Runde Antriebs-Integritaet der eigenen Schiffe (haelt Subsysteme online) -> kontert das Ionen-/Strand-Fenster.",
@@ -254,7 +292,9 @@
       "base_chance": 0.40,
       "chance_per_interceptor": 0.06,
       "chance_cap": 0.95,
-      "max_radius": 30
+      "max_radius": 5,
+      "radius_per_interdiction_level": 1,
+      "chance_per_interdiction_level": 0.08
     }
   },
 

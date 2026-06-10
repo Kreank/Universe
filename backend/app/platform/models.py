@@ -105,6 +105,9 @@ class Planet(Base):
     is_homeworld: Mapped[bool] = mapped_column(Boolean, default=False)
     # Gouverneur (Kommandeur) dieses Planeten -> Produktions-Bonus (economy_bonus).
     governor_commander_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="SET NULL"), nullable=True)
+    # Mond: planet_type='moon' + parent_planet_id (gebunden an den Planeten, gleiche Koordinate).
+    parent_planet_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("planets.id", ondelete="CASCADE"), nullable=True)
+    last_jump_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

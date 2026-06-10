@@ -75,22 +75,42 @@ def build_seconds(cost: dict[str, float], robot_factory_lvl: int, nanite_lvl: in
     return max(bal.data["build_time"]["min_seconds"], seconds)
 
 
+def effective_fields_max(planet: Planet, levels: dict[str, int]) -> int:
+    """Bauplaetze: Planet = gespeichert; Mond = base_fields + moon_base-Level * pro Stufe."""
+    if planet.planet_type != "moon":
+        return planet.fields_max
+    bal = get_balance()
+    base = int(bal.data["moon"]["base_fields"])
+    per = int(bal.buildings["moon_base"].get("moon_fields_per_level", 3))
+    return base + levels.get("moon_base", 0) * per
+
+
 async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
-    """Berechnet fuer jeden Gebaeudetyp die naechste Ausbau-Option."""
+    """Berechnet fuer jeden (am Koerpertyp erlaubten) Gebaeudetyp die naechste Ausbau-Option."""
     bal = get_balance()
     levels = await get_building_levels(session, planet.id)
     robot = levels.get("robot_factory", 0)
     research = await get_research_levels(session, planet.player_id)
     energy_tech = research.get("energy_tech", 0)
     resources = await refresh_resources(session, planet)
+    is_moon = planet.planet_type == "moon"
     options: list[dict] = []
-    for btype in bal.buildings.keys():
+    for btype, bcfg in bal.buildings.items():
+        # Mond-Gebaeude nur auf Monden, Nicht-Mond-Gebaeude nur auf Planeten.
+        if bool(bcfg.get("moon_only", False)) != is_moon:
+            continue
+        # Gravitationslabor: Mondbasis Voraussetzung (sonst sinnlos)
         level = levels.get(btype, 0)
         cost = cost_for_level(btype, level)
         secs = build_seconds(cost, robot)
         can_afford = all(
             resources[r]["amount"] + 1e-6 >= cost[r] for r in ("metal", "crystal", "deuterium")
         )
+        req = bcfg.get("requires", {})
+        req_list = [
+            {"type": rt, "level": rl, "met": levels.get(rt, 0) >= rl} for rt, rl in req.items()
+        ]
+        req_met = all(item["met"] for item in req_list)
         energy_now = energy_for_level(btype, level, energy_tech)
         energy_next = energy_for_level(btype, level + 1, energy_tech)
         options.append({
@@ -99,8 +119,8 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
             "cost": cost,
             "build_seconds": secs,
             "can_afford": can_afford,
-            "requirements_met": True,  # Gebaeude haben im Slice keine Vorbedingungen
-            "requirements": [],  # Gebaeude haben im Slice keine Vorbedingungen
+            "requirements_met": req_met,
+            "requirements": req_list,
             "energy_now": energy_now,
             "energy_next": energy_next,
             "energy_delta": round(energy_next - energy_now, 1),
@@ -124,10 +144,18 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
     bal = get_balance()
     if building_type not in bal.buildings:
         raise ValueError("Unbekannter Gebaeudetyp")
+    # Mond-Gebaeude nur auf Monden, Nicht-Mond-Gebaeude nur auf Planeten.
+    is_moon = planet.planet_type == "moon"
+    if bool(bal.buildings[building_type].get("moon_only", False)) != is_moon:
+        raise ValueError("Dieses Gebaeude ist hier nicht baubar")
     if await is_building_in_progress(session, planet.id):
         raise RuntimeError("Es laeuft bereits ein Gebaeudeausbau auf diesem Planeten")
     # Feld-Budget erzwingen: jede Gebaeudestufe kostet ein Feld (Modell A, Doku 06a).
-    if planet.fields_used >= planet.fields_max:
+    levels0 = await get_building_levels(session, planet.id)
+    req = bal.buildings[building_type].get("requires", {})
+    if not all(levels0.get(rt, 0) >= rl for rt, rl in req.items()):
+        raise RuntimeError("Voraussetzung nicht erfuellt")
+    if planet.fields_used >= effective_fields_max(planet, levels0):
         raise RuntimeError("Kein Bauplatz frei")
 
     # Gebaeude-Zeile holen oder anlegen.
@@ -204,6 +232,12 @@ async def complete_building(planet_id: str, building_type: str) -> None:
         row.level += 1
         row.upgrade_finishes_at = None
         planet.fields_used += 1
+        # Mondbasis hebt die Bauplatz-Decke des Mondes.
+        if planet.planet_type == "moon" and building_type == "moon_base":
+            bal = get_balance()
+            planet.fields_max = int(bal.data["moon"]["base_fields"]) + row.level * int(
+                bal.buildings["moon_base"].get("moon_fields_per_level", 3)
+            )
         # Neue Rate wirksam machen.
         await refresh_resources(session, planet)
         new_level = row.level

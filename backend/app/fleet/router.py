@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.fleet.schemas import FleetOut, IncomingAttackOut, SendFleetRequest
-from app.fleet.service import fleet_to_dict, list_incoming_attacks, recall_fleet, send_fleet
+from app.fleet.service import fleet_to_dict, jump_fleet, list_incoming_attacks, recall_fleet, send_fleet
 from app.platform.db import get_session
 from app.platform.models import Fleet, Player
 from app.platform.security import get_current_player
@@ -79,6 +79,31 @@ async def send(
     return await fleet_to_dict(session, fleet)
 
 
+class JumpRequest(BaseModel):
+    from_moon_id: str
+    to_moon_id: str
+    ships: dict[str, int]
+
+
+@router.post("/fleets/jump")
+async def fleet_jump(
+    body: JumpRequest,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Sprungtor: Schiffe sofort zwischen zwei eigenen Monden versetzen."""
+    try:
+        result = await jump_fleet(
+            session, player, uuid.UUID(body.from_moon_id), uuid.UUID(body.to_moon_id), body.ships
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return result
+
+
 @router.post("/fleets/{fleet_id}/recall", response_model=FleetOut)
 async def recall(
     fleet_id: uuid.UUID,
@@ -98,6 +123,16 @@ class EscortOfferRequest(BaseModel):
     enabled: bool
     radius: int = 5
     fee_pct: float = 0.05
+
+
+class InterceptModeRequest(BaseModel):
+    enabled: bool
+    radius: int = 1
+
+
+class HomePatrolRequest(BaseModel):
+    ships: dict[str, int]
+    radius: int = 1
 
 
 @router.get("/stationed")
@@ -150,6 +185,60 @@ async def set_escort_endpoint(
     if st is None or st.owner_id != player.id:
         raise HTTPException(status_code=404, detail="Patrouille nicht gefunden")
     set_escort_offer(st, body.enabled, body.radius, body.fee_pct)
+    await session.commit()
+    return station_out(st)
+
+
+@router.put("/stationed/{station_id}/intercept")
+async def set_intercept_endpoint(
+    station_id: uuid.UUID,
+    body: InterceptModeRequest,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Setzt den Abfang-Modus einer eigenen Patrouille. Beim Aktivieren werden bereits
+    fliegende Feindflotten erfasst, deren Route diese Patrouille kreuzt."""
+    from app.economy.service import get_research_levels
+    from app.fleet.interception import scan_inflight_for_station
+    from app.fleet.stationing import intercept_radius_cap, set_intercept_mode, station_out
+    from app.platform.models import StationedFleet
+
+    st = await session.get(StationedFleet, station_id)
+    if st is None or st.owner_id != player.id:
+        raise HTTPException(status_code=404, detail="Patrouille nicht gefunden")
+    cap = intercept_radius_cap(await get_research_levels(session, player.id))
+    set_intercept_mode(st, body.enabled, body.radius, max_radius=cap)
+    await session.flush()
+    if st.intercept_enabled:
+        try:
+            await scan_inflight_for_station(session, st)
+        except Exception:  # noqa: BLE001
+            pass
+    await session.commit()
+    return station_out(st)
+
+
+@router.post("/planets/{planet_id}/patrol")
+async def patrol_home_endpoint(
+    planet_id: uuid.UUID,
+    body: HomePatrolRequest,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Stellt Garnisons-Schiffe sofort als Abfang-Patrouille im eigenen System auf."""
+    from app.economy.service import get_research_levels
+    from app.fleet.interception import scan_inflight_for_station
+    from app.fleet.stationing import create_home_patrol, intercept_radius_cap, station_out
+
+    cap = intercept_radius_cap(await get_research_levels(session, player.id))
+    try:
+        st = await create_home_patrol(session, player, planet_id, body.ships, body.radius, max_radius=cap)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    try:
+        await scan_inflight_for_station(session, st)
+    except Exception:  # noqa: BLE001
+        pass
     await session.commit()
     return station_out(st)
 

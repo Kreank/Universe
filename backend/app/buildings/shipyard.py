@@ -82,6 +82,9 @@ async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
             # ``_``-praefixierte Keys sind Meta-/Kommentar-Eintraege (z. B. "_note").
             if typ.startswith("_") or not isinstance(cfg, dict):
                 continue
+            # Virtuelle Einheiten (z. B. Mond-Orbitalbatterie) sind nicht direkt baubar.
+            if cfg.get("virtual"):
+                continue
             cost = cfg["cost"]
             req = cfg.get("requires", {})
             req_met = _requirements_met(req, rlevels, blevels)
@@ -134,7 +137,7 @@ async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: in
     if count <= 0:
         raise ValueError("count muss > 0 sein")
     catalog = _catalog(category)
-    if typ not in catalog:
+    if typ not in catalog or catalog[typ].get("virtual"):
         raise ValueError("Unbekannter Typ")
 
     blevels = await get_building_levels(session, planet.id)
