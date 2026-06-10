@@ -13,6 +13,7 @@ import {
 import { NotificationService } from '../../core/services/notification.service';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
+import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 import { galaxyStyles } from './galaxy.styles';
 
 /** Offenes Versand-Overlay (Schnellangriff / Schnelltransport / …). */
@@ -34,7 +35,7 @@ interface DispatchCtx {
 @Component({
   selector: 'app-galaxy',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, DatePipe, FleetDispatchComponent],
+  imports: [FormsModule, DatePipe, FleetDispatchComponent, MessageComposeComponent],
   template: `
     <h1>Galaxie · Karte</h1>
     <p class="sub">Erkunde Systeme, finde Ziele und entsende deine Flotten — Schnellaktionen direkt am Ziel.</p>
@@ -78,15 +79,21 @@ interface DispatchCtx {
                 <div class="info">
                   <span class="kind">{{ occupantLabel(c) }}</span>
                   @if (c.name) { <span class="name">{{ c.name }}</span> }
+                  @if (c.trade; as tr) {
+                    <span class="chip trade tip" [attr.data-tip]="tradeTip(tr, c.player_name)">💱 {{ tr.offer }}→{{ tr.want }}{{ tr.rate ? ' @' + tr.rate : '' }}</span>
+                  }
                 </div>
                 @if (isHostile(c)) {
                   <div class="acts">
                     @if (c.discovered) {
                       <span class="chip disc tip" data-tip="Automatisch aufgeklärt: spawnte nahe deinem Planeten (≤ 8 Systeme). Sende eine Sonde für tiefere/aktuellere Daten.">🛰 aufgeklärt</span>
                     }
+                    @if (c.occupant_type === 'player' && c.player_id) {
+                      <button class="ic msg" type="button" (click)="messagePlayer(c)" title="Nachricht an Spieler">✉</button>
+                    }
                     <button class="ic spy" type="button" (click)="quickSpy(cellCoord(c), c.name)" [title]="spyTitle()">🛰</button>
                     <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), c.name, 'attack')" title="Angreifen">⚔</button>
-                    <button class="ic trp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'transport')" title="Transport">🚚</button>
+                    <button class="ic trp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'transport')" [title]="c.trade ? 'Transport (P2P-Handel: Ware schicken)' : 'Transport'">🚚</button>
                   </div>
                 } @else if (isOwn(c)) {
                   <span class="chip own">dein Planet</span>
@@ -161,6 +168,14 @@ interface DispatchCtx {
         (close)="dispatch.set(null)"
       />
     }
+    @if (composePlayer(); as c) {
+      <app-message-compose
+        [toPlayerId]="c.id"
+        [toName]="c.name"
+        [initialSubject]="c.subject"
+        (close)="composePlayer.set(null)"
+      />
+    }
   `,
   styles: [galaxyStyles],
 })
@@ -178,7 +193,26 @@ export class GalaxyComponent {
   protected readonly targets = signal<GalaxyTarget[]>([]);
   protected readonly loading = signal(false);
   protected readonly dispatch = signal<DispatchCtx | null>(null);
+  protected readonly composePlayer = signal<{ id: string; name: string; subject: string } | null>(null);
   private initialized = false;
+
+  /** Tooltip fuer die P2P-Handelsanzeige eines Spielers. */
+  tradeTip(tr: { offer: string | null; want: string | null; rate: number | null; note: string | null }, name?: string | null): string {
+    const head = name ? `${name} handelt: ` : 'Handelt: ';
+    const deal = tr.offer && tr.want ? `${tr.offer} → ${tr.want}${tr.rate ? ' @ ' + tr.rate : ''}` : 'offen für Angebote';
+    const note = tr.note ? ` · „${tr.note}"` : '';
+    return `${head}${deal}${note} — Kurs aushandeln per Nachricht, liefern per Transport.`;
+  }
+
+  messagePlayer(c: GalaxyCell): void {
+    if (!c.player_id) {
+      return;
+    }
+    const subj = c.trade?.offer && c.trade?.want
+      ? `Handel: dein ${c.trade.offer} gegen mein ${c.trade.want}`
+      : 'Handelsanfrage';
+    this.composePlayer.set({ id: c.player_id, name: c.player_name ?? c.name ?? 'Spieler', subject: subj });
+  }
 
   protected readonly scannedCount = computed(
     () => this.cells().filter((c) => c.occupant_type !== 'empty').length,

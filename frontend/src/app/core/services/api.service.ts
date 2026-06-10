@@ -22,8 +22,11 @@ import {
   ShipyardBuildRequest,
   ShipyardBuildResponse,
   ShipyardResponse,
+  SendMessageRequest,
   SpanInfo,
   TradeIndex,
+  TradePartner,
+  TradeProfile,
   Transmission,
   UpgradeResponse,
   DemolishResponse,
@@ -113,6 +116,22 @@ export class ApiService {
   /** Oeffentlicher, immer sichtbarer globaler Handelskurs (Handelszentren). */
   getTradeIndex(): Observable<TradeIndex> {
     return this.http.get<TradeIndex>('/api/trade/index');
+  }
+
+  getTradeProfile(): Observable<TradeProfile> {
+    return this.http.get<TradeProfile>('/api/trade/profile');
+  }
+
+  putTradeProfile(body: TradeProfile): Observable<TradeProfile> {
+    return this.http.put<TradeProfile>('/api/trade/profile', body);
+  }
+
+  getTradePartners(): Observable<TradePartner[]> {
+    return this.http.get<TradePartner[]>('/api/trade/partners');
+  }
+
+  sendMessage(body: SendMessageRequest): Observable<Transmission> {
+    return this.http.post<Transmission>('/api/messages', body);
   }
 
   // --- Commander ---

@@ -7,6 +7,7 @@ import { Commander, DecisionChoice, Transmission } from '../../core/models/api.m
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { transmissionStyles } from './transmission.styles';
 import { CombatReportComponent } from './combat-report.component';
+import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 
 /** Eine Einheit-Zeile im Spionagebericht (Glyph + deutscher Name + Anzahl). */
 interface IntelUnit {
@@ -38,7 +39,7 @@ interface SpyIntelView {
 @Component({
   selector: 'app-transmissions',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, CombatReportComponent],
+  imports: [DatePipe, CombatReportComponent, MessageComposeComponent],
   template: `
     <div class="head">
       <div>
@@ -68,7 +69,8 @@ interface SpyIntelView {
                   <span class="type-chip" [class]="'tc-' + t.type">{{ typeLabel(t) }}</span>
                 </div>
                 <span class="faint small">
-                  {{ commanderName(t.commander_id) }} · {{ t.created_at | date: 'short' }}
+                  @if (t.from_name) { ✉ Von {{ t.from_name }} } @else { {{ commanderName(t.commander_id) }} }
+                  · {{ t.created_at | date: 'short' }}
                 </span>
               </div>
               @if (!t.read) {
@@ -164,6 +166,9 @@ interface SpyIntelView {
                 @if (reportId(t); as rid) {
                   <button class="btn btn-sm btn-primary" (click)="openReport(t, rid)">⚔️ Bericht öffnen</button>
                 }
+                @if (t.from_player_id) {
+                  <button class="btn btn-sm btn-primary" (click)="reply(t)">✉ Antworten</button>
+                }
                 @if (!t.read) {
                   <button class="btn btn-sm btn-ghost" (click)="markRead(t)">Als gelesen markieren</button>
                 }
@@ -182,6 +187,14 @@ interface SpyIntelView {
     @if (openReportId(); as rid) {
       <app-combat-report [reportId]="rid" (close)="openReportId.set(null)" />
     }
+    @if (composeReply(); as c) {
+      <app-message-compose
+        [toPlayerId]="c.id"
+        [toName]="c.name"
+        [initialSubject]="c.subject"
+        (close)="composeReply.set(null)"
+      />
+    }
   `,
   styles: [transmissionStyles],
 })
@@ -193,6 +206,15 @@ export class TransmissionsComponent {
   protected readonly onlyUnread = signal(false);
   protected readonly deciding = signal<string | null>(null);
   protected readonly openReportId = signal<string | null>(null);
+  protected readonly composeReply = signal<{ id: string; name: string; subject: string } | null>(null);
+
+  reply(t: Transmission): void {
+    if (!t.from_player_id) {
+      return;
+    }
+    const subj = t.subject?.startsWith('Re:') ? t.subject : `Re: ${t.subject ?? ''}`;
+    this.composeReply.set({ id: t.from_player_id, name: t.from_name ?? 'Spieler', subject: subj });
+  }
 
   private readonly commanderMap = computed(
     () => new Map<string, Commander>(this.state.commanders().map((c) => [c.id, c])),

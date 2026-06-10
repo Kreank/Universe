@@ -60,6 +60,11 @@ export const routes: Routes = [
           import('./features/galaxy/galaxy.component').then((m) => m.GalaxyComponent),
       },
       {
+        path: 'trade',
+        loadComponent: () =>
+          import('./features/trade/trade.component').then((m) => m.TradeComponent),
+      },
+      {
         path: 'commanders',
         loadComponent: () =>
           import('./features/commanders/commanders.component').then((m) => m.CommandersComponent),

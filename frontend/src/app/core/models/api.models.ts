@@ -262,9 +262,12 @@ export interface GalaxyCell {
   occupant_type: string;
   name: string | null;
   player_id: string | null;
+  player_name?: string | null;
   npc_id: string | null;
   /** Hat dieser Spieler dieses Ziel schon per Sonde aufgeklaert? */
   discovered?: boolean;
+  /** P2P-Handelsanzeige des Spielers (falls aktiviert). */
+  trade?: { offer: string | null; want: string | null; rate: number | null; note: string | null } | null;
 }
 
 export interface GalaxyResponse {
@@ -382,6 +385,35 @@ export interface Transmission {
   decision_payload: unknown;
   read: boolean;
   created_at: string;
+  from_player_id?: string | null;
+  from_name?: string | null;
+}
+
+/** Eigenes P2P-Handelsprofil (unverbindlicher Werbe-Kurs). */
+export interface TradeProfile {
+  enabled: boolean;
+  offer: 'metal' | 'crystal' | 'deuterium' | null;
+  want: 'metal' | 'crystal' | 'deuterium' | null;
+  rate: number | null;
+  note: string | null;
+}
+
+/** Ein aktiver P2P-Handelspartner im Verzeichnis. */
+export interface TradePartner {
+  player_id: string;
+  name: string;
+  offer: string | null;
+  want: string | null;
+  rate: number | null;
+  note: string | null;
+  coords: string | null;
+}
+
+export interface SendMessageRequest {
+  to_player_id: string;
+  subject: string;
+  body: string;
+  reply_to?: string | null;
 }
 
 export type DecisionChoice = 'accept' | 'reject' | 'negotiate';
