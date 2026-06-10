@@ -66,6 +66,10 @@ import { dashboardStyles } from './dashboard.styles';
         {{ p.name }} · {{ planetType(p.planet_type).glyph }} {{ planetType(p.planet_type).label }} ·
         Koordinaten [{{ p.galaxy }}:{{ p.system }}:{{ p.position }}] ·
         {{ p.temp_max }}°C · Felder {{ p.fields_used }}/{{ p.fields_max }}
+        @if (moon(); as m) {
+          · <button class="moon-chip" type="button" (click)="selectMoon(m.id)"
+              title="Zum Mond wechseln">🌑 Mond</button>
+        }
       </p>
 
       <div class="cols">
@@ -247,6 +251,27 @@ export class DashboardComponent {
   private readonly balance = inject(BalanceService);
 
   protected readonly planet = this.state.activePlanet;
+
+  /** Mond des aktiven Planeten (teilt die Koordinate; planet_type 'moon'). */
+  protected readonly moon = computed(() => {
+    const p = this.planet();
+    if (!p || p.planet_type === 'moon') return null;
+    return (
+      this.state
+        .planets()
+        .find(
+          (x) =>
+            x.planet_type === 'moon' &&
+            x.galaxy === p.galaxy &&
+            x.system === p.system &&
+            x.position === p.position,
+        ) ?? null
+    );
+  });
+
+  selectMoon(id: string): void {
+    void this.state.selectPlanet(id);
+  }
 
   // --- Aktive Vorgaenge (per Effekt beim Planetenwechsel geladen) ---
   protected readonly activeBuild = signal<BuildingState | null>(null);

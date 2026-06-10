@@ -1,5 +1,12 @@
 export const dashboardStyles = `
   .sub { margin-top: -0.3rem; font-size: 0.85rem; }
+  .moon-chip {
+    font: inherit; cursor: pointer;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid var(--accent-dim); border-radius: 99px;
+    padding: 0.02rem 0.5rem; margin-left: 0.15rem;
+  }
+  .moon-chip:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 
   /* Imperiums-Punkte-Hero — prominent, gut erkennbar, klickbar. */
   .score-hero {
