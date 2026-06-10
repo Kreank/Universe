@@ -255,6 +255,8 @@ export interface FleetSendRequest {
   offer_res?: 'metal' | 'crystal' | 'deuterium';
   offer_amount?: number;
   want_res?: 'metal' | 'crystal' | 'deuterium';
+  /** Gewaehlte Eskort-Patrouillen (StationedFleet-IDs), die die Route decken. */
+  escort_ids?: string[];
 }
 
 export interface GalaxyCell {
@@ -433,6 +435,33 @@ export interface PhalanxMovement {
 export interface PhalanxScanResult {
   coords: string;
   movements: PhalanxMovement[];
+}
+
+/** Eine eigene stationierte Patrouille (deploy) inkl. Eskort-Angebot. */
+export interface StationedFleet {
+  id: string;
+  coords: string;
+  galaxy: number;
+  system: number;
+  position: number;
+  ships: Record<string, number>;
+  ships_total: number;
+  escort_enabled: boolean;
+  escort_radius: number;
+  escort_fee_pct: number;
+}
+
+/** Ein aktives Eskort-Angebot im Verzeichnis. */
+export interface EscortOffer {
+  id: string;
+  owner: string;
+  coords: string;
+  galaxy: number;
+  system: number;
+  radius: number;
+  fee_pct: number;
+  power: number;
+  ships_total: number;
 }
 
 export type DecisionChoice = 'accept' | 'reject' | 'negotiate';

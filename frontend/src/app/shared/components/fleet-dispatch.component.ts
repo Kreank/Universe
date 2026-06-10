@@ -13,7 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { Coordinate, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit, TradeIndex } from '../../core/models/api.models';
+import { Coordinate, EscortOffer, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit, TradeIndex } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
 import { IconTileComponent } from './icon-tile.component';
 
@@ -130,6 +130,17 @@ import { IconTileComponent } from './icon-tile.component';
             @if (offerRes() === wantRes()) {
               <p class="hint small">Biete- und Wunsch-Ressource müssen verschieden sein.</p>
             }
+            @if (coveringEscorts().length) {
+              <div class="escorts">
+                <div class="cargo-title">🛡 Eskorte auf der Route</div>
+                @for (e of coveringEscorts(); track e.id) {
+                  <label class="escort-row small">
+                    <input type="checkbox" [checked]="chosenEscorts().has(e.id)" (change)="toggleEscort(e.id)" />
+                    {{ e.owner }} [{{ e.coords }}] · Kraft ~{{ e.power }} · {{ (e.fee_pct * 100).toFixed(1) }}% Gebühr
+                  </label>
+                }
+              </div>
+            }
             <p class="muted small">🛡 Frachter ohne bewaffnete Eskorte werden auf der Route überfallen.</p>
           </div>
         }
@@ -229,6 +240,8 @@ import { IconTileComponent } from './icon-tile.component';
       .trade-grid .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: 0.25rem; }
       .trade-grid select, .trade-grid input { min-height: 30px; }
       .trade-preview { color: var(--accent); margin: 0.5rem 0 0; }
+      .escorts { margin-top: 0.6rem; }
+      .escort-row { display: flex; align-items: center; gap: 0.4rem; padding: 0.15rem 0; cursor: pointer; }
 
       .actions { margin-top: 1rem; }
       .actions .btn { width: 100%; }
@@ -273,6 +286,23 @@ export class FleetDispatchComponent {
   protected readonly merchantIntel = signal<GalaxyIntel | null>(null);
   /** Oeffentlicher globaler Handelskurs (Handelszentren) — immer verfuegbar. */
   protected readonly globalIndex = signal<TradeIndex | null>(null);
+  /** Eskort-Angebote, die die Route decken (nur Handel relevant). */
+  protected readonly escortOffers = signal<EscortOffer[]>([]);
+  protected readonly chosenEscorts = signal<Set<string>>(new Set());
+
+  /** Eskort-Angebote, deren Station die Route (Origin↔Ziel) im Radius schneidet. */
+  protected readonly coveringEscorts = computed<EscortOffer[]>(() => {
+    const t = this.target();
+    const p = this.state.activePlanet();
+    if (!p) {
+      return [];
+    }
+    const lo = Math.min(p.system, t.system);
+    const hi = Math.max(p.system, t.system);
+    return this.escortOffers().filter(
+      (o) => o.galaxy === t.galaxy && p.galaxy === t.galaxy && o.system >= lo - o.radius && o.system <= hi + o.radius,
+    );
+  });
 
   protected readonly showTrade = computed(() => this.mission() === 'trade');
 
@@ -312,9 +342,19 @@ export class FleetDispatchComponent {
     spy: { type: 'spy_probe', label: 'Spionagesonde' },
   };
 
+  toggleEscort(id: string): void {
+    this.chosenEscorts.update((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
   constructor() {
     // Globalen Handelskurs laden (immer verfuegbar — keine Aufklaerung noetig).
     this.api.getTradeIndex().subscribe((idx) => this.globalIndex.set(idx));
+    // Eskort-Angebote (fuer die Routen-Auswahl im Handel) laden.
+    this.api.getEscortOffers().subscribe((list) => this.escortOffers.set(list));
     // Kurs-Schnappschuss/Typ des Zielhaendlers laden (Handelszentrum vs. Legacy).
     effect(() => {
       const t = this.target();
@@ -401,6 +441,12 @@ export class FleetDispatchComponent {
       body.offer_res = this.offerRes();
       body.offer_amount = this.offerAmount();
       body.want_res = this.wantRes();
+      const escorts = [...this.chosenEscorts()].filter((id) =>
+        this.coveringEscorts().some((e) => e.id === id),
+      );
+      if (escorts.length) {
+        body.escort_ids = escorts;
+      }
     }
     this.sending.set(true);
     this.api

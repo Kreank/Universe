@@ -22,8 +22,10 @@ import {
   ShipyardBuildRequest,
   ShipyardBuildResponse,
   ShipyardResponse,
+  EscortOffer,
   PhalanxScanResult,
   SendMessageRequest,
+  StationedFleet,
   SpanInfo,
   TradeIndex,
   TradePartner,
@@ -138,6 +140,22 @@ export class ApiService {
   /** Sensorphalanx-Scan: Flottenbewegungen zu/von einer Koordinate (ETA fuers Timing). */
   phalanxScan(galaxy: number, system: number, position: number): Observable<PhalanxScanResult> {
     return this.http.post<PhalanxScanResult>('/api/phalanx/scan', { galaxy, system, position });
+  }
+
+  getStationed(): Observable<StationedFleet[]> {
+    return this.http.get<StationedFleet[]>('/api/stationed');
+  }
+
+  recallStation(id: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`/api/stationed/${id}/recall`, {});
+  }
+
+  setEscortOffer(id: string, body: { enabled: boolean; radius: number; fee_pct: number }): Observable<StationedFleet> {
+    return this.http.put<StationedFleet>(`/api/stationed/${id}/escort`, body);
+  }
+
+  getEscortOffers(): Observable<EscortOffer[]> {
+    return this.http.get<EscortOffer[]>('/api/escort/offers');
   }
 
   // --- Commander ---

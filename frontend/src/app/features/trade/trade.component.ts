@@ -9,7 +9,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { Coordinate, TradeIndex, TradePartner, TradeProfile } from '../../core/models/api.models';
+import { Coordinate, EscortOffer, StationedFleet, TradeIndex, TradePartner, TradeProfile } from '../../core/models/api.models';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
 
@@ -116,6 +116,54 @@ type Res = 'metal' | 'crystal' | 'deuterium';
           </div>
         }
       </div>
+
+      <!-- Meine Patrouillen (Stationierung + Eskort-Angebot) -->
+      <div class="card">
+        <div class="card-title">🛡 Meine Patrouillen ({{ stationed().length }})</div>
+        @if (stationed().length === 0) {
+          <p class="muted small">Keine stationierten Flotten. Schicke in der Galaxie eine Flotte mit Mission „Stationierung" (🚚 → Versand → Stationierung) in eine Region, die du schützen willst.</p>
+        }
+        @for (s of stationed(); track s.id) {
+          <div class="partner">
+            <div class="partner-main">
+              <span class="mono">[{{ s.coords }}]</span>
+              <span class="small muted">{{ s.ships_total }} 🚀</span>
+            </div>
+            <div class="escort-edit">
+              <label class="toggle small">
+                <input type="checkbox" [ngModel]="s.escort_enabled" (ngModelChange)="updateEscort(s, { escort_enabled: $event })" />
+                Eskorte anbieten
+              </label>
+              @if (s.escort_enabled) {
+                <span class="small">Radius
+                  <input class="mini" type="number" min="0" max="50" [ngModel]="s.escort_radius" (ngModelChange)="updateEscort(s, { escort_radius: +$event || 0 })" />
+                  Sys · Gebühr
+                  <input class="mini" type="number" min="0" max="10" step="0.5" [ngModel]="s.escort_fee_pct * 100" (ngModelChange)="updateEscort(s, { escort_fee_pct: (+$event || 0) / 100 })" />%
+                </span>
+              }
+              <button class="btn btn-ghost btn-sm" type="button" (click)="recall(s)">↩ Zurückrufen</button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Eskort-Angebote anderer Spieler -->
+      <div class="card">
+        <div class="card-title">🛰 Eskort-Angebote ({{ offers().length }})</div>
+        @if (offers().length === 0) {
+          <p class="muted small">Aktuell bietet niemand Geleitschutz an.</p>
+        }
+        @for (o of offers(); track o.id) {
+          <div class="partner">
+            <div class="partner-main">
+              <span class="pname">🛡 {{ o.owner }}</span>
+              <span class="mono small muted">[{{ o.coords }}] · Radius {{ o.radius }} Sys</span>
+            </div>
+            <div class="small muted">Kampfkraft ~{{ o.power }} · Gebühr {{ (o.fee_pct * 100).toFixed(1) }}% des Frachtwerts</div>
+          </div>
+        }
+        <p class="muted small">Beim Handels-Versand kannst du deckende Eskorten auf deiner Route auswählen — sie senken das Routenrisiko gegen Gebühr.</p>
+      </div>
     </section>
 
     @if (composeTo(); as c) {
@@ -163,6 +211,9 @@ type Res = 'metal' | 'crystal' | 'deuterium';
       .partner-note { margin-bottom: 0.3rem; }
       .partner-act { display: flex; flex-wrap: wrap; gap: 0.4rem; }
       .small { font-size: 0.8rem; }
+      .escort-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.35rem; }
+      .escort-edit .toggle { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+      .mini { width: 56px; min-height: 26px; padding: 0.15rem 0.3rem; }
     `,
   ],
 })
@@ -178,6 +229,8 @@ export class TradeComponent implements OnInit {
 
   protected readonly index = signal<TradeIndex | null>(null);
   protected readonly partners = signal<TradePartner[]>([]);
+  protected readonly stationed = signal<StationedFleet[]>([]);
+  protected readonly offers = signal<EscortOffer[]>([]);
 
   protected readonly enabled = signal(false);
   protected readonly offer = signal<Res>('crystal');
@@ -213,10 +266,42 @@ export class TradeComponent implements OnInit {
       this.note.set(pr.note ?? '');
     });
     this.reloadPartners();
+    this.reloadStationed();
+    this.api.getEscortOffers().subscribe((list) => this.offers.set(list));
   }
 
   private reloadPartners(): void {
     this.api.getTradePartners().subscribe((list) => this.partners.set(list));
+  }
+
+  private reloadStationed(): void {
+    this.api.getStationed().subscribe((list) => this.stationed.set(list));
+  }
+
+  updateEscort(s: StationedFleet, patch: Partial<StationedFleet>): void {
+    const merged = { ...s, ...patch };
+    this.api
+      .setEscortOffer(s.id, {
+        enabled: merged.escort_enabled,
+        radius: merged.escort_radius,
+        fee_pct: merged.escort_fee_pct,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.stationed.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+        },
+        error: (err) => this.notify.warning('Eskorte fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
+      });
+  }
+
+  recall(s: StationedFleet): void {
+    this.api.recallStation(s.id).subscribe({
+      next: () => {
+        this.notify.success('Rückruf gestartet', `Patrouille von [${s.coords}] kehrt heim.`);
+        this.reloadStationed();
+      },
+      error: (err) => this.notify.warning('Rückruf fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
+    });
   }
 
   protected canSave(): boolean {
