@@ -337,6 +337,27 @@ async def send_fleet(
 
     schedule_at(arrive, fleet_arrive, str(fleet.id), job_id=f"fleet-arrive:{fleet.id}")
     schedule_at(return_at, fleet_return, str(fleet.id), job_id=f"fleet-return:{fleet.id}")
+
+    # Verteidiger-Vorwarnung bei Spieler-Angriff (ermoeglicht Fleetsave).
+    if mission == "attack":
+        tcell = (await session.execute(
+            select(UniverseCell).where(
+                UniverseCell.galaxy == target[0],
+                UniverseCell.system == target[1],
+                UniverseCell.position == target[2],
+            )
+        )).scalar_one_or_none()
+        if tcell and tcell.occupant_type == "player" and tcell.ref_id:
+            tplanet = await session.get(Planet, tcell.ref_id)
+            if tplanet and tplanet.player_id != player.id:
+                await event_bus.publish_ws(tplanet.player_id, {
+                    "type": "attack_warning",
+                    "location": f"{target[0]}:{target[1]}:{target[2]}",
+                    "arrive_at": arrive.isoformat(),
+                    "ships_total": sum(ships.values()),
+                    "attacker_name": player.display_name,
+                })
+
     log.info("Flotte %s gesendet -> %s (mission=%s)", fleet.id, target, mission)
     return fleet
 
