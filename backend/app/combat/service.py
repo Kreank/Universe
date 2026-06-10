@@ -136,6 +136,28 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     if fleet.commander_id:
         commander = await session.get(Commander, fleet.commander_id)
 
+    # -- Meuterei: ein illoyaler Kommandeur kann den Angriff verweigern --
+    if commander is not None:
+        sat = bal.commander.get("satisfaction", {})
+        mt = float(sat.get("mutiny_threshold", 30))
+        if commander.loyalty < mt:
+            chance = (mt - commander.loyalty) / mt
+            for tr in (commander.traits or []):
+                chance *= float(sat.get("mutiny_trait_mult", {}).get(tr, 1.0))
+            if random.random() < max(0.0, min(1.0, chance)):
+                commander.morale = max(0, commander.morale - 10)
+                commander.loyalty = max(0, commander.loyalty - 5)
+                loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+                await create_system_transmission(
+                    session, player_id=fleet.player_id,
+                    subject=f"⚠ Meuterei — Angriff verweigert ({loc})",
+                    body=(f"Kommandeur {commander.name} verweigert aus Unmut den Befehl. Die Flotte dreht "
+                          f"vor {loc} ab und kehrt unverrichteter Dinge heim. Kümmere dich um seine Treue."),
+                    ttype="system",
+                )
+                log.info("Meuterei: commander=%s loyalty=%d verweigert Angriff", commander.id, commander.loyalty)
+                return {"mutiny": True, "location": loc}
+
     atk_research = await get_research_levels(session, fleet.player_id)
     atk_tech = {
         "weapons_tech": atk_research.get("weapons_tech", 0),
@@ -259,13 +281,30 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     result = simulate_battle(attacker, defender, seed, bal.data)
 
     # -- Ergebnisse anwenden -------------------------------------------------
-    atk_survivors = result["attacker_survivors"]
-    atk_losses = result["attacker_losses"]
+    atk_survivors = dict(result["attacker_survivors"])
+    atk_losses = dict(result["attacker_losses"])
     def_losses = result["defender_losses"]
     winner = result["winner"]
+
+    # -- Trait 'cautious': loss_reduction rettet einen Teil der eigenen Verluste --
+    if commander is not None:
+        traits_cfg = bal.commander["personality_traits"]
+        loss_red = 0.0
+        for tr in (commander.traits or []):
+            loss_red += float(traits_cfg.get(tr, {}).get("loss_reduction", 0.0))
+        if loss_red > 0:
+            for typ, lost in list(atk_losses.items()):
+                saved = int(round(lost * min(1.0, loss_red)))
+                if saved > 0:
+                    atk_survivors[typ] = atk_survivors.get(typ, 0) + saved
+                    atk_losses[typ] = lost - saved
+
     atk_initial = sum(result["attacker_initial"].values())
     atk_lost = sum(atk_losses.values())
     situation = _situation(winner, atk_initial, atk_lost)
+    # Bashing = Verteidiger deutlich schwaecher als der Angreifer (fuer 'honorable').
+    _def_total = sum(result["defender_initial"].values())
+    bashing = winner == "attacker" and _def_total < atk_initial * 0.25
 
     # Ueberlebende Angreifer-Schiffe in der Flotte aktualisieren.
     fleet_ship_rows = (await session.execute(
@@ -423,7 +462,9 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
             fleet.cargo = cargo
 
     # -- Commander-Folgen ----------------------------------------------------
-    commander_outcome = await _apply_commander(session, commander, situation, atk_survivors, loot, atk_research)
+    commander_outcome = await _apply_commander(
+        session, commander, situation, atk_survivors, loot, atk_research, bashing=bashing
+    )
 
     # -- Combat-Report persistieren -----------------------------------------
     location = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
@@ -549,26 +590,44 @@ async def _apply_commander(
     atk_survivors: dict[str, int],
     loot: dict[str, float],
     research: dict[str, int],
+    bashing: bool = False,
 ) -> dict:
-    """Moral-Delta, XP, Rangaufstieg und Permadeath/Evakuierung."""
+    """Moral-Delta, XP, Rangaufstieg und Permadeath/Evakuierung — inkl. Trait-Effekten."""
     if commander is None:
         return {"status": None}
 
     bal = get_balance()
     deltas = bal.commander["morale"]["deltas"]
     xp_cfg = bal.commander["xp"]
+    traits_cfg = bal.commander["personality_traits"]
+    ctraits = commander.traits or []
 
     morale_delta = 0
     xp_gain = 0
+    got_loot = any(v > 0 for v in loot.values())
     if situation in ("victory", "crushing_victory", "close_win"):
         morale_delta += deltas["victory"]
         if situation == "crushing_victory":
             morale_delta += deltas["crushing_victory"]
         xp_gain += xp_cfg["victory"] + xp_cfg["mission_success"]
-        if any(v > 0 for v in loot.values()):
+        if got_loot:
             morale_delta += deltas["loot_gained"]
     else:  # defeat
         morale_delta += deltas["defeat"]
+
+    # -- Trait-Effekte (Doku 05 §3): xp_mult, greedy/honorable Moral-Reaktionen --
+    xp_mult = 1.0
+    for tr in ctraits:
+        tc = traits_cfg.get(tr, {})
+        xp_mult *= float(tc.get("xp_mult", 1.0))
+        if got_loot and "morale_on_loot" in tc:
+            morale_delta += round(float(tc["morale_on_loot"]) * 100)
+        if situation in ("victory", "crushing_victory", "close_win"):
+            if bashing and "morale_on_bashing" in tc:
+                morale_delta += round(float(tc["morale_on_bashing"]) * 100)
+            elif (not bashing) and "morale_on_fair_target" in tc:
+                morale_delta += round(float(tc["morale_on_fair_target"]) * 100)
+    xp_gain = int(round(xp_gain * xp_mult))
 
     commander.morale = max(0, min(100, commander.morale + morale_delta))
     commander.xp += xp_gain
@@ -589,6 +648,10 @@ async def _apply_commander(
         chance = evac["base_chance"]
         chance += evac["rank_bonus"].get(commander.rank, 0.0)
         chance += evac["logistics_tech_bonus_per_level"] * research.get("logistics_tech", 0)
+        # aggressive/draufgaengerisch: hoeheres Eigenrisiko -> geringere Evakuierungschance.
+        for tr in ctraits:
+            chance -= float(traits_cfg.get(tr, {}).get("self_risk_mod", 0.0))
+        chance = max(0.0, chance)
         # Ohne Ueberlebende kein survivor-Bonus (Doku 04 §8.2).
         if random.random() < chance:
             status = "wounded"

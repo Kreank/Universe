@@ -396,7 +396,9 @@
       "loyalty_fulfil_gain": 12,
       "loyalty_ignore_loss": 15,
       "mutiny_threshold": 30,
-      "defect_threshold": 15
+      "defect_threshold": 15,
+      "defect_chance_per_day": 0.25,
+      "mutiny_trait_mult": { "hot_tempered": 1.6, "aggressive": 1.2, "loyal": 0.15, "honorable": 0.6 }
     },
     "academy": {
       "base_training_seconds": 600,

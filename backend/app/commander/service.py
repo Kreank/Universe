@@ -343,6 +343,8 @@ async def morale_drift_tick() -> None:
     potency = bal.commander["grades"]["potency"]
     threshold = float(sat["demand_threshold"])
     cooldown = dt.timedelta(hours=float(sat["post_demand_cooldown_hours"]))
+    defect_threshold = float(sat.get("defect_threshold", 15))
+    defect_per_hour = float(sat.get("defect_chance_per_day", 0.25)) / 24.0
     now = _now()
 
     async with session_scope() as session:
@@ -355,15 +357,32 @@ async def morale_drift_tick() -> None:
                 Transmission.type == "demand", Transmission.requires_decision.is_(True)
             )
         )).scalars().all())
+        # Aktuell einer Flotte zugewiesene Kommandeure (im Einsatz -> kein Ueberlauf).
+        assigned = set((await session.execute(
+            select(Fleet.commander_id).where(
+                Fleet.commander_id.isnot(None),
+                Fleet.status.in_(("flying", "arrived", "returning")),
+            )
+        )).scalars().all())
+
+        # Charisma: charismatische Kommandeure heben das Moral-Ziel ihres Imperiums.
+        charisma_bonus: dict = {}
+        for c in commanders:
+            for tr in (c.traits or []):
+                b = traits_cfg.get(tr, {}).get("adjacent_morale_boost", 0.0)
+                if b:
+                    charisma_bonus[c.player_id] = charisma_bonus.get(c.player_id, 0.0) + b * 100.0
 
         demands = 0
+        defections = 0
         for c in commanders:
             decay_mult = 1.0
             for trait in (c.traits or []):
                 decay_mult *= traits_cfg.get(trait, {}).get("morale_decay_mult", 1.0)
 
             morale = float(c.morale)
-            morale += drift_rate * (target - morale)
+            eff_target = min(100.0, target + charisma_bonus.get(c.player_id, 0.0))
+            morale += drift_rate * (eff_target - morale)
             last = c.last_active_at or now
             if last.tzinfo is None:
                 last = last.replace(tzinfo=dt.timezone.utc)
@@ -377,6 +396,20 @@ async def morale_drift_tick() -> None:
             if idle:
                 gain += float(sat["idle_unrest_per_hour"])
             c.unrest = min(100.0, float(c.unrest or 0.0) + gain)
+
+            # -- Ueberlauf: anhaltend niedrige Treue + untaetig --
+            if c.loyalty < defect_threshold and c.id not in assigned and random.random() < defect_per_hour:
+                c.status = "defected"
+                await create_system_transmission(
+                    session,
+                    player_id=c.player_id,
+                    subject=f"🏴 {c.name} ist übergelaufen",
+                    body=f"Kommandeur {c.name} hat aus Illoyalität deinen Dienst verlassen. "
+                         f"Pflege die Treue deiner Kommandeure, sonst verlierst du sie.",
+                    ttype="system",
+                )
+                defections += 1
+                continue
 
             # -- Forderung erzeugen (Schwelle + Cooldown + keine offene) --
             if c.unrest < threshold or c.id in open_demand:
@@ -404,4 +437,5 @@ async def morale_drift_tick() -> None:
             demands += 1
 
         await session.commit()
-    log.info("Moral/Unmut-Tick: %d Commander, %d neue Forderung(en)", len(commanders), demands)
+    log.info("Moral/Unmut-Tick: %d Commander, %d neue Forderung(en), %d Ueberlaeufer",
+             len(commanders), demands, defections)

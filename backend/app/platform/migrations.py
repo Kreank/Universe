@@ -146,6 +146,8 @@ _STATEMENTS: list[str] = [
     # Kommandeur-Zufriedenheit: Unmut-Akkumulator + Zeitpunkt der letzten Forderung.
     "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS unrest DOUBLE PRECISION NOT NULL DEFAULT 0",
     "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS last_demand_at TIMESTAMPTZ",
+    # Ueberlauf (Loyalitaets-Folge): neuer Kommandeur-Status.
+    "ALTER TYPE commander_status ADD VALUE IF NOT EXISTS 'defected'",
 ]
 
 

@@ -31,7 +31,7 @@ resource_type_enum = ENUM(
     name="resource_type", create_type=False,
 )
 commander_status_enum = ENUM(
-    "active", "training", "wounded", "captured", "dead",
+    "active", "training", "wounded", "captured", "dead", "defected",
     name="commander_status", create_type=False,
 )
 commander_rank_enum = ENUM(
