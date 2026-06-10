@@ -128,7 +128,7 @@
       "jump_gate_tech":     { "cost": { "metal": 0, "crystal": 60000, "deuterium": 30000 }, "requires": { "research_lab": 10, "hyperspace_tech": 6 }, "effect": "Sprungtor-Kalibrierung: -6% Abklingzeit und -8% Sprungkosten je Stufe." },
       "phalanx_tech":       { "cost": { "metal": 20000, "crystal": 40000, "deuterium": 10000 }, "requires": { "research_lab": 6, "spy_tech": 6, "computer_tech": 4 }, "effect": "Phalanx-Sensorik: +1 Scan-Reichweite (Systeme) und -8% Scankosten je Stufe." },
       "gravitics":          { "cost": { "metal": 0, "crystal": 50000, "deuterium": 80000 }, "requires": { "research_lab": 12, "graviton_tech": 1 }, "effect": "Gravitationsforschung: +2%-Punkte Mond-Entstehungschance-Obergrenze und +1 Orbitalbatterie-Geschuetz je Stufe." },
-      "convoy_tactics":     { "cost": { "metal": 4000, "crystal": 2000, "deuterium": 4000 }, "requires": { "research_lab": 4, "combustion_drive": 4 }, "effect": "Konvoi-Taktik: -6% Routen-Ueberfallrisiko fuer eigene Handelsflotten je Stufe." }
+      "convoy_tactics":     { "cost": { "metal": 4000, "crystal": 2000, "deuterium": 4000 }, "requires": { "research_lab": 4, "combustion_drive": 4 }, "effect": "Konvoi-Taktik: -6% NPC-Piraten-Ueberfallrisiko auf Handelsrouten je Stufe. Schuetzt NICHT vor Spieler-Abfangen." }
     }
   },
 

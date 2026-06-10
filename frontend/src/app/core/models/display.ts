@@ -196,8 +196,8 @@ export const TECH_META: Record<string, DisplayMeta> = {
     desc: 'Beherrschung von Gravitationsfeldern. Jede Stufe hebt die Obergrenze der Mond-Entstehungschance und verstärkt deine Orbitalbatterien.',
   },
   convoy_tactics: {
-    label: 'Konvoi-Taktik', glyph: '🛡️', blurb: '−Routenrisiko für Handelsflotten.',
-    desc: 'Geleitformationen, Ausweichkurse, Funkdisziplin. Jede Stufe senkt das Überfallrisiko deiner Handelsflotten auf der Route.',
+    label: 'Konvoi-Taktik', glyph: '🛡️', blurb: '−NPC-Piraten-Risiko auf Handelsrouten.',
+    desc: 'Geleitformationen, Ausweichkurse, Funkdisziplin. Jede Stufe senkt das Risiko, dass deine Handelsflotten von NPC-Piraten überfallen werden. Hilft NICHT gegen Spieler-Abfangen (das ist getimter Flotten-Fang und eine andere Mechanik).',
   },
 };
 
