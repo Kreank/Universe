@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   input,
   linkedSignal,
@@ -12,7 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { Coordinate, FleetMission, PlanetUnit } from '../../core/models/api.models';
+import { Coordinate, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
 import { IconTileComponent } from './icon-tile.component';
 
@@ -91,6 +92,41 @@ import { IconTileComponent } from './icon-tile.component';
                 </div>
               }
             </div>
+          </div>
+        }
+
+        <!-- Handelsauftrag -->
+        @if (showTrade()) {
+          <div class="cargo">
+            <div class="cargo-title">💱 Handelsauftrag</div>
+            <div class="trade-grid">
+              <div class="field">
+                <label>Biete</label>
+                <select [ngModel]="offerRes()" (ngModelChange)="offerRes.set($event)">
+                  @for (r of cargoFields; track r.key) { <option [ngValue]="r.key">{{ r.glyph }} {{ r.label }}</option> }
+                </select>
+                <input type="number" min="0" [max]="planetRes()?.[offerRes()]?.amount ?? 0"
+                  [ngModel]="offerAmount()" (ngModelChange)="offerAmount.set(+$event || 0)" aria-label="Angebotsmenge" />
+              </div>
+              <div class="field">
+                <label>Erhalte</label>
+                <select [ngModel]="wantRes()" (ngModelChange)="wantRes.set($event)">
+                  @for (r of cargoFields; track r.key) { <option [ngValue]="r.key">{{ r.glyph }} {{ r.label }}</option> }
+                </select>
+                @if (merchantIntel(); as mi) {
+                  <span class="muted small">Spez.: {{ mi.spec }} · Kurse vom letzten Besuch</span>
+                } @else {
+                  <span class="muted small">Kurse unbekannt — Händler erst aufklären/besuchen.</span>
+                }
+              </div>
+            </div>
+            @if (tradeEstimate(); as est) {
+              <p class="trade-preview small">≈ <strong>{{ est }}</strong> {{ wantRes() }} (ungefähr, vor Slippage/Reputation)</p>
+            }
+            @if (offerRes() === wantRes()) {
+              <p class="hint small">Biete- und Wunsch-Ressource müssen verschieden sein.</p>
+            }
+            <p class="muted small">🛡 Frachter ohne bewaffnete Eskorte werden auf der Route überfallen.</p>
           </div>
         }
 
@@ -185,6 +221,11 @@ import { IconTileComponent } from './icon-tile.component';
       .opts .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: 0.25rem; }
       .opts label { font-size: 0.74rem; color: var(--text-dim); }
 
+      .trade-grid { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+      .trade-grid .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: 0.25rem; }
+      .trade-grid select, .trade-grid input { min-height: 30px; }
+      .trade-preview { color: var(--accent); margin: 0.5rem 0 0; }
+
       .actions { margin-top: 1rem; }
       .actions .btn { width: 100%; }
       .hint { color: var(--warn); margin: 0.4rem 0 0; }
@@ -204,7 +245,7 @@ export class FleetDispatchComponent {
   readonly sent = output<void>();
 
   /** Auf die galaxie-relevanten Missionen beschraenkt. */
-  protected readonly missions: FleetMission[] = ['attack', 'transport', 'spy', 'deploy'];
+  protected readonly missions: FleetMission[] = ['attack', 'transport', 'spy', 'deploy', 'trade'];
   protected readonly mission = linkedSignal<FleetMission>(() => this.initialMission());
 
   protected readonly cargoFields = [
@@ -221,9 +262,47 @@ export class FleetDispatchComponent {
   protected readonly speed = signal(100);
   protected readonly sending = signal(false);
 
+  // --- Handel ---
+  protected readonly offerRes = signal<'metal' | 'crystal' | 'deuterium'>('metal');
+  protected readonly offerAmount = signal(0);
+  protected readonly wantRes = signal<'metal' | 'crystal' | 'deuterium'>('deuterium');
+  protected readonly merchantIntel = signal<GalaxyIntel | null>(null);
+
+  protected readonly showTrade = computed(() => this.mission() === 'trade');
+
+  /**
+   * Grobe Vorschau aus dem zuletzt gesehenen Kurs-Schnappschuss (OHNE Slippage/
+   * Reputation — der echte Tausch wird serverseitig bei Ankunft berechnet).
+   */
+  protected readonly tradeEstimate = computed<number | null>(() => {
+    const p = this.merchantIntel()?.prices;
+    if (!p) {
+      return null;
+    }
+    const pIn = p[this.offerRes()] ?? 0;
+    const pOut = p[this.wantRes()] ?? 0;
+    if (pIn <= 0 || pOut <= 0 || this.offerAmount() <= 0) {
+      return null;
+    }
+    return Math.round(this.offerAmount() * (pIn / pOut) * 0.96); // 0.96 ≈ Standard-Marge
+  });
+
   private readonly missionRequires: Partial<Record<FleetMission, { type: string; label: string }>> = {
     spy: { type: 'spy_probe', label: 'Spionagesonde' },
   };
+
+  constructor() {
+    // Kurs-Schnappschuss des Zielhaendlers laden (falls schon aufgeklaert/besucht).
+    effect(() => {
+      const t = this.target();
+      this.api.getGalaxyTargets().subscribe((list) => {
+        const hit = list.find(
+          (x) => x.galaxy === t.galaxy && x.system === t.system && x.position === t.position,
+        );
+        this.merchantIntel.set(hit?.intel?.merchant ? (hit.intel as GalaxyIntel) : null);
+      });
+    });
+  }
 
   protected readonly availableShips = computed<PlanetUnit[]>(
     () => this.state.activePlanet()?.ships?.filter((s) => s.count > 0) ?? [],
@@ -246,9 +325,15 @@ export class FleetDispatchComponent {
     }
     return this.shipCount(req.type) > 0 ? null : `Diese Mission benötigt mindestens ein ${req.label}.`;
   });
-  protected readonly canSend = computed(
-    () => this.hasSelection() && !!this.state.activePlanetId() && !this.missionHint(),
-  );
+  protected readonly canSend = computed(() => {
+    if (!this.hasSelection() || !this.state.activePlanetId() || this.missionHint()) {
+      return false;
+    }
+    if (this.mission() === 'trade') {
+      return this.offerAmount() > 0 && this.offerRes() !== this.wantRes();
+    }
+    return true;
+  });
 
   shipCount(type: string): number {
     return this.selection()[type] ?? 0;
@@ -279,17 +364,24 @@ export class FleetDispatchComponent {
     const cargo = this.showCargo()
       ? this.cargo()
       : { metal: 0, crystal: 0, deuterium: 0 };
+    const body: FleetSendRequest = {
+      origin_planet_id: origin,
+      target: this.target(),
+      mission: this.mission(),
+      ships,
+      cargo,
+      commander_id: this.commanderId(),
+      speed_pct: this.speed(),
+    };
+    if (this.mission() === 'trade') {
+      // Angebots-Ressource faehrt als Fracht mit; der Server baut Cargo + mission_data.
+      body.offer_res = this.offerRes();
+      body.offer_amount = this.offerAmount();
+      body.want_res = this.wantRes();
+    }
     this.sending.set(true);
     this.api
-      .sendFleet({
-        origin_planet_id: origin,
-        target: this.target(),
-        mission: this.mission(),
-        ships,
-        cargo,
-        commander_id: this.commanderId(),
-        speed_pct: this.speed(),
-      })
+      .sendFleet(body)
       .subscribe({
         next: () => {
           this.sending.set(false);

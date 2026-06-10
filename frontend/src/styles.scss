@@ -180,6 +180,15 @@ a {
   border-color: var(--border);
   color: var(--text-dim);
 }
+.btn-trade {
+  background: rgba(46, 230, 214, 0.12);
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+.btn-trade:hover:not(:disabled) {
+  background: rgba(46, 230, 214, 0.22);
+  box-shadow: var(--glow);
+}
 .btn-sm {
   min-height: 34px;
   padding: 0.35rem 0.7rem;

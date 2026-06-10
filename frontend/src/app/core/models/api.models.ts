@@ -211,7 +211,7 @@ export interface ShipyardBuildResponse {
 // --- Flotte -------------------------------------------------------------
 
 export type FleetMission =
-  | 'attack' | 'transport' | 'spy' | 'deploy' | 'recycle' | 'colonize' | 'mine' | 'expedition';
+  | 'attack' | 'transport' | 'spy' | 'deploy' | 'recycle' | 'colonize' | 'mine' | 'expedition' | 'trade';
 export type FleetStatus = 'flying' | 'arrived' | 'returning' | 'returned';
 
 export interface Coordinate {
@@ -251,6 +251,10 @@ export interface FleetSendRequest {
   cargo: ResourceCost;
   commander_id: string | null;
   speed_pct: number;
+  /** Handel: Angebots-Ressource faehrt als Fracht mit, getauscht gegen want_res. */
+  offer_res?: 'metal' | 'crystal' | 'deuterium';
+  offer_amount?: number;
+  want_res?: 'metal' | 'crystal' | 'deuterium';
 }
 
 export interface GalaxyCell {
@@ -278,6 +282,11 @@ export interface GalaxyIntel {
   defenses?: Record<string, number>;
   resources?: { metal?: number; crystal?: number; deuterium?: number };
   scanned_at?: string;
+  /** Haendler-Markt (aus merchant_intel): Spezialisierung + Kurs-Schnappschuss. */
+  merchant?: boolean;
+  spec?: string;
+  prices?: { metal?: number; crystal?: number; deuterium?: number };
+  prices_at?: string;
 }
 
 export interface GalaxyTarget {

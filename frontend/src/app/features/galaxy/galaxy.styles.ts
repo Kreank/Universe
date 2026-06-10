@@ -68,6 +68,7 @@ export const galaxyStyles = `
   .chip.disc { color: var(--accent); border-color: var(--accent-dim); cursor: help; }
   .chip.own { color: var(--accent); border-color: var(--accent-dim); }
   .chip.lvl { color: var(--accent); border-color: var(--accent-dim); margin-right: 0.3rem; }
+  .chip.trade { color: var(--accent); border-color: var(--accent-dim); background: rgba(46, 230, 214, 0.1); cursor: help; margin-right: 0.3rem; }
 
   /* --- Ziel-Verzeichnis --- */
   .target-row {

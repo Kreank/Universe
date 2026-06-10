@@ -108,6 +108,9 @@ interface DispatchCtx {
                 <span class="target-name">🤖 {{ t.name }}</span>
                 <span class="mono small">
                   <span class="chip lvl">L{{ t.level ?? 1 }}/3</span>
+                  @if (t.intel?.merchant) {
+                    <span class="chip trade tip" [attr.data-tip]="'Händler · Spez.: ' + (t.intel?.spec ?? '?') + ' — handeln statt kämpfen'">💱 Händler</span>
+                  }
                   [{{ t.coords }}]
                 </span>
               </div>
@@ -130,6 +133,9 @@ interface DispatchCtx {
                 <button class="btn btn-ghost btn-sm" type="button" (click)="jumpTo(t)">Anfliegen</button>
                 <button class="btn btn-ghost btn-sm" type="button" (click)="quickSpy(targetCoord(t), t.name)">🛰 Spionieren</button>
                 <button class="btn btn-ghost btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'transport')">🚚 Transport</button>
+                @if (t.intel?.merchant) {
+                  <button class="btn btn-trade btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'trade')">💱 Handeln</button>
+                }
                 @if (t.npc_id) {
                   <button class="btn btn-danger btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'attack')">⚔ Angreifen</button>
                 }
