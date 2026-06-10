@@ -319,6 +319,11 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         cargo_value = received * float(cfg["base_value"][want_res])
 
         chance = route_risk_chance(distance, escort_power, cargo_value, cfg)
+        # Forschung "Konvoi-Taktik" senkt das Routenrisiko.
+        from app.economy.service import get_research_levels
+        _eff = bal.data["research"]["effects"]
+        _convoy = int((await get_research_levels(session, fleet.player_id)).get("convoy_tactics", 0))
+        chance *= max(0.0, 1.0 - _convoy * float(_eff.get("convoy_route_risk_reduction_per_level", 0.0)))
         if random.random() < chance:
             raided = True
             # Jede Cargo-Position um loss_fraction kuerzen (gerundet), neues dict setzen.

@@ -33,7 +33,7 @@ async def moon_defense_support(session: AsyncSession, planet: Planet, bal) -> tu
     """Mond-Unterstuetzung beim Angriff auf den Planeten: (extra_defenses, shield_tech_bonus).
 
     Orbitalbatterie -> orbital_gun-Einheiten in die Verteidigung; Schildkuppel -> Schild-Tech-Bonus."""
-    from app.economy.service import get_building_levels
+    from app.economy.service import get_building_levels, get_research_levels
 
     if planet is None or planet.planet_type == "moon":
         return {}, 0
@@ -42,10 +42,13 @@ async def moon_defense_support(session: AsyncSession, planet: Planet, bal) -> tu
         return {}, 0
     levels = await get_building_levels(session, moon.id)
     mcfg = bal.data["moon"]
+    eff = bal.data["research"]["effects"]
+    research = await get_research_levels(session, planet.player_id)
     extra: dict[str, int] = {}
     ob = levels.get("orbital_battery", 0)
     if ob > 0:
-        extra["orbital_gun"] = ob * int(mcfg["orbital_battery_units_per_level"])
+        per = int(mcfg["orbital_battery_units_per_level"]) + int(research.get("gravitics", 0)) * int(eff.get("orbital_units_per_level", 0))
+        extra["orbital_gun"] = ob * per
     shield_bonus = levels.get("shield_dome_moon", 0) * int(mcfg["shield_dome_tech_per_level"])
     return extra, shield_bonus
 
@@ -61,10 +64,17 @@ async def maybe_form_moon(session: AsyncSession, planet: Planet, debris_metal: f
     Kein zweiter Mond, wenn schon einer existiert. Erzeugt eine Mond-Planet-Zeile + 0-Ressourcen."""
     if planet is None or planet.planet_type == "moon":
         return False
-    mcfg = get_balance().data["moon"]
+    bal = get_balance()
+    mcfg = bal.data["moon"]
     if await moon_of(session, planet.id) is not None:
         return False
-    chance = moon_chance(debris_metal, debris_crystal, mcfg)
+    # Gravitationsforschung hebt die Entstehungs-Obergrenze.
+    from app.economy.service import get_research_levels
+    eff = bal.data["research"]["effects"]
+    research = await get_research_levels(session, planet.player_id)
+    cap = float(mcfg["max_chance"]) + int(research.get("gravitics", 0)) * float(eff.get("moon_chance_cap_per_level", 0.0))
+    total = max(0.0, float(debris_metal)) + max(0.0, float(debris_crystal))
+    chance = min(cap, total / float(mcfg["value_per_chance"]))
     if chance <= 0 or random.random() >= chance:
         return False
 

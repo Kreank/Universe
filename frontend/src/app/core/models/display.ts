@@ -147,6 +147,198 @@ export const TECH_META: Record<string, DisplayMeta> = {
     label: 'Gravitontechnik', glyph: '🌑', blurb: 'Ermoeglicht den Todesstern.',
     desc: 'Die Beherrschung künstlicher Schwerkraft — die Königsdisziplin der Forschung. Einzige Voraussetzung für den Todesstern, eine mobile Festung von der Größe eines Mondes.',
   },
+  hyperspace_interdiction: {
+    label: 'Hyperraum-Interdiktion', glyph: '🧲', blurb: 'Größere Abfang-Reichweite & Fang-Chance.',
+    desc: 'Künstlich aufgespannte Massefelder reißen durchreisende Flotten aus dem Hyperraum. Jede Stufe erweitert die Reichweite deiner Abfang-Patrouillen um ein System und erhöht die Chance, eine Flotte ohne Interdiktor-Schiff zu stellen. Endlich lässt sich weiträumige Raumüberwachung erforschen, statt sie zu verschenken.',
+  },
+  ion_disruptors: {
+    label: 'Ionen-Disruptoren', glyph: '🌀', blurb: 'Stärkere Ionenwaffen & Verteidigungs-Lähmung.',
+    desc: 'Verfeinerte Ionen-Emitter bündeln den Ladungsstoß. Jede Stufe verstärkt Schild-Strip und Antriebsschaden deiner Ionenwaffen — und legt feindliche Verteidigung schneller und vollständiger lahm. Der Türöffner-Effekt wird zur echten Waffe.',
+  },
+  boarding_doctrine: {
+    label: 'Enter-Doktrin', glyph: '🪝', blurb: '+Kaper-Kapazität je Enterschiff.',
+    desc: 'Drillkommandos, Enterhaken-Logistik und Prisenrecht. Jede Stufe lässt deine Enterschiffe ein gestrandetes Feindschiff mehr kapern — aus „zerstören" wird „erbeuten".',
+  },
+  leadership_doctrine: {
+    label: 'Führungsdoktrin', glyph: '🎖️', blurb: 'Weniger Unmut / seltener Meuterei.',
+    desc: 'Klare Befehlsketten, faire Rotation, gelebte Werte. Jede Stufe senkt den Unmut-Aufbau deiner Kommandeure — sie stellen seltener Forderungen und laufen seltener über.',
+  },
+  tactical_academy: {
+    label: 'Taktische Akademie', glyph: '📚', blurb: '+XP-Gewinn der Kommandeure.',
+    desc: 'Simulatoren, Manöverkritik, Kriegsspiele. Jede Stufe steigert den Erfahrungsgewinn deiner Kommandeure aus jedem Gefecht — schnellere Aufstiege, mehr Skillpunkte.',
+  },
+  mining_efficiency: {
+    label: 'Bergbau-Effizienz', glyph: '⛏️', blurb: '+Minen-Förderung je Stufe.',
+    desc: 'Bessere Bohrköpfe, Förderbänder und Aufbereitung. Jede Stufe erhöht den Ertrag deiner Metall-, Kristall- und Deuteriumförderung — der stille Wachstumsmotor.',
+  },
+  storage_tech: {
+    label: 'Speichertechnik', glyph: '🏬', blurb: '+Lagerkapazität je Stufe.',
+    desc: 'Verdichtete Lager, Druckspeicher, bessere Logistik. Jede Stufe erhöht die Kapazität deiner Lager — mehr Puffer für teure Großbauten und gegen überlaufende Minen.',
+  },
+  astrophysics: {
+    label: 'Astrophysik', glyph: '🔭', blurb: '+1 Kolonie je Stufe.',
+    desc: 'Sternkartierung, Gravitationsanalyse, Habitabilitäts-Modelle. Jede Stufe erlaubt dir, eine weitere Kolonie zu gründen — die Grundlage echter Expansion.',
+  },
+  expedition_tech: {
+    label: 'Expeditionstechnik', glyph: '🧭', blurb: '+Expeditions-Ertrag je Stufe.',
+    desc: 'Tiefenscanner, Bergungsdrohnen, Anomalie-Analyse. Jede Stufe steigert die Ausbeute deiner Expeditionen in die Leere zwischen den Sternen.',
+  },
+  jump_gate_tech: {
+    label: 'Sprungtor-Kalibrierung', glyph: '🌀', blurb: '−Abklingzeit & −Sprungkosten.',
+    desc: 'Feinabstimmung der Hyperraum-Resonatoren. Jede Stufe senkt Abklingzeit und Deuterium-Kosten je Sprung — schnellere Mond-zu-Mond-Logistik.',
+  },
+  phalanx_tech: {
+    label: 'Phalanx-Sensorik', glyph: '📡', blurb: '+Scan-Reichweite & −Scankosten.',
+    desc: 'Empfindlichere Sensoren, sparsamere Scans. Jede Stufe erweitert die Reichweite der Sensorphalanx um ein System und senkt die Scankosten.',
+  },
+  gravitics: {
+    label: 'Gravitationsforschung', glyph: '🪐', blurb: '+Mond-Chance & +Orbitalgeschütze.',
+    desc: 'Beherrschung von Gravitationsfeldern. Jede Stufe hebt die Obergrenze der Mond-Entstehungschance und verstärkt deine Orbitalbatterien.',
+  },
+  convoy_tactics: {
+    label: 'Konvoi-Taktik', glyph: '🛡️', blurb: '−Routenrisiko für Handelsflotten.',
+    desc: 'Geleitformationen, Ausweichkurse, Funkdisziplin. Jede Stufe senkt das Überfallrisiko deiner Handelsflotten auf der Route.',
+  },
+};
+
+/**
+ * Effekt-Metadaten je Forschung fuer die Detail-Ansicht.
+ * `summary` = was die Tech bewirkt (eine Zeile). `levelEffect` = numerischer
+ * Pro-Stufe-Effekt, aus dem das Popup "aktuell -> naechste Stufe" berechnet
+ * (Wert bei Stufe n = base + perLevel*n). `branch` = Zweig fuer die Einordnung.
+ */
+export interface TechLevelEffect {
+  label: string;
+  perLevel: number;
+  unit: string;
+  base?: number;
+}
+export interface TechEffectMeta {
+  branch: string;
+  summary: string;
+  levelEffect?: TechLevelEffect;
+}
+
+export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
+  energy_tech: {
+    branch: 'Grundlagen',
+    summary: 'Schlüssel-Technologie: Voraussetzung für Laser, Fusion, Schilde und höhere Antriebe.',
+  },
+  combustion_drive: {
+    branch: 'Antrieb',
+    summary: 'Schaltet leichte Schiffe und Transporter frei (Antriebsstufe = Voraussetzung).',
+  },
+  impulse_drive: {
+    branch: 'Antrieb',
+    summary: 'Antrieb der mittleren Schiffsklasse — Voraussetzung für Kreuzer, Kolonie- und Spezialschiffe.',
+  },
+  hyperspace_drive: {
+    branch: 'Antrieb',
+    summary: 'Antrieb der Großkampfschiffe — Voraussetzung für Schlachtschiffe, Zerstörer, Träger, Todesstern.',
+  },
+  spy_tech: {
+    branch: 'Aufklärung',
+    summary: 'Tiefere Spionageberichte je Stufe; schaltet Spionagesonde & Tief-Aufklärer frei.',
+  },
+  computer_tech: {
+    branch: 'Kommando',
+    summary: '+1 gleichzeitig führbare Flotte je Stufe.',
+    levelEffect: { label: 'Flottenslots', perLevel: 1, unit: '', base: 1 },
+  },
+  weapons_tech: {
+    branch: 'Waffen',
+    summary: '+10 % Angriff aller Schiffe & Verteidigung je Stufe.',
+    levelEffect: { label: 'Angriff', perLevel: 10, unit: '%' },
+  },
+  shield_tech: {
+    branch: 'Schild',
+    summary: '+10 % Schildkraft aller Einheiten je Stufe.',
+    levelEffect: { label: 'Schild', perLevel: 10, unit: '%' },
+  },
+  armor_tech: {
+    branch: 'Panzerung',
+    summary: '+10 % Hüllenintegrität aller Einheiten je Stufe.',
+    levelEffect: { label: 'Hülle', perLevel: 10, unit: '%' },
+  },
+  command_doctrine: {
+    branch: 'Kommando',
+    summary: 'Erweitert die Befehlsreichweite (Span of Control) — mehr Commander gleichzeitig im Einsatz.',
+  },
+  logistics_tech: {
+    branch: 'Kommando',
+    summary: 'Schnellere Moral-Erholung der Crews (+8 %/Stufe Drift) + bessere Evakuierungschance (+3 %/Stufe).',
+    levelEffect: { label: 'Evakuierungschance', perLevel: 3, unit: '%' },
+  },
+  crew_psychology: {
+    branch: 'Kommando',
+    summary: 'Höhere Moral-Stabilität: hebt das gehaltene Moral-Niveau (+2/Stufe) und dämpft den Neglect-Verfall untätiger Crews (−10 %/Stufe).',
+    levelEffect: { label: 'Moral-Niveau', perLevel: 2, unit: '' },
+  },
+  laser_tech: {
+    branch: 'Waffen',
+    summary: 'Lasergeschütze & schlagkräftigere Kriegsschiffe; Grundlage für Ionen- und Plasmatechnik.',
+  },
+  ion_tech: {
+    branch: 'Waffen',
+    summary: 'Ionenwaffen: leeren Schilde, lähmen Antriebe und legen Verteidigung lahm. Schaltet Kreuzer, EWAR-Fregatte & Ionengeschütz frei.',
+  },
+  plasma_tech: {
+    branch: 'Waffen',
+    summary: 'Stärkste Waffentechnik: Plasmawerfer, Bomber, Zerstörer & Träger.',
+  },
+  hyperspace_tech: {
+    branch: 'Antrieb',
+    summary: 'Fundament jedes Großkampfschiffs — Voraussetzung für Hyperraumantrieb, Schlachtkreuzer & Graviton.',
+  },
+  graviton_tech: {
+    branch: 'Endgame',
+    summary: 'Königsdisziplin: ermöglicht den Todesstern, eine mobile Festung von Mondgröße.',
+  },
+  hyperspace_interdiction: {
+    branch: 'Abfangen',
+    summary: '+1 Abfang-Reichweite je Stufe und höhere Fang-Chance der Patrouillen (+8 %/Stufe ohne Interdiktor).',
+    levelEffect: { label: 'Abfang-Radius', perLevel: 1, unit: ' Sys', base: 5 },
+  },
+  ion_disruptors: {
+    branch: 'Waffen',
+    summary: '+10 % Ionen-Wirkung je Stufe: stärkerer Schild-Strip, Antriebsschaden und Verteidigungs-Lähmung.',
+    levelEffect: { label: 'Ionen-Wirkung', perLevel: 10, unit: '%' },
+  },
+  boarding_doctrine: {
+    branch: 'Waffen',
+    summary: '+1 gekapertes Schiff je Enterschiff und Stufe.',
+    levelEffect: { label: 'Kaper-Kapazität', perLevel: 1, unit: '/Enterschiff', base: 2 },
+  },
+  leadership_doctrine: {
+    branch: 'Kommando',
+    summary: '−10 % Unmut-Aufbau der Kommandeure je Stufe (seltener Forderungen & Überläufe).',
+    levelEffect: { label: 'Unmut-Dämpfung', perLevel: 10, unit: '%' },
+  },
+  tactical_academy: {
+    branch: 'Kommando',
+    summary: '+10 % XP-Gewinn der Kommandeure je Stufe.',
+    levelEffect: { label: 'XP-Gewinn', perLevel: 10, unit: '%' },
+  },
+  mining_efficiency: {
+    branch: 'Wirtschaft',
+    summary: '+2 % Metall-/Kristall-/Deuteriumförderung je Stufe.',
+    levelEffect: { label: 'Förderung', perLevel: 2, unit: '%' },
+  },
+  storage_tech: {
+    branch: 'Wirtschaft',
+    summary: '+5 % Lagerkapazität je Stufe.',
+    levelEffect: { label: 'Lagerkapazität', perLevel: 5, unit: '%' },
+  },
+  astrophysics: {
+    branch: 'Expansion',
+    summary: 'Erlaubt +1 Kolonie je Stufe.',
+    levelEffect: { label: 'Max. Kolonien', perLevel: 1, unit: '', base: 9 },
+  },
+  expedition_tech: {
+    branch: 'Expansion',
+    summary: '+10 % Expeditions-Ressourcenertrag je Stufe.',
+    levelEffect: { label: 'Expeditions-Ertrag', perLevel: 10, unit: '%' },
+  },
 };
 
 export const SHIP_META: Record<string, DisplayMeta> = {
@@ -207,12 +399,12 @@ export const SHIP_META: Record<string, DisplayMeta> = {
     desc: 'Eine Festung von der Größe eines Mondes, gebaut aus Gravitontechnik. Nahezu unzerstörbar und mit Geschützen, die ganze Flotten zerstäuben — die ultimative Machtdemonstration. Schwerfällig, aber Furcht erregend.',
   },
   carrier: {
-    label: 'Traeger', glyph: '🛸', blurb: 'Kraftmultiplikator, startet Drohnen.',
-    desc: 'Kämpft nicht selbst, sondern entfesselt Schwärme: der Träger startet Drohnen und verstärkt die Schiffe um sich herum. Ein Kraftmultiplikator, dessen Verlust eine ganze Flotte schwächt.',
+    label: 'Traeger', glyph: '🛸', blurb: 'Lädt beim Angriff Drohnen aus der Garnison.',
+    desc: 'Eine fliegende Drohnen-Basis. Schickst du einen Träger auf Angriff, lädt er automatisch bis zu seiner Kapazität Drohnen aus deiner Garnison ein — sie fliegen als echte Schiffe mit und kämpfen (mit echten Verlusten). Ohne gebaute Drohnen ist der Träger nur ein mittelschweres Schiff: erst Drohnen + Träger zusammen entfalten den Schwarm.',
   },
   drone: {
-    label: 'Drohne', glyph: '🛩️', blurb: 'Billige Schwarm-Einheit.',
-    desc: 'Unbemannt, spottbillig, in Massen verfügbar. Allein bedeutungslos, im Schwarm eine Lawine — vom Träger ins Gefecht geschleudert, um den Feind in Zahlen zu ertränken.',
+    label: 'Drohne', glyph: '🛩️', blurb: 'Schwarm-Einheit; Träger laden sie automatisch.',
+    desc: 'Unbemannt, spottbillig, in Massen verfügbar. Allein bedeutungslos, im Schwarm eine Lawine. Baue Drohnen in der Garnison — Träger laden sie beim Angriff automatisch ein und führen sie ins Gefecht. Du kannst sie aber auch wie jedes andere Schiff von Hand einer Flotte zuteilen.',
   },
   interdictor: {
     label: 'Interdiktor', glyph: '🧲', blurb: 'Fang-Feld: verhindert Flucht.',

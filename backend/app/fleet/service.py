@@ -156,6 +156,23 @@ async def send_fleet(
         select(Ship).where(Ship.planet_id == origin_planet_id, Ship.fleet_id.is_(None))
     )).scalars().all()
     by_type = {r.type: r for r in planet_ships}
+
+    # Option A: Traeger laden beim Angriff automatisch Drohnen aus der Garnison nach
+    # (bis zur Traeger-Kapazitaet drone_capacity). Diese fliegen als ECHTE Schiffe mit
+    # (echte Verluste). Bereits manuell gewaehlte Drohnen zaehlen auf die Kapazitaet an.
+    if mission == "attack":
+        cap_per = int(bal.combat.get("carrier", {}).get("drone_capacity", 0))
+        n_carriers = int(ships.get("carrier", 0))
+        if cap_per > 0 and n_carriers > 0:
+            capacity = n_carriers * cap_per
+            already = int(ships.get("drone", 0))
+            need = capacity - already
+            garrison_drones = by_type.get("drone")
+            avail = (garrison_drones.count - already) if garrison_drones else 0
+            take = max(0, min(need, avail))
+            if take > 0:
+                ships["drone"] = already + take
+
     for typ, count in ships.items():
         if typ not in bal.ships:
             raise ValueError(f"Unbekannter Schiffstyp: {typ}")
@@ -422,8 +439,15 @@ async def jump_fleet(
         levels = await get_building_levels(session, m.id)
         if levels.get("jump_gate", 0) < 1:
             raise RuntimeError("Beide Monde benoetigen ein Sprungtor")
-    # Cooldown am Quell-Sprungtor.
-    cd = float(bal.data["moon"]["jump_gate_cooldown_seconds"])
+    # Forschung: Sprungtor-Kalibrierung senkt Abklingzeit + Sprungkosten.
+    research = await get_research_levels(session, player.id)
+    eff = bal.data["research"]["effects"]
+    jgt = int(research.get("jump_gate_tech", 0))
+    cd_mult = max(float(eff.get("jump_cooldown_floor", 0.4)),
+                  1.0 - jgt * float(eff.get("jump_cooldown_reduction_per_level", 0.0)))
+    cost_mult = max(0.0, 1.0 - jgt * float(eff.get("jump_cost_reduction_per_level", 0.0)))
+    cd = float(bal.data["moon"]["jump_gate_cooldown_seconds"]) * cd_mult
+
     last = src.last_jump_at
     if last is not None:
         if last.tzinfo is None:
@@ -435,6 +459,13 @@ async def jump_fleet(
     ships = {t: int(c) for t, c in ships.items() if int(c) > 0}
     if not ships:
         raise ValueError("Keine Schiffe gewaehlt")
+    # Sprung-Kosten (Deuterium, je Schiff) am Quellmond abziehen.
+    jump_cost = int(round(
+        float(bal.data["moon"].get("jump_cost_per_ship_deuterium", 0))
+        * sum(ships.values()) * cost_mult
+    ))
+    if jump_cost > 0 and not await spend_resources(session, src, {"deuterium": jump_cost}):
+        raise RuntimeError(f"Nicht genug Deuterium fuer den Sprung ({jump_cost})")
     # Schiffe aus der Quell-Garnison nehmen.
     rows = (await session.execute(
         select(Ship).where(Ship.planet_id == src.id, Ship.fleet_id.is_(None))

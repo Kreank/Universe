@@ -46,7 +46,15 @@ async def phalanx_scan(
     Liefert {coords, movements:[...]} — eigener ``session_scope``-frei (Router committet)."""
     bal = get_balance()
     cfg = bal.data["phalanx"]
-    cost = float(cfg["scan_cost_deuterium"])
+    # Forschung: Phalanx-Sensorik erweitert Reichweite + senkt Scankosten.
+    from app.economy.service import get_research_levels
+    eff = bal.data["research"]["effects"]
+    research = await get_research_levels(session, player.id)
+    ptech = int(research.get("phalanx_tech", 0))
+    range_bonus = ptech * int(eff.get("phalanx_range_per_level", 0))
+    cost = float(cfg["scan_cost_deuterium"]) * max(
+        0.0, 1.0 - ptech * float(eff.get("phalanx_scan_cost_reduction_per_level", 0.0))
+    )
 
     # -- Scanner-Planet in Reichweite finden (eigener Planet mit sensorphalanx) --
     own = (await session.execute(
@@ -57,7 +65,7 @@ async def phalanx_scan(
         b = await session.get(Building, (p.id, "sensorphalanx"))
         lvl = b.level if b else 0
         rng = phalanx_range(lvl)
-        if rng >= 0 and abs(p.system - system) <= rng:
+        if rng >= 0 and abs(p.system - system) <= rng + range_bonus:
             scanner = p
             break
     if scanner is None:
