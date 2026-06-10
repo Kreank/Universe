@@ -20,6 +20,16 @@ class TransmissionOut(BaseModel):
     decision_payload: dict | None = None
     read: bool
     created_at: dt.datetime
+    from_player_id: uuid.UUID | None = None
+    from_name: str | None = None  # Anzeigename des Absenders (Spieler-Nachrichten)
+
+
+class SendMessageRequest(BaseModel):
+    """Spieler-zu-Spieler-Nachricht (klassisch, async — fuer Handels-Verhandlung)."""
+    to_player_id: uuid.UUID
+    subject: str
+    body: str
+    reply_to: uuid.UUID | None = None  # optionale Bezugs-Nachricht (Thread-Hinweis)
 
 
 class OkResponse(BaseModel):

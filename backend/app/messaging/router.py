@@ -11,6 +11,7 @@ from app.messaging.schemas import (
     DecideRequest,
     DecideResponse,
     OkResponse,
+    SendMessageRequest,
     TransmissionOut,
 )
 from app.platform.balance import get_balance
@@ -26,13 +27,65 @@ async def list_transmissions(
     unread: bool = False,
     player: Player = Depends(get_current_player),
     session: AsyncSession = Depends(get_session),
-) -> list[Transmission]:
+) -> list[TransmissionOut]:
     stmt = select(Transmission).where(Transmission.player_id == player.id)
     if unread:
         stmt = stmt.where(Transmission.read.is_(False))
     stmt = stmt.order_by(Transmission.created_at.desc())
     rows = (await session.execute(stmt)).scalars().all()
-    return list(rows)
+
+    # Absendernamen fuer Spieler-Nachrichten aufloesen (ein Lookup je Batch).
+    sender_ids = {t.from_player_id for t in rows if t.from_player_id}
+    names: dict = {}
+    if sender_ids:
+        srows = (await session.execute(
+            select(Player.id, Player.display_name).where(Player.id.in_(sender_ids))
+        )).all()
+        names = {pid: nm for pid, nm in srows}
+
+    out: list[TransmissionOut] = []
+    for t in rows:
+        item = TransmissionOut.model_validate(t)
+        item.from_name = names.get(t.from_player_id) if t.from_player_id else None
+        out.append(item)
+    return out
+
+
+@router.post("/messages", status_code=202, response_model=TransmissionOut)
+async def send_message(
+    body: SendMessageRequest,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> TransmissionOut:
+    """Schickt eine Spieler-zu-Spieler-Nachricht ins Postfach des Empfaengers.
+
+    Klassisch/async — fuer Handels-Verhandlung. Landet als 'player_message' beim
+    Empfaenger mit Absender; eine Antwort ist erneut ein send_message."""
+    subject = (body.subject or "").strip()[:140] or "(ohne Betreff)"
+    text = (body.body or "").strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Nachricht darf nicht leer sein")
+    if body.to_player_id == player.id:
+        raise HTTPException(status_code=422, detail="Nachricht an sich selbst nicht moeglich")
+    recipient = await session.get(Player, body.to_player_id)
+    if recipient is None:
+        raise HTTPException(status_code=404, detail="Empfaenger nicht gefunden")
+
+    t = Transmission(
+        player_id=recipient.id,
+        from_player_id=player.id,
+        type="player_message",
+        subject=subject,
+        body=text[:4000],
+        requires_decision=False,
+        read=False,
+    )
+    session.add(t)
+    await session.flush()
+    await session.commit()
+    item = TransmissionOut.model_validate(t)
+    item.from_name = player.display_name
+    return item
 
 
 @router.post("/transmissions/{transmission_id}/read", response_model=OkResponse)

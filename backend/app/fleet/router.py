@@ -4,6 +4,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -111,3 +112,96 @@ async def trade_index(
         "players": wm.players or 1,
         "updated_at": wm.updated_at.isoformat() if wm.updated_at else None,
     }
+
+
+_TRADE_RESOURCES = ("metal", "crystal", "deuterium")
+
+
+class TradeProfileIn(BaseModel):
+    """P2P-Handelsprofil-Update (unverbindlicher Werbe-Kurs, klassisch)."""
+    enabled: bool
+    offer: str | None = None
+    want: str | None = None
+    rate: float | None = None
+    note: str | None = None
+
+
+class TradeProfileOut(BaseModel):
+    enabled: bool
+    offer: str | None = None
+    want: str | None = None
+    rate: float | None = None
+    note: str | None = None
+
+
+def _trade_profile_out(p: Player) -> "TradeProfileOut":
+    return TradeProfileOut(
+        enabled=p.trade_enabled, offer=p.trade_offer, want=p.trade_want,
+        rate=p.trade_rate, note=p.trade_note,
+    )
+
+
+@router.get("/trade/profile", response_model=TradeProfileOut)
+async def get_trade_profile(player: Player = Depends(get_current_player)) -> "TradeProfileOut":
+    """Eigenes P2P-Handelsprofil."""
+    return _trade_profile_out(player)
+
+
+@router.put("/trade/profile", response_model=TradeProfileOut)
+async def put_trade_profile(
+    body: TradeProfileIn,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> "TradeProfileOut":
+    """Eigenes P2P-Handelsprofil setzen. Der Kurs ist nur ein unverbindlicher Richtwert;
+    ausgehandelt wird per Nachricht, abgewickelt mit normalen Transport-Flotten."""
+    if body.enabled:
+        if body.offer not in _TRADE_RESOURCES or body.want not in _TRADE_RESOURCES:
+            raise HTTPException(status_code=422, detail="Biete/Erhalte muessen Ressourcen sein")
+        if body.offer == body.want:
+            raise HTTPException(status_code=422, detail="Biete und Erhalte muessen verschieden sein")
+        if body.rate is not None and body.rate <= 0:
+            raise HTTPException(status_code=422, detail="Kurs muss positiv sein")
+    player.trade_enabled = bool(body.enabled)
+    player.trade_offer = body.offer
+    player.trade_want = body.want
+    player.trade_rate = body.rate
+    note = (body.note or "").strip()
+    player.trade_note = note[:280] or None
+    await session.commit()
+    return _trade_profile_out(player)
+
+
+class TradePartnerOut(BaseModel):
+    player_id: str
+    name: str
+    offer: str | None = None
+    want: str | None = None
+    rate: float | None = None
+    note: str | None = None
+    coords: str | None = None
+
+
+@router.get("/trade/partners", response_model=list[TradePartnerOut])
+async def trade_partners(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> list[TradePartnerOut]:
+    """Verzeichnis aktiver P2P-Haendler (alle Spieler mit aktiviertem Handelsprofil)."""
+    from app.platform.models import Planet
+
+    rows = (await session.execute(
+        select(Player).where(Player.trade_enabled.is_(True), Player.id != player.id)
+    )).scalars().all()
+    out: list[TradePartnerOut] = []
+    for p in rows:
+        planet = (await session.execute(
+            select(Planet).where(Planet.player_id == p.id)
+            .order_by(Planet.is_homeworld.desc(), Planet.created_at.asc())
+        )).scalars().first()
+        coords = f"{planet.galaxy}:{planet.system}:{planet.position}" if planet else None
+        out.append(TradePartnerOut(
+            player_id=str(p.id), name=p.display_name, offer=p.trade_offer,
+            want=p.trade_want, rate=p.trade_rate, note=p.trade_note, coords=coords,
+        ))
+    return out

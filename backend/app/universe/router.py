@@ -19,8 +19,10 @@ class CellOut(BaseModel):
     occupant_type: str
     name: str | None = None
     player_id: str | None = None
+    player_name: str | None = None  # Imperiumsname des Spielers (fuer Handel/Nachricht)
     npc_id: str | None = None
     discovered: bool = False  # hat dieser Spieler das Ziel schon aufgeklaert?
+    trade: dict | None = None  # P2P-Handelsanzeige des Spielers (falls aktiviert)
 
 
 class GalaxyViewOut(BaseModel):
@@ -117,12 +119,24 @@ async def galaxy_view(
             continue
         name = None
         player_id = None
+        player_name = None
         npc_id = None
+        trade = None
         if cell.occupant_type == "player" and cell.ref_id:
             planet = await session.get(Planet, cell.ref_id)
             if planet:
                 name = planet.name
                 player_id = str(planet.player_id)
+                owner = await session.get(Player, planet.player_id)
+                if owner:
+                    player_name = owner.display_name
+                    if owner.trade_enabled:
+                        trade = {
+                            "offer": owner.trade_offer,
+                            "want": owner.trade_want,
+                            "rate": owner.trade_rate,
+                            "note": owner.trade_note,
+                        }
         elif cell.occupant_type == "npc" and cell.ref_id:
             npc = await session.get(NpcEmpire, cell.ref_id)
             if npc:
@@ -133,7 +147,9 @@ async def galaxy_view(
             occupant_type=cell.occupant_type,
             name=name,
             player_id=player_id,
+            player_name=player_name,
             npc_id=npc_id,
             discovered=(galaxy, system, pos) in discovered,
+            trade=trade,
         ))
     return GalaxyViewOut(cells=cells)

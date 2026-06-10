@@ -57,7 +57,7 @@ occupant_type_enum = ENUM(
 )
 transmission_type_enum = ENUM(
     "routine", "reaction", "demand", "combat_report", "big_moment", "system",
-    "spy_report",
+    "spy_report", "player_message",
     name="transmission_type", create_type=False,
 )
 
@@ -80,6 +80,13 @@ class Player(Base):
     vacation_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     doctrine: Mapped[str | None] = mapped_column(Text, nullable=True)  # Imperiums-Doktrin (Doku 03b §9)
     doctrine_changed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # P2P-Handelsprofil (klassisch, unverbindlich): Spieler wirbt offen ein Tausch-Angebot,
+    # ausgehandelt wird per Nachricht/Chat, abgewickelt mit normalen transport-Flotten.
+    trade_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    trade_offer: Mapped[str | None] = mapped_column(Text, nullable=True)  # 'metal'|'crystal'|'deuterium'
+    trade_want: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trade_rate: Mapped[float | None] = mapped_column(Float, nullable=True)  # Richtwert: want je 1 offer
+    trade_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Planet(Base):
@@ -231,6 +238,8 @@ class Transmission(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"))
+    # Absender bei Spieler-zu-Spieler-Nachrichten (type 'player_message'); NULL = System.
+    from_player_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="SET NULL"), nullable=True)
     commander_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="SET NULL"), nullable=True)
     type: Mapped[str] = mapped_column(transmission_type_enum, default="routine")
     subject: Mapped[str] = mapped_column(Text, nullable=False)

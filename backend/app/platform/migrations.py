@@ -116,6 +116,15 @@ _STATEMENTS: list[str] = [
         CONSTRAINT world_market_singleton CHECK (id = 1)
     )
     """,
+    # P2P-Handelsprofil (klassisch, unverbindlich): Spieler wirbt offen ein Tausch-Angebot.
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS trade_enabled BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS trade_offer TEXT",
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS trade_want TEXT",
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS trade_rate DOUBLE PRECISION",
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS trade_note TEXT",
+    # Spieler-zu-Spieler-Nachrichten ueber das Postfach (Absender + neuer Typ).
+    "ALTER TABLE transmissions ADD COLUMN IF NOT EXISTS from_player_id UUID REFERENCES players(id) ON DELETE SET NULL",
+    "ALTER TYPE transmission_type ADD VALUE IF NOT EXISTS 'player_message'",
 ]
 
 
