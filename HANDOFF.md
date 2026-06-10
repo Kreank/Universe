@@ -41,13 +41,15 @@
   `WorldMarket`-Singleton (Migration), `index_tick`, `ensure_trade_centers` (seedet 6, fuer alle sichtbar),
   Unangreifbar in `send_fleet`, `GET /api/trade/index`. balance: `trade.index`. Frontend: Kurs IMMER
   sichtbar (kein „erst aufklaeren"), 💱-Handelszentrum-Badge, „Angreifen" an Zentren aus.
-- **P2P-Handel (Phase 2, OFFEN — naechstes):** **klassisch wie OGame, KEIN Automat.** Spieler werben einen
-  **unverbindlichen** Kurs (Leitfaden) + an/aus-Checkbox; finden sich in der Galaxie; **handeln Kurs im
-  Chat aus**; Abwicklung = zwei normale `transport`-Flotten (Ress hin, Ress zurueck). **Kein Escrow noetig**
-  (Fracht ist beim Start abgebucht + physisch unterwegs; Vertrauen/Ruf regeln Betrug sozial). Fehlt: (a)
-  Spieler-Handelsprofil (Flag + Werbe-Kurs, default = globaler Index), (b) Galaxie-Anzeige am Spieler-Planeten,
-  (c) **Chat** — existiert NICHT (messaging/ ist nur Postfach); fuer Verhandlung reicht async (auf Postfach-
-  Infra aufbauen), Echtzeit spaeter. Transport an fremde Spieler-Planeten geht bereits (service.py).
+- **P2P-Handel (Phase 2, FERTIG + live — Commits c6923be/1049d17):** **klassisch wie OGame, KEIN Automat/
+  Escrow.** Gebaut: (a) Spieler-Handelsprofil (`players.trade_enabled/offer/want/rate/note`) — unverbindlicher
+  Werbe-Kurs + an/aus; GET/PUT `/api/trade/profile`, GET `/api/trade/partners`. (b) Galaxie zeigt am Spieler-
+  Planeten die Handelsanzeige (`player_name` + `trade` in CellOut) + ✉-Nachricht-Button; (c) **async Chat**
+  ueber das Postfach: `Transmission.from_player_id` + Typ `player_message`, POST `/api/messages`, Absender in
+  `/api/transmissions`. Frontend: neue **/trade-View** (Profil-Editor + Partner-Verzeichnis), shared
+  `message-compose`, Postfach-„Antworten". Abwicklung = normale `transport`-Flotten (Kurs per Nachricht
+  aushandeln). **Hinweis:** voll testbar erst mit ≥2 Accounts (aktuell 1 echter Spieler) — Profil speichern +
+  NPC-Zentren gehen solo. Echtzeit-Chat + WS-Push fuer neue Nachrichten waeren spaetere Politur.
 - **Entschieden:** Handelszentren flatly unangreifbar (statt adaptiver Ueber-Deff); lokale Arbitrage zwischen
   Zentren entfaellt bewusst (ein globaler Kurs = verlaesslicher Leitfaden auch fuer P2P). Legacy-`merchant`-
   Pfad bleibt im Code, wird aber nicht mehr aktiv gespawnt.
