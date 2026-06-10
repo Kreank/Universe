@@ -39,7 +39,7 @@ commander_rank_enum = ENUM(
     name="commander_rank", create_type=False,
 )
 specialization_enum = ENUM(
-    "combat", "logistics", "spy", "research", "trade",
+    "combat", "logistics", "spy", "research", "trade", "admin",
     name="specialization", create_type=False,
 )
 fleet_mission_enum = ENUM(
@@ -103,6 +103,8 @@ class Planet(Base):
     fields_used: Mapped[int] = mapped_column(Integer, default=0)
     fields_max: Mapped[int] = mapped_column(Integer, default=163)
     is_homeworld: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Gouverneur (Kommandeur) dieses Planeten -> Produktions-Bonus (economy_bonus).
+    governor_commander_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -151,6 +153,7 @@ class Commander(Base):
     # Unmut-Akkumulator (0..100): waechst je staerker der Kommandeur; Schwelle -> Forderung.
     unrest: Mapped[float] = mapped_column(Float, default=0.0)
     last_demand_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_ability_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     span_capacity: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[str] = mapped_column(commander_status_enum, default="active")
     training_finishes_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -1,9 +1,11 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
-import { CommanderDetail } from '../../core/models/api.models';
+import { GameStateService } from '../../core/services/game-state.service';
+import { CommanderDetail, Planet } from '../../core/models/api.models';
 import {
   RANK_META,
   SPECIALIZATION_META,
@@ -20,7 +22,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
 @Component({
   selector: 'app-commander-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DatePipe, CountdownComponent],
+  imports: [RouterLink, DatePipe, FormsModule, CountdownComponent],
   template: `
     <a class="back" routerLink="/commanders">← Zurueck zum Roster</a>
 
@@ -72,6 +74,28 @@ import { commanderDetailStyles } from './commander-detail.styles';
             }
           </div>
 
+          <!-- Gouverneurs-Posten -->
+          @if (c.status === 'active') {
+            <div class="governor">
+              <div class="panel-title">🏛️ Gouverneur</div>
+              @if (governedPlanet(); as gp) {
+                <p class="small">Verwaltet <strong>{{ gp.name }}</strong> [{{ gp.galaxy }}:{{ gp.system }}:{{ gp.position }}] — hebt dessen Produktion.</p>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="recallGovernor(gp.id)">Abberufen</button>
+              } @else {
+                <div class="gov-assign">
+                  <select [ngModel]="govPlanet()" (ngModelChange)="govPlanet.set($event)">
+                    <option [ngValue]="null">— Planet wählen —</option>
+                    @for (p of planets(); track p.id) {
+                      <option [ngValue]="p.id">{{ p.name }} [{{ p.galaxy }}:{{ p.system }}:{{ p.position }}]</option>
+                    }
+                  </select>
+                  <button class="btn btn-ghost btn-sm" type="button" [disabled]="!govPlanet()" (click)="assignGovernor()">Einsetzen</button>
+                </div>
+                <p class="faint small">Als Gouverneur eingesetzt führt er keine Flotte; „Verwaltung"-Kommandeure bringen den höchsten Bonus.</p>
+              }
+            </div>
+          }
+
           <div class="persona">
             <div class="panel-title">Persona</div>
             <p class="small">{{ c.persona.background }}</p>
@@ -113,16 +137,47 @@ import { commanderDetailStyles } from './commander-detail.styles';
 export class CommanderDetailComponent {
   private readonly api = inject(ApiService);
   private readonly balance = inject(BalanceService);
+  private readonly state = inject(GameStateService);
 
   /** Route-Parameter via withComponentInputBinding. */
   readonly id = input<string>('');
 
   protected readonly commander = signal<CommanderDetail | null>(null);
   protected readonly loading = signal(true);
+  protected readonly planets = this.state.planets;
+  protected readonly govPlanet = signal<string | null>(null);
+
+  /** Planet, den dieser Kommandeur aktuell als Gouverneur verwaltet (falls vorhanden). */
+  protected readonly governedPlanet = computed<Planet | null>(() => {
+    const c = this.commander();
+    if (!c) {
+      return null;
+    }
+    return this.planets().find((p) => p.governor_commander_id === c.id) ?? null;
+  });
 
   constructor() {
     // Reagiert auf den ueber die Route gebundenen :id-Parameter.
     effect(() => this.load(this.id()));
+  }
+
+  assignGovernor(): void {
+    const c = this.commander();
+    const pid = this.govPlanet();
+    if (!c || !pid) {
+      return;
+    }
+    this.api.setGovernor(pid, c.id).subscribe({
+      next: () => void this.state.loadPlanets(),
+      error: () => void this.state.loadPlanets(),
+    });
+  }
+
+  recallGovernor(planetId: string): void {
+    this.api.setGovernor(planetId, null).subscribe({
+      next: () => void this.state.loadPlanets(),
+      error: () => void this.state.loadPlanets(),
+    });
   }
 
   private load(id: string): void {

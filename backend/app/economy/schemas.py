@@ -21,6 +21,7 @@ class PlanetOut(BaseModel):
     fields_used: int
     fields_max: int
     is_homeworld: bool
+    governor_commander_id: uuid.UUID | None = None
 
 
 class BuildingStateOut(BaseModel):

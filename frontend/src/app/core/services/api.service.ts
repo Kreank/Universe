@@ -201,6 +201,13 @@ export class ApiService {
     return this.http.get<SpanInfo>('/api/player/span');
   }
 
+  /** Gouverneur eines Planeten setzen (commanderId) oder entfernen (null). */
+  setGovernor(planetId: string, commanderId: string | null): Observable<{ ok: boolean }> {
+    return this.http.put<{ ok: boolean }>(`/api/planets/${planetId}/governor`, {
+      commander_id: commanderId,
+    });
+  }
+
   // --- Postfach / Funksprueche ---
   getTransmissions(unread = false): Observable<Transmission[]> {
     const query = unread ? '?unread=true' : '';

@@ -258,6 +258,12 @@ async def send_fleet(
             raise ValueError("Commander nicht gefunden")
         if commander.status not in ("active", "wounded"):
             raise RuntimeError("Commander ist nicht einsatzbereit")
+        # Ein Gouverneur (Planeten-Posten) kann nicht gleichzeitig eine Flotte fuehren.
+        is_governor = (await session.execute(
+            select(Planet.id).where(Planet.governor_commander_id == commander.id)
+        )).first() is not None
+        if is_governor:
+            raise RuntimeError("Dieser Kommandeur ist als Gouverneur eingesetzt — erst abberufen")
 
     # Ziel-Neulingsschutz pruefen (kein Angriff auf geschuetzte Spieler).
     if mission == "attack":
@@ -295,6 +301,13 @@ async def send_fleet(
         _sb, speed_bonus = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(ships.keys()))
         if speed_bonus > 0:
             secs = int(round(secs / (1.0 + speed_bonus)))
+        # Aktive Logistik-Faehigkeit "Eilmarsch" scharfgeschaltet -> Flugzeit verkuerzt.
+        if mission_data and mission_data.get("use_ability") and commander.specialization == "logistics":
+            from app.commander.service import ready_ability
+            ab = ready_ability(commander, get_balance(), _now())
+            if ab:
+                secs = int(round(secs * (1.0 - float(ab["magnitude"]))))
+                commander.last_ability_at = _now()
     fuel = fuel_cost(ships, distance)
 
     cargo = {

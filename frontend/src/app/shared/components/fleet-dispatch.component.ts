@@ -161,6 +161,12 @@ import { IconTileComponent } from './icon-tile.component';
             <input type="range" min="10" max="100" step="10" [ngModel]="speed()" (ngModelChange)="speed.set($event)" />
           </div>
         </div>
+        @if (commanderId()) {
+          <label class="escort-row small">
+            <input type="checkbox" [ngModel]="useAbility()" (ngModelChange)="useAbility.set($event)" />
+            ⚡ Kommandeur-Fähigkeit einsetzen (sofern verfügbar & bereit)
+          </label>
+        }
 
         <div class="actions">
           <button class="btn btn-primary" type="button" [disabled]="!canSend() || sending()" (click)="send()">
@@ -277,6 +283,7 @@ export class FleetDispatchComponent {
   });
   protected readonly commanderId = signal<string | null>(null);
   protected readonly speed = signal(100);
+  protected readonly useAbility = signal(false);
   protected readonly sending = signal(false);
 
   // --- Handel ---
@@ -435,6 +442,7 @@ export class FleetDispatchComponent {
       cargo,
       commander_id: this.commanderId(),
       speed_pct: this.speed(),
+      use_ability: this.useAbility(),
     };
     if (this.mission() === 'trade') {
       // Angebots-Ressource faehrt als Fracht mit; der Server baut Cargo + mission_data.

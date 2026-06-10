@@ -221,7 +221,7 @@ export class CommandersComponent {
   protected readonly selFocus = signal(''); // '' = automatisch
   protected readonly selTier = signal('standard');
   protected readonly preview = signal<CommanderBonus[]>([]);
-  protected readonly specOptions = ['combat', 'logistics', 'spy', 'research', 'trade'];
+  protected readonly specOptions = ['combat', 'logistics', 'spy', 'research', 'trade', 'admin'];
   protected readonly focusOptions = ['fighter', 'cruiser', 'capital', 'civil'];
 
   // Investitions-Stufen aus balance.json (Kosten + Grad-Chance-Andeutung).

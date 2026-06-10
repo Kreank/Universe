@@ -72,6 +72,8 @@ export interface Planet {
   fields_used: number;
   fields_max: number;
   is_homeworld: boolean;
+  /** Kommandeur, der diesen Planeten als Gouverneur verwaltet (Produktions-Bonus). */
+  governor_commander_id?: string | null;
 }
 
 export interface ResourcePool {
@@ -276,6 +278,8 @@ export interface FleetSendRequest {
   want_res?: 'metal' | 'crystal' | 'deuterium';
   /** Gewaehlte Eskort-Patrouillen (StationedFleet-IDs), die die Route decken. */
   escort_ids?: string[];
+  /** Aktive Kommandeur-Faehigkeit scharfschalten (Angriffs-Boost / Eilmarsch). */
+  use_ability?: boolean;
 }
 
 export interface GalaxyCell {

@@ -69,6 +69,7 @@ async def get_planet(
         fields_used=planet.fields_used,
         fields_max=planet.fields_max,
         is_homeworld=planet.is_homeworld,
+        governor_commander_id=planet.governor_commander_id,
         resources=resources,
         buildings=[
             BuildingStateOut(type=b.type, level=b.level, upgrade_finishes_at=b.upgrade_finishes_at)

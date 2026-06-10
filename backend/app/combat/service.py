@@ -170,6 +170,16 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     attacker_player = await session.get(Player, fleet.player_id)
     attack_mult *= combat_attack_mult(attacker_player.doctrine if attacker_player else None)
 
+    # Aktive Kampf-Faehigkeit (scharfgeschaltet beim Versand) -> einmaliger Angriffs-Boost.
+    ability_used = None
+    if commander is not None and (fleet.mission_data or {}).get("use_ability"):
+        from app.commander.service import ready_ability
+        ab = ready_ability(commander, bal, _now_utc())
+        if ab and commander.specialization == "combat":
+            attack_mult *= (1.0 + float(ab["magnitude"]))
+            commander.last_ability_at = _now_utc()
+            ability_used = ab["label"]
+
     # Schiffsklassen-spezifische Commander-Boni (Angriff/Schild je Schiffstyp, moral-skaliert).
     ship_bonuses: dict[str, dict[str, float]] = {}
     if commander is not None:

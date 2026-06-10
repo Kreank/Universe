@@ -344,6 +344,7 @@ export const SPECIALIZATION_META: Record<string, DisplayMeta> = {
   spy: { label: 'Spionage', glyph: '🛰️' },
   research: { label: 'Forschung', glyph: '🔬' },
   trade: { label: 'Handel', glyph: '💱' },
+  admin: { label: 'Verwaltung', glyph: '🏛️' },
 };
 
 export const RANK_META: Record<string, DisplayMeta> = {

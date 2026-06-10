@@ -150,6 +150,15 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     energy_tech = research.get("energy_tech", 0)
     new_rates, energy, capacities = compute_rates(buildings, planet.temp_max, energy_tech)
 
+    # Gouverneur-Bonus (Kommandeur auf dem Planeten) auf die Produktionsrate.
+    if getattr(planet, "governor_commander_id", None):
+        from app.commander.service import governor_production_mult
+        from app.platform.models import Commander as _Commander
+        gov = await session.get(_Commander, planet.governor_commander_id)
+        mult = governor_production_mult(gov, get_balance())
+        if mult != 1.0:
+            new_rates = {k: v * mult for k, v in new_rates.items()}
+
     rows = (await session.execute(
         select(Resource).where(
             Resource.planet_id == planet.id,

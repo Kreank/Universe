@@ -148,6 +148,11 @@ _STATEMENTS: list[str] = [
     "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS last_demand_at TIMESTAMPTZ",
     # Ueberlauf (Loyalitaets-Folge): neuer Kommandeur-Status.
     "ALTER TYPE commander_status ADD VALUE IF NOT EXISTS 'defected'",
+    # Aktive Faehigkeiten: Cooldown-Zeitstempel.
+    "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS last_ability_at TIMESTAMPTZ",
+    # Gouverneurs-Rolle: Verwaltungs-Spezialisierung + Planet-Gouverneur.
+    "ALTER TYPE specialization ADD VALUE IF NOT EXISTS 'admin'",
+    "ALTER TABLE planets ADD COLUMN IF NOT EXISTS governor_commander_id UUID REFERENCES commanders(id) ON DELETE SET NULL",
 ]
 
 

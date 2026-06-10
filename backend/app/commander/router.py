@@ -46,6 +46,49 @@ async def get_span(
     return SpanOut(**span)
 
 
+@router.put("/planets/{planet_id}/governor")
+async def set_governor(
+    planet_id: uuid.UUID,
+    body: dict,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Setzt/entfernt den Gouverneur eines eigenen Planeten (Produktions-Bonus).
+    body = {commander_id: <uuid>|null}. Ein Gouverneur kann nicht zugleich eine Flotte fuehren."""
+    from app.platform.models import Fleet
+
+    planet = await session.get(Planet, planet_id)
+    if planet is None or planet.player_id != player.id:
+        raise HTTPException(status_code=404, detail="Planet nicht gefunden")
+    cid = body.get("commander_id")
+    if not cid:
+        planet.governor_commander_id = None
+        await session.commit()
+        return {"ok": True, "governor_commander_id": None}
+    commander = await session.get(Commander, uuid.UUID(str(cid)))
+    if commander is None or commander.player_id != player.id:
+        raise HTTPException(status_code=404, detail="Kommandeur nicht gefunden")
+    if commander.status != "active":
+        raise HTTPException(status_code=409, detail="Kommandeur ist nicht einsatzbereit")
+    in_fleet = (await session.execute(
+        select(Fleet.id).where(
+            Fleet.commander_id == commander.id,
+            Fleet.status.in_(("flying", "arrived", "returning")),
+        )
+    )).first() is not None
+    if in_fleet:
+        raise HTTPException(status_code=409, detail="Kommandeur ist aktuell auf einem Flotteneinsatz")
+    # Aus etwaiger anderer Gouverneurs-Position abziehen.
+    await session.execute(
+        Planet.__table__.update()
+        .where(Planet.governor_commander_id == commander.id)
+        .values(governor_commander_id=None)
+    )
+    planet.governor_commander_id = commander.id
+    await session.commit()
+    return {"ok": True, "governor_commander_id": str(commander.id)}
+
+
 @router.get("/player/doctrine")
 async def get_doctrine(
     player: Player = Depends(get_current_player),

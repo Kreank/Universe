@@ -297,6 +297,38 @@ async def complete_training(commander_id: str) -> None:
     log.info("Commander %s ausgebildet", commander_id)
 
 
+def _rank_index(rank: str, bal) -> int:
+    order = [r["key"] for r in bal.commander["ranks"]]
+    return order.index(rank) if rank in order else 0
+
+
+def ready_ability(commander, bal, now: dt.datetime) -> dict | None:
+    """Signatur-Faehigkeit der Spezialisierung, falls Rang-gated freigeschaltet + nicht im Cooldown.
+    Liefert das ability-cfg (mit 'label'/'magnitude') oder None."""
+    ab = bal.commander.get("abilities", {}).get(commander.specialization)
+    if not ab:
+        return None
+    if _rank_index(commander.rank, bal) < _rank_index(ab["min_rank"], bal):
+        return None
+    last = commander.last_ability_at
+    if last is not None:
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=dt.timezone.utc)
+        if (now - last).total_seconds() < float(ab["cooldown_seconds"]):
+            return None
+    return ab
+
+
+def governor_production_mult(commander, bal) -> float:
+    """Produktions-Multiplikator eines Planeten-Gouverneurs (>=1.0).
+    = 1 + peak_pct[rank] * (morale/100) * spec_mult. Nur fuer aktive Kommandeure."""
+    if commander is None or commander.status != "active":
+        return 1.0
+    peak = float(bal.commander["economy_bonus"]["peak_pct_by_rank"].get(commander.rank, 0.0))
+    smult = float(bal.commander.get("governor", {}).get("spec_mult", {}).get(commander.specialization, 1.0))
+    return 1.0 + peak * (float(commander.morale) / 100.0) * smult
+
+
 def _pick_demand(traits: list, morale: int) -> tuple[str, str, str]:
     """Waehlt eine trait-gefaerbte Forderung -> (kind, subject_suffix, body)."""
     t = set(traits or [])
@@ -363,6 +395,10 @@ async def morale_drift_tick() -> None:
                 Fleet.commander_id.isnot(None),
                 Fleet.status.in_(("flying", "arrived", "returning")),
             )
+        )).scalars().all())
+        # Gouverneure sind im Dienst (kein Ueberlauf) — aber sie sammeln weiter Unmut.
+        assigned |= set((await session.execute(
+            select(Planet.governor_commander_id).where(Planet.governor_commander_id.isnot(None))
         )).scalars().all())
 
         # Charisma: charismatische Kommandeure heben das Moral-Ziel ihres Imperiums.
