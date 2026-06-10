@@ -57,7 +57,8 @@
     "orbital_battery_units_per_level": 8,
     "shield_dome_tech_per_level": 2,
     "jump_gate_cooldown_seconds": 3600,
-    "jump_cost_per_ship_deuterium": 5
+    "jump_cost_base_deuterium": 5,
+    "jump_cost_class_mult": { "fighter": 1, "civil": 1, "cruiser": 2, "capital": 4 }
   },
 
   "storage": {

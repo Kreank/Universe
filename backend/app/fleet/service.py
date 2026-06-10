@@ -459,11 +459,21 @@ async def jump_fleet(
     ships = {t: int(c) for t, c in ships.items() if int(c) > 0}
     if not ships:
         raise ValueError("Keine Schiffe gewaehlt")
-    # Sprung-Kosten (Deuterium, je Schiff) am Quellmond abziehen.
-    jump_cost = int(round(
-        float(bal.data["moon"].get("jump_cost_per_ship_deuterium", 0))
-        * sum(ships.values()) * cost_mult
-    ))
+    # Sprung-Kosten (Deuterium) am Quellmond abziehen: je Schiff nach Groessenklasse
+    # (kleiner Jaeger/Transporter guenstig, Grosskampfschiffe/Traeger ~4x).
+    mcfg = bal.data["moon"]
+    base = float(mcfg.get("jump_cost_base_deuterium", 0))
+    class_mult = mcfg.get("jump_cost_class_mult", {})
+    ship_class = {
+        typ: cls
+        for cls, types in bal.commander["ship_classes"].items()
+        if not cls.startswith("_")
+        for typ in types
+    }
+    jump_cost = int(round(cost_mult * base * sum(
+        float(class_mult.get(ship_class.get(typ, "fighter"), 1.0)) * count
+        for typ, count in ships.items()
+    )))
     if jump_cost > 0 and not await spend_resources(session, src, {"deuterium": jump_cost}):
         raise RuntimeError(f"Nicht genug Deuterium fuer den Sprung ({jump_cost})")
     # Schiffe aus der Quell-Garnison nehmen.
