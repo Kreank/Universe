@@ -11,6 +11,7 @@ import {
   PlanetUnit,
 } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
+import { missionIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { NotificationService } from '../../core/services/notification.service';
@@ -144,7 +145,7 @@ import { fleetStyles } from './fleet.styles';
           @for (f of activeFleets(); track f.id) {
             <div class="fleet-row">
               <div class="fleet-info">
-                <span class="badge-mission">{{ missionMeta(f.mission).glyph }} {{ missionMeta(f.mission).label }}</span>
+                <span class="badge-mission">@if (missionIcon(f.mission); as mi) {<img class="mission-ico" [src]="mi" alt="" (error)="hideImg($event)" />} @else {{{ missionMeta(f.mission).glyph }} }{{ missionMeta(f.mission).label }}</span>
                 <span class="mono small">→ [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</span>
                 <span class="chip">{{ shipsTotal(f) }} Schiffe · {{ statusLabel(f.status) }}</span>
               </div>
@@ -426,4 +427,9 @@ export class FleetComponent {
   shipMeta = (t: string) => metaFor(SHIP_META, t);
   missionMeta = (m: string) => metaFor(MISSION_META, m);
   rankMeta = (r: string) => metaFor(RANK_META, r);
+  protected readonly missionIcon = missionIcon;
+  /** Blendet ein nicht ladbares Inline-Icon aus (Label bleibt sichtbar). */
+  hideImg(event: Event): void {
+    (event.target as HTMLImageElement).style.display = 'none';
+  }
 }

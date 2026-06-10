@@ -30,7 +30,7 @@ export const commanderStyles = `
     border: 2px solid var(--band, var(--accent));
     box-shadow: 0 0 14px color-mix(in srgb, var(--band, var(--accent)) 40%, transparent);
   }
-  .portrait img { width: 100%; height: 100%; display: block; }
+  .portrait > img { width: 100%; height: 100%; display: block; }
   .rank-badge {
     position: absolute; bottom: 0; left: 0; right: 0;
     background: rgba(6,10,20,0.85);
@@ -84,6 +84,14 @@ export const commanderStyles = `
   .morale-bar .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--band) 50%, transparent), var(--band)); }
   .traits { display: flex; flex-wrap: wrap; gap: 0.3rem; }
   .trait { border-color: var(--border); }
+
+  /* Inline-Icon in Chips/Badges (Rang, Spezialisierung, Traits). */
+  .chip-ico {
+    width: 1.15em; height: 1.15em; object-fit: contain;
+    vertical-align: -0.2em; margin-right: 0.3em;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  }
+  .rank-badge .chip-ico { margin-right: 0.2em; }
 
   .train-panel { margin-bottom: 1.2rem; display: flex; flex-direction: column; gap: 0.7rem; }
   .train-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }

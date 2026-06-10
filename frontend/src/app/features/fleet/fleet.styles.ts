@@ -67,6 +67,11 @@ export const fleetStyles = `
   .fleet-info { display: flex; flex-direction: column; gap: 0.25rem; }
   .fleet-act { display: flex; align-items: center; gap: 0.6rem; }
   .badge-mission { font-weight: 600; }
+  .mission-ico {
+    width: 1.2em; height: 1.2em; object-fit: contain;
+    vertical-align: -0.25em; margin-right: 0.3em;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  }
 
   /* --- Eingehende Angriffe (Warn-Banner) --- */
   .card.incoming {

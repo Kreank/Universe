@@ -22,6 +22,7 @@ import {
   ShipyardBuildRequest,
   ShipyardBuildResponse,
   ShipyardResponse,
+  PhalanxScanResult,
   SendMessageRequest,
   SpanInfo,
   TradeIndex,
@@ -132,6 +133,11 @@ export class ApiService {
 
   sendMessage(body: SendMessageRequest): Observable<Transmission> {
     return this.http.post<Transmission>('/api/messages', body);
+  }
+
+  /** Sensorphalanx-Scan: Flottenbewegungen zu/von einer Koordinate (ETA fuers Timing). */
+  phalanxScan(galaxy: number, system: number, position: number): Observable<PhalanxScanResult> {
+    return this.http.post<PhalanxScanResult>('/api/phalanx/scan', { galaxy, system, position });
   }
 
   // --- Commander ---

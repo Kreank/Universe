@@ -9,6 +9,7 @@ import {
   ResearchState,
 } from '../../core/models/api.models';
 import { TECH_META, metaFor } from '../../core/models/display';
+import { techIcon } from '../../core/models/icon-assets';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 
 /** Labor-(Gebaeude-)Voraussetzung, als Chip in der Kachel. */
@@ -132,7 +133,7 @@ interface Graph {
               [attr.title]="n.blurb"
             >
               <div class="node-head">
-                <app-icon-tile [glyph]="n.glyph" [size]="40" variant="muted" />
+                <app-icon-tile [glyph]="n.glyph" [src]="techIcon(n.type)" [size]="40" variant="muted" />
                 <div class="node-id">
                   <span class="node-name">{{ n.label }}</span>
                   <span class="chip lvl" [class.zero]="n.level === 0">Stufe {{ n.level }}</span>
@@ -268,6 +269,9 @@ export class TechtreeComponent {
   private readonly balanceService = inject(BalanceService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  /** Tech-Icon-Pfad fuer die Kachel (Template). */
+  protected readonly techIcon = techIcon;
 
   /** Kachel-Maße — fix, damit die Linien-Endpunkte exakt sitzen. */
   protected readonly NODE_W = 200;

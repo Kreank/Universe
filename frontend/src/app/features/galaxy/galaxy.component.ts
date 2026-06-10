@@ -14,6 +14,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
+import { PhalanxPanelComponent } from '../../shared/components/phalanx-panel.component';
 import { galaxyStyles } from './galaxy.styles';
 
 /** Offenes Versand-Overlay (Schnellangriff / Schnelltransport / …). */
@@ -35,7 +36,7 @@ interface DispatchCtx {
 @Component({
   selector: 'app-galaxy',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, DatePipe, FleetDispatchComponent, MessageComposeComponent],
+  imports: [FormsModule, DatePipe, FleetDispatchComponent, MessageComposeComponent, PhalanxPanelComponent],
   template: `
     <h1>Galaxie · Karte</h1>
     <p class="sub">Erkunde Systeme, finde Ziele und entsende deine Flotten — Schnellaktionen direkt am Ziel.</p>
@@ -91,6 +92,7 @@ interface DispatchCtx {
                     @if (c.occupant_type === 'player' && c.player_id) {
                       <button class="ic msg" type="button" (click)="messagePlayer(c)" title="Nachricht an Spieler">✉</button>
                     }
+                    <button class="ic phx" type="button" (click)="phalanxTarget.set(cellCoord(c))" title="Sensorphalanx-Scan (Flottenbewegungen)">📡</button>
                     <button class="ic spy" type="button" (click)="quickSpy(cellCoord(c), c.name)" [title]="spyTitle()">🛰</button>
                     <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), c.name, 'attack')" title="Angreifen">⚔</button>
                     <button class="ic trp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'transport')" [title]="c.trade ? 'Transport (P2P-Handel: Ware schicken)' : 'Transport'">🚚</button>
@@ -141,6 +143,7 @@ interface DispatchCtx {
               <div class="target-act">
                 <button class="btn btn-ghost btn-sm" type="button" (click)="jumpTo(t)">Anfliegen</button>
                 <button class="btn btn-ghost btn-sm" type="button" (click)="quickSpy(targetCoord(t), t.name)">🛰 Spionieren</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="phalanxTarget.set(targetCoord(t))">📡 Scan</button>
                 <button class="btn btn-ghost btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'transport')">🚚 Transport</button>
                 @if (t.intel?.merchant) {
                   <button class="btn btn-trade btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'trade')">💱 Handeln</button>
@@ -176,6 +179,9 @@ interface DispatchCtx {
         (close)="composePlayer.set(null)"
       />
     }
+    @if (phalanxTarget(); as pt) {
+      <app-phalanx-panel [target]="pt" (close)="phalanxTarget.set(null)" />
+    }
   `,
   styles: [galaxyStyles],
 })
@@ -194,6 +200,7 @@ export class GalaxyComponent {
   protected readonly loading = signal(false);
   protected readonly dispatch = signal<DispatchCtx | null>(null);
   protected readonly composePlayer = signal<{ id: string; name: string; subject: string } | null>(null);
+  protected readonly phalanxTarget = signal<Coordinate | null>(null);
   private initialized = false;
 
   /** Tooltip fuer die P2P-Handelsanzeige eines Spielers. */

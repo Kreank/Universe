@@ -10,6 +10,8 @@ interface NavItem {
   path: string;
   label: string;
   glyph: string;
+  /** Serviertes Nav-Icon; faellt bei Ladefehler auf den Glyph zurueck. */
+  icon: string;
 }
 
 @Component({
@@ -88,7 +90,10 @@ interface NavItem {
               routerLinkActive="active"
               (click)="closeNav()"
             >
-              <span class="nav-glyph">{{ item.glyph }}</span>
+              <span class="nav-glyph">
+                <img class="nav-ico" [src]="item.icon" alt="" (error)="onNavIconError($event)" />
+                <span class="nav-glyph-fallback">{{ item.glyph }}</span>
+              </span>
               <span class="nav-label">{{ item.label }}</span>
               @if (item.path === '/transmissions' && state.unreadTransmissions() > 0) {
                 <span class="badge">{{ state.unreadTransmissions() }}</span>
@@ -135,17 +140,17 @@ export class ShellComponent implements OnInit {
   protected readonly navOpen = signal(false);
 
   protected readonly nav: NavItem[] = [
-    { path: '/dashboard', label: 'Dashboard', glyph: '🛰️' },
-    { path: '/buildings', label: 'Gebaeude', glyph: '🏗️' },
-    { path: '/research', label: 'Forschung', glyph: '🔬' },
-    { path: '/techtree', label: 'Techbaum', glyph: '🌳' },
-    { path: '/shipyard', label: 'Werft', glyph: '🛠️' },
-    { path: '/fleet', label: 'Flotte', glyph: '🚀' },
-    { path: '/combat-sim', label: 'Simulator', glyph: '⚔️' },
-    { path: '/galaxy', label: 'Galaxie', glyph: '🌌' },
-    { path: '/trade', label: 'Handel', glyph: '💱' },
-    { path: '/commanders', label: 'Kommandozentrale', glyph: '🎖️' },
-    { path: '/transmissions', label: 'Postfach', glyph: '📡' },
+    { path: '/dashboard', label: 'Dashboard', glyph: '🛰️', icon: 'assets/img/nav/dashboard.png' },
+    { path: '/buildings', label: 'Gebaeude', glyph: '🏗️', icon: 'assets/img/nav/buildings.png' },
+    { path: '/research', label: 'Forschung', glyph: '🔬', icon: 'assets/img/nav/research.png' },
+    { path: '/techtree', label: 'Techbaum', glyph: '🌳', icon: 'assets/img/tech/techtree.png' },
+    { path: '/shipyard', label: 'Werft', glyph: '🛠️', icon: 'assets/img/nav/shipyard.png' },
+    { path: '/fleet', label: 'Flotte', glyph: '🚀', icon: 'assets/img/nav/fleet.png' },
+    { path: '/combat-sim', label: 'Simulator', glyph: '⚔️', icon: 'assets/img/nav/simulator.png' },
+    { path: '/galaxy', label: 'Galaxie', glyph: '🌌', icon: 'assets/img/nav/map.png' },
+    { path: '/trade', label: 'Handel', glyph: '💱', icon: 'assets/img/nav/market.png' },
+    { path: '/commanders', label: 'Kommandozentrale', glyph: '🎖️', icon: 'assets/img/nav/command.png' },
+    { path: '/transmissions', label: 'Postfach', glyph: '📡', icon: 'assets/img/nav/mail.png' },
   ];
 
   protected readonly resourceRows = computed(() => {
@@ -199,6 +204,16 @@ export class ShellComponent implements OnInit {
 
   closeNav(): void {
     this.navOpen.set(false);
+  }
+
+  /** Bild kaputt/fehlt -> Glyph-Fallback einblenden. */
+  onNavIconError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
+    const fallback = img.nextElementSibling as HTMLElement | null;
+    if (fallback) {
+      fallback.style.display = 'inline';
+    }
   }
 
   logout(): void {

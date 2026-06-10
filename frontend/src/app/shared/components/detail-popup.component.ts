@@ -17,6 +17,7 @@ import {
   TECH_META,
   metaFor,
 } from '../../core/models/display';
+import { techIcon } from '../../core/models/icon-assets';
 import { CostLineComponent } from './cost-line.component';
 import { IconTileComponent } from './icon-tile.component';
 
@@ -40,6 +41,8 @@ export interface DetailTag {
   glyph: string;
   label: string;
   tip?: string;
+  /** Optionales Icon-Asset; ersetzt den Glyph, faellt bei Ladefehler darauf zurueck. */
+  icon?: string | null;
 }
 
 interface RapidFireRow {
@@ -88,7 +91,7 @@ interface RapidFireRow {
         @if (tags()?.length) {
           <div class="tag-row">
             @for (t of tags()!; track t.label) {
-              <span class="tag" [class.tip]="t.tip" [attr.data-tip]="t.tip ?? null">{{ t.glyph }} {{ t.label }}</span>
+              <span class="tag" [class.tip]="t.tip" [attr.data-tip]="t.tip ?? null">@if (t.icon) {<img class="tag-ico" [src]="t.icon" alt="" (error)="hideImg($event)" />} @else {{{ t.glyph }} }{{ t.label }}</span>
             }
           </div>
         }
@@ -256,6 +259,10 @@ interface RapidFireRow {
         font-size: 0.74rem; padding: 0.18rem 0.5rem; border-radius: 6px;
         background: rgba(255,255,255,0.05); color: #b9c6de; border: 1px solid var(--border);
       }
+      .tag-ico {
+        width: 1.2em; height: 1.2em; object-fit: contain;
+        vertical-align: -0.25em; margin-right: 0.25em;
+      }
       .story {
         margin: 0.9rem 0 0; font-size: 0.9rem; line-height: 1.55;
         color: var(--text); opacity: 0.9;
@@ -381,9 +388,14 @@ export class DetailPopupComponent {
       case 'ship': return `assets/img/ships/${this.type()}.png`;
       case 'building': return `assets/img/buildings/${this.type()}.png`;
       case 'defense': return `assets/img/defenses/${this.type()}.png`;
-      case 'tech': return null; // kein Tech-Artwork -> Glyph-Fallback
+      case 'tech': return techIcon(this.type());
     }
   });
+
+  /** Blendet ein nicht ladbares Inline-Tag-Icon aus (Label bleibt sichtbar). */
+  hideImg(event: Event): void {
+    (event.target as HTMLImageElement).style.display = 'none';
+  }
 
   /** Roh-Eintrag aus balance.json fuer dieses Objekt. */
   private readonly entry = computed<Record<string, unknown> | null>(() => {

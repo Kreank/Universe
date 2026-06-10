@@ -62,6 +62,7 @@ export const galaxyStyles = `
   .ic:active { transform: translateY(1px); }
   .ic.spy:hover { border-color: var(--accent); color: var(--accent); }
   .ic.msg:hover { border-color: var(--accent); color: var(--accent); }
+  .ic.phx:hover { border-color: var(--accent); color: var(--accent); }
   .ic.atk:hover { border-color: var(--magenta); color: var(--magenta); }
   .ic.trp:hover { border-color: var(--ok); color: var(--ok); }
 

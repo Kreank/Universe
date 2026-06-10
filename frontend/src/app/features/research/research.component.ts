@@ -3,6 +3,7 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { Requirement, ResearchOption, ResearchResponse, ResearchState } from '../../core/models/api.models';
 import { BUILDING_META, TECH_META, metaFor } from '../../core/models/display';
+import { techIcon } from '../../core/models/icon-assets';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
@@ -89,7 +90,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
             @for (t of group.rows; track t.type) {
               <div class="bld-row" [class.busy]="t.finishesAt">
                 <div class="bld-art clickable" (click)="openDetail(t)" title="Details ansehen">
-                  <app-icon-tile [glyph]="meta(t.type).glyph" [size]="46" variant="muted" />
+                  <app-icon-tile [glyph]="meta(t.type).glyph" [src]="techIcon(t.type)" [size]="46" variant="muted" />
                   <span class="lvl" [class.zero]="t.level === 0" title="Stufe">{{ t.level }}</span>
                 </div>
 
@@ -347,6 +348,7 @@ export class ResearchComponent {
   }
 
   meta = (t: string) => metaFor(TECH_META, t);
+  protected readonly techIcon = techIcon;
 
   /** Klarname einer Voraussetzung (Tech ODER Gebaeude) inkl. benoetigter Stufe. */
   reqLabel(r: Requirement): string {

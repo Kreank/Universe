@@ -11,12 +11,15 @@ import { BalanceService } from '../../core/services/balance.service';
 import { CombatReport } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { CombatReportComponent } from '../transmissions/combat-report.component';
+import { IconTileComponent } from '../../shared/components/icon-tile.component';
 
 /** Eine waehlbare Einheit im Picker (Schiff oder Verteidigung). */
 interface PickRow {
   type: string;
   label: string;
   glyph: string;
+  /** Asset-Pfad des echten Einheiten-Bildes (Fallback: glyph via icon-tile). */
+  icon: string;
 }
 
 /**
@@ -29,7 +32,7 @@ interface PickRow {
 @Component({
   selector: 'app-combat-sim',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CombatReportComponent],
+  imports: [FormsModule, CombatReportComponent, IconTileComponent],
   template: `
     <section class="sim">
       <header class="sim-head">
@@ -49,7 +52,7 @@ interface PickRow {
             <div class="panel-title">🛡 Deine Flotte</div>
             @for (s of combatShips(); track s.type) {
               <label class="row">
-                <span class="r-glyph">{{ s.glyph }}</span>
+                <app-icon-tile class="r-ico" [glyph]="s.glyph" [src]="s.icon" [size]="36" variant="accent" />
                 <span class="r-label">{{ s.label }}</span>
                 <input
                   type="number"
@@ -70,7 +73,7 @@ interface PickRow {
             <div class="sub-head">Schiffe</div>
             @for (s of combatShips(); track s.type) {
               <label class="row">
-                <span class="r-glyph">{{ s.glyph }}</span>
+                <app-icon-tile class="r-ico" [glyph]="s.glyph" [src]="s.icon" [size]="36" variant="magenta" />
                 <span class="r-label">{{ s.label }}</span>
                 <input
                   type="number"
@@ -86,7 +89,7 @@ interface PickRow {
             <div class="sub-head">Verteidigung</div>
             @for (d of defenses(); track d.type) {
               <label class="row">
-                <span class="r-glyph">{{ d.glyph }}</span>
+                <app-icon-tile class="r-ico" [glyph]="d.glyph" [src]="d.icon" [size]="36" variant="magenta" />
                 <span class="r-label">{{ d.label }}</span>
                 <input
                   type="number"
@@ -133,9 +136,11 @@ interface PickRow {
     .sub-head { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
       color: var(--text-dim); margin: 0.7rem 0 0.3rem; }
 
-    .row { display: grid; grid-template-columns: 1.6rem 1fr 5rem; align-items: center;
-      gap: 0.5rem; padding: 0.2rem 0; }
-    .r-glyph { font-size: 1.05rem; text-align: center; }
+    .row { display: grid; grid-template-columns: 40px 1fr 5rem; align-items: center;
+      gap: 0.6rem; padding: 0.3rem 0.15rem; border-radius: 8px;
+      transition: background 0.12s ease; cursor: pointer; }
+    .row:hover { background: rgba(255,255,255,0.03); }
+    .r-ico { display: inline-flex; justify-self: center; }
     .r-label { font-size: 0.86rem; color: var(--text); }
     .r-num { width: 100%; text-align: right; }
 
@@ -173,7 +178,7 @@ export class CombatSimComponent {
       // Nur echte, bewaffnete Schiffe (Notiz-Keys wie `_note` haben kein Profil/Waffentyp).
       if (prof && typeof prof === 'object' && prof.weapon_type) {
         const meta = metaFor(SHIP_META, type);
-        out.push({ type, label: meta.label, glyph: meta.glyph });
+        out.push({ type, label: meta.label, glyph: meta.glyph, icon: `assets/img/ships/${type}.png` });
       }
     }
     return out;
@@ -189,7 +194,7 @@ export class CombatSimComponent {
     for (const [type, cfg] of Object.entries(bal.defenses ?? {})) {
       if (cfg && typeof cfg === 'object') {
         const meta = metaFor(DEFENSE_META, type);
-        out.push({ type, label: meta.label, glyph: meta.glyph });
+        out.push({ type, label: meta.label, glyph: meta.glyph, icon: `assets/img/defenses/${type}.png` });
       }
     }
     return out;

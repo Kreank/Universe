@@ -416,6 +416,25 @@ export interface SendMessageRequest {
   reply_to?: string | null;
 }
 
+/** Eine vom Sensorphalanx erfasste Flottenbewegung zu/von einem Ziel. */
+export interface PhalanxMovement {
+  id: string;
+  owner: string;
+  mission: string;
+  status: string;
+  direction: 'incoming' | 'outgoing';
+  origin: string | null;
+  target: string;
+  ships_total: number;
+  arrive_at: string | null;
+  return_at: string | null;
+}
+
+export interface PhalanxScanResult {
+  coords: string;
+  movements: PhalanxMovement[];
+}
+
 export type DecisionChoice = 'accept' | 'reject' | 'negotiate';
 
 export interface DecisionRequest {

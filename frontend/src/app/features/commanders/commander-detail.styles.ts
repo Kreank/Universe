@@ -12,6 +12,11 @@ export const commanderDetailStyles = `
   }
   .portrait img { width: 100%; height: 100%; display: block; }
   .badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chip-ico {
+    width: 1.15em; height: 1.15em; object-fit: contain;
+    vertical-align: -0.2em; margin-right: 0.3em;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  }
   .grade-chip { font-weight: 800; color: #06101e; border: none; }
   .grade-chip.grade-low { background: #9aa3b2; }
   .grade-chip.grade-mid { background: #4aa3ff; }

@@ -15,6 +15,7 @@ import {
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
+import { rankIcon, specIcon, traitIcon } from '../../core/models/icon-assets';
 import { commanderStyles } from './commander.styles';
 
 /** Eine waehlbare Investitions-Stufe (aus balance.json abgeleitet). */
@@ -144,7 +145,7 @@ interface GradesConfig {
             <div class="portrait" [class]="bandClass(c.morale)">
               <img [src]="faceFor(c.id)" alt="" (error)="onFaceError($event)" />
               <span class="grade-badge" [class]="gradeClass(c.grade)" [attr.data-tip]="'Gueteklasse ' + gradeText(c.grade)">{{ gradeText(c.grade) }}</span>
-              <span class="rank-badge">{{ rank(c.rank).glyph }} {{ rank(c.rank).label }}</span>
+              <span class="rank-badge"><img class="chip-ico" [src]="rankIcon(c.rank)" alt="" (error)="hideImg($event)" />{{ rank(c.rank).label }}</span>
               @if (c.training_finishes_at) {
                 <span class="status-tag">in Ausbildung</span>
               } @else if (c.assigned_fleet_id) {
@@ -155,7 +156,7 @@ interface GradesConfig {
             <div class="cmd-body">
               <div class="row-between">
                 <h3>{{ c.name }}</h3>
-                <span class="chip">{{ spec(c.specialization).glyph }} {{ spec(c.specialization).label }}</span>
+                <span class="chip"><img class="chip-ico" [src]="specIcon(c.specialization)" alt="" (error)="hideImg($event)" />{{ spec(c.specialization).label }}</span>
               </div>
 
               <div class="morale">
@@ -170,7 +171,7 @@ interface GradesConfig {
 
               <div class="traits">
                 @for (t of c.traits; track t) {
-                  <span class="chip trait">{{ trait(t).glyph }} {{ trait(t).label }}</span>
+                  <span class="chip trait"><img class="chip-ico" [src]="traitIcon(t)" alt="" (error)="hideImg($event)" />{{ trait(t).label }}</span>
                 }
               </div>
 
@@ -322,6 +323,13 @@ export class CommandersComponent {
   rank = (r: string) => metaFor(RANK_META, r);
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   trait = (t: string) => metaFor(TRAIT_META, t);
+  protected readonly rankIcon = rankIcon;
+  protected readonly specIcon = specIcon;
+  protected readonly traitIcon = traitIcon;
+  /** Blendet ein nicht ladbares Inline-Icon aus (Label bleibt sichtbar). */
+  hideImg(event: Event): void {
+    (event.target as HTMLImageElement).style.display = 'none';
+  }
   bandClass = (m: number) => this.balance.moraleBandClass(m);
   gradeClass = (g?: string | null) => gradeBadgeClass(g);
   gradeText = (g?: string | null) => gradeLabel(g);

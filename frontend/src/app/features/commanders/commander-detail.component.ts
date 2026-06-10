@@ -13,6 +13,7 @@ import {
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
+import { rankIcon, specIcon, traitIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { commanderDetailStyles } from './commander-detail.styles';
 
@@ -32,8 +33,8 @@ import { commanderDetailStyles } from './commander-detail.styles';
           <h1>{{ c.name }}</h1>
           <div class="badges">
             <span class="chip grade-chip" [class]="gradeClass(c.grade)">Grad {{ gradeText(c.grade) }}</span>
-            <span class="chip">{{ rank(c.rank).glyph }} {{ rank(c.rank).label }}</span>
-            <span class="chip">{{ spec(c.specialization).glyph }} {{ spec(c.specialization).label }}</span>
+            <span class="chip"><img class="chip-ico" [src]="rankIcon(c.rank)" alt="" (error)="hideImg($event)" />{{ rank(c.rank).label }}</span>
+            <span class="chip"><img class="chip-ico" [src]="specIcon(c.specialization)" alt="" (error)="hideImg($event)" />{{ spec(c.specialization).label }}</span>
           </div>
 
           <div class="morale">
@@ -63,7 +64,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
 
           <div class="traits">
             @for (t of c.traits; track t) {
-              <span class="chip trait tip" [attr.data-tip]="trait(t).label">{{ trait(t).glyph }} {{ trait(t).label }}</span>
+              <span class="chip trait tip" [attr.data-tip]="trait(t).label"><img class="chip-ico" [src]="traitIcon(t)" alt="" (error)="hideImg($event)" />{{ trait(t).label }}</span>
             }
           </div>
 
@@ -148,6 +149,13 @@ export class CommanderDetailComponent {
   rank = (r: string) => metaFor(RANK_META, r);
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   trait = (t: string) => metaFor(TRAIT_META, t);
+  protected readonly rankIcon = rankIcon;
+  protected readonly specIcon = specIcon;
+  protected readonly traitIcon = traitIcon;
+  /** Blendet ein nicht ladbares Inline-Icon aus (Label bleibt sichtbar). */
+  hideImg(event: Event): void {
+    (event.target as HTMLImageElement).style.display = 'none';
+  }
   bandClass = (m: number) => this.balance.moraleBandClass(m);
   gradeClass = (g?: string | null) => gradeBadgeClass(g);
   gradeText = (g?: string | null) => gradeLabel(g);

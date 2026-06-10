@@ -111,7 +111,15 @@ export const shellStyles = `
     border-color: var(--border);
     box-shadow: inset 2px 0 0 var(--accent);
   }
-  .nav-glyph { font-size: 1.1rem; width: 1.4rem; text-align: center; }
+  .nav-glyph {
+    width: 1.6rem; height: 1.6rem; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .nav-ico {
+    width: 22px; height: 22px; object-fit: contain;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  }
+  .nav-glyph-fallback { display: none; font-size: 1.1rem; }
   .nav-label { flex: 1; }
   .badge {
     background: var(--magenta);

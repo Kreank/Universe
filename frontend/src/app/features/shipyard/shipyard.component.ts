@@ -5,6 +5,7 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
 import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_META, metaFor } from '../../core/models/display';
+import { rangeIcon, weaponIcon } from '../../core/models/icon-assets';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
@@ -325,11 +326,11 @@ export class ShipyardComponent {
     const tags: DetailTag[] = [];
     if (s.range) {
       const r = this.rangeMeta(s.range);
-      tags.push({ glyph: r.dot, label: r.label });
+      tags.push({ glyph: r.dot, label: r.label, icon: rangeIcon(s.range) });
     }
     if (s.weapon_type) {
       const w = this.weaponMeta(s.weapon_type);
-      tags.push({ glyph: w.glyph, label: w.label, tip: w.vs });
+      tags.push({ glyph: w.glyph, label: w.label, tip: w.vs, icon: weaponIcon(s.weapon_type) });
     } else {
       tags.push({ glyph: '🛡', label: 'Unbewaffnet' });
     }
