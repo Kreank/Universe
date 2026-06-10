@@ -23,6 +23,7 @@ import {
   ShipyardBuildResponse,
   ShipyardResponse,
   SpanInfo,
+  TradeIndex,
   Transmission,
   UpgradeResponse,
   DemolishResponse,
@@ -107,6 +108,11 @@ export class ApiService {
 
   getGalaxy(galaxy: number, system: number): Observable<GalaxyResponse> {
     return this.http.get<GalaxyResponse>(`/api/galaxy/${galaxy}/${system}`);
+  }
+
+  /** Oeffentlicher, immer sichtbarer globaler Handelskurs (Handelszentren). */
+  getTradeIndex(): Observable<TradeIndex> {
+    return this.http.get<TradeIndex>('/api/trade/index');
   }
 
   // --- Commander ---

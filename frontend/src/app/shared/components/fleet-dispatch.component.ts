@@ -13,7 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { Coordinate, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit } from '../../core/models/api.models';
+import { Coordinate, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit, TradeIndex } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
 import { IconTileComponent } from './icon-tile.component';
 
@@ -114,9 +114,13 @@ import { IconTileComponent } from './icon-tile.component';
                   @for (r of cargoFields; track r.key) { <option [ngValue]="r.key">{{ r.glyph }} {{ r.label }}</option> }
                 </select>
                 @if (merchantIntel(); as mi) {
-                  <span class="muted small">Spez.: {{ mi.spec }} · Kurse vom letzten Besuch</span>
+                  @if (mi.trade_center) {
+                    <span class="muted small">💱 Handelszentrum · globaler Handelskurs</span>
+                  } @else {
+                    <span class="muted small">Spez.: {{ mi.spec }} · Kurse vom letzten Besuch</span>
+                  }
                 } @else {
-                  <span class="muted small">Kurse unbekannt — Händler erst aufklären/besuchen.</span>
+                  <span class="muted small">Richtwert: globaler Handelskurs</span>
                 }
               </div>
             </div>
@@ -267,15 +271,32 @@ export class FleetDispatchComponent {
   protected readonly offerAmount = signal(0);
   protected readonly wantRes = signal<'metal' | 'crystal' | 'deuterium'>('deuterium');
   protected readonly merchantIntel = signal<GalaxyIntel | null>(null);
+  /** Oeffentlicher globaler Handelskurs (Handelszentren) — immer verfuegbar. */
+  protected readonly globalIndex = signal<TradeIndex | null>(null);
 
   protected readonly showTrade = computed(() => this.mission() === 'trade');
 
+  /** Ist das Ziel ein (oeffentliches) Handelszentrum mit globalem Kurs? */
+  protected readonly isCenter = computed(() => !!this.merchantIntel()?.trade_center);
+
   /**
-   * Grobe Vorschau aus dem zuletzt gesehenen Kurs-Schnappschuss (OHNE Slippage/
-   * Reputation — der echte Tausch wird serverseitig bei Ankunft berechnet).
+   * Massgebliche Kurse fuer die Vorschau: lokaler Legacy-Haendler-Snapshot, falls
+   * vorhanden; sonst der immer verfuegbare globale Index (Handelszentren).
+   */
+  protected readonly effPrices = computed<{ metal?: number; crystal?: number; deuterium?: number } | null>(() => {
+    const local = this.merchantIntel();
+    if (local && !local.trade_center && local.prices) {
+      return local.prices;
+    }
+    return this.globalIndex()?.prices ?? local?.prices ?? null;
+  });
+
+  /**
+   * Grobe Vorschau aus den massgeblichen Kursen (OHNE Slippage/Reputation — der echte
+   * Tausch wird serverseitig bei Ankunft berechnet).
    */
   protected readonly tradeEstimate = computed<number | null>(() => {
-    const p = this.merchantIntel()?.prices;
+    const p = this.effPrices();
     if (!p) {
       return null;
     }
@@ -292,7 +313,9 @@ export class FleetDispatchComponent {
   };
 
   constructor() {
-    // Kurs-Schnappschuss des Zielhaendlers laden (falls schon aufgeklaert/besucht).
+    // Globalen Handelskurs laden (immer verfuegbar — keine Aufklaerung noetig).
+    this.api.getTradeIndex().subscribe((idx) => this.globalIndex.set(idx));
+    // Kurs-Schnappschuss/Typ des Zielhaendlers laden (Handelszentrum vs. Legacy).
     effect(() => {
       const t = this.target();
       this.api.getGalaxyTargets().subscribe((list) => {

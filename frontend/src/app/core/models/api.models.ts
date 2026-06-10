@@ -284,9 +284,19 @@ export interface GalaxyIntel {
   scanned_at?: string;
   /** Haendler-Markt (aus merchant_intel): Spezialisierung + Kurs-Schnappschuss. */
   merchant?: boolean;
+  /** Unangreifbares Handelszentrum mit globalem Kurs (vs. lokaler Legacy-Haendler). */
+  trade_center?: boolean;
   spec?: string;
   prices?: { metal?: number; crystal?: number; deuterium?: number };
   prices_at?: string;
+}
+
+/** Oeffentlicher globaler Handelskurs der Handelszentren (Wert je Einheit). */
+export interface TradeIndex {
+  prices: { metal: number; crystal: number; deuterium: number };
+  base_value: { metal: number; crystal: number; deuterium: number };
+  players: number;
+  updated_at: string | null;
 }
 
 export interface GalaxyTarget {
