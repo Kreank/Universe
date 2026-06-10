@@ -98,12 +98,19 @@ Neu:
 - **Kampfberichte:** vorhandener Viewer zeigt PvP-/Fang-Berichte (Read-Path existiert).
 
 ## 8. Build-Scheiben (jede einzeln verifizierbar + committet)
-1. **PvP-Planetenkampf + Plünderung** (Garnison-Verteidigung, Loot, Trümmer, Bericht an beide). *Foundation.*
-2. **Phalanx-Sensor** (Gebäude + Reichweite + Scan-Endpoint + Flottensichtbarkeit) + eingehende Spieler-Angriffe.
-3. **Abfangen am Ziel** (Ankunftsfenster, Flotte-vs-Flotte-Kampf am Ort, Fracht-Beute).
-4. **Stationierung + Eskort-Patrouillen** (deploy-Implementierung, stationed_fleet, Angebote, Regions-Deckung,
-   Gebühren, Eskorte kämpft mit).
-5. **Frontend** für 2–4 (Scan-UI/Countdowns, Eskort-Auswahl im Versand, Stationier-/Angebots-UI).
-6. **Balance-Tuning + Tests** je Scheibe; Deploy.
+1. **PvP-Planetenkampf + Plünderung** ✅ FERTIG+LIVE (resolve_attack: Spieler-Planet als Verteidiger,
+   Garnison+Defense+Forschung, Plünderung, Trümmer, Bericht an beide, Angreifer verliert Neulingsschutz).
+2. **Phalanx-Sensor** ✅ FERTIG+LIVE (Gebäude sensorphalanx, Reichweite level²−1, POST /api/phalanx/scan,
+   Flottenbewegungs-Sichtbarkeit; list_incoming_attacks zeigt Spieler-Angriffe; WS-Vorwarnung beim Start →
+   Fleetsave; Frontend: 📡-Scan-Panel mit Live-ETA-Countdown in der Galaxie).
+3. **Abfangen am Ziel** ⏳ OFFEN — Ankunftsfenster (`balance.phalanx.intercept_window_seconds` schon da, noch
+   ungenutzt): Flotte bleibt nach Ankunft `arrived`, dann return; resolve_attack soll gefangene Flotten am Ziel
+   als Mit-Verteidiger einbeziehen (Fracht-Beute). HINWEIS: Heimat-Abfangen funktioniert bereits über Scheibe 1
+   (Garnison = heimgekehrte Flotte) + Phalanx-Timing.
+4. **Stationierung + Eskort-Patrouillen** ⏳ OFFEN — deploy-Mission implementieren (Stub), stationed_fleet-Tabelle,
+   Schiffe gesperrt, Eskort-Angebote (Radius/Gebühr %), Regions-Deckung der Route, Gebühr % Frachtwert, Patrouille
+   kämpft auf Verteidiger-Seite mit, Auto-Remove bei Zerstörung. Größtes Reststück.
+5. **Frontend** für 3–4 ⏳ OFFEN (Eskort-Regionen-Auswahl im Versand, Stationier-/Angebots-UI). Phalanx-UI (2) fertig.
+6. **Balance-Tuning + Tests** laufend je Scheibe.
 
 > Offene Mikro-Entscheidungen mit gewählten Defaults oben — beim Bauen bestätigen/tunen.
