@@ -54,6 +54,7 @@ async def send(
             "offer_res": body.offer_res,
             "offer_amount": body.offer_amount,
             "want_res": body.want_res,
+            "escort_ids": body.escort_ids or [],
         }
         cargo = {body.offer_res: body.offer_amount}
     try:
@@ -89,6 +90,96 @@ async def recall(
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return await fleet_to_dict(session, fleet)
+
+
+class EscortOfferRequest(BaseModel):
+    enabled: bool
+    radius: int = 5
+    fee_pct: float = 0.05
+
+
+@router.get("/stationed")
+async def list_stationed(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    """Eigene stationierte Patrouillen (deploy) inkl. Eskort-Angebot."""
+    from app.fleet.stationing import station_out
+    from app.platform.models import StationedFleet
+
+    rows = (await session.execute(
+        select(StationedFleet).where(StationedFleet.owner_id == player.id)
+        .order_by(StationedFleet.created_at.desc())
+    )).scalars().all()
+    return [station_out(s) for s in rows]
+
+
+@router.post("/stationed/{station_id}/recall")
+async def recall_station_endpoint(
+    station_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Ruft eine Patrouille zum Heimatplaneten zurueck (Rueckflug)."""
+    from app.fleet.stationing import recall_station
+
+    try:
+        fleet = await recall_station(session, player, station_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return {"ok": True, "return_at": fleet.return_at.isoformat() if fleet.return_at else None}
+
+
+@router.put("/stationed/{station_id}/escort")
+async def set_escort_endpoint(
+    station_id: uuid.UUID,
+    body: EscortOfferRequest,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Setzt das Eskort-Angebot einer eigenen Patrouille (Radius + Gebuehr %)."""
+    from app.fleet.stationing import set_escort_offer, station_out
+    from app.platform.models import StationedFleet
+
+    st = await session.get(StationedFleet, station_id)
+    if st is None or st.owner_id != player.id:
+        raise HTTPException(status_code=404, detail="Patrouille nicht gefunden")
+    set_escort_offer(st, body.enabled, body.radius, body.fee_pct)
+    await session.commit()
+    return station_out(st)
+
+
+@router.get("/escort/offers")
+async def escort_offers(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    """Verzeichnis aktiver Eskort-Angebote (alle Patrouillen mit aktiviertem Angebot)."""
+    from app.fleet.stationing import station_power
+    from app.platform.balance import get_balance
+    from app.platform.models import Planet, StationedFleet
+
+    bal = get_balance()
+    rows = (await session.execute(
+        select(StationedFleet).where(StationedFleet.escort_enabled.is_(True))
+    )).scalars().all()
+    out: list[dict] = []
+    for s in rows:
+        owner = await session.get(Player, s.owner_id)
+        out.append({
+            "id": str(s.id),
+            "owner": owner.display_name if owner else "Unbekannt",
+            "coords": f"{s.galaxy}:{s.system}:{s.position}",
+            "galaxy": s.galaxy, "system": s.system,
+            "radius": s.escort_radius,
+            "fee_pct": s.escort_fee_pct,
+            "power": round(station_power(s.ships or {}, bal)),
+            "ships_total": sum((s.ships or {}).values()),
+        })
+    return out
 
 
 class PhalanxScanRequest(BaseModel):

@@ -312,8 +312,9 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
                     (fleet.target_galaxy, fleet.target_system, fleet.target_position),
                 )
 
-        # Eskort-Kampfkraft = Angriffsstaerke der mitgefuehrten (bewaffneten) Schiffe.
+        # Eskort-Kampfkraft = eigene bewaffnete Schiffe + gebuchte Patrouillen-Eskorten.
         escort_power = fleet_power(ships, bal.ships)
+        escort_power += float((fleet.mission_data or {}).get("escort_power", 0.0))
         # Frachtwert der heimkehrenden Ware (Marktwert ueber base_value).
         cargo_value = received * float(cfg["base_value"][want_res])
 

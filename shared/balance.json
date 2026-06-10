@@ -526,6 +526,12 @@
     "intercept_window_seconds": 60
   },
 
+  "escort": {
+    "_note": "Stationierte Eskort-Patrouillen (deploy). Ein Trader waehlt beim Versand Eskort-Angebote, die seine Route decken (Stationssystem im Routen-Intervall +/- escort_radius), und zahlt fee_pct des Frachtwerts an den Anbieter; die Patrouillen-Kampfkraft daempft das Routenrisiko. region_radius = Default-Deckungsradius, max_fee_pct = Gebuehren-Obergrenze.",
+    "region_radius": 5,
+    "max_fee_pct": 0.10
+  },
+
   "spy": {
     "probe_type": "spy_probe",
     "min_probes": 1,

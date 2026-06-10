@@ -125,6 +125,24 @@ _STATEMENTS: list[str] = [
     # Spieler-zu-Spieler-Nachrichten ueber das Postfach (Absender + neuer Typ).
     "ALTER TABLE transmissions ADD COLUMN IF NOT EXISTS from_player_id UUID REFERENCES players(id) ON DELETE SET NULL",
     "ALTER TYPE transmission_type ADD VALUE IF NOT EXISTS 'player_message'",
+    # Stationierte Patrouillen-/Eskortflotten (deploy-Mission).
+    """
+    CREATE TABLE IF NOT EXISTS stationed_fleets (
+        id              UUID PRIMARY KEY,
+        owner_id        UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        home_planet_id  UUID REFERENCES planets(id) ON DELETE SET NULL,
+        galaxy          INTEGER NOT NULL,
+        system          INTEGER NOT NULL,
+        position        INTEGER NOT NULL,
+        ships           JSONB NOT NULL DEFAULT '{}'::jsonb,
+        escort_enabled  BOOLEAN NOT NULL DEFAULT false,
+        escort_radius   INTEGER NOT NULL DEFAULT 0,
+        escort_fee_pct  DOUBLE PRECISION NOT NULL DEFAULT 0,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_stationed_owner ON stationed_fleets(owner_id)",
+    "CREATE INDEX IF NOT EXISTS idx_stationed_coords ON stationed_fleets(galaxy, system, position)",
 ]
 
 

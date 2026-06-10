@@ -296,6 +296,28 @@ class NpcEmpire(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class StationedFleet(Base):
+    """Eine an einem System stationierte Patrouillen-/Eskortflotte (deploy-Mission).
+
+    Schiffe sind hier gebunden (nicht in Planet-Garnison/Fleet -> fuer den Besitzer
+    gesperrt), bis er sie zurueckruft. Kann ein Eskort-Angebot tragen (Radius + Gebuehr)
+    und ist ein gueltiges Angriffsziel (wird sie zerstoert, erlischt das Angebot)."""
+    __tablename__ = "stationed_fleets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"))
+    home_planet_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("planets.id", ondelete="SET NULL"), nullable=True)
+    galaxy: Mapped[int] = mapped_column(Integer, nullable=False)
+    system: Mapped[int] = mapped_column(Integer, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    ships: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Eskort-Angebot (optional): deckt Routen im Umkreis escort_radius, Gebuehr = % Frachtwert.
+    escort_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    escort_radius: Mapped[int] = mapped_column(Integer, default=0)
+    escort_fee_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class WorldMarket(Base):
     """Singleton (id=1) fuer den globalen Handelsindex.
 

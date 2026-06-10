@@ -241,6 +241,14 @@ async def send_fleet(
             raise ValueError(
                 f"Angebot ({int(offer_amount)}) uebersteigt die Frachtkapazitaet ({int(capacity)})"
             )
+        # Gewaehlte Eskorten buchen: Gebuehr abziehen, Kampfkraft fuer das Routenrisiko merken.
+        escort_ids = mission_data.pop("escort_ids", []) if isinstance(mission_data, dict) else []
+        if escort_ids:
+            from app.fleet.stationing import charge_trade_escorts
+            cargo_value = offer_amount * float(bal.trade["base_value"][_offer_res])
+            power = await charge_trade_escorts(session, player.id, planet, target, escort_ids, cargo_value)
+            if power > 0:
+                mission_data["escort_power"] = power
 
     # Commander pruefen (falls angegeben).
     commander = None
@@ -463,6 +471,7 @@ async def fleet_arrive(fleet_id: str) -> None:
     from app.fleet.expedition import resolve_expedition
     from app.fleet.harvest import resolve_harvest
     from app.fleet.mining import resolve_mine
+    from app.fleet.stationing import resolve_deploy
     from app.fleet.trade import resolve_trade
     from app.planets.colonize import resolve_colonize
     from app.universe.spionage import resolve_spy
@@ -475,6 +484,7 @@ async def fleet_arrive(fleet_id: str) -> None:
         player_id = fleet.player_id
         mission = fleet.mission
 
+        stationed = False
         if mission == "attack":
             await resolve_attack(session, fleet)
         elif mission == "spy":
@@ -489,9 +499,12 @@ async def fleet_arrive(fleet_id: str) -> None:
             await resolve_expedition(session, fleet)
         elif mission == "trade":
             await resolve_trade(session, fleet)
+        elif mission == "deploy":
+            stationed = await resolve_deploy(session, fleet)
 
-        # Nach Ankunft kehrt die Flotte zurueck (return_at bleibt wie geplant).
-        fleet.status = "returning"
+        # Nach Ankunft kehrt die Flotte zurueck (ausser sie wurde stationiert).
+        if not stationed:
+            fleet.status = "returning"
         await session.commit()
 
     await event_bus.publish_ws(player_id, {

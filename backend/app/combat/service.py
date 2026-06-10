@@ -175,6 +175,7 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     def_player: Player | None = None
     def_ship_rows: list[Ship] = []
     def_rows: list[Defense] = []
+    interception_sources: list[dict] = []
     def_ships: dict[str, int] = {}
     def_defenses: dict[str, int] = {}
     def_tech = {"weapons_tech": 0, "shield_tech": 0, "armor_tech": 0}
@@ -230,8 +231,21 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         d_research = await get_research_levels(session, def_player.id)
         def_tech = {k: d_research.get(k, 0) for k in ("weapons_tech", "shield_tech", "armor_tech")}
     else:
-        # Kein Verteidiger -> kein Kampf (leeres Ziel). Fleet kehrt einfach zurueck.
-        return None
+        # Abfangen am Ziel: fangbare durchreisende Flotten (Ankunftsfenster) + Patrouillen.
+        from app.fleet.stationing import gather_interception_defenders
+        interception_sources = await gather_interception_defenders(
+            session, fleet.player_id,
+            fleet.target_galaxy, fleet.target_system, fleet.target_position, _now_utc(),
+        )
+        if not interception_sources:
+            return None
+        merged: dict[str, int] = {}
+        for src in interception_sources:
+            for typ, cnt in src["ships"].items():
+                merged[typ] = merged.get(typ, 0) + cnt
+        def_ships = merged
+        first = interception_sources[0]["obj"]
+        defender_player_id = getattr(first, "player_id", None) or getattr(first, "owner_id", None)
 
     seed = random.randrange(1, 2 ** 62)
     attacker = {
@@ -354,6 +368,59 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
             lost = def_losses.get(row.type, 0)
             kept = row.count - lost
             row.count = max(0, kept + math.floor(lost * regen))
+    elif interception_sources:
+        # Abfangen: Verluste greedy auf Quellen verteilen, je Quelle anwenden.
+        from app.fleet.stationing import distribute_losses
+        loc_str = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+        per = distribute_losses(interception_sources, result["defender_survivors"])
+        cargo = dict(fleet.cargo or {})
+        loot_acc = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}
+        for src, surv in zip(interception_sources, per):
+            wiped = sum(surv.values()) == 0
+            if src["kind"] == "fleet":
+                f = src["obj"]
+                for row in src["rows"]:
+                    s = surv.get(row.type, 0)
+                    if s <= 0:
+                        await session.delete(row)
+                    else:
+                        row.count = s
+                owner_id = f.player_id
+                if wiped:
+                    # Gefangene Flotte vernichtet: Fracht erbeutet, Flotte erledigt.
+                    for key in ("metal", "crystal", "deuterium"):
+                        amt = float((f.cargo or {}).get(key, 0))
+                        if amt > 0:
+                            loot_acc[key] += amt
+                            cargo[key] = cargo.get(key, 0) + amt
+                    f.status = "done"
+                    f.cargo = {}
+                await create_system_transmission(
+                    session, player_id=owner_id,
+                    subject=f"{'💥 Flotte abgefangen' if wiped else '⚔ Flotte angegriffen'} ({loc_str})",
+                    body=(f"{attacker_player.display_name if attacker_player else 'Eine Feindflotte'} hat deine "
+                          f"durchreisende Flotte bei {loc_str} "
+                          f"{'abgefangen und vernichtet' if wiped else 'angegriffen'}."),
+                    ttype="combat_report",
+                )
+            else:  # station / Patrouille
+                st = src["obj"]
+                st.ships = {t: surv.get(t, 0) for t in src["ships"] if surv.get(t, 0) > 0}
+                owner_id = st.owner_id
+                destroyed = not st.ships
+                if destroyed:
+                    await session.delete(st)  # Eskort-Angebot erlischt automatisch
+                await create_system_transmission(
+                    session, player_id=owner_id,
+                    subject=f"{'💥 Patrouille vernichtet' if destroyed else '⚔ Patrouille angegriffen'} ({loc_str})",
+                    body=(f"{attacker_player.display_name if attacker_player else 'Eine Feindflotte'} hat deine "
+                          f"stationierte Patrouille bei {loc_str} "
+                          f"{'vernichtet' if destroyed else 'angegriffen'}."),
+                    ttype="combat_report",
+                )
+        if winner == "attacker" and any(v > 0 for v in loot_acc.values()):
+            loot = {k: round(loot_acc[k], 1) for k in loot_acc}
+            fleet.cargo = cargo
 
     # -- Commander-Folgen ----------------------------------------------------
     commander_outcome = await _apply_commander(session, commander, situation, atk_survivors, loot, atk_research)

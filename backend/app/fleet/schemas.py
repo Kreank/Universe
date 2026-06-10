@@ -50,3 +50,5 @@ class SendFleetRequest(BaseModel):
     offer_res: str | None = None
     offer_amount: float | None = None
     want_res: str | None = None
+    # Gewaehlte Eskort-Patrouillen (StationedFleet-IDs), die die Route decken sollen.
+    escort_ids: list[str] = Field(default_factory=list)
