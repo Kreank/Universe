@@ -239,35 +239,14 @@ export class GalaxyComponent {
   );
 
   constructor() {
+    // Aufgeklärte Ziele für das Verzeichnis laden (steuert NICHT den Scan-Ort).
     this.api.getGalaxyTargets().subscribe({
-      next: (t) => {
-        this.targets.set(t);
-        if (!this.initialized) {
-          this.initialized = true;
-          if (t.length) {
-            this.viewG = t[0].galaxy;
-            this.viewS = t[0].system;
-          } else {
-            const p = this.state.activePlanet();
-            if (p) {
-              this.viewG = p.galaxy;
-              this.viewS = p.system;
-            }
-          }
-          this.scan();
-        }
-      },
-      error: () => {
-        const p = this.state.activePlanet();
-        if (p && !this.initialized) {
-          this.initialized = true;
-          this.viewG = p.galaxy;
-          this.viewS = p.system;
-          this.scan();
-        }
-      },
+      next: (t) => this.targets.set(t),
+      error: () => {},
     });
 
+    // Standardmäßig das EIGENE Heimatsystem scannen, sobald der aktive Planet geladen ist
+    // (race-sicher: initialisiert erst, wenn echte Koordinaten vorliegen — nicht auf 1:1).
     effect(() => {
       const p = this.state.activePlanet();
       if (p && !this.initialized) {

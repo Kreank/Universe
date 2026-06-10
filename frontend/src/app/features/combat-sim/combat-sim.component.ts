@@ -8,6 +8,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
+import { GameStateService } from '../../core/services/game-state.service';
 import { CombatReport } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { CombatReportComponent } from '../transmissions/combat-report.component';
@@ -49,7 +50,12 @@ interface PickRow {
         <div class="cols">
           <!-- Eigene Flotte: nur Kampf-Schiffe -->
           <div class="card col">
-            <div class="panel-title">🛡 Deine Flotte</div>
+            <div class="panel-title">
+              🛡 Deine Flotte
+              @if (ownTotal()) { <span class="ptotal mono">{{ ownTotal() }}</span> }
+              <button class="mini" type="button" [disabled]="!garrisonCombat().length"
+                title="Schiffe vom aktiven Planeten übernehmen" (click)="fillOwnFromFleet()">🚀 Meine Flotte</button>
+            </div>
             @for (s of combatShips(); track s.type) {
               <label class="row">
                 <app-icon-tile class="r-ico" [glyph]="s.glyph" [src]="s.icon" [size]="36" variant="accent" />
@@ -68,7 +74,10 @@ interface PickRow {
 
           <!-- Gegner: Schiffe + Verteidigung -->
           <div class="card col">
-            <div class="panel-title">⚔ Gegner</div>
+            <div class="panel-title">
+              ⚔ Gegner
+              @if (enemyTotal()) { <span class="ptotal mono">{{ enemyTotal() }}</span> }
+            </div>
 
             <div class="sub-head">Schiffe</div>
             @for (s of combatShips(); track s.type) {
@@ -112,6 +121,7 @@ interface PickRow {
           >
             {{ pending() ? 'Simuliere …' : '⚔️ Simulieren' }}
           </button>
+          <button class="btn btn-ghost" type="button" (click)="clearAll()">🧹 Leeren</button>
           @if (error()) {
             <span class="err">{{ error() }}</span>
           }
@@ -136,6 +146,22 @@ interface PickRow {
     .sub-head { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
       color: var(--text-dim); margin: 0.7rem 0 0.3rem; }
 
+    /* Panel-Überschrift mit Summen-Badge + Mini-Aktion rechts. */
+    .panel-title { justify-content: flex-start; }
+    .panel-title .ptotal {
+      margin-left: 0.1rem; font-size: 0.72rem; color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      border: 1px solid var(--accent-dim); border-radius: 99px; padding: 0.05rem 0.5rem;
+    }
+    .panel-title .mini {
+      margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 0.74rem;
+      color: var(--accent); background: rgba(46,230,214,0.08);
+      border: 1px solid var(--accent-dim); border-radius: var(--radius-sm);
+      padding: 0.2rem 0.55rem; cursor: pointer;
+    }
+    .panel-title .mini:hover:not(:disabled) { background: rgba(46,230,214,0.18); }
+    .panel-title .mini:disabled { opacity: 0.4; cursor: not-allowed; }
+
     .row { display: grid; grid-template-columns: 40px 1fr 5rem; align-items: center;
       gap: 0.6rem; padding: 0.3rem 0.15rem; border-radius: 8px;
       transition: background 0.12s ease; cursor: pointer; }
@@ -154,6 +180,7 @@ interface PickRow {
 export class CombatSimComponent {
   private readonly api = inject(ApiService);
   private readonly balance = inject(BalanceService);
+  private readonly state = inject(GameStateService);
 
   protected readonly ownCounts = signal<Record<string, number>>({});
   protected readonly enemyShipCounts = signal<Record<string, number>>({});
@@ -207,6 +234,35 @@ export class CombatSimComponent {
     return own && enemy;
   });
 
+  /** Summe ausgewählter Einheiten je Seite (für die Spalten-Überschrift). */
+  protected readonly ownTotal = computed(() => sumCounts(this.ownCounts()));
+  protected readonly enemyTotal = computed(
+    () => sumCounts(this.enemyShipCounts()) + sumCounts(this.enemyDefCounts()),
+  );
+
+  /** Kampf-Schiffe der aktiven Garnison (für „Meine Flotte übernehmen"). */
+  protected readonly garrisonCombat = computed(() => {
+    const valid = new Set(this.combatShips().map((s) => s.type));
+    return (this.state.activePlanet()?.ships ?? []).filter((s) => s.count > 0 && valid.has(s.type));
+  });
+
+  /** Übernimmt die eigene Garnison als „Deine Flotte". */
+  fillOwnFromFleet(): void {
+    const next: Record<string, number> = {};
+    for (const s of this.garrisonCombat()) {
+      next[s.type] = s.count;
+    }
+    this.ownCounts.set(next);
+  }
+
+  /** Setzt beide Seiten zurück. */
+  clearAll(): void {
+    this.ownCounts.set({});
+    this.enemyShipCounts.set({});
+    this.enemyDefCounts.set({});
+    this.result.set(null);
+  }
+
   /** Number-Input -> Signal (negatives/leeres wird zu 0). */
   setCount(side: 'own' | 'enemyShip' | 'enemyDef', type: string, value: unknown): void {
     const n = Math.max(0, Math.floor(Number(value) || 0));
@@ -243,6 +299,10 @@ export class CombatSimComponent {
 /** Gibt es mindestens eine Einheit (count > 0)? */
 function hasUnit(map: Record<string, number>): boolean {
   return Object.values(map).some((n) => n > 0);
+}
+
+function sumCounts(map: Record<string, number>): number {
+  return Object.values(map).reduce((a, b) => a + (b > 0 ? b : 0), 0);
 }
 
 /** Entfernt 0-/Leer-Eintraege fuer den Request. */
