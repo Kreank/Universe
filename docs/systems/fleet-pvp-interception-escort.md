@@ -103,14 +103,20 @@ Neu:
 2. **Phalanx-Sensor** ✅ FERTIG+LIVE (Gebäude sensorphalanx, Reichweite level²−1, POST /api/phalanx/scan,
    Flottenbewegungs-Sichtbarkeit; list_incoming_attacks zeigt Spieler-Angriffe; WS-Vorwarnung beim Start →
    Fleetsave; Frontend: 📡-Scan-Panel mit Live-ETA-Countdown in der Galaxie).
-3. **Abfangen am Ziel** ⏳ OFFEN — Ankunftsfenster (`balance.phalanx.intercept_window_seconds` schon da, noch
-   ungenutzt): Flotte bleibt nach Ankunft `arrived`, dann return; resolve_attack soll gefangene Flotten am Ziel
-   als Mit-Verteidiger einbeziehen (Fracht-Beute). HINWEIS: Heimat-Abfangen funktioniert bereits über Scheibe 1
-   (Garnison = heimgekehrte Flotte) + Phalanx-Timing.
-4. **Stationierung + Eskort-Patrouillen** ⏳ OFFEN — deploy-Mission implementieren (Stub), stationed_fleet-Tabelle,
-   Schiffe gesperrt, Eskort-Angebote (Radius/Gebühr %), Regions-Deckung der Route, Gebühr % Frachtwert, Patrouille
-   kämpft auf Verteidiger-Seite mit, Auto-Remove bei Zerstörung. Größtes Reststück.
-5. **Frontend** für 3–4 ⏳ OFFEN (Eskort-Regionen-Auswahl im Versand, Stationier-/Angebots-UI). Phalanx-UI (2) fertig.
-6. **Balance-Tuning + Tests** laufend je Scheibe.
+3. **Abfangen am Ziel** ✅ FERTIG+LIVE — Zeitfenster `now ∈ [arrive_at, +intercept_window]`; resolve_attack-Branch
+   (wenn kein Planet/NPC am Ziel) zieht gefangene durchreisende Flotten + Patrouillen als Mit-Verteidiger heran,
+   `distribute_losses` (greedy, getestet), vernichtete Flotte → Fracht erbeutet, leere Patrouille gelöscht.
+4. **Stationierung + Eskort-Patrouillen** ✅ FERTIG+LIVE — deploy stationiert (StationedFleet, Schiffe gesperrt),
+   Rückruf (Rückflug), Eskort-Angebot (Radius/Gebühr %, Cap), Endpoints (GET /stationed, recall, PUT escort,
+   GET /escort/offers); Trader bucht deckende Eskorten beim Handels-Versand (escort_ids) → Gebühr (Deuterium) an
+   Anbieter, Kampfkraft dämpft Routenrisiko; Patrouille ist als Mit-Verteidiger angreifbar, Auto-Remove.
+5. **Frontend** ✅ FERTIG+LIVE — Phalanx-Scan-Panel, „Meine Patrouillen" + „Eskort-Angebote" auf der Handel-Seite,
+   Eskort-Auswahl (deckende Angebote) im Versand-Overlay.
+6. **Tests** ✅ 121/121 grün (PvP-Pfad, distribute_losses, escort_covers/fee).
+
+> ⚠ Bekannte Grenzen (bewusst, für später): Interception-Mitverteidiger greift nur, wo KEIN Planet/NPC am Ziel
+> steht (Transport an einen verteidigten Spieler-Planeten fällt in den normalen Planetenkampf, fängt die fremde
+> Transportflotte dort nicht separat). Def-Tech der gefangenen/stationierten Flotten = 0 (kein Planetbonus).
+> Eskort-Gebühr in Deuterium (nicht im Frachtwert-Mix). Echtzeit-Chat/WS-Push für neue P2P-Nachrichten weiterhin offen.
 
 > Offene Mikro-Entscheidungen mit gewählten Defaults oben — beim Bauen bestätigen/tunen.
