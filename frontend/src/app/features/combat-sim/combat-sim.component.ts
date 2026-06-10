@@ -192,7 +192,8 @@ export class CombatSimComponent {
     }
     const out: PickRow[] = [];
     for (const [type, cfg] of Object.entries(bal.defenses ?? {})) {
-      if (cfg && typeof cfg === 'object') {
+      // Virtuelle Einheiten (z. B. Mond-Orbitalbatterie) sind nicht direkt baubar/wählbar.
+      if (cfg && typeof cfg === 'object' && !(cfg as { virtual?: boolean }).virtual) {
         const meta = metaFor(DEFENSE_META, type);
         out.push({ type, label: meta.label, glyph: meta.glyph, icon: `assets/img/defenses/${type}.png` });
       }
