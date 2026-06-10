@@ -88,17 +88,11 @@ export const fleetStyles = `
   .incoming-info { display: flex; flex-direction: column; gap: 0.25rem; }
   .badge-threat { font-weight: 700; color: #ff9b9b; }
 
-  /* --- Galaxie-Ansicht --- */
-  .gx-controls { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; }
-  .gx-controls input { width: 90px; }
-  .gx-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
-  .gx-table th {
-    text-align: left; color: var(--text-dim); font-weight: 500;
-    font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em;
-    padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border);
+  /* --- Galaxie-Hinweis (Verweis auf die eigene Galaxie-Seite) --- */
+  .galaxy-hint {
+    margin-top: 1rem; text-align: center;
+    padding: 0.7rem; border: 1px dashed var(--border); border-radius: var(--radius-sm);
   }
-  .gx-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .gx-table tr.occupied { background: rgba(46,230,214,0.04); }
 
   @media (max-width: 960px) {
     .order-bar { grid-template-columns: 1fr 1fr; }

@@ -1,12 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import {
   Fleet,
   FleetMission,
-  GalaxyCell,
   IncomingAttack,
   PlanetUnit,
   StationedFleet,
@@ -21,7 +20,7 @@ import { fleetStyles } from './fleet.styles';
 @Component({
   selector: 'app-fleet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CountdownComponent, IconTileComponent],
+  imports: [FormsModule, RouterLink, CountdownComponent, IconTileComponent],
   template: `
     <h1>Flotte</h1>
 
@@ -194,42 +193,12 @@ import { fleetStyles } from './fleet.styles';
         }
       </section>
 
-      <!-- Galaxie-Ansicht -->
-      <section class="card galaxy">
-        <div class="panel-title">🌌 Galaxie-Ansicht</div>
-        <div class="gx-controls">
-          <input type="number" min="1" [(ngModel)]="viewG" aria-label="Galaxie" />
-          <span class="faint">:</span>
-          <input type="number" min="1" [(ngModel)]="viewS" aria-label="System" />
-          <button class="btn btn-sm" type="button" (click)="loadGalaxy()">Scannen</button>
-        </div>
-        @if (galaxyLoading()) {
-          <p class="muted small">Scanne System…</p>
-        } @else if (cells().length) {
-          <table class="gx-table">
-            <thead>
-              <tr><th>Pos</th><th>Belegung</th><th>Name</th><th></th></tr>
-            </thead>
-            <tbody>
-              @for (c of cells(); track c.position) {
-                <tr [class.occupied]="c.occupant_type !== 'empty'">
-                  <td class="mono">{{ c.position }}</td>
-                  <td>{{ occupantLabel(c) }}</td>
-                  <td class="muted">{{ c.name ?? '—' }}</td>
-                  <td>
-                    @if (c.occupant_type !== 'empty') {
-                      <button class="btn btn-ghost btn-sm" type="button" (click)="targetCell(c)">Anvisieren</button>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        } @else {
-          <p class="muted small">System scannen, um Ziele zu sehen.</p>
-        }
-      </section>
     </div>
+
+    <p class="muted small galaxy-hint">
+      🌌 Systeme scannen, Ziele aufklären und Schnellaktionen gibt's auf der
+      <a routerLink="/galaxy">Galaxie-Karte →</a>
+    </p>
   `,
   styles: [fleetStyles],
 })
@@ -263,12 +232,6 @@ export class FleetComponent {
   commanderId: string | null = null;
   protected readonly speed = signal(100);
   protected readonly sending = signal(false);
-
-  // Galaxie
-  viewG = 1;
-  viewS = 1;
-  protected readonly cells = signal<GalaxyCell[]>([]);
-  protected readonly galaxyLoading = signal(false);
 
   protected readonly availableShips = computed<PlanetUnit[]>(
     () => this.state.activePlanet()?.ships?.filter((s) => s.count > 0) ?? [],
@@ -320,22 +283,7 @@ export class FleetComponent {
         this.missionSig.set(m);
       }
       this.prefilled.set(`${this.targetG}:${this.targetS}:${this.targetP}`);
-      // Galaxie-Mini-Ansicht direkt auf das Zielsystem stellen.
-      this.viewG = this.targetG;
-      this.viewS = this.targetS;
-      this.loadGalaxy();
     }
-
-    effect(() => {
-      const p2 = this.state.activePlanet();
-      if (p2) {
-        // Galaxie-Ansicht standardmaessig auf das eigene System (nur ohne Deep-Link)
-        if (this.cells().length === 0 && !this.prefilled()) {
-          this.viewG = p2.galaxy;
-          this.viewS = p2.system;
-        }
-      }
-    });
 
     this.loadIncoming();
     this.loadStationed();
@@ -450,27 +398,6 @@ export class FleetComponent {
     });
   }
 
-  loadGalaxy(): void {
-    this.galaxyLoading.set(true);
-    this.api.getGalaxy(this.viewG, this.viewS).subscribe({
-      next: (res) => {
-        this.cells.set(res.cells);
-        this.galaxyLoading.set(false);
-      },
-      error: () => {
-        this.cells.set([]);
-        this.galaxyLoading.set(false);
-      },
-    });
-  }
-
-  targetCell(c: GalaxyCell): void {
-    this.targetG = this.viewG;
-    this.targetS = this.viewS;
-    this.targetP = c.position;
-    this.notify.info('Ziel gesetzt', `Koordinaten [${this.viewG}:${this.viewS}:${c.position}] uebernommen.`);
-  }
-
   shipsTotal(f: Fleet): number {
     return Object.values(f.ships).reduce((a, b) => a + b, 0);
   }
@@ -485,21 +412,6 @@ export class FleetComponent {
         return 'Rueckflug';
       default:
         return status;
-    }
-  }
-
-  occupantLabel(c: GalaxyCell): string {
-    switch (c.occupant_type) {
-      case 'empty':
-        return '— leer —';
-      case 'player':
-        return '👤 Spieler';
-      case 'npc':
-        return '🤖 NPC-Imperium';
-      case 'planet':
-        return '🪐 Planet';
-      default:
-        return c.occupant_type;
     }
   }
 
