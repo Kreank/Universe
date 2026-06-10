@@ -1,7 +1,13 @@
 # Handels-Frontend — Integrations-Snippet (fleet-dispatch)
 
-> Stand 2026-06-09. Das **Backend-Handelssystem ist fertig & live** (3 Commits, s. HANDOFF §0b).
-> Das EINZIGE offene UI-Stück ist das Handels-Auftragsformular. Es gehört in das neue
+> ✅ **IMPLEMENTIERT 2026-06-10** (Commit `7a86aa2`), live deployed. Dieses Dokument ist nur noch
+> historische Referenz — das Snippet wurde gegen den echten Backend-Code validiert und angewandt:
+> `fleet-dispatch` hat den 💱-Handel-Tab (Biete/Erhalte + Kurs-Vorschau + Eskorte-Hinweis), die
+> Galaxie zeigt 💱-Händler-Badge + „Handeln"-Schnellaktion, Modelle/MISSION_META ergänzt.
+> Galaxie-Integration (war als „optional/nächstes" offen) ist ebenfalls drin.
+>
+> Stand 2026-06-09 (urspr.). Das **Backend-Handelssystem ist fertig & live** (3 Commits, s. HANDOFF §0b).
+> Das EINZIGE offene UI-Stück war das Handels-Auftragsformular. Es gehört in das
 > `shared/components/fleet-dispatch.component.ts` (Versand-Overlay aus der Galaxie) — das war beim
 > Bauen **uncommittete WIP des Nutzers**, deshalb hier als drop-in Snippet statt direkter Edit.
 >

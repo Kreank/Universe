@@ -17,6 +17,33 @@
 > `docker exec`/`docker cp`-Pfad ist erlaubt, ABER `docker compose exec … rm/cp` (Schreiben in den laufenden
 > Container) wird vom Auto-Mode-Classifier geblockt. Frontend-Compile-Check = `docker compose … build frontend`
 > (ng build ist strikt, schlägt bei TS-Fehlern fehl). Kein lokales `node_modules`.
+>
+> ⚠ **UPDATE 2026-06-10:** Das `node_modules` IST jetzt lokal da → schneller Compile-Check geht ohne
+> Docker: `cd frontend && npx ng build --configuration development` (~3–7 s). Die uncommittete
+> Nutzer-WIP wurde diese Session verifiziert + committet (s. §-1).
+
+---
+
+## -1. Session 2026-06-10 — Nutzer-WIP committet + Handels-Frontend implementiert
+**Beide auf Live deployed, Build sauber.** Reihenfolge: erst die hängende Frontend-WIP fertig, dann Handel.
+```
+7a86aa2 feat(trade): Handels-Auftragsformular im Frontend + Galaxie-Haendler-Badge
+ac50eef feat(frontend): OGame-Detail-Popups + Desktop-Dichte-Schicht
+```
+- **Frontend-WIP committet** (`ac50eef`): die seit Tagen uncommittete Desktop-Dichte-Schicht +
+  OGame-Detail-Popups (`detail-popup.component.ts` in Gebäude/Werft/Forschung, `fleet-dispatch.component.ts`
+  in Galaxie) verifiziert (Build grün, alle Komponenten verdrahtet) und committet. package-lock-Rauschen
+  (npm-install-Regen) verworfen, `proxy.local.json` (lokales Dev-Proxy) gitignored.
+- **Handels-Frontend implementiert** (`7a86aa2`): das offene Auftragsformular aus `docs/trade-frontend-snippet.md`
+  angewandt — **gegen den echten Backend-Code validiert** (`SendFleetRequest` nimmt offer_res/offer_amount/
+  want_res top-level; `merchant_intel` liefert merchant/spec/prices/prices_at, gemerged in galaxy-target intel
+  via population/spionage/trade). `fleet-dispatch`: 💱-Handel-Tab (Biete/Erhalte, Kurs-Vorschau aus Snapshot
+  ohne Slippage, Eskorte-Hinweis). Galaxie: 💱-Händler-Badge + „Handeln"-Schnellaktion an aufgeklärten
+  merchant-Zielen (die **vorher als „optional/nächstes" offen** notierte Galaxie-Integration ist damit auch erledigt).
+  Modelle: FleetMission +'trade', FleetSendRequest +offer/want, GalaxyIntel +merchant/spec/prices, MISSION_META +trade.
+  `docs/trade-frontend-snippet.md` oben als IMPLEMENTIERT markiert.
+- **Offen/nächste Ideen** (unverändert aus §0b): Trade-v2 — Spieler-zu-Spieler-Handel, zeitlich begrenzte
+  Nachfrage-Events, Markt-Übersichts-Screen. Simulator-Live-Klickdurchlauf im Browser steht noch aus.
 
 ---
 
