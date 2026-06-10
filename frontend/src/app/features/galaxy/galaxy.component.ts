@@ -1,32 +1,43 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
-import { GalaxyCell, GalaxyIntel, GalaxyTarget } from '../../core/models/api.models';
+import {
+  Coordinate,
+  FleetMission,
+  GalaxyCell,
+  GalaxyIntel,
+  GalaxyTarget,
+} from '../../core/models/api.models';
 import { NotificationService } from '../../core/services/notification.service';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
+import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
 import { galaxyStyles } from './galaxy.styles';
 
+/** Offenes Versand-Overlay (Schnellangriff / Schnelltransport / …). */
+interface DispatchCtx {
+  target: Coordinate;
+  name: string | null;
+  mission: FleetMission;
+}
+
 /**
- * Galaxie-/Kartenansicht (UX-Doku 11 §2). Zeigt ein System Position fuer Position,
- * markiert den eigenen Planeten und liefert ein Verzeichnis bekannter Ziele.
+ * Galaxie-/Kartenansicht (UX-Doku 11 §2). Kompakte OGame-artige Positions-Liste
+ * mit Inline-Schnellaktionen direkt am Ziel:
+ * - 🛰 Schnell-Spionage: schickt sofort Sonden (kein Tab-Wechsel).
+ * - ⚔ Angriff / 🚚 Transport: oeffnen ein kompaktes Versand-Overlay am Ziel.
  *
- * Spionage: Im Scanner koennen belegte Gegner-Felder per Spionagesonde aufgeklaert
- * werden (Deep-Link auf den Flotten-Screen mit `mission: 'spy'`). Bereits aufgeklaerte
- * Felder werden markiert. Das Ziel-Verzeichnis listet nur AUFGEKLAERTE Ziele samt
- * Aufklaerungsstufe und — je nach Stufe — Flotten-/Verteidigungs- und Ressourcen-Intel.
- * "Angreifen" verlinkt mit vorausgefuelltem Ziel auf den Flotten-Screen
- * (Blindangriffe ohne Aufklaerung sind erlaubt, aber riskant).
+ * "aufgeklaert" = Auto-Discovery: NPCs, die nahe (<= balance auto_discover_radius
+ * Systeme) deines Planeten spawnen, werden gratis mit Basis-Intel sichtbar.
  */
 @Component({
   selector: 'app-galaxy',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, FleetDispatchComponent],
   template: `
     <h1>Galaxie · Karte</h1>
-    <p class="sub">Erkunde Systeme, finde Ziele und entsende deine Flotten.</p>
+    <p class="sub">Erkunde Systeme, finde Ziele und entsende deine Flotten — Schnellaktionen direkt am Ziel.</p>
 
     <div class="grid layout">
       <!-- System-Scanner ------------------------------------------------ -->
@@ -55,26 +66,27 @@ import { galaxyStyles } from './galaxy.styles';
         } @else {
           <div class="positions">
             @for (c of cells(); track c.position) {
-              <div class="cell" [class]="cellClass(c)">
-                <div class="cell-visual">
+              <div class="row" [class]="rowClass(c)">
+                <span class="pos mono">{{ c.position }}</span>
+                <div class="vis">
                   @if (cellImage(c); as img) {
-                    <img class="cell-img" [src]="img" [alt]="occupantLabel(c)" loading="lazy" />
+                    <img class="vis-img" [src]="img" [alt]="occupantLabel(c)" loading="lazy" />
                   } @else {
-                    <span class="cell-dot" aria-hidden="true"></span>
+                    <span class="vis-dot" aria-hidden="true"></span>
                   }
-                  <span class="cell-pos mono">{{ c.position }}</span>
                 </div>
-                <div class="cell-body">
-                  <div class="cell-kind">{{ occupantLabel(c) }}</div>
-                  <div class="cell-name">{{ c.name ?? '—' }}</div>
+                <div class="info">
+                  <span class="kind">{{ occupantLabel(c) }}</span>
+                  @if (c.name) { <span class="name">{{ c.name }}</span> }
                 </div>
-                @if (c.occupant_type === 'npc' || (c.occupant_type === 'player' && !isOwn(c))) {
-                  <div class="cell-act">
+                @if (isHostile(c)) {
+                  <div class="acts">
                     @if (c.discovered) {
-                      <span class="chip">🛰 aufgeklärt ✓</span>
+                      <span class="chip disc tip" data-tip="Automatisch aufgeklärt: spawnte nahe deinem Planeten (≤ 8 Systeme). Sende eine Sonde für tiefere/aktuellere Daten.">🛰 aufgeklärt</span>
                     }
-                    <button class="btn btn-ghost btn-sm" type="button" (click)="spy(c)">🛰 Spionieren</button>
-                    <button class="btn btn-danger btn-sm" type="button" (click)="attack(c)">⚔ Angreifen</button>
+                    <button class="ic spy" type="button" (click)="quickSpy(cellCoord(c), c.name)" [title]="spyTitle()">🛰</button>
+                    <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), c.name, 'attack')" title="Angreifen">⚔</button>
+                    <button class="ic trp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'transport')" title="Transport">🚚</button>
                   </div>
                 } @else if (isOwn(c)) {
                   <span class="chip own">dein Planet</span>
@@ -116,9 +128,10 @@ import { galaxyStyles } from './galaxy.styles';
               }
               <div class="target-act">
                 <button class="btn btn-ghost btn-sm" type="button" (click)="jumpTo(t)">Anfliegen</button>
-                <button class="btn btn-ghost btn-sm" type="button" (click)="spyTarget(t)">🛰 Spionieren</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="quickSpy(targetCoord(t), t.name)">🛰 Spionieren</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'transport')">🚚 Transport</button>
                 @if (t.npc_id) {
-                  <button class="btn btn-danger btn-sm" type="button" (click)="attackTarget(t)">⚔ Angreifen</button>
+                  <button class="btn btn-danger btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'attack')">⚔ Angreifen</button>
                 }
               </div>
             </div>
@@ -130,6 +143,16 @@ import { galaxyStyles } from './galaxy.styles';
         }
       </section>
     </div>
+
+    @if (dispatch(); as d) {
+      <app-fleet-dispatch
+        [target]="d.target"
+        [targetName]="d.name"
+        [initialMission]="d.mission"
+        (sent)="onDispatched()"
+        (close)="dispatch.set(null)"
+      />
+    }
   `,
   styles: [galaxyStyles],
 })
@@ -137,25 +160,35 @@ export class GalaxyComponent {
   private readonly api = inject(ApiService);
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
-  private readonly router = inject(Router);
+
+  /** Standard-Sondenzahl der Schnell-Spionage (L2-Intel, balance.spy.level2_probes). */
+  private readonly DEFAULT_PROBES = 3;
 
   viewG = 1;
   viewS = 1;
   protected readonly cells = signal<GalaxyCell[]>([]);
   protected readonly targets = signal<GalaxyTarget[]>([]);
   protected readonly loading = signal(false);
+  protected readonly dispatch = signal<DispatchCtx | null>(null);
   private initialized = false;
 
   protected readonly scannedCount = computed(
     () => this.cells().filter((c) => c.occupant_type !== 'empty').length,
   );
 
+  /** Verfuegbare Spionagesonden auf dem aktiven Planeten. */
+  protected readonly probeCount = computed(
+    () => this.state.activePlanet()?.ships?.find((s) => s.type === 'spy_probe')?.count ?? 0,
+  );
+
+  protected readonly spyTitle = computed(
+    () => `Spionieren — sendet ${Math.min(this.probeCount(), this.DEFAULT_PROBES) || this.DEFAULT_PROBES} Sonde(n)`,
+  );
+
   constructor() {
-    // Ziel-Verzeichnis laden.
     this.api.getGalaxyTargets().subscribe({
       next: (t) => {
         this.targets.set(t);
-        // Start-Ansicht: erstes bekanntes Ziel-System, sonst eigenes System.
         if (!this.initialized) {
           this.initialized = true;
           if (t.length) {
@@ -172,7 +205,6 @@ export class GalaxyComponent {
         }
       },
       error: () => {
-        // Fallback: eigenes System scannen.
         const p = this.state.activePlanet();
         if (p && !this.initialized) {
           this.initialized = true;
@@ -183,7 +215,6 @@ export class GalaxyComponent {
       },
     });
 
-    // Sobald der Planet bekannt ist und noch nicht initialisiert wurde.
     effect(() => {
       const p = this.state.activePlanet();
       if (p && !this.initialized) {
@@ -229,35 +260,57 @@ export class GalaxyComponent {
     this.scan();
   }
 
-  attack(c: GalaxyCell): void {
-    void this.router.navigate(['/fleet'], {
-      queryParams: { g: this.viewG, s: this.viewS, p: c.position, mission: 'attack' },
-    });
+  // --- Koordinaten-Helfer ------------------------------------------------
+  cellCoord(c: GalaxyCell): Coordinate {
+    return { galaxy: this.viewG, system: this.viewS, position: c.position };
+  }
+  targetCoord(t: GalaxyTarget): Coordinate {
+    return { galaxy: t.galaxy, system: t.system, position: t.position };
   }
 
-  attackTarget(t: GalaxyTarget): void {
-    // Deep-Link nur fuer aufgeklaerte NPC-Ziele (npc_id noetig fuer Vorbelegung).
-    if (!t.npc_id) {
+  // --- Schnellaktionen ---------------------------------------------------
+  /** Versand-Overlay fuer Angriff/Transport am Ziel oeffnen. */
+  openDispatch(target: Coordinate, name: string | null, mission: FleetMission): void {
+    this.dispatch.set({ target, name, mission });
+  }
+
+  onDispatched(): void {
+    // Flotten/Planet sind im Overlay schon nachgeladen; Scanner ggf. auffrischen.
+    this.scan();
+  }
+
+  /** Ein-Klick-Spionage: schickt sofort Standard-Sonden zum Ziel. */
+  quickSpy(target: Coordinate, _name: string | null): void {
+    const origin = this.state.activePlanetId();
+    if (!origin) {
       return;
     }
-    void this.router.navigate(['/fleet'], {
-      queryParams: { g: t.galaxy, s: t.system, p: t.position, mission: 'attack' },
-    });
+    const probes = Math.min(this.probeCount(), this.DEFAULT_PROBES);
+    if (probes < 1) {
+      this.notify.warning('Keine Spionagesonden', 'Baue Spionagesonden in der Werft, um zu spähen.');
+      return;
+    }
+    this.api
+      .sendFleet({
+        origin_planet_id: origin,
+        target,
+        mission: 'spy',
+        ships: { spy_probe: probes },
+        cargo: { metal: 0, crystal: 0, deuterium: 0 },
+        commander_id: null,
+        speed_pct: 100,
+      })
+      .subscribe({
+        next: () => {
+          this.notify.success('Sonden unterwegs', `${probes} Spionagesonde(n) gestartet → [${target.galaxy}:${target.system}:${target.position}].`);
+          void this.state.reloadFleets();
+          void this.state.reloadActivePlanet();
+        },
+        error: (err) => this.notify.warning('Spionage fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
+      });
   }
 
-  spy(c: GalaxyCell): void {
-    void this.router.navigate(['/fleet'], {
-      queryParams: { g: this.viewG, s: this.viewS, p: c.position, mission: 'spy' },
-    });
-  }
-
-  spyTarget(t: GalaxyTarget): void {
-    void this.router.navigate(['/fleet'], {
-      queryParams: { g: t.galaxy, s: t.system, p: t.position, mission: 'spy' },
-    });
-  }
-
-  /** Rendert eine {typ: anzahl}-Map kompakt, z.B. "🛩️ 3× Leichter Jaeger, 📦 8× Kleiner Transporter". */
+  /** Rendert eine {typ: anzahl}-Map kompakt. */
   fmtUnits(map?: Record<string, number> | null): string {
     if (!map) {
       return '';
@@ -271,7 +324,6 @@ export class GalaxyComponent {
     return parts.join(', ');
   }
 
-  /** Rendert Ressourcen-Intel mit Tausenderpunkt, z.B. "Metall 12.000 · Kristall 4.500". */
   fmtRes(res?: GalaxyIntel['resources'] | null): string {
     if (!res) {
       return '';
@@ -297,16 +349,17 @@ export class GalaxyComponent {
     );
   }
 
-  cellClass(c: GalaxyCell): string {
-    if (this.isOwn(c)) return 'cell own';
-    return `cell ${c.occupant_type}`;
+  /** Feindliches/fremdes Ziel (NPC oder fremder Spieler) -> Schnellaktionen anbieten. */
+  isHostile(c: GalaxyCell): boolean {
+    return c.occupant_type === 'npc' || (c.occupant_type === 'player' && !this.isOwn(c));
   }
 
-  /**
-   * Liefert den Pfad zum Planeten-/Truemmerfeld-Bild einer Zelle oder null
-   * (leere Felder). Der NPC-Planetentyp wird deterministisch aus der Position
-   * abgeleitet, damit ein System bei jedem Scan gleich aussieht.
-   */
+  rowClass(c: GalaxyCell): string {
+    if (this.isOwn(c)) return 'row occupied own';
+    if (c.occupant_type === 'empty') return 'row empty';
+    return `row occupied ${c.occupant_type}`;
+  }
+
   cellImage(c: GalaxyCell): string | null {
     const base = 'assets/img/backgrounds/';
     switch (c.occupant_type) {

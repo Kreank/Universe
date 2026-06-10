@@ -336,3 +336,61 @@ select:focus {
   padding: 2.5rem 1rem;
   font-size: 0.9rem;
 }
+
+/* ============================================================
+   Desktop-Dichte (OGame-Stil) — kompaktere Abstaende ab Maus-Breite.
+   Greift NUR auf dem Desktop; der Mobile-First-Look bleibt unberuehrt.
+   Ziel: maximale Info-Dichte, wenig bis kein Scrollen.
+   ============================================================ */
+@media (min-width: 900px) {
+  :root {
+    --radius: 9px;
+    --radius-sm: 6px;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+    margin-bottom: 0.15rem;
+  }
+  h2 {
+    font-size: 1rem;
+  }
+
+  .card {
+    padding: 0.65rem 0.8rem;
+    border-radius: var(--radius);
+  }
+
+  .grid {
+    gap: 0.6rem;
+  }
+
+  .panel-title {
+    font-size: 0.68rem;
+    padding-bottom: 0.45rem;
+    margin-bottom: 0.55rem;
+  }
+
+  /* Maus-Targets duerfen kleiner sein als die 44px-Touch-Norm. */
+  .btn {
+    min-height: 32px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
+  .btn-sm {
+    min-height: 27px;
+    padding: 0.22rem 0.6rem;
+    font-size: 0.78rem;
+  }
+
+  input,
+  select {
+    min-height: 33px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.88rem;
+  }
+  .field {
+    gap: 0.25rem;
+    margin-bottom: 0.6rem;
+  }
+}

@@ -4,19 +4,20 @@ export const dashboardStyles = `
   .cols {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: 0.7rem;
     align-items: start;
   }
   .col {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.7rem;
     min-width: 0;
   }
   @media (max-width: 900px) {
-    .cols { grid-template-columns: 1fr; }
+    .cols { grid-template-columns: 1fr; gap: 1rem; }
+    .col { gap: 1rem; }
   }
-  .res-grid { display: flex; flex-direction: column; gap: 0.8rem; }
+  .res-grid { display: flex; flex-direction: column; gap: 0.55rem; }
   .res-card {
     display: flex;
     flex-direction: column;
@@ -43,14 +44,14 @@ export const dashboardStyles = `
     align-items: center;
     justify-content: space-between;
     gap: 0.6rem;
-    padding: 0.5rem 0;
-    font-size: 0.88rem;
+    padding: 0.32rem 0;
+    font-size: 0.86rem;
     border-bottom: 1px solid rgba(255,255,255,0.05);
   }
   .alert { border-bottom: none; }
   .alert.danger { color: #ffb3d8; }
   .alert.decision { color: var(--accent); }
-  hr { border: none; border-top: 1px solid var(--border); margin: 0.7rem 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 0.5rem 0; }
 
   .cmd-row { text-decoration: none; color: var(--text); }
   .cmd-row:hover { background: rgba(46,230,214,0.05); border-radius: 6px; }

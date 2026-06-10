@@ -6,6 +6,7 @@ import { BUILDING_META, TECH_META, metaFor } from '../../core/models/display';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
+import { DetailPopupComponent } from '../../shared/components/detail-popup.component';
 import { NotificationService } from '../../core/services/notification.service';
 
 interface ResearchRow {
@@ -63,7 +64,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
 @Component({
   selector: 'app-research',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CostLineComponent, CountdownComponent, IconTileComponent],
+  imports: [CostLineComponent, CountdownComponent, IconTileComponent, DetailPopupComponent],
   template: `
     <h1>Forschung</h1>
     <p class="muted sub">
@@ -87,13 +88,13 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
           <div class="bld-list">
             @for (t of group.rows; track t.type) {
               <div class="bld-row" [class.busy]="t.finishesAt">
-                <div class="bld-art">
-                  <app-icon-tile [glyph]="meta(t.type).glyph" [size]="56" variant="muted" />
+                <div class="bld-art clickable" (click)="openDetail(t)" title="Details ansehen">
+                  <app-icon-tile [glyph]="meta(t.type).glyph" [size]="46" variant="muted" />
                   <span class="lvl" [class.zero]="t.level === 0" title="Stufe">{{ t.level }}</span>
                 </div>
 
                 <div class="bld-info">
-                  <div class="bld-name tip" [attr.data-tip]="meta(t.type).blurb ?? ''">{{ meta(t.type).label }}</div>
+                  <div class="bld-name clickable" (click)="openDetail(t)" title="Details ansehen">{{ meta(t.type).label }} <span class="info-dot">ⓘ</span></div>
                   @if (t.option) {
                     <div class="bld-stats">
                       <app-cost-line [cost]="t.option.cost" [available]="balances()" />
@@ -130,6 +131,24 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
         </section>
       }
     }
+
+    @if (selected(); as sel) {
+      <app-detail-popup
+        kind="tech"
+        [type]="sel.type"
+        [level]="sel.level"
+        [cost]="sel.option?.cost ?? null"
+        [available]="balances()"
+        [buildSeconds]="sel.option?.research_seconds ?? null"
+        [requirements]="sel.option?.requirements ?? null"
+        [actionLabel]="sel.option && !sel.finishesAt ? ('Erforschen → ' + sel.option.next_level) : null"
+        [actionDisabled]="!canStart(sel)"
+        [actionHint]="researchHint(sel)"
+        [pending]="pending() === sel.type"
+        (confirm)="startFromPopup()"
+        (close)="selected.set(null)"
+      />
+    }
   `,
   styles: [
     `
@@ -139,11 +158,11 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
         gap: 1rem; margin-bottom: 1rem; border-color: var(--border-strong);
         box-shadow: var(--glow);
       }
-      .cat { margin-bottom: 1rem; }
+      .cat { margin-bottom: 0.7rem; }
       .cat-title {
-        font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.14em;
-        color: #b9c6de; margin: 0 0 0.4rem;
-        padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);
+        font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em;
+        color: #b9c6de; margin: 0 0 0.3rem;
+        padding-bottom: 0.45rem; border-bottom: 1px solid var(--border);
       }
       /* Zeilen-Layout: Art links, Infos mittig, Aktion rechts. */
       .bld-list { display: flex; flex-direction: column; }
@@ -154,7 +173,22 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       }
       .bld-row:last-child { border-bottom: none; }
       .bld-row.busy { box-shadow: inset 2px 0 0 var(--accent); }
+
+      /* Desktop: Kacheln statt Vollbreit-Zeilen (wie Gebaeude). */
+      @media (min-width: 900px) {
+        .bld-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+          gap: 0.1rem 1.4rem;
+        }
+        .bld-row { gap: 0.7rem; padding: 0.5rem 0.25rem; }
+      }
       .bld-art { position: relative; flex: 0 0 auto; }
+      .clickable { cursor: pointer; }
+      .bld-art.clickable:hover { filter: brightness(1.15); }
+      .bld-name.clickable:hover { color: var(--accent); }
+      .info-dot { color: var(--text-faint); font-size: 0.8rem; }
+      .bld-name.clickable:hover .info-dot { color: var(--accent); }
       .bld-art .lvl {
         position: absolute; bottom: -5px; right: -5px;
         min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px;
@@ -171,7 +205,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       .bld-stats { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
       .bld-action {
         flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end;
-        gap: 0.3rem; min-width: 170px; max-width: 230px;
+        gap: 0.25rem; min-width: 128px; max-width: 190px;
       }
       .bld-action .btn { white-space: nowrap; }
       .building-badge { font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -189,6 +223,7 @@ export class ResearchComponent {
   private readonly data = signal<ResearchResponse | null>(null);
   protected readonly loading = signal(true);
   protected readonly pending = signal<string | null>(null);
+  protected readonly selected = signal<ResearchRow | null>(null);
 
   protected readonly rows = computed<ResearchRow[]>(() => {
     const d = this.data();
@@ -258,8 +293,37 @@ export class ResearchComponent {
 
   canStart(t: ResearchRow): boolean {
     return (
-      !!t.option && t.option.can_afford && t.option.requirements_met && !this.researchBusy()
+      !!t.option && t.option.can_afford && t.option.requirements_met && !this.researchBusy() && !t.finishesAt
     );
+  }
+
+  openDetail(row: ResearchRow): void {
+    this.selected.set(row);
+  }
+
+  startFromPopup(): void {
+    const sel = this.selected();
+    if (sel) {
+      this.start(sel.type);
+      this.selected.set(null);
+    }
+  }
+
+  /** Aktions-Hinweis fuer das Detail-Popup (Voraussetzung/Kosten/Labor belegt). */
+  researchHint(t: ResearchRow): string | null {
+    if (!t.option || t.finishesAt) {
+      return null;
+    }
+    if (!t.option.requirements_met) {
+      return this.missingReqText(t.option);
+    }
+    if (!t.option.can_afford) {
+      return 'Zu teuer';
+    }
+    if (this.researchBusy()) {
+      return 'Labor belegt';
+    }
+    return null;
   }
 
   start(type: string): void {

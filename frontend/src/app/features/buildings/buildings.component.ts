@@ -6,6 +6,7 @@ import { BUILDING_META, metaFor } from '../../core/models/display';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
+import { DetailPopupComponent } from '../../shared/components/detail-popup.component';
 import { NotificationService } from '../../core/services/notification.service';
 
 interface BuildingRow {
@@ -34,7 +35,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
 @Component({
   selector: 'app-buildings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CostLineComponent, CountdownComponent, IconTileComponent],
+  imports: [CostLineComponent, CountdownComponent, IconTileComponent, DetailPopupComponent],
   template: `
     <h1>Gebaeude</h1>
     <p class="muted sub">
@@ -55,13 +56,13 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
           <div class="bld-list">
             @for (b of group.rows; track b.type) {
               <div class="bld-row" [class.busy]="b.finishesAt">
-                <div class="bld-art">
-                  <app-icon-tile [glyph]="meta(b.type).glyph" [src]="'assets/img/buildings/' + b.type + '.png'" [size]="56" />
+                <div class="bld-art clickable" (click)="openDetail(b)" title="Details ansehen">
+                  <app-icon-tile [glyph]="meta(b.type).glyph" [src]="'assets/img/buildings/' + b.type + '.png'" [size]="46" />
                   <span class="lvl" [class.zero]="b.level === 0" title="Stufe">{{ b.level }}</span>
                 </div>
 
                 <div class="bld-info">
-                  <div class="bld-name tip" [attr.data-tip]="meta(b.type).blurb ?? ''">{{ meta(b.type).label }}</div>
+                  <div class="bld-name clickable" (click)="openDetail(b)" title="Details ansehen">{{ meta(b.type).label }} <span class="info-dot">ⓘ</span></div>
                   @if (b.option) {
                     <div class="bld-stats">
                       <app-cost-line [cost]="b.option.cost" [available]="balances()" />
@@ -118,15 +119,33 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
         </section>
       }
     }
+
+    @if (selected(); as sel) {
+      <app-detail-popup
+        kind="building"
+        [type]="sel.type"
+        [level]="sel.level"
+        [cost]="sel.option?.cost ?? null"
+        [available]="balances()"
+        [buildSeconds]="sel.option?.build_seconds ?? null"
+        [requirements]="sel.option?.requirements ?? null"
+        [actionLabel]="sel.option && !sel.finishesAt ? ('Ausbauen → ' + sel.option.next_level) : null"
+        [actionDisabled]="!canUpgrade(sel) || anyBuilding()"
+        [actionHint]="buildingHint(sel)"
+        [pending]="pending() === sel.type"
+        (confirm)="upgradeFromPopup()"
+        (close)="selected.set(null)"
+      />
+    }
   `,
   styles: [
     `
       .sub { margin-top: -0.3rem; font-size: 0.85rem; }
-      .cat { margin-bottom: 1rem; }
+      .cat { margin-bottom: 0.7rem; }
       .cat-title {
-        font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.14em;
-        color: #b9c6de; margin: 0 0 0.4rem;
-        padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);
+        font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em;
+        color: #b9c6de; margin: 0 0 0.3rem;
+        padding-bottom: 0.45rem; border-bottom: 1px solid var(--border);
       }
       /* Zeilen-Layout: Art links, Infos mittig, Aktion rechts. */
       .bld-list { display: flex; flex-direction: column; }
@@ -137,7 +156,28 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       }
       .bld-row:last-child { border-bottom: none; }
       .bld-row.busy { box-shadow: inset 2px 0 0 var(--accent); }
+
+      /* Desktop: Kacheln statt Vollbreit-Zeilen -> mehrere pro Reihe, weniger Scrollen. */
+      @media (min-width: 900px) {
+        .bld-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+          gap: 0.1rem 1.4rem;
+        }
+        .bld-row {
+          gap: 0.7rem;
+          padding: 0.5rem 0.25rem;
+        }
+        /* Trennlinie der letzten Zeile je Spalte entfaellt nicht automatisch im Grid;
+           dezente Linien sind ok, daher pauschal lassen. */
+        .bld-art .lvl { bottom: -4px; right: -4px; }
+      }
       .bld-art { position: relative; flex: 0 0 auto; }
+      .clickable { cursor: pointer; }
+      .bld-art.clickable:hover { filter: brightness(1.15); }
+      .bld-name.clickable:hover { color: var(--accent); }
+      .info-dot { color: var(--text-faint); font-size: 0.8rem; }
+      .bld-name.clickable:hover .info-dot { color: var(--accent); }
       .bld-art .lvl {
         position: absolute; bottom: -5px; right: -5px;
         min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px;
@@ -154,7 +194,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       .bld-stats { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
       .bld-action {
         flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end;
-        gap: 0.3rem; min-width: 150px;
+        gap: 0.25rem; min-width: 130px;
       }
       .bld-action .btn { white-space: nowrap; }
       .building-badge { font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -180,6 +220,7 @@ export class BuildingsComponent {
   private readonly data = signal<BuildingsResponse | null>(null);
   protected readonly loading = signal(true);
   protected readonly pending = signal<string | null>(null);
+  protected readonly selected = signal<BuildingRow | null>(null);
 
   protected readonly rows = computed<BuildingRow[]>(() => {
     const d = this.data();
@@ -259,6 +300,35 @@ export class BuildingsComponent {
 
   canUpgrade(b: BuildingRow): boolean {
     return !!b.option && b.option.can_afford && b.option.requirements_met && !b.finishesAt;
+  }
+
+  openDetail(row: BuildingRow): void {
+    this.selected.set(row);
+  }
+
+  upgradeFromPopup(): void {
+    const sel = this.selected();
+    if (sel) {
+      this.upgrade(sel.type);
+      this.selected.set(null);
+    }
+  }
+
+  /** Aktions-Hinweis fuer das Detail-Popup. */
+  buildingHint(b: BuildingRow): string | null {
+    if (!b.option || b.finishesAt) {
+      return null;
+    }
+    if (!b.option.requirements_met) {
+      return 'Voraussetzung fehlt';
+    }
+    if (!b.option.can_afford) {
+      return 'Zu teuer';
+    }
+    if (this.anyBuilding()) {
+      return 'Bauschleife belegt';
+    }
+    return null;
   }
 
   upgrade(type: string): void {

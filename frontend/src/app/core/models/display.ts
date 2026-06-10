@@ -24,81 +24,279 @@ export const RESOURCE_META: Record<string, DisplayMeta> = {
 };
 
 export const BUILDING_META: Record<string, DisplayMeta> = {
-  metal_mine: { label: 'Metallmine', glyph: '⛏️', blurb: 'Foerdert Metall.' },
-  crystal_mine: { label: 'Kristallmine', glyph: '💠', blurb: 'Foerdert Kristall.' },
-  deuterium_synth: { label: 'Deuterium-Synthesizer', glyph: '🛢️', blurb: 'Gewinnt Deuterium.' },
-  solar_plant: { label: 'Solarkraftwerk', glyph: '☀️', blurb: 'Erzeugt Energie.' },
-  fusion_reactor: { label: 'Fusionsreaktor', glyph: '🔆', blurb: 'Energie aus Deuterium.' },
-  robot_factory: { label: 'Roboterfabrik', glyph: '🤖', blurb: 'Beschleunigt Bauten.' },
-  shipyard: { label: 'Werft', glyph: '🛠️', blurb: 'Baut Schiffe & Verteidigung.' },
-  research_lab: { label: 'Forschungslabor', glyph: '🔬', blurb: 'Schaltet Technologien frei.' },
-  metal_storage: { label: 'Metallspeicher', glyph: '🏗️', blurb: 'Erhoeht Metall-Kapazitaet.' },
-  crystal_storage: { label: 'Kristallspeicher', glyph: '🏬', blurb: 'Erhoeht Kristall-Kapazitaet.' },
-  deuterium_tank: { label: 'Deuteriumtank', glyph: '🛢️', blurb: 'Erhoeht Deuterium-Kapazitaet.' },
-  command_academy: { label: 'Kommando-Akademie', glyph: '🎖️', blurb: 'Bildet Commander aus.' },
-  command_center: { label: 'Kommandozentrale', glyph: '📡', blurb: 'Erhoeht Span of Control.' },
+  metal_mine: {
+    label: 'Metallmine', glyph: '⛏️', blurb: 'Foerdert Metall.',
+    desc: 'Förderschächte treiben tief in die Kruste des Planeten. Metall ist das Rückgrat jeder Werft und jedes Gebäudes — eine Kolonie wächst nur so schnell wie ihre Metallmine. Jede Stufe steigert die Förderrate, verlangt aber spürbar mehr Energie.',
+  },
+  crystal_mine: {
+    label: 'Kristallmine', glyph: '💠', blurb: 'Foerdert Kristall.',
+    desc: 'Kristalline Adern werden mit Schneidlasern aus dem Gestein gelöst. Kristall steckt in jeder Elektronik, jedem Triebwerk und jeder Forschung — knapper und teurer als Metall, aber unverzichtbar für höhere Technik.',
+  },
+  deuterium_synth: {
+    label: 'Deuterium-Synthesizer', glyph: '🛢️', blurb: 'Gewinnt Deuterium.',
+    desc: 'Schwerwasser-Reaktoren filtern Deuterium aus der Atmosphäre. Der Treibstoff aller Flotten und der Brennstoff der Fusion — kalte Welten geben mehr her als heiße. Ohne Deuterium bleibt jede Flotte am Boden.',
+  },
+  solar_plant: {
+    label: 'Solarkraftwerk', glyph: '☀️', blurb: 'Erzeugt Energie.',
+    desc: 'Weite Solarsegel fangen das Sternenlicht ein. Die verlässlichste Energiequelle einer jungen Kolonie — auf Feuerwelten brennt sie am hellsten. Reicht die Energie nicht, drosseln alle Minen ihre Förderung.',
+  },
+  fusion_reactor: {
+    label: 'Fusionsreaktor', glyph: '🔆', blurb: 'Energie aus Deuterium.',
+    desc: 'Verbrennt Deuterium in einem eingeschlossenen Plasma und liefert Energie unabhängig vom Sternenlicht. Teuer im Unterhalt, aber die Antwort, wenn die Solarsegel an ihre Grenzen kommen.',
+  },
+  robot_factory: {
+    label: 'Roboterfabrik', glyph: '🤖', blurb: 'Beschleunigt Bauten.',
+    desc: 'Autonome Bautrupps und Schwerlast-Roboter verkürzen jede Bauzeit auf dem Planeten. Eine frühe Investition, die sich über jede spätere Stufe hinweg auszahlt.',
+  },
+  shipyard: {
+    label: 'Werft', glyph: '🛠️', blurb: 'Baut Schiffe & Verteidigung.',
+    desc: 'Das Herz der militärischen Macht: hier entstehen Flotten und planetare Verteidigung. Höhere Stufen schalten größere Rümpfe frei und lassen die Hellinge schneller arbeiten.',
+  },
+  research_lab: {
+    label: 'Forschungslabor', glyph: '🔬', blurb: 'Schaltet Technologien frei.',
+    desc: 'Reinraumlabore und Testkammern, in denen neue Technik aus der Theorie in den Einsatz wandert. Jede Stufe beschleunigt die Forschung — ohne Labor steht der gesamte Techbaum still.',
+  },
+  metal_storage: {
+    label: 'Metallspeicher', glyph: '🏗️', blurb: 'Erhoeht Metall-Kapazitaet.',
+    desc: 'Massive Bunker fassen die Metallförderung. Ist der Speicher voll, geht jede weitere Förderung verloren — und volle Lager sind ein verlockendes Ziel für Angreifer.',
+  },
+  crystal_storage: {
+    label: 'Kristallspeicher', glyph: '🏬', blurb: 'Erhoeht Kristall-Kapazitaet.',
+    desc: 'Klimatisierte Hallen lagern den empfindlichen Kristall. Mehr Kapazität bedeutet, dass du über Nacht Vorräte für teure Forschung und Großbauten anhäufen kannst.',
+  },
+  deuterium_tank: {
+    label: 'Deuteriumtank', glyph: '🛢️', blurb: 'Erhoeht Deuterium-Kapazitaet.',
+    desc: 'Druckisolierte Tanks halten den flüchtigen Treibstoff. Großoffensiven verschlingen Unmengen Deuterium — ohne Reserven bleibt die Flotte im Hangar.',
+  },
+  command_academy: {
+    label: 'Kommando-Akademie', glyph: '🎖️', blurb: 'Bildet Commander aus.',
+    desc: 'Hier werden aus Rekruten Commander geformt — Menschen, die deine Flotten führen und ihre Moral tragen. Das Fundament der Doktrin „Befehlige nicht nur Flotten, führe Menschen."',
+  },
+  command_center: {
+    label: 'Kommandozentrale', glyph: '📡', blurb: 'Erhoeht Span of Control.',
+    desc: 'Das Nervenzentrum deines Imperiums. Jede Stufe erweitert deine Befehlsreichweite (Span of Control) — also wie viele Commander du gleichzeitig im Einsatz halten kannst.',
+  },
 };
 
 export const TECH_META: Record<string, DisplayMeta> = {
-  energy_tech: { label: 'Energietechnik', glyph: '⚡', blurb: 'Grundlage vieler Technologien.' },
-  combustion_drive: { label: 'Verbrennungstriebwerk', glyph: '🚀', blurb: 'Antrieb leichter Schiffe.' },
-  impulse_drive: { label: 'Impulstriebwerk', glyph: '🛸', blurb: 'Schnellerer Antrieb.' },
-  spy_tech: { label: 'Spionagetechnik', glyph: '🛰️', blurb: 'Ermoeglicht Sonden.' },
-  computer_tech: { label: 'Computertechnik', glyph: '💻', blurb: '+1 Flottenslot pro Stufe.' },
-  weapons_tech: { label: 'Waffentechnik', glyph: '🔫', blurb: '+10% Angriff pro Stufe.' },
-  shield_tech: { label: 'Schildtechnik', glyph: '🛡️', blurb: '+10% Schild pro Stufe.' },
-  armor_tech: { label: 'Panzerung', glyph: '🪖', blurb: '+10% Huelle pro Stufe.' },
-  command_doctrine: { label: 'Kommando-Doktrin', glyph: '📖', blurb: '+Span of Control.' },
-  logistics_tech: { label: 'Logistik', glyph: '📦', blurb: 'Schnellere Moral-Erholung.' },
-  crew_psychology: { label: 'Crew-Psychologie', glyph: '🧠', blurb: 'Hoehere Moral-Decke.' },
-  laser_tech: { label: 'Lasertechnik', glyph: '🔦', blurb: 'Lasergeschuetze & Schlachtkreuzer.' },
-  ion_tech: { label: 'Ionentechnik', glyph: '🌀', blurb: 'Ionengeschuetze & Kreuzer.' },
-  plasma_tech: { label: 'Plasmatechnik', glyph: '🔥', blurb: 'Plasmawerfer, Bomber & Zerstoerer.' },
-  hyperspace_tech: { label: 'Hyperraumtechnik', glyph: '🌌', blurb: 'Grundlage fuer Grosskampfschiffe.' },
-  hyperspace_drive: { label: 'Hyperraumantrieb', glyph: '🌠', blurb: 'Antrieb schwerer Kriegsschiffe.' },
-  graviton_tech: { label: 'Gravitontechnik', glyph: '🌑', blurb: 'Ermoeglicht den Todesstern.' },
+  energy_tech: {
+    label: 'Energietechnik', glyph: '⚡', blurb: 'Grundlage vieler Technologien.',
+    desc: 'Die Lehre vom Bändigen und Leiten reiner Energie. Klingt unscheinbar, ist aber das Tor zu fast allem Höheren — von Lasern bis zur Fusion baut der halbe Techbaum auf ihr auf.',
+  },
+  combustion_drive: {
+    label: 'Verbrennungstriebwerk', glyph: '🚀', blurb: 'Antrieb leichter Schiffe.',
+    desc: 'Der erste echte Schub: chemische Verbrennung treibt Jäger und Transporter durchs System. Jede Stufe macht diese Schiffe schneller — der Einstieg in jede Flotte.',
+  },
+  impulse_drive: {
+    label: 'Impulstriebwerk', glyph: '🛸', blurb: 'Schnellerer Antrieb.',
+    desc: 'Ein Quantensprung gegenüber der Verbrennung: Impulskammern beschleunigen die mittlere Schiffsklasse. Wer schneller am Ziel ist, diktiert, wann gekämpft wird.',
+  },
+  spy_tech: {
+    label: 'Spionagetechnik', glyph: '🛰️', blurb: 'Ermoeglicht Sonden.',
+    desc: 'Sensorik, Verschlüsselung und das Handwerk des Lauschens. Schaltet Spionagesonden frei — denn ein Angriff ins Blinde ist nur ein teurer Selbstmord.',
+  },
+  computer_tech: {
+    label: 'Computertechnik', glyph: '💻', blurb: '+1 Flottenslot pro Stufe.',
+    desc: 'Rechenleistung für Flottenkoordination. Jede Stufe erlaubt dir, eine Flotte mehr gleichzeitig ins Feld zu führen — die stille Voraussetzung für jeden, der an mehreren Fronten spielt.',
+  },
+  weapons_tech: {
+    label: 'Waffentechnik', glyph: '🔫', blurb: '+10% Angriff pro Stufe.',
+    desc: 'Bessere Läufe, dichtere Munition, präzisere Zielrechner. Jede Stufe erhöht den Angriffswert deiner gesamten Flotte um 10 % — ein Bonus, der jedes Gefecht durchschlägt.',
+  },
+  shield_tech: {
+    label: 'Schildtechnik', glyph: '🛡️', blurb: '+10% Schild pro Stufe.',
+    desc: 'Energieschirme, die den ersten Treffer schlucken, bevor die Hülle leidet. +10 % Schildkraft pro Stufe für die ganze Flotte — was überlebt, kann zurückschlagen.',
+  },
+  armor_tech: {
+    label: 'Panzerung', glyph: '🪖', blurb: '+10% Huelle pro Stufe.',
+    desc: 'Verbundpanzerung und Schottwände. +10 % Hüllenintegrität pro Stufe — die rohe Lebensversicherung deiner Schiffe, wenn die Schilde fallen.',
+  },
+  command_doctrine: {
+    label: 'Kommando-Doktrin', glyph: '📖', blurb: '+Span of Control.',
+    desc: 'Die Kunst, mehr Menschen zu führen, ohne die Kontrolle zu verlieren. Erweitert deine Befehlsreichweite — mehr Commander, mehr gleichzeitig geführte Operationen.',
+  },
+  logistics_tech: {
+    label: 'Logistik', glyph: '📦', blurb: 'Schnellere Moral-Erholung.',
+    desc: 'Nachschub, Rotation, Ruhephasen: gute Logistik bringt erschöpfte Crews schneller zurück in Form. Lässt die Moral deiner Commander rascher regenerieren.',
+  },
+  crew_psychology: {
+    label: 'Crew-Psychologie', glyph: '🧠', blurb: 'Hoehere Moral-Decke.',
+    desc: 'Wer Menschen führt, muss sie verstehen. Hebt die Obergrenze der Moral — gut betreute Crews kämpfen mit einem Feuer, das Maschinen nie aufbringen.',
+  },
+  laser_tech: {
+    label: 'Lasertechnik', glyph: '🔦', blurb: 'Lasergeschuetze & Schlachtkreuzer.',
+    desc: 'Gebündeltes Licht, das Schilde aufreißt. Öffnet das Tor zu Lasergeschützen und schlagkräftigeren Kriegsschiffen — der erste Schritt vom Jäger zur echten Kampfflotte.',
+  },
+  ion_tech: {
+    label: 'Ionentechnik', glyph: '🌀', blurb: 'Ionengeschuetze & Kreuzer.',
+    desc: 'Geladene Teilchenströme, die Schilde leerfressen und Subsysteme lahmlegen. Grundlage von Kreuzern und Ionengeschützen — weniger Zerstörer, mehr Entwaffner.',
+  },
+  plasma_tech: {
+    label: 'Plasmatechnik', glyph: '🔥', blurb: 'Plasmawerfer, Bomber & Zerstoerer.',
+    desc: 'Auf Sterntemperatur erhitzte Materie als Waffe. Schaltet die brutalste Verteidigung und die schwersten Angriffsschiffe frei — Plasma verzeiht keine Hülle.',
+  },
+  hyperspace_tech: {
+    label: 'Hyperraumtechnik', glyph: '🌌', blurb: 'Grundlage fuer Grosskampfschiffe.',
+    desc: 'Das Verständnis des gefalteten Raums. Selbst keine Waffe, aber das Fundament jedes Großkampfschiffs — ohne sie bleibt die schwere Flotte ein Traum.',
+  },
+  hyperspace_drive: {
+    label: 'Hyperraumantrieb', glyph: '🌠', blurb: 'Antrieb schwerer Kriegsschiffe.',
+    desc: 'Faltet den Raum und schleudert tonnenschwere Rümpfe über Systemgrenzen. Der Antrieb der Schlachtschiffe und Zerstörer — langsam zu erforschen, aber unverzichtbar für Reichweite.',
+  },
+  graviton_tech: {
+    label: 'Gravitontechnik', glyph: '🌑', blurb: 'Ermoeglicht den Todesstern.',
+    desc: 'Die Beherrschung künstlicher Schwerkraft — die Königsdisziplin der Forschung. Einzige Voraussetzung für den Todesstern, eine mobile Festung von der Größe eines Mondes.',
+  },
 };
 
 export const SHIP_META: Record<string, DisplayMeta> = {
-  light_fighter: { label: 'Leichter Jaeger', glyph: '🛩️', blurb: 'Schnell und billig.' },
-  heavy_fighter: { label: 'Schwerer Jaeger', glyph: '✈️', blurb: 'Robuster Angreifer.' },
-  cruiser: { label: 'Kreuzer', glyph: '🚀', blurb: 'Schlagkraeftiges Kriegsschiff.' },
-  small_cargo: { label: 'Kleiner Transporter', glyph: '📦', blurb: 'Transportiert Ressourcen.' },
-  large_cargo: { label: 'Grosser Transporter', glyph: '🚛', blurb: 'Hohe Frachtkapazitaet.' },
-  colony_ship: { label: 'Kolonieschiff', glyph: '🪐', blurb: 'Gruendet neue Kolonien.' },
-  recycler: { label: 'Recycler', glyph: '♻️', blurb: 'Sammelt Truemmerfelder ein.' },
-  solar_satellite: { label: 'Solarsatellit', glyph: '🛰️', blurb: 'Liefert Energie im Orbit.' },
-  spy_probe: { label: 'Spionagesonde', glyph: '📡', blurb: 'Spaeht Ziele aus.' },
-  battleship: { label: 'Schlachtschiff', glyph: '🚀', blurb: 'Rueckgrat der Kampfflotte.' },
-  battlecruiser: { label: 'Schlachtkreuzer', glyph: '⚔️', blurb: 'Schnell und schlagkraeftig.' },
-  bomber: { label: 'Bomber', glyph: '💣', blurb: 'Bricht feindliche Verteidigung.' },
-  destroyer: { label: 'Zerstoerer', glyph: '🔱', blurb: 'Schwerer Linienkaempfer.' },
-  deathstar: { label: 'Todesstern', glyph: '🌑', blurb: 'Mobile Kampfstation.' },
-  carrier: { label: 'Traeger', glyph: '🛸', blurb: 'Kraftmultiplikator, startet Drohnen.' },
-  drone: { label: 'Drohne', glyph: '🛩️', blurb: 'Billige Schwarm-Einheit.' },
-  interdictor: { label: 'Interdiktor', glyph: '🧲', blurb: 'Fang-Feld: verhindert Flucht.' },
-  ewar_frigate: { label: 'EWAR-Fregatte', glyph: '⚡', blurb: 'Ionen: leert Schilde, legt Antrieb lahm.' },
-  boarder: { label: 'Enterschiff', glyph: '🪝', blurb: 'Kapert gestrandete Schiffe.' },
-  stealth_corvette: { label: 'Tarnkappen-Korvette', glyph: '🌫️', blurb: 'Stealth, eroeffnet den Ueberfall.' },
-  escort_frigate: { label: 'Eskort-Fregatte', glyph: '🛡️', blurb: 'Punktverteidigung, schirmt Fracht.' },
-  shield_tender: { label: 'Schild-Tender', glyph: '🔆', blurb: 'Projiziert Schilde im Gefecht.' },
-  interceptor: { label: 'Abfangjaeger', glyph: '🏹', blurb: 'Sehr schnell, Anti-Jaeger.' },
-  miner: { label: 'Bergbauschiff', glyph: '⛏️', blurb: 'Mobiler Rohstoff-Abbau.' },
-  deep_scout: { label: 'Tief-Aufklaerer', glyph: '🔭', blurb: 'Langstrecken-Aufklaerung.' },
-  expedition_ship: { label: 'Expeditions-Schiff', glyph: '🧭', blurb: 'Erkundung und Langstrecke.' },
+  light_fighter: {
+    label: 'Leichter Jaeger', glyph: '🛩️', blurb: 'Schnell und billig.',
+    desc: 'Das billige Arbeitstier jeder Werft — schnell gebaut, schnell verheizt. Einzeln kaum mehr als ein Funkenflug, doch in Schwärmen erdrücken leichte Jäger jeden Gegner unter schierer Masse.',
+  },
+  heavy_fighter: {
+    label: 'Schwerer Jaeger', glyph: '✈️', blurb: 'Robuster Angreifer.',
+    desc: 'Der ältere, gepanzerte Bruder des leichten Jägers. Trägt mehr Feuerkraft und steckt mehr ein — das Rückgrat einer frühen Angriffsflotte, bevor die großen Rümpfe kommen.',
+  },
+  cruiser: {
+    label: 'Kreuzer', glyph: '🚀', blurb: 'Schlagkraeftiges Kriegsschiff.',
+    desc: 'Schnell, schlagkräftig und gefürchtet von Jägerschwärmen: gegen leichte Jäger feuert der Kreuzer in rascher Folge. Das erste Schiff, das ein Schlachtfeld wirklich dominiert.',
+  },
+  small_cargo: {
+    label: 'Kleiner Transporter', glyph: '📦', blurb: 'Transportiert Ressourcen.',
+    desc: 'Wendiger Frachter für den schnellen Ressourcen-Pendelverkehr. Klein, billig, unbewaffnet — aber ohne diese Schiffe verhungert jede Kolonie und jede Beute bleibt liegen.',
+  },
+  large_cargo: {
+    label: 'Grosser Transporter', glyph: '🚛', blurb: 'Hohe Frachtkapazitaet.',
+    desc: 'Ein fliegender Laderaum. Langsamer als der kleine Transporter, aber er schleppt ein Vielfaches — die Wahl, wenn ganze Trümmerfelder oder Plünderzüge nach Hause müssen.',
+  },
+  colony_ship: {
+    label: 'Kolonieschiff', glyph: '🪐', blurb: 'Gruendet neue Kolonien.',
+    desc: 'Eine Arche aus Stahl: trägt alles, um auf einer leeren Welt eine neue Kolonie zu gründen. Teuer und träge, aber jedes neue Imperium beginnt mit genau diesem Schiff.',
+  },
+  recycler: {
+    label: 'Recycler', glyph: '♻️', blurb: 'Sammelt Truemmerfelder ein.',
+    desc: 'Nach jeder Schlacht treibt Schrott im Orbit — der Recycler erntet ihn. Wer die Trümmerfelder einsammelt, finanziert seinen Krieg mit den Wracks des Feindes.',
+  },
+  solar_satellite: {
+    label: 'Solarsatellit', glyph: '🛰️', blurb: 'Liefert Energie im Orbit.',
+    desc: 'Eine schwebende Solarplattform ohne Antrieb. Liefert günstig Energie an den Planeten — aber wehrlos: bei einem Angriff ist sie das erste, was zerschossen wird.',
+  },
+  spy_probe: {
+    label: 'Spionagesonde', glyph: '📡', blurb: 'Spaeht Ziele aus.',
+    desc: 'Winzig, schnell, kaum zu treffen. Huscht ins feindliche Orbit, funkt zurück, was sie sieht — Flotten, Verteidigung, Vorräte. Wissen, das einen Angriff entscheidet, bevor er beginnt.',
+  },
+  battleship: {
+    label: 'Schlachtschiff', glyph: '🚀', blurb: 'Rueckgrat der Kampfflotte.',
+    desc: 'Der breitschultrige Linienkämpfer, an dem sich jede Schlacht festbeißt. Viel Hülle, schwere Geschütze, kein besonderer Trick — einfach die Wand, hinter der deine Flotte steht.',
+  },
+  battlecruiser: {
+    label: 'Schlachtkreuzer', glyph: '⚔️', blurb: 'Schnell und schlagkraeftig.',
+    desc: 'Die Faust, die zuerst zuschlägt: fast so schwer bewaffnet wie ein Schlachtschiff, aber deutlich schneller. Ideal für Blitzangriffe, ehe der Gegner seine Flotte sammeln kann.',
+  },
+  bomber: {
+    label: 'Bomber', glyph: '💣', blurb: 'Bricht feindliche Verteidigung.',
+    desc: 'Spezialist fürs grobe Geschäft: Plasmabomben, die planetare Verteidigung in Schutt legen. Gegen Geschütztürme unschlagbar, gegen wendige Schiffe träge und verwundbar.',
+  },
+  destroyer: {
+    label: 'Zerstoerer', glyph: '🔱', blurb: 'Schwerer Linienkaempfer.',
+    desc: 'Eines der schwersten Kriegsschiffe überhaupt — eine wandelnde Geschützbatterie. Wo ein Zerstörer auftaucht, kippt die Schlacht; nur Masse oder ein Todesstern halten ihn auf.',
+  },
+  deathstar: {
+    label: 'Todesstern', glyph: '🌑', blurb: 'Mobile Kampfstation.',
+    desc: 'Eine Festung von der Größe eines Mondes, gebaut aus Gravitontechnik. Nahezu unzerstörbar und mit Geschützen, die ganze Flotten zerstäuben — die ultimative Machtdemonstration. Schwerfällig, aber Furcht erregend.',
+  },
+  carrier: {
+    label: 'Traeger', glyph: '🛸', blurb: 'Kraftmultiplikator, startet Drohnen.',
+    desc: 'Kämpft nicht selbst, sondern entfesselt Schwärme: der Träger startet Drohnen und verstärkt die Schiffe um sich herum. Ein Kraftmultiplikator, dessen Verlust eine ganze Flotte schwächt.',
+  },
+  drone: {
+    label: 'Drohne', glyph: '🛩️', blurb: 'Billige Schwarm-Einheit.',
+    desc: 'Unbemannt, spottbillig, in Massen verfügbar. Allein bedeutungslos, im Schwarm eine Lawine — vom Träger ins Gefecht geschleudert, um den Feind in Zahlen zu ertränken.',
+  },
+  interdictor: {
+    label: 'Interdiktor', glyph: '🧲', blurb: 'Fang-Feld: verhindert Flucht.',
+    desc: 'Spannt ein Massefeld auf, das gegnerischen Schiffen die Flucht abschneidet. Kein großer Kämpfer — aber er verwandelt einen Rückzug in eine Falle, aus der kein Fleetsave rettet.',
+  },
+  ewar_frigate: {
+    label: 'EWAR-Fregatte', glyph: '⚡', blurb: 'Ionen: leert Schilde, legt Antrieb lahm.',
+    desc: 'Elektronische Kriegsführung in Reinform: Ionensalven leeren feindliche Schilde und legen Antriebe lahm. Richtet selbst kaum Schaden an, macht den Feind aber reif für die Schlächter.',
+  },
+  boarder: {
+    label: 'Enterschiff', glyph: '🪝', blurb: 'Kapert gestrandete Schiffe.',
+    desc: 'Klammert sich an antriebslose Wracks und schickt Enterkommandos hinüber. Wo andere zerstören, raubt der Boarder — gestrandete Feindschiffe wechseln einfach die Seite.',
+  },
+  stealth_corvette: {
+    label: 'Tarnkappen-Korvette', glyph: '🌫️', blurb: 'Stealth, eroeffnet den Ueberfall.',
+    desc: 'Gleitet ungesehen heran und eröffnet das Gefecht aus dem Nichts. Die Tarnkappen-Korvette ist die Klinge im Dunkeln — ein Hinterhalt, der entschieden ist, bevor der Feind überhaupt zielt.',
+  },
+  escort_frigate: {
+    label: 'Eskort-Fregatte', glyph: '🛡️', blurb: 'Punktverteidigung, schirmt Fracht.',
+    desc: 'Die Leibwache des Konvois: ihre Punktverteidigung fängt Raketen und Drohnen ab, bevor sie die Fracht erreichen. Defensiv, geduldig, unverzichtbar für sichere Transporte.',
+  },
+  shield_tender: {
+    label: 'Schild-Tender', glyph: '🔆', blurb: 'Projiziert Schilde im Gefecht.',
+    desc: 'Spannt im Gefecht einen Schildschirm über benachbarte Schiffe. Selbst zerbrechlich, hält er andere am Leben — und wird vom Gegner zu Recht zuerst ins Visier genommen.',
+  },
+  interceptor: {
+    label: 'Abfangjaeger', glyph: '🏹', blurb: 'Sehr schnell, Anti-Jaeger.',
+    desc: 'Gebaut für eine einzige Aufgabe: feindliche Jäger einholen und zerreißen. Extrem schnell, gegen größere Schiffe aber zerbrechlich — der Wächter über deinem eigenen Luftraum.',
+  },
+  miner: {
+    label: 'Bergbauschiff', glyph: '⛏️', blurb: 'Mobiler Rohstoff-Abbau.',
+    desc: 'Eine fliegende Mine. Setzt sich auf Asteroiden und reiche Felder und fördert Rohstoffe fern der Heimat — der Motor jeder Bergbau-Expansion.',
+  },
+  deep_scout: {
+    label: 'Tief-Aufklaerer', glyph: '🔭', blurb: 'Langstrecken-Aufklaerung.',
+    desc: 'Späht weiter, als jede Sonde reicht. Der Tief-Aufklärer kartiert ferne Systeme und Anomalien — die Augen des Imperiums an seinen Rändern.',
+  },
+  expedition_ship: {
+    label: 'Expeditions-Schiff', glyph: '🧭', blurb: 'Erkundung und Langstrecke.',
+    desc: 'Gebaut für die Reise ins Ungewisse: lange Reichweite, robuste Systeme, Platz für Funde. Schickt es in die Leere zwischen den Sternen — was es zurückbringt, ist nie vorhersehbar.',
+  },
 };
 
 export const DEFENSE_META: Record<string, DisplayMeta> = {
-  rocket_launcher: { label: 'Raketenwerfer', glyph: '🚀', blurb: 'Guenstige Verteidigung.' },
-  light_laser: { label: 'Leichtes Lasergeschuetz', glyph: '🔦', blurb: 'Solide Verteidigung.' },
-  heavy_laser: { label: 'Schweres Lasergeschuetz', glyph: '🔆', blurb: 'Robusteres Lasergeschuetz.' },
-  gauss_cannon: { label: 'Gausskanone', glyph: '🎯', blurb: 'Anti-Grosskampfschiff.' },
-  ion_cannon: { label: 'Ionengeschuetz', glyph: '🌀', blurb: 'Hoher Schild, Schildtank.' },
-  plasma_turret: { label: 'Plasmawerfer', glyph: '🔥', blurb: 'Staerkste Verteidigung.' },
-  small_shield_dome: { label: 'Kleine Schildkuppel', glyph: '🛡️', blurb: 'Max. 1 pro Planet.' },
-  large_shield_dome: { label: 'Grosse Schildkuppel', glyph: '🛡️', blurb: 'Max. 1 pro Planet.' },
-  anti_ballistic_missile: { label: 'Abfangrakete', glyph: '🚀', blurb: 'Faengt Interplanetarraketen ab.' },
-  interplanetary_missile: { label: 'Interplanetarrakete', glyph: '☄️', blurb: 'Zerstoert feindliche Verteidigung.' },
+  rocket_launcher: {
+    label: 'Raketenwerfer', glyph: '🚀', blurb: 'Guenstige Verteidigung.',
+    desc: 'Die billigste Mauer, die du ziehen kannst. Einzeln ein Pappkamerad, in Hunderten aber eine Wand aus Raketen, an der sich kleine Angriffsflotten die Zähne ausbeißen.',
+  },
+  light_laser: {
+    label: 'Leichtes Lasergeschuetz', glyph: '🔦', blurb: 'Solide Verteidigung.',
+    desc: 'Solides Brot-und-Butter-Geschütz: günstig, schildbrechend und in Masse erstaunlich zäh. Das Fundament fast jeder planetaren Verteidigung.',
+  },
+  heavy_laser: {
+    label: 'Schweres Lasergeschuetz', glyph: '🔆', blurb: 'Robusteres Lasergeschuetz.',
+    desc: 'Der größere Bruder des leichten Lasers — mehr Reichweite, mehr Hülle, mehr Biss. Hält dort stand, wo leichte Geschütze schon Funken sprühen.',
+  },
+  gauss_cannon: {
+    label: 'Gausskanone', glyph: '🎯', blurb: 'Anti-Grosskampfschiff.',
+    desc: 'Beschleunigt ein Projektil auf wahnwitzige Geschwindigkeit und durchschlägt selbst dicke Panzerung. Spezialist gegen Großkampfschiffe — gegen Jägerschwärme aber zu träge.',
+  },
+  ion_cannon: {
+    label: 'Ionengeschuetz', glyph: '🌀', blurb: 'Hoher Schild, Schildtank.',
+    desc: 'Ein Geschütz mit gewaltigem Eigenschild, das den feindlichen Beschuss schluckt und Schilde leerfrisst. Der Schildtank deiner Stellung — hält lange, schlägt mittel.',
+  },
+  plasma_turret: {
+    label: 'Plasmawerfer', glyph: '🔥', blurb: 'Staerkste Verteidigung.',
+    desc: 'Die brutalste Verteidigung, die ein Planet aufbieten kann: Plasmasalven, die durch Schild und Hülle gleichermaßen brennen. Teuer, aber jeder Angreifer rechnet zweimal.',
+  },
+  small_shield_dome: {
+    label: 'Kleine Schildkuppel', glyph: '🛡️', blurb: 'Max. 1 pro Planet.',
+    desc: 'Ein planetenweiter Energieschirm, der einen Teil jedes Angriffs absorbiert. Nur einmal pro Planet baubar — aber dieser eine Schild kann eine Schlacht überstehen lassen.',
+  },
+  large_shield_dome: {
+    label: 'Grosse Schildkuppel', glyph: '🛡️', blurb: 'Max. 1 pro Planet.',
+    desc: 'Die ausgereifte Schildkuppel: schluckt ein Vielfaches der kleinen Version. Zusammen bilden beide Kuppeln einen Schirm, der selbst schweren Bombardements trotzt.',
+  },
+  anti_ballistic_missile: {
+    label: 'Abfangrakete', glyph: '🚀', blurb: 'Faengt Interplanetarraketen ab.',
+    desc: 'Reine Versicherung: jede Abfangrakete fängt genau eine feindliche Interplanetarrakete ab, bevor sie deine Verteidigung trifft. Unsichtbar im Lager — bis der Tag kommt, an dem sie alles rettet.',
+  },
+  interplanetary_missile: {
+    label: 'Interplanetarrakete', glyph: '☄️', blurb: 'Zerstoert feindliche Verteidigung.',
+    desc: 'Der Vorschlaghammer aus der Ferne: schlägt über Systemgrenzen in die feindliche Verteidigung ein, ohne dass eine Flotte fliegen muss. Reißt Löcher, durch die danach deine Schiffe stoßen.',
+  },
 };
 
 /**

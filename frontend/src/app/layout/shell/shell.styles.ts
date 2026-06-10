@@ -14,7 +14,7 @@ export const shellStyles = `
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.5rem 1rem;
+    padding: 0.35rem 0.9rem;
     background: rgba(10, 16, 32, 0.92);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
@@ -84,23 +84,23 @@ export const shellStyles = `
 
   /* Sidenav */
   .sidenav {
-    width: 220px;
-    flex: 0 0 220px;
-    padding: 1rem 0.7rem;
+    width: 186px;
+    flex: 0 0 186px;
+    padding: 0.6rem 0.5rem;
     border-right: 1px solid var(--border);
     background: rgba(13, 22, 41, 0.5);
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.15rem;
   }
   .nav-link {
     display: flex;
     align-items: center;
-    gap: 0.7rem;
-    padding: 0.65rem 0.8rem;
+    gap: 0.6rem;
+    padding: 0.45rem 0.7rem;
     border-radius: var(--radius-sm);
     color: var(--text-dim);
-    font-size: 0.92rem;
+    font-size: 0.88rem;
     border: 1px solid transparent;
     transition: background 0.15s ease, color 0.15s ease;
   }
@@ -127,20 +127,20 @@ export const shellStyles = `
   .content {
     flex: 1;
     min-width: 0;
-    padding: 1.3rem;
+    padding: 0.8rem 1rem;
     width: 100%;
   }
 
   /* Kolonien-Leiste (rechts) */
   .colony-rail {
-    width: 160px;
-    flex: 0 0 160px;
-    padding: 1rem 0.6rem;
+    width: 150px;
+    flex: 0 0 150px;
+    padding: 0.6rem 0.5rem;
     border-left: 1px solid var(--border);
     background: rgba(13, 22, 41, 0.5);
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.15rem;
   }
   .rail-title {
     font-size: 0.72rem;
@@ -156,7 +156,7 @@ export const shellStyles = `
     gap: 2px;
     width: 100%;
     text-align: left;
-    padding: 0.5rem 0.55rem;
+    padding: 0.38rem 0.5rem;
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
     background: transparent;

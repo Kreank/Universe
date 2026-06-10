@@ -8,7 +8,13 @@ import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_M
 import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
+import { DetailPopupComponent, DetailTag } from '../../shared/components/detail-popup.component';
 import { NotificationService } from '../../core/services/notification.service';
+
+interface SelectedUnit {
+  cat: ShipyardCategory;
+  option: ShipOption;
+}
 
 interface ShipGroup {
   key: string;
@@ -71,7 +77,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
 @Component({
   selector: 'app-shipyard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, NgTemplateOutlet, CostLineComponent, CountdownComponent, IconTileComponent],
+  imports: [FormsModule, NgTemplateOutlet, CostLineComponent, CountdownComponent, IconTileComponent, DetailPopupComponent],
   template: `
     <h1>Werft & Verteidigung</h1>
     <p class="muted sub">Baue Schiffe und Verteidigungsanlagen auf {{ state.activePlanet()?.name ?? '—' }}.</p>
@@ -116,38 +122,21 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
 
       <ng-template #unitCard let-s let-cat="cat">
         <div class="bld-row">
-          <div class="bld-art">
+          <div class="bld-art clickable" (click)="openDetail(s, cat)" title="Details ansehen">
             <app-icon-tile
               [glyph]="unitMeta(s.type, cat).glyph"
               [src]="'assets/img/' + (cat === 'ship' ? 'ships' : 'defenses') + '/' + s.type + '.png'"
-              [size]="56"
+              [size]="46"
               [variant]="cat === 'defense' ? 'magenta' : 'accent'"
             />
           </div>
 
           <div class="bld-info">
-            <div class="bld-name tip" [attr.data-tip]="unitMeta(s.type, cat).blurb ?? ''">{{ unitMeta(s.type, cat).label }}</div>
+            <div class="bld-name clickable" (click)="openDetail(s, cat)" title="Details ansehen">{{ unitMeta(s.type, cat).label }} <span class="info-dot">ⓘ</span></div>
             <div class="bld-stats">
               <app-cost-line [cost]="s.cost" [available]="balances()" />
               <span class="muted small">⏱ {{ formatTime(s.build_seconds_each) }} / Stk.</span>
             </div>
-            @if (s.range || s.weapon_type) {
-              <div class="combat-stats">
-                @if (s.range) {
-                  <span class="cchip">{{ rangeMeta(s.range).dot }} {{ rangeMeta(s.range).label }}</span>
-                }
-                @if (s.weapon_type) {
-                  <span class="cchip tip" [attr.data-tip]="weaponMeta(s.weapon_type).vs">{{ weaponMeta(s.weapon_type).glyph }} {{ weaponMeta(s.weapon_type).label }}</span>
-                } @else {
-                  <span class="cchip">🛡 Unbewaffnet</span>
-                }
-                @if (s.drive === 0) {
-                  <span class="cchip">⚓ stationär</span>
-                } @else if (s.drive) {
-                  <span class="cchip">⚙ Antrieb {{ s.drive }}</span>
-                }
-              </div>
-            }
           </div>
 
           <div class="bld-action">
@@ -181,6 +170,25 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
     } @else {
       <p class="empty-state">Keine Werft auf diesem Planeten.</p>
     }
+
+    @if (selected(); as sel) {
+      <app-detail-popup
+        [kind]="sel.cat === 'defense' ? 'defense' : 'ship'"
+        [type]="sel.option.type"
+        [cost]="sel.option.cost"
+        [available]="balances()"
+        [buildSeconds]="sel.option.build_seconds_each"
+        [requirements]="sel.option.requirements ?? null"
+        [tags]="unitTags(sel.option)"
+        [quantity]="true"
+        [actionLabel]="'Bauen'"
+        [actionDisabled]="!buildable(sel.option)"
+        [actionHint]="!sel.option.requirements_met ? missingReqText(sel.option) : (!sel.option.can_build ? 'Zu wenig Ressourcen' : null)"
+        [pending]="pending() === sel.option.type"
+        (confirm)="buildFromPopup($event)"
+        (close)="selected.set(null)"
+      />
+    }
   `,
   styles: [
     `
@@ -191,11 +199,11 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
         padding: 0.4rem 0; font-size: 0.88rem; border-bottom: 1px solid rgba(255,255,255,0.05);
       }
       .queue-row:last-child { border-bottom: none; }
-      .cat { margin-bottom: 1rem; }
+      .cat { margin-bottom: 0.7rem; }
       .cat-title {
-        font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.14em;
-        color: #b9c6de; margin: 0 0 0.4rem;
-        padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);
+        font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em;
+        color: #b9c6de; margin: 0 0 0.3rem;
+        padding-bottom: 0.45rem; border-bottom: 1px solid var(--border);
       }
       /* Zeilen-Layout: Art links, Infos mittig, Aktion rechts. */
       .bld-list { display: flex; flex-direction: column; }
@@ -205,9 +213,24 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
         border-bottom: 1px solid rgba(255,255,255,0.06);
       }
       .bld-row:last-child { border-bottom: none; }
+
+      /* Desktop: Kacheln statt Vollbreit-Zeilen (wie Gebaeude). */
+      @media (min-width: 900px) {
+        .bld-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+          gap: 0.1rem 1.4rem;
+        }
+        .bld-row { gap: 0.7rem; padding: 0.5rem 0.25rem; }
+      }
       .bld-art { position: relative; flex: 0 0 auto; }
+      .clickable { cursor: pointer; }
+      .bld-art.clickable:hover { filter: brightness(1.15); }
       .bld-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
       .bld-name { font-weight: 600; font-size: 0.95rem; }
+      .bld-name.clickable:hover { color: var(--accent); }
+      .info-dot { color: var(--text-faint); font-size: 0.8rem; }
+      .bld-name.clickable:hover .info-dot { color: var(--accent); }
       .bld-stats { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
       .combat-stats { display: flex; gap: 0.6rem; flex-wrap: wrap; }
       .cchip {
@@ -216,10 +239,10 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       }
       .bld-action {
         flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end;
-        gap: 0.3rem; min-width: 180px; max-width: 240px;
+        gap: 0.25rem; min-width: 134px; max-width: 200px;
       }
       .qty-row { display: flex; gap: 0.4rem; align-items: center; }
-      .qty-row input { width: 64px; flex: 0 0 auto; text-align: center; }
+      .qty-row input { width: 56px; flex: 0 0 auto; text-align: center; }
       .qty-row .btn { flex: 0 0 auto; white-space: nowrap; }
       .small { font-size: 0.76rem; }
       .hint { color: var(--text-faint); text-align: right; }
@@ -236,6 +259,7 @@ export class ShipyardComponent {
   protected readonly loading = signal(true);
   protected readonly pending = signal<string | null>(null);
   protected readonly counts = signal<Record<string, number>>({});
+  protected readonly selected = signal<SelectedUnit | null>(null);
 
   protected readonly balances = computed(() => {
     const res = this.state.activePlanet()?.resources;
@@ -290,6 +314,42 @@ export class ShipyardComponent {
 
   buildable(s: ShipOption): boolean {
     return s.can_build && s.requirements_met;
+  }
+
+  openDetail(option: ShipOption, cat: ShipyardCategory): void {
+    this.selected.set({ option, cat });
+  }
+
+  /** Kampf-Tags (Reichweite, Waffentyp, Antrieb) fuer das Detail-Popup. */
+  unitTags(s: ShipOption): DetailTag[] {
+    const tags: DetailTag[] = [];
+    if (s.range) {
+      const r = this.rangeMeta(s.range);
+      tags.push({ glyph: r.dot, label: r.label });
+    }
+    if (s.weapon_type) {
+      const w = this.weaponMeta(s.weapon_type);
+      tags.push({ glyph: w.glyph, label: w.label, tip: w.vs });
+    } else {
+      tags.push({ glyph: '🛡', label: 'Unbewaffnet' });
+    }
+    if (s.drive === 0) {
+      tags.push({ glyph: '⚓', label: 'stationär' });
+    } else if (s.drive) {
+      tags.push({ glyph: '⚙', label: 'Antrieb ' + s.drive });
+    }
+    return tags;
+  }
+
+  /** Bau aus dem Detail-Popup heraus (uebernimmt die gewaehlte Menge). */
+  buildFromPopup(count: number): void {
+    const sel = this.selected();
+    if (!sel) {
+      return;
+    }
+    this.setCount(sel.option.type, count);
+    this.build(sel.option.type, sel.cat);
+    this.selected.set(null);
   }
 
   unitCount(type: string): number {

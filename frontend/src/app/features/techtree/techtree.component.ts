@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
 import {
@@ -106,7 +106,7 @@ interface Graph {
                 class="edge"
                 [class.met]="e.met"
                 [class.active]="isEdgeActive(e)"
-                [class.dim]="hovered() && !isEdgeActive(e)"
+                [class.dim]="activeKey() && !isEdgeActive(e)"
               />
             }
           </svg>
@@ -115,13 +115,15 @@ interface Graph {
             <button
               class="card node"
               type="button"
+              [id]="'tech-' + n.type"
               [style.left.px]="n.x"
               [style.top.px]="n.y"
               [style.width.px]="NODE_W"
               [style.height.px]="NODE_H"
               [class.researched]="n.level > 0"
-              [class.dim]="hovered() && !isNodeActive(n.type)"
+              [class.dim]="activeKey() && !isNodeActive(n.type)"
               [class.focus]="hovered() === n.type"
+              [class.pinned]="focused() === n.type"
               (mouseenter)="hovered.set(n.type)"
               (mouseleave)="hovered.set(null)"
               (focus)="hovered.set(n.type)"
@@ -221,6 +223,15 @@ interface Graph {
       .node.focus { border-color: var(--border-strong); box-shadow: var(--glow); transform: translateY(-1px); }
       .node.researched { border-color: var(--accent); }
       .node.dim { opacity: 0.28; }
+      .node.pinned {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent), var(--glow);
+        animation: pin-pulse 1.4s ease 2;
+      }
+      @keyframes pin-pulse {
+        0%, 100% { box-shadow: 0 0 0 2px var(--accent), var(--glow); }
+        50% { box-shadow: 0 0 0 3px var(--accent-bright, #5ff6fb), 0 0 22px rgba(46,230,214,0.6); }
+      }
 
       .node-head { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
       .node-id { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
@@ -256,6 +267,7 @@ export class TechtreeComponent {
   private readonly api = inject(ApiService);
   private readonly balanceService = inject(BalanceService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   /** Kachel-Maße — fix, damit die Linien-Endpunkte exakt sitzen. */
   protected readonly NODE_W = 200;
@@ -266,6 +278,10 @@ export class TechtreeComponent {
 
   protected readonly loading = signal(true);
   protected readonly hovered = signal<string | null>(null);
+  /** Per ?focus=<type> hervorgehobene Tech (Deep-Link aus dem Detail-Popup). */
+  protected readonly focused = signal<string | null>(null);
+  /** Aktiver Knoten fuer Hervorhebung/Dimmen: Hover hat Vorrang vor Fokus. */
+  protected readonly activeKey = computed(() => this.hovered() ?? this.focused());
   private readonly research = signal<ResearchResponse | null>(null);
   /** Roh-Tech-Definitionen aus balance.json (key -> { requires, ... }). */
   private readonly techDefs = signal<Record<string, { requires?: Record<string, number> }>>({});
@@ -392,6 +408,22 @@ export class TechtreeComponent {
 
   constructor() {
     void this.init();
+
+    // Deep-Link aus dem Detail-Popup: ?focus=<type> hebt eine Tech hervor.
+    this.route.queryParamMap.subscribe((p) => this.focused.set(p.get('focus')));
+
+    // Sobald geladen + fokussiert: Knoten ins Sichtfeld scrollen.
+    effect(() => {
+      const f = this.focused();
+      const ready = !this.loading() && this.graph().nodes.length > 0;
+      if (f && ready) {
+        setTimeout(() => {
+          document
+            .getElementById('tech-' + f)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        }, 80);
+      }
+    });
   }
 
   private async init(): Promise<void> {
