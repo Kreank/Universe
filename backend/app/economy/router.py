@@ -77,4 +77,6 @@ async def get_planet(
         ],
         ships=[CountOut(type=s.type, count=s.count) for s in ships],
         defenses=[CountOut(type=d.type, count=d.count) for d in defenses],
+        parent_planet_id=planet.parent_planet_id,
+        last_jump_at=planet.last_jump_at,
     )

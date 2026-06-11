@@ -106,6 +106,15 @@ export class ApiService {
     return this.http.post<Fleet>(`/api/fleets/${fleetId}/recall`, {});
   }
 
+  /** Sprungtor: Schiffe sofort zwischen zwei eigenen Monden versetzen (kein Flug). */
+  jumpFleet(body: {
+    from_moon_id: string;
+    to_moon_id: string;
+    ships: Record<string, number>;
+  }): Observable<{ ok: boolean; next_jump_at: string }> {
+    return this.http.post<{ ok: boolean; next_jump_at: string }>('/api/fleets/jump', body);
+  }
+
   getIncomingAttacks(): Observable<IncomingAttack[]> {
     return this.http.get<IncomingAttack[]>('/api/incoming-attacks');
   }

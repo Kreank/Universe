@@ -12,6 +12,7 @@ import { GameStateService } from '../../core/services/game-state.service';
 import { ApiService } from '../../core/services/api.service';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 import { CountdownComponent } from '../../shared/components/countdown.component';
+import { JumpGateDialogComponent } from '../../shared/components/jump-gate-dialog.component';
 import { BalanceService } from '../../core/services/balance.service';
 import {
   BUILDING_META,
@@ -37,7 +38,7 @@ import { dashboardStyles } from './dashboard.styles';
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ShortNumberPipe, CountdownComponent],
+  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent],
   template: `
     <h1>Dashboard</h1>
 
@@ -69,6 +70,14 @@ import { dashboardStyles } from './dashboard.styles';
         @if (moon(); as m) {
           · <button class="moon-chip" type="button" (click)="selectMoon(m.id)"
               title="Zum Mond wechseln">🌑 Mond</button>
+        }
+        @if (parentPlanet(); as pp) {
+          · <button class="moon-chip" type="button" (click)="selectMoon(pp.id)"
+              title="Zum Planeten wechseln">🪐 Planet</button>
+        }
+        @if (isMoon() && hasJumpGate()) {
+          · <button class="moon-chip jump" type="button" (click)="showJump.set(true)"
+              title="Sprungtor: Schiffe sofort zu einem anderen Mond versetzen">🌀 Sprungtor</button>
         }
       </p>
 
@@ -242,6 +251,10 @@ import { dashboardStyles } from './dashboard.styles';
     } @else {
       <p class="empty-state">Lade Planetendaten…</p>
     }
+
+    @if (showJump()) {
+      <app-jump-gate-dialog (close)="showJump.set(false)" />
+    }
   `,
   styles: [dashboardStyles],
 })
@@ -272,6 +285,34 @@ export class DashboardComponent {
   selectMoon(id: string): void {
     void this.state.selectPlanet(id);
   }
+
+  /** Ist der aktive Kontext ein Mond? */
+  protected readonly isMoon = computed(() => this.planet()?.planet_type === 'moon');
+
+  /** Mutterplanet, wenn der aktive Kontext ein Mond ist (Koordinaten-Match). */
+  protected readonly parentPlanet = computed(() => {
+    const p = this.planet();
+    if (!p || p.planet_type !== 'moon') return null;
+    return (
+      this.state
+        .planets()
+        .find(
+          (x) =>
+            x.planet_type !== 'moon' &&
+            x.galaxy === p.galaxy &&
+            x.system === p.system &&
+            x.position === p.position,
+        ) ?? null
+    );
+  });
+
+  /** Hat der aktive Mond ein gebautes Sprungtor (Voraussetzung fuer den Sprung-Dialog)? */
+  protected readonly hasJumpGate = computed(
+    () => this.planet()?.buildings?.some((b) => b.type === 'jump_gate' && b.level >= 1) ?? false,
+  );
+
+  /** Sprungtor-Dialog offen? */
+  protected readonly showJump = signal(false);
 
   // --- Aktive Vorgaenge (per Effekt beim Planetenwechsel geladen) ---
   protected readonly activeBuild = signal<BuildingState | null>(null);

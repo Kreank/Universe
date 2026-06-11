@@ -40,3 +40,6 @@ class PlanetDetailOut(PlanetOut):
     buildings: list[BuildingStateOut]
     ships: list[CountOut]
     defenses: list[CountOut]
+    # Monde: Mutterplanet-Verknuepfung + letzter Sprung (fuer Sprungtor-Cooldown-Vorschau im FE).
+    parent_planet_id: uuid.UUID | None = None
+    last_jump_at: dt.datetime | None = None

@@ -112,6 +112,9 @@ export interface PlanetDetail extends Planet {
   buildings: PlanetBuilding[];
   ships: PlanetUnit[];
   defenses: PlanetUnit[];
+  /** Monde: Verknuepfung zum Mutterplaneten + letzter Sprung (Sprungtor-Cooldown). */
+  parent_planet_id?: string | null;
+  last_jump_at?: string | null;
 }
 
 // --- Voraussetzungen ----------------------------------------------------
