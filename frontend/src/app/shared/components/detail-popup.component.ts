@@ -104,7 +104,7 @@ interface RapidFireRow {
           <p class="story">{{ d }}</p>
         }
 
-        @if (effect(); as e) {
+        @if (!techEffect() && effect(); as e) {
           <div class="effect">★ {{ e }}</div>
         }
 

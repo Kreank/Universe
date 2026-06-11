@@ -76,6 +76,31 @@ export const BUILDING_META: Record<string, DisplayMeta> = {
     label: 'Kommandozentrale', glyph: '📡', blurb: 'Erhoeht Span of Control.',
     desc: 'Das Nervenzentrum deines Imperiums. Jede Stufe erweitert deine Befehlsreichweite (Span of Control) — also wie viele Commander du gleichzeitig im Einsatz halten kannst.',
   },
+  // -- Mond-Gebäude (nur auf Monden baubar) --
+  moon_base: {
+    label: 'Mondbasis', glyph: '🌑', blurb: 'Fundament aller Mondbauten.',
+    desc: 'Die erste Infrastruktur auf einem Mond: Druckkuppeln, Landeplattform, Energie. Ohne Mondbasis lässt sich auf dem Mond nichts weiter errichten — sie schaltet Sensorphalanx, Orbitalbatterie, Schildkuppel und Labor frei.',
+  },
+  sensorphalanx: {
+    label: 'Sensorphalanx', glyph: '📡', blurb: 'Scannt feindliche Flottenbewegungen.',
+    desc: 'Eine gewaltige Sensorkuppel auf dem Mond. Scannt Koordinaten in Reichweite und enthüllt alle Flottenbewegungen zu und von ihnen — die ETA, auf die ein Abfang-Jäger seinen Angriff timt. Jeder Scan kostet Deuterium.',
+  },
+  orbital_battery: {
+    label: 'Orbitalbatterie', glyph: '🔫', blurb: 'Mond-Verteidigung gegen Angreifer.',
+    desc: 'Schwere Geschütztürme auf der Mondoberfläche, die in den Orbit feuern. Verteidigen den Mond — und über ihn auch den zugehörigen Planeten — gegen anfliegende Flotten. Gravitationsforschung verstärkt sie.',
+  },
+  shield_dome_moon: {
+    label: 'Mond-Schildkuppel', glyph: '🛡️', blurb: 'Energieschirm über dem Mond.',
+    desc: 'Ein planetarer Schildgenerator in klein: spannt einen Energieschirm über den Mond und absorbiert einen Teil jedes Angriffs. Macht den Mond zur harten Nuss.',
+  },
+  gravity_lab: {
+    label: 'Gravitationslabor', glyph: '🪐', blurb: 'Schaltet Sprungtor & Graviton-Tech.',
+    desc: 'Forschungskomplex für künstliche Schwerkraft. Voraussetzung für das Sprungtor und Türöffner der Gravitationsforschung — die Königsdisziplin der Mond-Technik.',
+  },
+  jump_gate: {
+    label: 'Sprungtor', glyph: '🌀', blurb: 'Sofort-Sprung zwischen eigenen Monden.',
+    desc: 'Ein massives Hyperraum-Portal. Versetzt Flotten ohne Flugzeit zwischen zwei deiner Monde — strategische Logistik in Sekunden statt Stunden. Teuerstes Mondbauwerk, mit Abklingzeit zwischen den Sprüngen.',
+  },
 };
 
 export const TECH_META: Record<string, DisplayMeta> = {
@@ -339,6 +364,24 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
     summary: '+10 % Expeditions-Ressourcenertrag je Stufe.',
     levelEffect: { label: 'Expeditions-Ertrag', perLevel: 10, unit: '%' },
   },
+  // -- Mond/Logistik-Techs --
+  phalanx_tech: {
+    branch: 'Aufklärung',
+    summary: '+1 Scan-Reichweite (Systeme) und −8 % Scankosten je Stufe (Sensorphalanx).',
+    levelEffect: { label: 'Scan-Reichweite', perLevel: 1, unit: ' Sys' },
+  },
+  jump_gate_tech: {
+    branch: 'Mond',
+    summary: '−6 % Sprungtor-Abklingzeit und −8 % Sprungkosten je Stufe.',
+  },
+  gravitics: {
+    branch: 'Mond',
+    summary: '+2 %-Punkte Mond-Entstehungschance-Obergrenze und stärkere Orbitalbatterien je Stufe.',
+  },
+  convoy_tactics: {
+    branch: 'Wirtschaft',
+    summary: '−6 % NPC-Piraten-Überfallrisiko auf Handelsrouten je Stufe (hilft NICHT gegen Spieler-Abfangen).',
+  },
 };
 
 export const SHIP_META: Record<string, DisplayMeta> = {
@@ -488,6 +531,10 @@ export const DEFENSE_META: Record<string, DisplayMeta> = {
   interplanetary_missile: {
     label: 'Interplanetarrakete', glyph: '☄️', blurb: 'Zerstoert feindliche Verteidigung.',
     desc: 'Der Vorschlaghammer aus der Ferne: schlägt über Systemgrenzen in die feindliche Verteidigung ein, ohne dass eine Flotte fliegen muss. Reißt Löcher, durch die danach deine Schiffe stoßen.',
+  },
+  orbital_gun: {
+    label: 'Orbitalgeschütz', glyph: '🔫', blurb: 'Mond-Verteidigung (aus der Orbitalbatterie).',
+    desc: 'Das Feuer der Orbitalbatterien deines Mondes — kein eigenständig baubares Geschütz, sondern die Verteidigungskraft, die das Gebäude „Orbitalbatterie" bereitstellt und mit der der Mond (und der zugehörige Planet) anfliegende Flotten beschießt.',
   },
 };
 
