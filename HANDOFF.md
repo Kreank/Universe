@@ -24,7 +24,7 @@
 
 ---
 
-## 🚀 Session 2026-06-11 — Aufräumen · Verifikation · Antriebs-Tempo-FIX (Reise-Tempo)
+## 🚀 Session 2026-06-11 — Aufräumen · Antriebs-Tempo-FIX · Mond-Frontend (Sprungtor)
 
 > Reihenfolge: erst die offenen Reste committet, dann Backend-Suite verifiziert, dann den
 > Antriebs-Tempo-FIX gebaut. **Alles committet, gebaut, deployt & live** (API `:8100`).
@@ -63,6 +63,28 @@
 - **⚠ Echter In-Game-Klick-Smoke offen:** Test-Account `uitest@example.com` ist frisch (keine Forschung,
   kein Labor, kaum Ressourcen) → eine echte „Antrieb hochforschen → Flotte senden → kürzere ETA"-Kette
   bräuchte erst Spielfortschritt. Formel + Wiring sind unit- und container-verifiziert.
+
+**🌑 Mond-Frontend (`2dbdc38`) — der offene „Mond-Frontend tiefer"-Punkt, jetzt erledigt:**
+- **Architektur-Entscheidung: KEINE neue Route.** Der aktive-Planet-Kontext (`game-state.selectPlanet`)
+  treibt bereits Topbar/Gebäude/Werft/Flotte; ein Mond ist ein vollwertiger Planet-Eintrag, und der
+  Gebäude-Endpoint filtert serverseitig auf Mond-Gebäude. Eine eigene Route würde das duplizieren.
+- **Neuer `shared/components/jump-gate-dialog.component.ts`** (Modal/Ship-Picker aus `fleet-dispatch`
+  geklont): Zielmond-Auswahl aus den eigenen Monden, Garnison-Schiffspicker, **Deuterium-Sprungkosten +
+  Cooldown live vorgerechnet** aus `balance.json` (`moon.jump_cost_*`) + `jump_gate_tech` — **exakt wie
+  Backend `jump_fleet`** (cost_mult·base·Σ(class_mult·count); cd_mult mit floor 0.4). Fehler via
+  `err.error.detail`, `reloadActivePlanet` nach Sprung.
+- **Dashboard:** auf einem Mond erscheinen **🪐-Planet-Chip** (zurück zum Mutterplaneten, Koordinaten-Match)
+  + **🌀-Sprungtor-Button** (nur wenn `jump_gate` gebaut) → öffnet den Dialog.
+- **API:** `api.jumpFleet(POST /api/fleets/jump)`; `PlanetDetail`/`PlanetDetailOut` um `parent_planet_id`
+  + `last_jump_at` erweitert (Backend `economy/schemas.py`+`router.py`, für Cooldown-Vorschau).
+- **⚠ `frontend/src/assets/balance.json` war VERALTET** (Stand 10.6., vor der Sprung-Ökonomie) → auf
+  `shared/balance.json` gesynct. **Merke:** die FE-Kopie ist ein manueller Mirror von shared und driftet —
+  nach balance-Änderungen `cp shared/balance.json frontend/src/assets/balance.json` nicht vergessen.
+- **Verifiziert:** `ng build` (strict) sauber, Backend 124/124, API liefert die neuen Felder, Dashboard
+  rendert sauber (Screenshot). **⚠ Mond-spezifische UI visuell NICHT geprüft:** Test-Account hat keinen
+  Mond (Monde entstehen nur aus Kämpfen), DB-Seeding ist Auto-Mode-gesperrt. Logik per strict-Compile +
+  Code-Review abgesichert. Für echten Klick-Test: 2 Monde mit Sprungtor + Garnison + Deuterium seeden
+  (braucht Freigabe für DB-Schreibzugriff) ODER per Kampf einen Mond entstehen lassen.
 
 ---
 
@@ -530,9 +552,10 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 ## 6. Vorgeschlagene nächste Schritte (priorisiert)
 
 ### 🔭 Stand 2026-06-10 — aktuell offen (ersetzt veraltete Punkte unten)
-- **Monde**: Backend komplett & live. **Offen (Mond-Frontend tiefer):** dedizierte Mondansicht + **Sprungtor-UI**
-  (Sprung-Dialog Mond→Mond mit Schiffsauswahl) — bisher nur per API. Mond-Marker (🌑) sind in Kolonie-Leiste +
-  Dashboard schon da.
+- ~~**Monde** (Mond-Frontend tiefer)~~ **ERLEDIGT (2026-06-11, `2dbdc38`)**: Sprungtor-Dialog (Mond→Mond mit
+  Schiffsauswahl, Kosten/Cooldown) + Mondansicht-Navigation (🪐-Planet-Chip + 🌀-Sprungtor-Button im Dashboard)
+  über den aktiven-Planet-Kontext. Backend war komplett & live. **Offen nur noch:** visueller Klick-Test braucht
+  einen echten Mond (Seeding/Schreibzugriff gesperrt). Mond-Marker (🌑) in Kolonie-Leiste + Dashboard waren schon da.
 - **Kampf-Simulator existiert & läuft** (Endpoint `simulateCombat`, Screen poliert + „Meine Flotte"/„Leeren") —
   der „Simulator braucht noch Endpoint"-Punkt weiter unten ist damit **erledigt**.
 - **Flotte/Handel/Postfach** konsistent (tab-bar/panel-title) + Flotte entschlackt; ein vollständiger
