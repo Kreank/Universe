@@ -61,9 +61,40 @@ def fuel_cost(ships: dict[str, int], distance: int) -> int:
     return max(1, int(math.ceil(total * distance / speed_factor * factor)))
 
 
-def slowest_ship_speed(ships: dict[str, int]) -> float:
+# Reise-Antriebe (Forschung) -> Tempobonus. Reihenfolge = Prioritaet (hoechster Antrieb gewinnt),
+# falls ein Schiff mehrere Antriebs-Voraussetzungen haette. BEWUSST getrennt vom Kampf-"drive"
+# (combat_roster[*].drive / combat.drive_stages = Disengage/Interdiktion, NICHT Reisetempo).
+TRAVEL_DRIVES = ("hyperspace_drive", "impulse_drive", "combustion_drive")
+
+
+def ship_speed(typ: str, research: dict[str, int] | None = None) -> float:
+    """Effektive Reisegeschwindigkeit eines Schiffstyps inkl. Antriebsforschung.
+
+    Der Antrieb wird aus den Bau-Voraussetzungen (requires) abgeleitet: ein Schiff fliegt mit dem
+    Antrieb, auf dem es gebaut ist. Jede Forschungsstufe erhoeht das Grundtempo um den in
+    research.effects hinterlegten Prozentsatz (OGame-Modell: Verbrennung +10%, Impuls +20%,
+    Hyperraum +30% je Stufe). Schiffe ohne Antriebs-Voraussetzung (z.B. Solarsatellit) skalieren nicht.
+    """
     bal = get_balance()
-    speeds = [bal.ships[t]["speed"] for t in ships if t in bal.ships and ships[t] > 0]
+    cfg = bal.ships.get(typ)
+    if not cfg:
+        return 1.0
+    base = float(cfg.get("speed", 0))
+    if research:
+        requires = cfg.get("requires", {})
+        effects = bal.data["research"].get("effects", {})
+        for drive in TRAVEL_DRIVES:
+            if drive in requires:
+                per_level = effects.get(f"{drive}_speed_per_level", 0.0)
+                base *= 1.0 + per_level * research.get(drive, 0)
+                break
+    return base
+
+
+def slowest_ship_speed(ships: dict[str, int], research: dict[str, int] | None = None) -> float:
+    """Tempo der langsamsten Flotteneinheit (bestimmt die Flugzeit) inkl. Antriebsforschung."""
+    bal = get_balance()
+    speeds = [ship_speed(t, research) for t in ships if t in bal.ships and ships[t] > 0]
     return min(speeds) if speeds else 1.0
 
 
@@ -312,7 +343,8 @@ async def send_fleet(
     # Distanz, Tempo, Sprit.
     origin = (planet.galaxy, planet.system, planet.position)
     distance = compute_distance(origin, target)
-    secs = flight_seconds(distance, slowest_ship_speed(ships), speed_pct)
+    research = await get_research_levels(session, player.id)
+    secs = flight_seconds(distance, slowest_ship_speed(ships, research), speed_pct)
     # Commander-Tempobonus verkuerzt die Flugzeit (moral-skaliert).
     if commander is not None:
         from app.commander.bonuses import base_bonuses, resolve_ship_bonuses

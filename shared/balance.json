@@ -97,7 +97,10 @@
       "phalanx_scan_cost_reduction_per_level": 0.08,
       "moon_chance_cap_per_level": 0.02,
       "orbital_units_per_level": 1,
-      "convoy_route_risk_reduction_per_level": 0.06
+      "convoy_route_risk_reduction_per_level": 0.06,
+      "combustion_drive_speed_per_level": 0.10,
+      "impulse_drive_speed_per_level": 0.20,
+      "hyperspace_drive_speed_per_level": 0.30
     },
     "techs": {
       "energy_tech":        { "cost": { "metal": 0,    "crystal": 800,  "deuterium": 400 }, "requires": { "research_lab": 1 } },

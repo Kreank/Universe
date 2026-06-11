@@ -263,6 +263,7 @@ async def create_home_patrol(
 
 async def recall_station(session: AsyncSession, player: Player, station_id) -> Fleet:
     """Ruft eine stationierte Patrouille zum Heimatplaneten zurueck (Rueckflug)."""
+    from app.economy.service import get_research_levels
     from app.fleet.service import compute_distance, fleet_return, flight_seconds, slowest_ship_speed
     from app.platform.scheduler import schedule_at
 
@@ -283,7 +284,8 @@ async def recall_station(session: AsyncSession, player: Player, station_id) -> F
         raise RuntimeError("Kein Heimatplanet fuer den Rueckruf")
 
     dist = compute_distance((st.galaxy, st.system, st.position), (home.galaxy, home.system, home.position))
-    secs = flight_seconds(dist, slowest_ship_speed(ships), 100)
+    research = await get_research_levels(session, player.id)
+    secs = flight_seconds(dist, slowest_ship_speed(ships, research), 100)
     now = _now()
     fleet = Fleet(
         player_id=player.id, origin_planet_id=home.id,
