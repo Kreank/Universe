@@ -47,9 +47,11 @@ export interface DetailTag {
 }
 
 interface RapidFireRow {
+  type: string;
   glyph: string;
   label: string;
   mult: number;
+  img: string;
 }
 
 /**
@@ -135,13 +137,31 @@ interface RapidFireRow {
 
         @if (rapidfire().length) {
           <section class="block">
-            <div class="block-title tip" data-tip="Schnellfeuer: dieses Schiff darf nach einem Treffer sofort erneut auf das genannte Ziel feuern.">
+            <div class="block-title tip" data-tip="Schnellfeuer: diese Einheit darf nach einem Treffer sofort erneut auf das genannte Ziel feuern (Wahrscheinlichkeit (n−1)/n).">
               💥 Schnellfeuer gegen
             </div>
             <div class="rf-list">
-              @for (r of rapidfire(); track r.label) {
+              @for (r of rapidfire(); track r.type) {
                 <span class="rf">
-                  <span class="rf-glyph">{{ r.glyph }}</span> {{ r.label }}
+                  <app-icon-tile [glyph]="r.glyph" [src]="r.img" [size]="26" variant="muted" />
+                  {{ r.label }}
+                  <span class="rf-mult mono">×{{ r.mult }}</span>
+                </span>
+              }
+            </div>
+          </section>
+        }
+
+        @if (rapidfireFrom().length) {
+          <section class="block">
+            <div class="block-title tip" data-tip="Diese Einheiten haben Schnellfeuer GEGEN dieses Objekt — sie feuern nach einem Treffer sofort erneut darauf. (Gegenrichtung)">
+              🎯 Anfällig für Schnellfeuer von
+            </div>
+            <div class="rf-list">
+              @for (r of rapidfireFrom(); track r.type) {
+                <span class="rf danger">
+                  <app-icon-tile [glyph]="r.glyph" [src]="r.img" [size]="26" variant="muted" />
+                  {{ r.label }}
                   <span class="rf-mult mono">×{{ r.mult }}</span>
                 </span>
               }
@@ -336,7 +356,10 @@ interface RapidFireRow {
         color: var(--text-dim);
       }
       .rf-glyph { font-size: 0.9rem; }
+      .rf { padding-left: 0.3rem; }
       .rf-mult { color: var(--accent); font-weight: 700; }
+      .rf.danger { border-color: var(--magenta-dim); color: #ffd6ec; }
+      .rf.danger .rf-mult { color: var(--magenta); }
       .req .mark { font-weight: 700; }
       .req .mark.ok { color: var(--ok); }
       .req .mark.no { color: var(--magenta); }
@@ -494,18 +517,54 @@ export class DetailPopupComponent {
     return rows;
   });
 
+  /** Bild-Pfad einer Einheit (Verteidigung vs. Schiff anhand balance.json). */
+  private unitImg(type: string): string {
+    const isDef = !!(this.balance.value?.defenses as Record<string, unknown> | undefined)?.[type];
+    return isDef ? `assets/img/defenses/${type}.png` : `assets/img/ships/${type}.png`;
+  }
+
+  private rfRow(type: string, mult: number): RapidFireRow {
+    const m = metaFor({ ...SHIP_META, ...DEFENSE_META }, type);
+    return { type, glyph: m.glyph, label: m.label, mult, img: this.unitImg(type) };
+  }
+
+  /** Schnellfeuer, das DIESE Einheit austeilt (Schiffe: rapidfire, Verteidigung: rapidfire_against). */
   protected readonly rapidfire = computed<RapidFireRow[]>(() => {
-    const rf = this.entry()?.['rapidfire'];
+    const e = this.entry();
+    const rf = e?.['rapidfire'] ?? e?.['rapidfire_against'];
     if (!rf || typeof rf !== 'object') {
       return [];
     }
-    const targetMeta = { ...SHIP_META, ...DEFENSE_META };
     return Object.entries(rf as Record<string, number>)
-      .map(([target, mult]) => {
-        const m = metaFor(targetMeta, target);
-        return { glyph: m.glyph, label: m.label, mult };
-      })
+      .map(([target, mult]) => this.rfRow(target, mult))
       .sort((a, b) => b.mult - a.mult);
+  });
+
+  /** Gegenrichtung: Einheiten, die Schnellfeuer GEGEN dieses Objekt haben (wer es kontert). */
+  protected readonly rapidfireFrom = computed<RapidFireRow[]>(() => {
+    const b = this.balance.value;
+    if (!b) {
+      return [];
+    }
+    const me = this.type();
+    const rows: RapidFireRow[] = [];
+    const scan = (map: Record<string, Record<string, unknown>> | undefined, key: string) => {
+      for (const [unit, cfg] of Object.entries(map ?? {})) {
+        if (unit.startsWith('_')) {
+          continue;
+        }
+        const rf = cfg?.[key];
+        if (rf && typeof rf === 'object') {
+          const mult = (rf as Record<string, number>)[me];
+          if (typeof mult === 'number') {
+            rows.push(this.rfRow(unit, mult));
+          }
+        }
+      }
+    };
+    scan(b.ships as Record<string, Record<string, unknown>>, 'rapidfire');
+    scan(b.defenses as Record<string, Record<string, unknown>>, 'rapidfire_against');
+    return rows.sort((a, b) => b.mult - a.mult);
   });
 
   protected readonly requirementRows = computed<{ type: string; level: number; met?: boolean; label: string }[]>(() => {
