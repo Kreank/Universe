@@ -238,9 +238,10 @@ def test_artillery_standoff_beats_line():
 
 
 def test_artillery_is_crackable_glass_cannon():
-    """Re-tierte Artillerie (Glaskanone, duenner Schild + niedrige Huelle) ist jetzt knackbar:
-    ein getechter Jaeger-Schwarm (Rapidfire gegen Destroyer) zerstoert welche."""
-    swarm = {"ships": {"light_fighter": 200}, "tech": {"weapons_tech": 8}, "attack_mult": 1.0}
+    """Die Glaskanone (Destroyer: duenner Schild + niedrige Huelle) ist knackbar — seit 03d
+    EMERGENT statt per Rapidfire: ein grosser, getechter Jaeger-Schwarm schliesst die Distanz
+    und ueberwaeltigt die duenne Huelle durch schiere Masse."""
+    swarm = {"ships": {"light_fighter": 400}, "tech": {"weapons_tech": 8}, "attack_mult": 1.0}
     arty = {"ships": {"destroyer": 15}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
     r = simulate_battle(swarm, arty, 7, BALANCE)
     assert r["defender_survivors"].get("destroyer", 0) < 15        # nicht mehr unverwundbar

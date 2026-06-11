@@ -185,6 +185,11 @@ def simulate_battle(
     explosion_threshold = combat["explosion_threshold_hull_pct"]
     max_rounds = combat["max_rounds"]
     matrix = combat["damage_matrix"]
+    # Schild-Regeneration pro Runde (03d): <1.0 macht den Schild zum ABNUTZBAREN Puffer statt
+    # einer Pro-Runde-Wand — Voraussetzung fuer Letalitaet ohne Rapidfire. 1.0 = altes Verhalten.
+    shield_regen = float(combat.get("shield_regen_ratio", 1.0))
+    # Globaler Letalitaets-Regler (03d): ersetzt den Schaden-Durchsatz, den frueher Rapidfire lieferte.
+    damage_scale = float(combat.get("damage_scale", 1.0))
 
     bands = combat["range_bands"]
     order = bands["order"]
@@ -266,7 +271,7 @@ def simulate_battle(
             mult = atk_ion_mult if unit.side == "attacker" else def_ion_mult
             if mult != 1.0:
                 m = {"shield": m["shield"] * mult, "drive": m["drive"] * mult, "hull": m["hull"]}
-        base = unit.attack * penalty
+        base = unit.attack * penalty * damage_scale
         dealt = 0.0
         chain = True
         guard = 0
@@ -416,11 +421,11 @@ def simulate_battle(
 
         distance = max(0, start_dist - (rnd - 1) * close_per_round)
 
-        # Schilde regenerieren zu Rundenbeginn voll (Antrieb/Huelle NICHT).
+        # Schilde regenerieren zu Rundenbeginn TEILWEISE (abnutzbarer Puffer, 03d; Antrieb/Huelle NICHT).
         for u in atk_units:
-            u.shield = u.shield_max
+            u.shield = min(u.shield_max, u.shield + u.shield_max * shield_regen)
         for u in def_units:
-            u.shield = u.shield_max
+            u.shield = min(u.shield_max, u.shield + u.shield_max * shield_regen)
 
         attacker_fire = 0.0
         defender_fire = 0.0
