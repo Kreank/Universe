@@ -1,4 +1,4 @@
-# 🛰️ Handoff — Universe (Stand 2026-06-09)
+# 🛰️ Handoff — Universe (Stand 2026-06-11)
 
 > Übergabe für die nächste Session. Projekt: browserbasiertes Weltraum-Aufbau-MMO
 > *Universe* (OGame-Tradition + persistentes Universum + KI-Crews als USP).
@@ -21,6 +21,154 @@
 > ⚠ **UPDATE 2026-06-10:** Das `node_modules` IST jetzt lokal da → schneller Compile-Check geht ohne
 > Docker: `cd frontend && npx ng build --configuration development` (~3–7 s). Die uncommittete
 > Nutzer-WIP wurde diese Session verifiziert + committet (s. §-1).
+
+---
+
+## 🚀 Session 2026-06-11 — Aufräumen · Verifikation · Antriebs-Tempo-FIX (Reise-Tempo)
+
+> Reihenfolge: erst die offenen Reste committet, dann Backend-Suite verifiziert, dann den
+> Antriebs-Tempo-FIX gebaut. **Alles committet, gebaut, deployt & live** (API `:8100`).
+> Backend-Suite **124/124 grün** (121 + 3 neue). Working Tree nach dieser Session sauber.
+
+**Aufgeräumt (committet):**
+- `07568f9` chore(assets): 21 PNGs (6 Mondgebäude, `orbital_gun`, restliche Tech-Icons).
+- `346c474` feat(display): Mond/Tech-Labels in `display.ts` + Popup-Doppel-★-Fix (`detail-popup`
+  unterdrückt das generische ★-Banner, wenn schon eine reiche TechEffect-Ansicht rendert).
+
+**Verifiziert:** volle Backend-Suite vor dem Build = **121/121 grün** (`run --rm`-Pfad).
+
+**⚙️ Antriebs-Tempo-FIX (`18f7b2f`) — der lange offene Punkt, jetzt erledigt:**
+- **Bug:** `combustion_/impulse_/hyperspace_drive` waren nur Bau-Voraussetzung; die Flugzeit (ETA)
+  ignorierte die Antriebsforschung komplett (grep belegte: in keinem Flug-Modul gelesen).
+- **Fix in `fleet/service.py`:** neue reine Funktion `ship_speed(typ, research)` →
+  `Grundtempo × (1 + per_level × Stufe)`. Der **Reiseantrieb wird aus den Bau-`requires` abgeleitet**
+  (Priorität hyperspace > impulse > combustion) — KEINE Duplikation eines `drive_type`-Felds über
+  25 Schiffe, self-maintaining. `slowest_ship_speed(ships, research)` nimmt jetzt Forschung; die
+  langsamste Einheit bestimmt weiterhin die ETA. **Bewusst getrennt** vom Kampf-`drive`
+  (`combat_roster[*].drive` / `combat.drive_stages` = Disengage/Interdiktion).
+- **Wiring:** `send_fleet` (`service.py`) + `recall_station` (`stationing.py`) holen
+  `get_research_levels` und reichen es durch. **NPC-Pfad** (`npc/attack.py`) ruft ohne `research`
+  → kein Bonus → Verhalten unverändert (keine Regression).
+- **Balance** (`balance.research.effects`, OGame-Werte): `combustion_drive_speed_per_level` 0.10,
+  `impulse_drive_speed_per_level` 0.20, `hyperspace_drive_speed_per_level` 0.30. `flight_seconds`-
+  Formel unverändert (Effekt steckt sauber im skalierten `slowest_speed`).
+- **Tests** (`tests/test_fleet_missions.py`, 3 neue, exakte Zahlen): `ship_speed`-Skalierung
+  (light_fighter 12500→18750 @combustion 5, battleship 10000→19000 @hyperspace 3, escort_frigate
+  unverändert mangels Reiseantrieb), `slowest_ship_speed` mit Forschung, ETA-Reduktion.
+- **Runtime-Smoke:** read-only `docker exec` gegen den **deployten** Container bestätigt die Skalierung
+  live (ETA @dist95 sinkt 2,81 s→2,55 s bei combustion 5). Effekt bei kurzen Strecken durch den
+  Fixkosten-Term `+10` gedämpft, nähert sich auf Fernflügen ~22,5 % — Antrieb lohnt v. a. weit.
+- **Frontend:** rechnet KEINE ETA client-seitig (grep nach `3500`/`sqrt`/`slowest` leer) → maßgebliche
+  Flugzeit rein serverseitig, keine Inkonsistenz, kein Frontend-Change nötig.
+- **⚠ Echter In-Game-Klick-Smoke offen:** Test-Account `uitest@example.com` ist frisch (keine Forschung,
+  kein Labor, kaum Ressourcen) → eine echte „Antrieb hochforschen → Flotte senden → kürzere ETA"-Kette
+  bräuchte erst Spielfortschritt. Formel + Wiring sind unit- und container-verifiziert.
+
+---
+
+## 🌑 Session 2026-06-10 (sehr spät, Mond-Strang/Forts.) — Monde fertig · Sprungtor-Ökonomie · UI-Politur · Screenshot-Pipeline
+
+> Forts. des Mond-Strangs. Detail-Memory: `project_universe_moons`, `reference_universe_ui_screenshots`.
+> **Alles gebaut, deployt, live** (Frontend `:4200`, API `:8100`). Backend-Suite **grün** (121/121).
+
+**Monde — KOMPLETT & live** (Spec `docs/systems/08-moons-and-warfare-buildings.md`):
+- **Entstehung** aus Trümmerfeld nach Kampf an einem Spieler-Planeten (`app/planets/moon.py` `maybe_form_moon`,
+  Cap 20 %, per `gravitics`-Forschung erhöhbar). Mond = Planet (`planet_type='moon'`, `parent_planet_id`, gleiche
+  Koordinate), keine Minen, wenige Felder (Mondbasis hebt sie). Mond-only Bau-Filter + `requires` in
+  `buildings/service`. **Migration 46** (`planets.parent_planet_id`, `last_jump_at`). Hooks in `combat/service`
+  (PvP) + `npc/attack`.
+- **Mond verteidigt den Planeten:** Orbitalbatterie (`orbital_gun`, `virtual:true`) + Schildkuppel (Schild-Tech-
+  Bonus) via `moon_defense_support` in `resolve_attack` + `npc/attack` (fremde Flotte trifft den Mond nicht direkt).
+- **Sprungtor:** `POST /api/fleets/jump` (instant zwischen 2 eigenen Monden). **Kosten nach Schiffsklasse**
+  (`balance.moon.jump_cost_base_deuterium` × `jump_cost_class_mult`: fighter/civil 1, cruiser 2, capital 4 →
+  Träger 4×), Cooldown 60 min; beides per `jump_gate_tech` reduzierbar. Befördert nur Schiffe (keine Ressourcen).
+
+**4 Forschungs-Techs (= die „4 Mond-Techs"):** `jump_gate_tech` (−Cooldown/−Sprungkosten), `phalanx_tech`
+(+Scan-Reichweite/−Scankosten), `gravitics` (+Mond-Chance-Cap/+Orbitalgeschütze), `convoy_tactics`
+(−**NPC-Piraten**-Routenrisiko — ehrlich beschriftet: hilft NICHT gegen Spieler-Abfangen). Skalare in
+`balance.research.effects`; Effekte in `fleet/service` (jump), `fleet/phalanx`, `planets/moon`, `fleet/trade`.
+
+**UI-Politur (jede per echtem Screenshot verifiziert — Pipeline s. u.):**
+- **Auto-Reload:** Gebäude/Forschung/Werft luden ihre Liste nicht bei Fertigstellung → GameState-Versions-Signale
+  (`buildingsVersion`/`researchVersion`/`shipyardVersion`) + Werft pusht jetzt `shipyard_complete` (fehlte).
+- **Postfach** Filter → `app-tab-bar`; **Handel** `.card-title` → `.panel-title` (Konsistenz).
+- **Flotte entschlackt:** redundante eingebettete Galaxie-Tabelle raus (→ Verweis auf `/galaxy`).
+- **Simulator:** „🚀 Meine Flotte" (Garnison übernehmen) + „🧹 Leeren" + Summen-Badge je Seite; virtuelle
+  `orbital_gun` aus Werft- UND Simulator-Liste gefiltert.
+- **Galaxie:** Race-Condition-Fix → Scanner öffnet aufs **Heimatsystem** statt leerem 1:1.
+- **Dashboard:** 🌑-Mond-Chip in der Planeten-Zeile (Klick → wechselt zum Mond).
+- **Kampfbericht** (`combat-report.component`): echte Schiffs-/Verteidigungs-Bilder statt Emoji-Fallback (via
+  `app-icon-tile`) — wirkt auch im Postfach (gleicher Component).
+
+**🆕 Screenshot-Pipeline (NEU, wiederverwendbar — Memory `reference_universe_ui_screenshots`):** Chrome ist jetzt
+installiert (`/opt/google/chrome/chrome`; kein X-Server → MCP-Browser geht nicht, headless schon). Headless-Shot:
+`google-chrome --headless=new --no-sandbox --virtual-time-budget=8000 --screenshot=/tmp/x.png URL`. **Eingeloggte**
+Seiten via puppeteer-core (`/tmp/node_modules`) + Token in `localStorage['universe.token']`:
+`node /tmp/shoot.js /dashboard /fleet …`. **Test-Account `uitest@example.com` / `Test1234!`**. ⚠ Direkte
+DB-Inserts (Seeden) sind Auto-Mode-gesperrt → Daten nur über API/Spiel.
+
+**✅ Test-Befehl, der in der Sandbox FUNKTIONIERT** (einfacher als der `cp/exec`-Pfad in §2/§3):
+`docker compose -f infra/docker-compose.yml --env-file infra/.env run --rm --no-deps -v "$(pwd)/backend/tests:/app/tests" game-server python -m pytest tests/ -q` → 121/121 grün. Frontend-Compile: `cd frontend && npx ng build --configuration development`.
+
+---
+
+## ⭐ Session 2026-06-10 (spät, Claude-Hauptstrang) — Kampf-Redesign · Rangliste · Forschungsbaum · UI-Kacheln · Carrier
+
+> Parallel lief ein **zweiter Agent an MONDEN** (moon_base/sensorphalanx/orbital_battery/shield_dome_moon/
+> gravity_lab/jump_gate, 4 Mond-Techs, orbital_gun) — geteiltes Working-Tree, dieser Agent committet selbst.
+> Detaillierte Notizen in der Auto-Memory: `project_universe_combat.md`, `project_universe_ranking.md`,
+> `project_universe_frontend.md`. **Alles unten ist gebaut, deployt und live** (Frontend `:4200`, API `:8100`).
+
+**Geliefert & live:**
+- **UI-Kohärenz (OGame-Stil):** neue geteilte Komponenten `shared/components/build-tile.component.ts`
+  (quadratische Kachel) + `tab-bar.component.ts` (Reiter) + globale `.tile-grid`/`.tab-bar`/`.full`.
+  **Gebäude, Forschung, Werft** auf **Reiter + Kachel-Grid** umgebaut (vorher gestapelte „Streifen"). Werft hat
+  Verteidigungs-Tab + `ownedCount`-Badge. Muster bewusst auch für **Flotte/Handel** wiederverwendbar (noch offen).
+- **Rangliste/Punktesystem** (OGame): `backend/app/ranking/` (Imperiumswert = investierte Ress/1000, sinkt bei
+  Verlust), `GET /api/ranking` (rechnet frisch + schreibt `Player.score`), Scheduler-Tick `score_tick` (5 min),
+  `/ranking`-Screen + Nav „Rangliste" + Dashboard-„Imperiums-Punkte"-Hero.
+- **Kampf-Redesign A+B+C:** (B) Abfangjäger-Anti-Jäger-Rapidfire; (C) **Ionen legen Verteidigung lahm**
+  (`combat.defense_disable`, Engine: Verteidigung hat System-Integrität, Ionen-drive-Schaden → Geschütz feuert
+  nicht mehr); (A) **Abfangen im Flug** via dedizierter Patrouille + Interdiktor (`fleet/interception.py`,
+  `StationedFleet.intercept_enabled/radius`, Hook in `send_fleet`, Endpoint `PUT /api/stationed/{id}/intercept`).
+  **Heim-Patrouille** (`POST /api/planets/{id}/patrol` — Garnison sofort als Abfang-Patrouille) + Rückruf-UI auf
+  der Flotte-Seite. Engine gibt jetzt das **volle Forschungs-Dict** in den Kampf (für forschungs-skalierte Techs).
+- **Carrier/Drohnen Option A:** ephemeres Drohnen-Spawnen ENTFERNT; Träger lädt beim **Angriff** echte Drohnen aus
+  der Garnison nach (`combat.carrier.drone_capacity=8`), die als echte Schiffe mit echten Verlusten kämpfen. Test
+  `test_combat.py::test_carrier_drones_are_real_no_ephemeral` neu geschrieben.
+- **Forschungsbaum 17 → 26 Techs**, alle mit verdrahtetem Effekt: hyperspace_interdiction, ion_disruptors,
+  boarding_doctrine (Kampf, engine); leadership_doctrine, tactical_academy, crew_psychology-FIX, logistics-Regen
+  (Kommando, `commander.service.morale_drift_tick`/`_apply_commander`); mining_efficiency, storage_tech,
+  astrophysics, expedition_tech (Wirtschaft, `economy/service`+`colonize`+`expedition`). Skalare in
+  `balance.research.effects` bzw. `balance.combat.*`.
+- **Reiche Tech-Detailansicht:** `TECH_EFFECTS` in `display.ts` (Branch + Summary + „aktuell→nächste Stufe");
+  Popup zeigt „Schaltet frei" mit benötigter Stufe.
+- **Kolonisieren-Schnellaktion** 🌱 an leeren Galaxie-Zellen → öffnet fleet-dispatch mit Mission „colonize"
+  (fleet-dispatch um colonize erweitert). Kolonieschiff wird bei Erfolg um 1 verbraucht.
+- **Universe-Größe** auf **8 Galaxien × 200 Systeme** (balance.universe). **Abfang-Radius** lokal: cap 5, Default 1
+  (per Forschung Hyperraum-Interdiktion erweiterbar).
+- **Assets:** kompletter Icon-Satz integriert/verdrahtet (nav, tech, traits, missions, weapons, status, ranks,
+  planets, range, spec) + Defense-Platzhalter durch echte Renders ersetzt; 9 neue Tech-Icons + 11 Mond-Assets
+  (4 Tech, 6 Gebäude, 1 Verteidigung) gepullt/kopiert/live. Mond-Gebäude/Verteidigung/Tech-Labels in `display.ts`.
+
+**⚠ Uncommitted im Working-Tree (Stand jetzt):** `frontend/src/app/core/models/display.ts` +
+`shared/components/detail-popup.component.ts` (Mond-Labels + Popup-Doppel-★-Fix) sowie **20 neue Asset-PNGs**
+unter `frontend/src/assets/img/{tech,buildings,defenses}/`. Der Großteil der obigen Arbeit wurde im Lauf der
+Session bereits committet (u. a. durch den Mond-Agenten-Flow); diese Reste noch **committen**.
+
+**⚠ Test-/Verifikations-Stand (wichtig):** Engine-Änderungen (Ionen-Disable, Ionen-Disruptoren, Boarding, Carrier)
+**pure-function verifiziert**. NICHT runtime-getestet (Prod-Container-Exec war permission-gesperrt, am Host kein
+sqlalchemy/pytest): die forschungs-skalierten **Wirtschafts-/Kommandeur-/Kolonie-/Expeditions-Effekte**,
+**Abfangen im Flug**, **Heim-Patrouille**, **Carrier-Auto-Beladung**. → **Morgen zuerst:** volle Backend-Suite
+im Container fahren (`docker cp backend/tests` + `docker exec … pytest`) + In-Game-Smoke-Test (Träger+Drohnen auf
+Angriff; Patrouille mit/ohne Interdiktor; Forschung baut Effekt auf).
+
+**Offene Punkte / nächste Schritte:**
+- ~~**Antriebs-Tempo-FIX**~~ **ERLEDIGT (2026-06-11)** — Antriebsforschung beschleunigt jetzt Flotten (`18f7b2f`, s. Session-Sektion oben).
+- **NPC-Carrier** ohne ephemere Drohnen evtl. leicht geschwächt — ggf. NPC-Flotten Drohnen mitgeben/nachtunen.
+- **Flotte- & Handel-Screen** noch nicht auf das Kachel/Tab-Muster umgestellt; einheitlicher **Seiten-Kopf** für alle Screens steht aus.
+- Unverdrahtete Platzhalter weiterhin offen: `commanders/frames`+`commanders/spec` (Portrait-Layer), `backgrounds/region_*`.
+- `orbital_gun` ist `virtual:true` (aus Orbitalbatterie abgeleitet) — kein eigenständiger Bau-Tile nötig.
 
 ---
 
@@ -380,6 +528,20 @@ Frontend lokal schneller iterieren: `cd frontend && npm run build` (oder `npm st
 ---
 
 ## 6. Vorgeschlagene nächste Schritte (priorisiert)
+
+### 🔭 Stand 2026-06-10 — aktuell offen (ersetzt veraltete Punkte unten)
+- **Monde**: Backend komplett & live. **Offen (Mond-Frontend tiefer):** dedizierte Mondansicht + **Sprungtor-UI**
+  (Sprung-Dialog Mond→Mond mit Schiffsauswahl) — bisher nur per API. Mond-Marker (🌑) sind in Kolonie-Leiste +
+  Dashboard schon da.
+- **Kampf-Simulator existiert & läuft** (Endpoint `simulateCombat`, Screen poliert + „Meine Flotte"/„Leeren") —
+  der „Simulator braucht noch Endpoint"-Punkt weiter unten ist damit **erledigt**.
+- **Flotte/Handel/Postfach** konsistent (tab-bar/panel-title) + Flotte entschlackt; ein vollständiger
+  **einheitlicher Seiten-Kopf über ALLE Screens** steht noch aus (kosmetisch, niedrige Prio).
+- ~~**Antriebs-Tempo-FIX**~~ **ERLEDIGT (2026-06-11)** — Antriebsforschung skaliert das Reise-Tempo
+  (`ship_speed`/`slowest_ship_speed` lesen jetzt Forschung; `18f7b2f`).
+- **In-Game-Smoke-Tests** der forschungs-skalierten Effekte + Carrier-Auto-Beladung + Abfangen im Flug
+  (Backend-Suite ist grün; Laufzeit-Smoke fehlt — s. Hauptstrang-Sektion „Test-/Verifikations-Stand").
+- **NPC-Carrier-Tuning**, **Gegen-Spionage**, **LLM-Funksprüche** (vom Nutzer aufgeschoben) bleiben offen.
 
 ### ⭐ Kandidaten für die nächste Session
 Rollen-Kampf Phase 1–4 sind gebaut (s. §0b). Naheliegende nächste Schritte:
