@@ -4,27 +4,76 @@
 > *Universe* (OGame-Tradition + persistentes Universum + KI-Crews als USP).
 > Server-Pfad: `/srv/storage/projects/universe` · Branch: `master` (lokal, kein Remote).
 > Live: `universe.tech-artist.de` · lokal Frontend `:4200`, API `:8100→8000`.
-> ⚠ Working tree: **uncommittete Frontend-WIP des Nutzers** (Desktop-Dichte-Schicht / OGame-
-> Detail-Popups): `display.ts`, `shipyard.component.ts`, `buildings`/`research`-Komponenten,
-> `dashboard.styles.ts`, `shell.styles.ts`, `styles.scss`, neu `shared/components/detail-popup.component.ts`,
-> `proxy.local.json`, `package-lock.json`. **Gehört dem Nutzer — nicht eigenmächtig committen.**
-> ⚠ DB wurde zwischenzeitlich zurückgesetzt (`down -v`): der alte Test-Account
-> `admiral@universe.test` existiert NICHT mehr. Aktuell 1 echter Account
-> (`sascha-richter@hotmail.com`), **0 Kampfberichte** in der DB.
+> ✅ **Working tree SAUBER** (Stand Ende 2026-06-11). 1 echter Account (`sascha-richter@hotmail.com`),
+> Test-Account `uitest@example.com` / `Test1234!` (frisch, keine Forschung/Monde). **0 Kampfberichte** in der DB.
 >
-> **Verifikations-Loop (Sandbox-Eigenheit):** Tests laufen via `CID=$(docker compose … ps -q game-server);
-> docker cp backend/tests "$CID:/app/tests"; docker exec "$CID" python -m pytest tests/ -q` — der reine
-> `docker exec`/`docker cp`-Pfad ist erlaubt, ABER `docker compose exec … rm/cp` (Schreiben in den laufenden
-> Container) wird vom Auto-Mode-Classifier geblockt. Frontend-Compile-Check = `docker compose … build frontend`
-> (ng build ist strikt, schlägt bei TS-Fehlern fehl). Kein lokales `node_modules`.
->
-> ⚠ **UPDATE 2026-06-10:** Das `node_modules` IST jetzt lokal da → schneller Compile-Check geht ohne
-> Docker: `cd frontend && npx ng build --configuration development` (~3–7 s). Die uncommittete
-> Nutzer-WIP wurde diese Session verifiziert + committet (s. §-1).
+> **Verifikations-Loop (Sandbox-Eigenheiten — wichtig, s. Memory `project_universe_devloop`):**
+> - **Backend-Tests:** `docker compose -f infra/docker-compose.yml --env-file infra/.env run --rm --no-deps -v "$(pwd)/backend/tests:/app/tests" game-server python -m pytest tests/ -q` (mountet nur tests/; **Backend-Code ist ins Image gebacken → nach Code-Änderung erst `build game-server`**, sonst läuft pytest gegen alten Code).
+> - **Sim-Check (pure Engine, neue Balance):** `docker compose … run --rm --no-deps game-server python -c "from app.combat.engine import simulate_battle; import json; b=json.load(open('/app/shared/balance.json')); …"` — liest die gemountete shared/balance.json frisch.
+> - **Frontend-Compile:** `cd frontend && npx ng build --configuration development` (strikt, ~3–7 s).
+> - **Deploy:** Code-Änderung → `build game-server` + `up -d game-server` (lädt Image + gemountete balance neu); reine balance.json-Änderung → nur `up -d game-server` (restart) reicht. Frontend-balance ist gebacken → `build frontend` + `up -d frontend`. **`frontend/src/assets/balance.json` ist ein manueller Mirror von `shared/balance.json` → nach jeder balance-Änderung `cp shared/balance.json frontend/src/assets/balance.json`.**
+> - **DB-Schreibzugriff + `docker exec … psql`/Seeden sind Auto-Mode-gesperrt** → Test-Daten nur über API/Spiel. Read-only `docker exec game-server python -c "…"` (ohne rm/cp) ist erlaubt.
 
 ---
 
-## 🚀 Session 2026-06-11 — Aufräumen · Antriebs-Tempo-FIX · Mond-Frontend · Rapidfire-Konter-Kreis
+## ⚔️ Session 2026-06-11 (Teil 2, GROSS) — Kampf-Redesign 03d (Rapidfire abgeschafft) + Treibstoff-Unterhalt
+
+> Spec: **`docs/systems/03d-combat-redesign-rapidfire-roles.md`** (Quelle der Wahrheit). Detail-Memory:
+> `project_universe_combat` (auf erledigt aktualisiert). **Alles gebaut, getestet, deployt & live.**
+> Backend-Suite **127/127 grün**. Working Tree sauber.
+>
+> ⚠ **WICHTIG — überholt:** Der „Rapidfire-Konter-Kreis" aus Teil 1 (Commit `3dbdd2e`) wurde in diesem
+> Redesign **wieder ENTFERNT**. Schiff-vs-Schiff-Rapidfire gibt es nicht mehr. Nicht reaktivieren.
+
+**Warum (mit dem Nutzer erarbeitet):** OGames Rapidfire degeneriert zur Monokultur, weil es die einzige
+Anti-Masse-Bremse der Engine — **Overkill verpufft** (1 Schuss/1 Ziel, Rest verloren) — aushebelt
+(Kette auf frische Ziele = nie verschwendet). Lösung: **Rapidfire zwischen Schiffen komplett raus.**
+
+**Phase 1 + Letalitäts-Modell (`b5c348b`):**
+- Alle Schiff-vs-Schiff-`rapidfire` entfernt; **nur Bomber** behält Anti-Verteidigung (Türme + Solarsat/
+  Sonde-Chaff). Rückgrat = **Schadenstyp×Subsystem-Matrix** (Energie strippt Schild → Kinetik/Rakete
+  zerlegt Hülle → Ionen lähmt) + Reichweite + Overkill + Rollen-Mechaniken.
+- **Befund:** Rapidfire trug ~5–7× der Letalität (Schild regenerierte voll/Runde + 6 Runden). Ohne es Patt.
+  → Engine: **Schild = abnutzbarer Puffer** (`combat.shield_regen_ratio=0.3`, Teil-Regen statt voll),
+  **globaler Letalitäts-Regler** `combat.damage_scale=2.0`, `max_rounds 6→8`, Kinetik-vs-Schild `0.25→0.1`.
+- **Das sind die 4 zentralen Tuning-Knöpfe.** Sim-belegt: KOMBI (Energie+Kinetik) schlägt Mono beidseitig,
+  Schlachten lösen sich entscheidend-mit-Verlusten; Glaskanone/Entern/Schild-Matrix intakt.
+
+**Phase 2+3 (`a2f36ce`):** Abfangjäger war Auto-Pick (4000 Kosten / 400 Energie-Schaden) → 12000 via
+**Deuterium** (bleibt fragil, da Hülle=(Metall+Kristall)/10). Zerstörer = **Glaskanone** bestätigt. Jedes
+Schiff bekommt **Werft-Stufe als Bauvoraussetzung** (`requires.shipyard` 1–12) → die 9 impulse_drive-
+Schiffe verteilen sich über Werft 2–7 (Backend prüft generisch, kein Code).
+
+**Phase 4 — Todesstern (`a5d9507`):** Star-Wars-stimmig: kämpft NICHT gegen Schiffe (Overkill), ist
+**Drohnenträger** (`combat.carrier.capacity_by_type` carrier 8 / deathstar 50, per `computer_tech` bis 100)
++ **Mondzerstörung** (`moon.maybe_destroy_moon`, `balance.moon.destruction`): nach gewonnenem PvP-Angriff
+belagern überlebende RIPs den Ziel-Mond, Chance ~ Anzahl/Mondgröße, **Rückschlag-Risiko**, löscht den Mond
++ Funksprüche. Träger-Beladung in `send_fleet` auf Kapazität pro Typ verallgemeinert.
+
+**Treibstoff-Unterhalt — Modell C (`23e4d7e`):** Stationierung war gratis-für-immer (auch vorgeschoben).
+Jetzt: **eigenes Gebiet gratis** (`StationedFleet.fuel=NULL`), **vorgeschoben** (fremde Koordinaten) trägt
+das mitgeladene Deuterium (Deploy-Fracht) als **Vorrat**; `station_fuel_tick` (stündlich, `balance.fleet.
+station_fuel`) zehrt ihn (`upkeep_ratio_per_tick=0.05 × Σ Schiff-fuel`), **leer → Zwangs-Rückkehr** heim.
+UI im Handel-Tab: „🏠 gratis" / „⛽ N Deut". Migration 47 (`stationed_fleets.fuel`).
+
+**⚠ Verifikations-Stand:** Pure-Formeln (Letalität, Träger-Kapazität, Mond-Chance, Upkeep) sind **getestet**
+(127/127). Die **DB-Pfade** (Mond-Löschung, Drohnen-Beladung, Treibstoff-Tick/Zwangs-Rückkehr) sind
+pure-function + Compile + Live-Startup verifiziert, aber **NICHT echter In-Game-Klick-Test** (Test-Suite
+rein pure-function, DB-Schreibzugriff gesperrt).
+
+### 🔭 Für morgen / offene Punkte
+- **Kampf im echten Spiel fühlen + tunen:** die 4 Knöpfe (`damage_scale`, `shield_regen_ratio`, `max_rounds`,
+  kinetic-vs-shield). „Tödlicher/schneller" → `damage_scale` hoch; „Schilde brechen leichter" → `shield_regen_ratio`
+  runter. Reine balance.json → nur `up -d game-server` (restart) + `cp` in frontend/assets.
+- **In-Game-Smoke der DB-Mechaniken** (sobald Daten da sind): Todesstern+Drohnen auf Angriff; Mondzerstörung
+  (braucht PvP-Mond — Monde entstehen aus Kämpfen); vorgeschobene Stationierung → Vorrat leerlaufen → Auto-Rückkehr.
+- **Kosten-Feintuning** restlicher Schiffe (Phase 2 war nur der Abfangjäger-Fix; Rest plausibel, aber playtest-bedürftig).
+- **Mond-Frontend-Klicktest** (Sprungtor-Dialog) steht weiter aus (kein Mond am Test-Account; DB-Seeding gesperrt).
+- Älteres weiter offen: NPC-Carrier-Tuning, Gegen-Spionage, LLM-Funksprüche (Nutzer aufgeschoben).
+
+---
+
+## 🚀 Session 2026-06-11 (Teil 1) — Aufräumen · Antriebs-Tempo-FIX · Mond-Frontend · ~~Rapidfire-Konter-Kreis~~ (überholt)
 
 > Reihenfolge: erst die offenen Reste committet, dann Backend-Suite verifiziert, dann den
 > Antriebs-Tempo-FIX gebaut. **Alles committet, gebaut, deployt & live** (API `:8100`).
