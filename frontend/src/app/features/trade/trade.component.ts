@@ -128,6 +128,11 @@ type Res = 'metal' | 'crystal' | 'deuterium';
             <div class="partner-main">
               <span class="mono">[{{ s.coords }}]</span>
               <span class="small muted">{{ s.ships_total }} 🚀</span>
+              @if (s.fuel === null) {
+                <span class="small tag-ok" title="Eigenes Gebiet — kein Treibstoff-Unterhalt">🏠 gratis</span>
+              } @else {
+                <span class="small" [class.tag-warn]="s.fuel < 1000" title="Vorgeschoben: Deuterium-Vorrat. Leer → automatische Rückkehr.">⛽ {{ s.fuel }} Deut</span>
+              }
             </div>
             <div class="escort-edit">
               <label class="toggle small">
@@ -228,6 +233,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
       .escort-edit .toggle { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
       .mini { width: 56px; min-height: 26px; padding: 0.15rem 0.3rem; }
       .tag-ok { font-size: 0.72rem; color: #06101e; background: var(--accent); padding: 1px 6px; border-radius: 99px; }
+      .tag-warn { color: var(--warn); font-weight: 600; }
     `,
   ],
 })

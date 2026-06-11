@@ -83,6 +83,12 @@ def station_power(ships: dict, bal) -> float:
     return total
 
 
+def station_upkeep(ships: dict, bal) -> float:
+    """Treibstoff-Unterhalts-Basis pro Tick (vor upkeep_ratio): Summe(Schiff-fuel * Anzahl).
+    Pure Funktion fuer Tuning/Tests; nur fuer vorgeschobene Stationierung relevant."""
+    return float(sum(bal.ships.get(t, {}).get("fuel", 0) * int(c) for t, c in (ships or {}).items()))
+
+
 # -- deploy: Stationierung ----------------------------------------------------
 
 async def resolve_deploy(session: AsyncSession, fleet: Fleet) -> bool:
@@ -96,6 +102,18 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet) -> bool:
     if not ships:
         return False
     coords = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+    # Vorgeschoben (kein eigener Planet am Ziel) -> Treibstoff-Vorrat aus mitgefuehrtem
+    # Deuterium (zehrt per Tick, leer -> Zwangs-Rueckkehr). Eigenes Gebiet: fuel=NULL, gratis.
+    own_here = (await session.execute(
+        select(Planet).where(
+            Planet.player_id == fleet.player_id,
+            Planet.galaxy == fleet.target_galaxy,
+            Planet.system == fleet.target_system,
+            Planet.position == fleet.target_position,
+        )
+    )).scalars().first()
+    cargo = fleet.cargo or {}
+    fuel_reserve = None if own_here is not None else float(cargo.get("deuterium", 0) or 0)
     st = StationedFleet(
         owner_id=fleet.player_id,
         home_planet_id=fleet.origin_planet_id,
@@ -103,17 +121,24 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet) -> bool:
         system=fleet.target_system,
         position=fleet.target_position,
         ships=ships,
+        fuel=fuel_reserve,
     )
     session.add(st)
     for r in rows:
         await session.delete(r)
     fleet.status = "done"
     fleet.cargo = {}
+    if fuel_reserve is None:
+        body = (f"Deine Flotte ist bei {coords} (eigenes Gebiet) stationiert — kein Treibstoff-"
+                f"Unterhalt. Gebunden bis zum Rueckruf; als Eskorte anbietbar (Handel-Tab).")
+    else:
+        body = (f"Deine Flotte ist VORGESCHOBEN bei {coords} stationiert mit {int(fuel_reserve)} "
+                f"Deuterium-Vorrat. Der Vorrat zehrt mit der Zeit; ist er leer, kehrt die Flotte "
+                f"automatisch heim. Lade beim Stationieren genug Deuterium als Fracht.")
     await create_system_transmission(
         session, player_id=fleet.player_id,
         subject=f"Flotte stationiert ({coords})",
-        body=f"Deine Flotte ist bei {coords} stationiert. Sie ist gebunden, bis du sie "
-             f"zurueckrufst, und kann als Eskorte angeboten werden (Handel-Tab).",
+        body=body,
         ttype="system",
     )
     log.info("Deploy: player=%s stationiert %s @ %s", fleet.player_id, ships, coords)
@@ -186,6 +211,8 @@ def station_out(st: StationedFleet) -> dict:
         "intercept_radius": int(getattr(st, "intercept_radius", 0) or 0),
         "has_interdictor": has_interdictor,
         "interceptors": int(ships.get("interceptor", 0)),
+        # Treibstoff: None = eigenes Gebiet (gratis), Zahl = vorgeschobener Vorrat.
+        "fuel": (None if getattr(st, "fuel", None) is None else int(round(float(st.fuel)))),
     }
 
 
@@ -261,34 +288,32 @@ async def create_home_patrol(
     return st
 
 
-async def recall_station(session: AsyncSession, player: Player, station_id) -> Fleet:
-    """Ruft eine stationierte Patrouille zum Heimatplaneten zurueck (Rueckflug)."""
+async def _send_station_home(session: AsyncSession, st: StationedFleet) -> Fleet | None:
+    """Schickt eine stationierte Flotte zum Heimatplaneten zurueck (Rueckflug) und loescht die
+    Station. Liefert das Rueckflug-Fleet oder None (leer / kein Heimatplanet). Geteilt von
+    Rueckruf (manuell) und Treibstoff-Tick (Zwangs-Rueckkehr)."""
     from app.economy.service import get_research_levels
     from app.fleet.service import compute_distance, fleet_return, flight_seconds, slowest_ship_speed
     from app.platform.scheduler import schedule_at
 
-    st = await session.get(StationedFleet, station_id)
-    if st is None or st.owner_id != player.id:
-        raise ValueError("Patrouille nicht gefunden")
     ships = {t: c for t, c in (st.ships or {}).items() if c > 0}
     if not ships:
         await session.delete(st)
-        raise ValueError("Patrouille ist leer")
+        return None
     home = await session.get(Planet, st.home_planet_id) if st.home_planet_id else None
     if home is None:
         home = (await session.execute(
-            select(Planet).where(Planet.player_id == player.id)
+            select(Planet).where(Planet.player_id == st.owner_id)
             .order_by(Planet.is_homeworld.desc(), Planet.created_at.asc())
         )).scalars().first()
     if home is None:
-        raise RuntimeError("Kein Heimatplanet fuer den Rueckruf")
-
+        return None
     dist = compute_distance((st.galaxy, st.system, st.position), (home.galaxy, home.system, home.position))
-    research = await get_research_levels(session, player.id)
+    research = await get_research_levels(session, st.owner_id)
     secs = flight_seconds(dist, slowest_ship_speed(ships, research), 100)
     now = _now()
     fleet = Fleet(
-        player_id=player.id, origin_planet_id=home.id,
+        player_id=st.owner_id, origin_planet_id=home.id,
         target_galaxy=st.galaxy, target_system=st.system, target_position=st.position,
         mission="deploy", status="returning",
         depart_at=now, arrive_at=now, return_at=now + dt.timedelta(seconds=int(secs)),
@@ -300,8 +325,57 @@ async def recall_station(session: AsyncSession, player: Player, station_id) -> F
         session.add(Ship(planet_id=None, fleet_id=fleet.id, type=typ, count=int(count)))
     await session.delete(st)
     schedule_at(fleet.return_at, fleet_return, str(fleet.id), job_id=f"fleet-return:{fleet.id}")
-    log.info("Rueckruf: player=%s station %s -> heim in %ds", player.id, station_id, int(secs))
     return fleet
+
+
+async def recall_station(session: AsyncSession, player: Player, station_id) -> Fleet:
+    """Ruft eine stationierte Patrouille zum Heimatplaneten zurueck (Rueckflug)."""
+    st = await session.get(StationedFleet, station_id)
+    if st is None or st.owner_id != player.id:
+        raise ValueError("Patrouille nicht gefunden")
+    if not {t: c for t, c in (st.ships or {}).items() if c > 0}:
+        await session.delete(st)
+        raise ValueError("Patrouille ist leer")
+    fleet = await _send_station_home(session, st)
+    if fleet is None:
+        raise RuntimeError("Kein Heimatplanet fuer den Rueckruf")
+    log.info("Rueckruf: player=%s station %s -> heim", player.id, station_id)
+    return fleet
+
+
+async def station_fuel_tick() -> None:
+    """Periodischer Job (balance.fleet.station_fuel.tick_interval_seconds): zehrt den Treibstoff-
+    Vorrat vorgeschobener Stationierungen (fuel IS NOT NULL). Ist er leer -> Zwangs-Rueckkehr heim.
+    Eigene Stationierungen (fuel NULL) bleiben unberuehrt."""
+    from app.platform.db import session_scope
+
+    bal = get_balance()
+    cfg = bal.fleet.get("station_fuel", {})
+    ratio = float(cfg.get("upkeep_ratio_per_tick", 0.0))
+    if ratio <= 0:
+        return
+    async with session_scope() as session:
+        stations = (await session.execute(
+            select(StationedFleet).where(StationedFleet.fuel.isnot(None))
+        )).scalars().all()
+        recalled = 0
+        for st in stations:
+            st.fuel = float(st.fuel or 0) - station_upkeep(st.ships or {}, bal) * ratio
+            if st.fuel <= 0:
+                coords = f"{st.galaxy}:{st.system}:{st.position}"
+                owner_id = st.owner_id
+                fleet = await _send_station_home(session, st)
+                if fleet is not None:
+                    recalled += 1
+                    await create_system_transmission(
+                        session, player_id=owner_id,
+                        subject=f"⛽ Treibstoff leer — Flotte kehrt heim ({coords})",
+                        body=(f"Der Deuterium-Vorrat deiner vorgeschobenen Flotte bei {coords} ist "
+                              f"erschoepft. Sie tritt automatisch den Rueckflug an."),
+                        ttype="system",
+                    )
+        if recalled:
+            log.info("Treibstoff-Tick: %d vorgeschobene Flotte(n) heimgeschickt (leer)", recalled)
 
 
 def set_escort_offer(st: StationedFleet, enabled: bool, radius: int, fee_pct: float) -> None:

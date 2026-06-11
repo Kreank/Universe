@@ -325,6 +325,9 @@ class StationedFleet(Base):
     system: Mapped[int] = mapped_column(Integer, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     ships: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Treibstoff-Vorrat: NULL = eigenes Gebiet (gratis), Zahl = mitgefuehrter Deuterium-Vorrat
+    # vorgeschobener Stationierung (zehrt per Tick, leer -> Zwangs-Rueckkehr).
+    fuel: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Eskort-Angebot (optional): deckt Routen im Umkreis escort_radius, Gebuehr = % Frachtwert.
     escort_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     escort_radius: Mapped[int] = mapped_column(Integer, default=0)

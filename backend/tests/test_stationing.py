@@ -46,3 +46,12 @@ def test_escort_covers_out_of_range_or_galaxy():
 def test_escort_fee():
     assert escort_fee(0.05, 100000) == 5000.0
     assert escort_fee(-1, 100000) == 0.0
+
+
+def test_station_upkeep_sums_ship_fuel():
+    """Treibstoff-Unterhalts-Basis = Summe(Schiff-fuel * Anzahl) — nur Bewegungs-relevante Schiffe."""
+    from app.fleet.stationing import station_upkeep
+    bal = SimpleNamespace(ships={"light_fighter": {"fuel": 20}, "battleship": {"fuel": 500}})
+    assert station_upkeep({"light_fighter": 3, "battleship": 2}, bal) == 3 * 20 + 2 * 500
+    assert station_upkeep({}, bal) == 0.0
+    assert station_upkeep({"unknown_ship": 5}, bal) == 0.0   # unbekannt -> 0

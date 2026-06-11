@@ -19,6 +19,7 @@ from app.commander.router import router as commander_router
 from app.commander.service import morale_drift_tick
 from app.economy.router import router as economy_router
 from app.fleet.router import router as fleet_router
+from app.fleet.stationing import station_fuel_tick
 from app.fleet.trade import market_regen_tick
 from app.fleet.trade_index import index_tick
 from app.messaging.router import router as messaging_router
@@ -81,6 +82,12 @@ async def lifespan(app: FastAPI):
     # bei jedem /api/ranking-Abruf frisch gerechnet; der Tick haelt Player.score
     # (Auth-Response/Topbar) auch ohne Ranglisten-Besuch aktuell.
     schedule_interval(score_tick, minutes=5, job_id="ranking-score")
+    # Treibstoff-Tick: vorgeschobene Stationierungen zehren ihren Deuterium-Vorrat; leer -> heim.
+    schedule_interval(
+        station_fuel_tick,
+        seconds=get_balance().fleet["station_fuel"]["tick_interval_seconds"],
+        job_id="station-fuel",
+    )
     try:
         yield
     finally:

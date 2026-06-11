@@ -163,6 +163,9 @@ _STATEMENTS: list[str] = [
     # Monde: an einen Planeten gebunden (planet_type='moon'), + Sprungtor-Cooldown.
     "ALTER TABLE planets ADD COLUMN IF NOT EXISTS parent_planet_id UUID REFERENCES planets(id) ON DELETE CASCADE",
     "ALTER TABLE planets ADD COLUMN IF NOT EXISTS last_jump_at TIMESTAMPTZ",
+    # Treibstoff-Unterhalt vorgeschobener Stationierung: NULL = eigenes Gebiet (gratis),
+    # Zahl = mitgefuehrter Deuterium-Vorrat (zehrt per Tick, leer -> Zwangs-Rueckkehr).
+    "ALTER TABLE stationed_fleets ADD COLUMN IF NOT EXISTS fuel DOUBLE PRECISION",
 ]
 
 

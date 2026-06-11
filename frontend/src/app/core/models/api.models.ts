@@ -502,6 +502,8 @@ export interface StationedFleet {
   intercept_radius: number;
   has_interdictor: boolean;
   interceptors: number;
+  /** Treibstoff-Vorrat: null = eigenes Gebiet (gratis), Zahl = vorgeschobener Deuterium-Vorrat. */
+  fuel: number | null;
 }
 
 /** Ein aktives Eskort-Angebot im Verzeichnis. */

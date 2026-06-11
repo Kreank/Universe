@@ -550,6 +550,11 @@
     "base_slots": 1,
     "slots_per_computer_tech": 1,
     "fuel_per_distance_unit": 1.0,
+    "station_fuel": {
+      "_note": "Treibstoff-Unterhalt vorgeschobener Stationierung (auf fremdem Gebiet). Vorrat = mitgefuehrtes Deuterium (Fracht der Deploy-Flotte). Pro Tick zehrt upkeep_ratio_per_tick * Summe(Schiff-fuel). Leer -> Zwangs-Rueckkehr. Eigenes Gebiet: fuel=NULL, kein Unterhalt.",
+      "upkeep_ratio_per_tick": 0.05,
+      "tick_interval_seconds": 3600
+    },
     "distance": {
       "_note": "Distanzklassen (Doku 06). Vereinfacht fuer Vertical Slice.",
       "same_system": 5,
