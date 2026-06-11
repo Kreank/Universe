@@ -24,7 +24,7 @@
 
 ---
 
-## 🚀 Session 2026-06-11 — Aufräumen · Antriebs-Tempo-FIX · Mond-Frontend (Sprungtor)
+## 🚀 Session 2026-06-11 — Aufräumen · Antriebs-Tempo-FIX · Mond-Frontend · Rapidfire-Konter-Kreis
 
 > Reihenfolge: erst die offenen Reste committet, dann Backend-Suite verifiziert, dann den
 > Antriebs-Tempo-FIX gebaut. **Alles committet, gebaut, deployt & live** (API `:8100`).
@@ -85,6 +85,25 @@
   Mond (Monde entstehen nur aus Kämpfen), DB-Seeding ist Auto-Mode-gesperrt. Logik per strict-Compile +
   Code-Review abgesichert. Für echten Klick-Test: 2 Monde mit Sprungtor + Garnison + Deuterium seeden
   (braucht Freigabe für DB-Schreibzugriff) ODER per Kampf einen Mond entstehen lassen.
+
+**⚔️ Rapidfire-Konter-Kreis (`3dbdd2e`) — auf Nutzer-Hinweis, „nicht vollständig durchdacht":**
+- **Befund:** Die Rapidfire-Matrix deckte nur den **klassischen OGame-Kern** (Jäger/Cruiser/Battleship/
+  Battlecruiser/Bomber/Destroyer + interceptor) und den **Todesstern** (RF gegen alles) ab. Die **12 Phase-4-
+  Spezialschiffe** (carrier, drone, interdictor, ewar_frigate, boarder, stealth_corvette, escort_frigate,
+  shield_tender, miner, deep_scout, expedition_ship) + die Mond-`orbital_gun` hingen **außerhalb** des Schere-
+  Stein-Papier: gaben kein sinnvolles RF (nur spy/solar-Boilerplate) **und wurden von nichts gekontert**.
+- **Fix (nur Ergänzungen in `balance.json`):** cruiser→+interceptor/ewar/boarder/stealth (schließt den
+  interceptor-Kreis); battlecruiser→+interceptor/escort/ewar; destroyer→+carrier/interdictor/shield_tender;
+  battleship→+carrier/interdictor; escort_frigate→+boarder/stealth (Punktverteidigung = Design-Absicht
+  „fängt Enterer ab"); interceptor→+bomber; bomber→+orbital_gun 10; deathstar→+orbital_gun 50.
+- **Bewusst rapidfire-FREI** bleiben die Effekt-Spezialisten (ewar/interdictor/boarder/shield_tender/carrier) —
+  Stärke = Spezialeffekt —, sie sind jetzt aber **konterbar**. Reine Nicht-Kämpfer (cargo/colony/recycler/
+  miner/deep_scout/expedition, Schildkuppeln, Raketen) bleiben absichtlich außen vor.
+- **Verifiziert:** Analyse bestätigt „0 ungekonterte Kampfeinheiten", JSON valide, 124/124, Live-Container hat
+  die neue Matrix geladen (game-server nur **restartet** — `shared/` ist read-only gemountet, `get_balance`
+  cached beim Start; Frontend-balance.json neu gebaut). **Engine-Semantik:** `rf>1` ⇒ Kettenschuss-Wahrsch.
+  `(rf-1)/rf`; Verteidigung läse `rapidfire_against` (bleibt leer). **⚠ Laufzeit-Balance (Multiplikatoren) noch
+  nicht im echten Spiel getunt** — erster kohärenter Wurf, im Simulator/Spiel nachjustierbar.
 
 ---
 
