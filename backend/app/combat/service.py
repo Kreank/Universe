@@ -320,6 +320,42 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
                     atk_survivors[typ] = atk_survivors.get(typ, 0) + saved
                     atk_losses[typ] = lost - saved
 
+    # -- Todesstern-Mondzerstoerung (03d): ueberlebende Todessterne belagern den Ziel-Mond --
+    moon_destroyed = None
+    if winner == "attacker" and def_planet is not None and int(atk_survivors.get("deathstar", 0)) > 0:
+        from app.planets.moon import maybe_destroy_moon
+        n_ds = int(atk_survivors.get("deathstar", 0))
+        moon_destroyed = await maybe_destroy_moon(session, def_planet, n_ds, random)
+        if moon_destroyed:
+            bf = int(moon_destroyed.get("backfire", 0))
+            if bf > 0:
+                atk_survivors["deathstar"] = max(0, n_ds - bf)
+                atk_losses["deathstar"] = int(atk_losses.get("deathstar", 0)) + bf
+            loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+            mn = moon_destroyed["moon_name"]
+            bf_txt = f" Rueckschlag: {bf} Todesstern(e) verloren." if bf else ""
+            if moon_destroyed["destroyed"]:
+                await create_system_transmission(
+                    session, player_id=fleet.player_id,
+                    subject=f"💥 Mond zerstoert ({loc})",
+                    body=f"Deine Todessterne haben den Mond {mn} pulverisiert.{bf_txt}",
+                    ttype="system",
+                )
+                if moon_destroyed["owner_id"]:
+                    await create_system_transmission(
+                        session, player_id=moon_destroyed["owner_id"],
+                        subject=f"💥 Dein Mond wurde zerstoert ({loc})",
+                        body=f"Ein Todesstern-Angriff hat deinen Mond {mn} vernichtet.",
+                        ttype="system",
+                    )
+            else:
+                await create_system_transmission(
+                    session, player_id=fleet.player_id,
+                    subject=f"Mondzerstoerung fehlgeschlagen ({loc})",
+                    body=f"Der Mond {mn} hat dem Beschuss standgehalten.{bf_txt}",
+                    ttype="system",
+                )
+
     atk_initial = sum(result["attacker_initial"].values())
     atk_lost = sum(atk_losses.values())
     situation = _situation(winner, atk_initial, atk_lost)

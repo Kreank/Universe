@@ -253,3 +253,20 @@ def test_sensor_negates_stealth_ambush():
     guarded = {"ships": {"cruiser": 5, "deep_scout": 2}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
     r = simulate_battle(pirate, guarded, 5, BALANCE)
     assert r["rounds"][0].get("ambush") is not True               # entdeckt -> kein Ambush
+
+
+# ---- Todesstern-Mondzerstoerung (03d): Chance-Formel ----
+
+def test_moon_destroy_chance_scales_with_deathstars_and_size():
+    from app.planets.moon import moon_destroy_chance
+    cfg = BALANCE["moon"]["destruction"]
+    # Keine Todessterne -> keine Chance.
+    assert moon_destroy_chance(0, 10, cfg) == 0.0
+    # Mehr Todessterne -> hoehere Chance.
+    assert moon_destroy_chance(4, 10, cfg) > moon_destroy_chance(1, 10, cfg)
+    # Groesserer Mond (mehr Felder) -> niedrigere Chance.
+    assert moon_destroy_chance(3, 30, cfg) < moon_destroy_chance(3, 5, cfg)
+    # Cap wird eingehalten.
+    assert moon_destroy_chance(100, 1, cfg) <= float(cfg["chance_cap"]) + 1e-9
+    # Exakter Wert: 2 RIPs, size_ref 10, mond 10 Felder, chance_per 0.15 -> 0.30.
+    assert abs(moon_destroy_chance(2, 10, cfg) - 0.30) < 1e-9

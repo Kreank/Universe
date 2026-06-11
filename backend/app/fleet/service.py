@@ -98,6 +98,21 @@ def slowest_ship_speed(ships: dict[str, int], research: dict[str, int] | None = 
     return min(speeds) if speeds else 1.0
 
 
+def carrier_drone_capacity(ships: dict[str, int], computer_tech: int, carrier_cfg: dict) -> int:
+    """Gesamte Drohnen-Kapazitaet einer Flotte (03d): Kapazitaet je Traeger-Typ aus
+    carrier_cfg.capacity_by_type (Fallback drone_capacity = nur 'carrier'). Der Todesstern
+    skaliert mit computer_tech (Basis -> deathstar_capacity_max)."""
+    cap_by_type = dict(carrier_cfg.get("capacity_by_type", {}))
+    if not cap_by_type and carrier_cfg.get("drone_capacity"):
+        cap_by_type = {"carrier": int(carrier_cfg["drone_capacity"])}
+    if "deathstar" in cap_by_type:
+        base = int(cap_by_type["deathstar"])
+        per = int(carrier_cfg.get("deathstar_capacity_per_computer_level", 0))
+        cmax = int(carrier_cfg.get("deathstar_capacity_max", base))
+        cap_by_type["deathstar"] = min(cmax, base + per * int(computer_tech))
+    return sum(int(cap_by_type.get(t, 0)) * int(ships.get(t, 0)) for t in cap_by_type)
+
+
 async def fleet_slots(session: AsyncSession, player_id: uuid.UUID) -> int:
     from app.platform.doctrine import fleet_slot_bonus
     research = await get_research_levels(session, player_id)
@@ -192,10 +207,8 @@ async def send_fleet(
     # (bis zur Traeger-Kapazitaet drone_capacity). Diese fliegen als ECHTE Schiffe mit
     # (echte Verluste). Bereits manuell gewaehlte Drohnen zaehlen auf die Kapazitaet an.
     if mission == "attack":
-        cap_per = int(bal.combat.get("carrier", {}).get("drone_capacity", 0))
-        n_carriers = int(ships.get("carrier", 0))
-        if cap_per > 0 and n_carriers > 0:
-            capacity = n_carriers * cap_per
+        capacity = carrier_drone_capacity(ships, int(research.get("computer_tech", 0)), bal.combat.get("carrier", {}))
+        if capacity > 0:
             already = int(ships.get("drone", 0))
             need = capacity - already
             garrison_drones = by_type.get("drone")

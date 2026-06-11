@@ -11,12 +11,12 @@ from __future__ import annotations
 import logging
 import random
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
-from app.platform.models import Planet, Resource
+from app.platform.models import Building, Defense, Planet, Resource, Ship
 
 log = logging.getLogger("universe.moon")
 
@@ -56,6 +56,18 @@ async def moon_defense_support(session: AsyncSession, planet: Planet, bal) -> tu
 def moon_chance(debris_metal: float, debris_crystal: float, cfg: dict) -> float:
     total = max(0.0, float(debris_metal)) + max(0.0, float(debris_crystal))
     return min(float(cfg["max_chance"]), total / float(cfg["value_per_chance"]))
+
+
+def moon_destroy_chance(n_deathstars: int, moon_fields: int, cfg: dict) -> float:
+    """Mondzerstoerungs-Chance (03d): waechst mit der Zahl der Todessterne, sinkt mit der
+    Mondgroesse (fields). Pure Funktion fuer Tuning/Tests."""
+    if n_deathstars <= 0:
+        return 0.0
+    size_ref = float(cfg.get("size_ref_fields", 10))
+    return min(
+        float(cfg.get("chance_cap", 0.9)),
+        n_deathstars * float(cfg.get("chance_per_deathstar", 0.15)) * (size_ref / max(1, int(moon_fields))),
+    )
 
 
 async def maybe_form_moon(session: AsyncSession, planet: Planet, debris_metal: float, debris_crystal: float) -> bool:
@@ -104,3 +116,35 @@ async def maybe_form_moon(session: AsyncSession, planet: Planet, debris_metal: f
     log.info("Mond entstanden: player=%s @ %d:%d:%d chance=%.3f",
              planet.player_id, planet.galaxy, planet.system, planet.position, chance)
     return True
+
+
+async def maybe_destroy_moon(session: AsyncSession, target_planet, n_deathstars: int, rng=random) -> dict | None:
+    """03d — Todesstern-Mondzerstoerung (Belagerung). Ueberlebende Todessterne versuchen, den
+    Mond des Ziel-Planeten zu zerstoeren. Chance ~ Anzahl Todessterne, SCHWERER bei groesserem
+    Mond (fields_max); Rueckschlag-Risiko: Todessterne koennen beim Versuch selbst draufgehen.
+
+    Liefert ``{destroyed, backfire, moon_name, owner_id}`` oder ``None`` (kein Mond/keine RIPs).
+    Bei destroyed=True ist der Mond inkl. Gebaeude/Schiffe/Verteidigung/Ressourcen geloescht.
+    Der Aufrufer zieht ``backfire`` von den ueberlebenden Todessternen ab.
+    """
+    if n_deathstars <= 0 or target_planet is None or getattr(target_planet, "planet_type", None) == "moon":
+        return None
+    moon = await moon_of(session, target_planet.id)
+    if moon is None:
+        return None
+    cfg = get_balance().data["moon"].get("destruction", {})
+    if not cfg.get("enabled", True):
+        return None
+    chance = moon_destroy_chance(n_deathstars, int(moon.fields_max), cfg)
+    bf_chance = float(cfg.get("backfire_chance_per_deathstar", 0.04))
+    backfire = sum(1 for _ in range(n_deathstars) if rng.random() < bf_chance)
+    backfire = min(backfire, int(cfg.get("backfire_cap_per_attempt", n_deathstars)), n_deathstars)
+    destroyed = rng.random() < chance
+    result = {"destroyed": destroyed, "backfire": backfire, "moon_name": moon.name, "owner_id": moon.player_id}
+    if destroyed:
+        for M in (Building, Ship, Defense, Resource):
+            await session.execute(delete(M).where(M.planet_id == moon.id))
+        await session.delete(moon)
+        log.info("Mond zerstoert: %s @ %d:%d:%d (RIPs=%d, Rueckschlag=%d)",
+                 moon.name, moon.galaxy, moon.system, moon.position, n_deathstars, backfire)
+    return result

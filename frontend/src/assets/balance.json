@@ -58,7 +58,16 @@
     "shield_dome_tech_per_level": 2,
     "jump_gate_cooldown_seconds": 3600,
     "jump_cost_base_deuterium": 5,
-    "jump_cost_class_mult": { "fighter": 1, "civil": 1, "cruiser": 2, "capital": 4 }
+    "jump_cost_class_mult": { "fighter": 1, "civil": 1, "cruiser": 2, "capital": 4 },
+    "destruction": {
+      "_note": "03d — Todesstern-Mondzerstoerung nach gewonnenem Angriff: chance = min(cap, n_todessterne * chance_per_deathstar * size_ref/mond_felder). Rueckschlag: je Todesstern Wurf auf Selbstzerstoerung, gedeckelt.",
+      "enabled": true,
+      "chance_per_deathstar": 0.15,
+      "chance_cap": 0.90,
+      "size_ref_fields": 10,
+      "backfire_chance_per_deathstar": 0.04,
+      "backfire_cap_per_attempt": 3
+    }
   },
 
   "storage": {
@@ -288,9 +297,12 @@
       "drive_repair_per_projector": 80
     },
     "carrier": {
-      "_note": "Option A (2026-06-10): Traeger laden beim Angriffs-Flottenstart automatisch ECHTE Drohnen aus der Garnison nach, bis zu drone_capacity je Traeger (send_fleet). Diese kaempfen als normale Schiffe mit echten Verlusten. Keine ephemeren Drohnen mehr.",
+      "_note": "Option A: Traeger laden beim Angriffs-Flottenstart automatisch ECHTE Drohnen aus der Garnison nach (send_fleet), bis zur Kapazitaet je Traeger-Typ (capacity_by_type). Drohnen kaempfen als normale Schiffe. Todesstern (03d): Drohnentraeger mit 50 Basis, per computer_tech bis deathstar_capacity_max (100) erhoehbar.",
       "drone_type": "drone",
-      "drone_capacity": 8
+      "drone_capacity": 8,
+      "capacity_by_type": { "carrier": 8, "deathstar": 50 },
+      "deathstar_capacity_per_computer_level": 5,
+      "deathstar_capacity_max": 100
     },
     "ambush": {
       "_note": "Doku 03b §9: hat der Angreifer Tarnkappen-Schiffe (combat_roster.stealth=true), eroeffnet er mit einer Ueberraschungsrunde aus dem Nahbereich -- nur der Angreifer feuert. KONTER: hat der Verteidiger >= detect_sensors Sensor-Schiffe (combat_roster.sensor=true), wird der Hinterhalt entdeckt und negiert.",
