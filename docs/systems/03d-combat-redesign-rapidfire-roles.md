@@ -211,11 +211,18 @@ Rapidfire (Bomber) mit erfasst, ODER ihm ~0 effektive Hülle geben, sodass er tr
 
 ## 12. Umsetzung in Phasen
 
-1. **Rapidfire raus + Matrix** — alle Schiff-vs-Schiff-`rapidfire` entfernen (nur Bomber→
-   Verteidigung bleibt); Kinetik-vs-Schild schärfen. Sim-/Test-Lauf. *Reine balance.json.*
-2. **Stats & Kosten** — Linienschiff-Profile (inkl. Zerstörer-Entscheidung) + Kosten-Pass.
-3. **Gating** — Werft-Stufen-Voraussetzungen + Freischaltungs-Verteilung.
+1. ✅ **ERLEDIGT (`b5c348b`) — Rapidfire raus + Letalitäts-Modell.** Alle Schiff-vs-Schiff-
+   `rapidfire` entfernt (nur Bomber→Verteidigung + Solarsat/Sonde-Chaff bleibt). **Befund:**
+   Rapidfire war ~5–7× tragend für die Letalität → ohne es Patt. Daher zusätzlich neu:
+   `combat.shield_regen_ratio=0.3` (Schild = abnutzbarer Puffer statt Pro-Runde-Wand),
+   `combat.damage_scale=2.0` (globaler Letalitäts-Regler, ersetzt Rapidfire-Durchsatz),
+   `max_rounds 6→8`, Kinetik-vs-Schild `0.25→0.1`. Sim: entscheidend-mit-Verlusten in 8
+   Runden, KOMBI schlägt Mono beidseitig, Entern/Standoff/Schild-Matrix intakt, 124/124 grün.
+2. **Stats & Kosten** — Zerstörer = Glaskanone bestätigt (Werte unverändert gut). OFFEN:
+   Rollenschiff-Stat-Feinschliff + Kosten an Stärke/Rolle koppeln.
+3. **Gating** — Werft-Stufen-Voraussetzungen + Freischaltungs-Verteilung. OFFEN.
 4. **Todesstern-Mechaniken** — Träger-Beladung verallgemeinern + Drohnen-Forschung +
-   Mondzerstörung (Engine). *Backend.*
+   Mondzerstörung (Engine). OFFEN.
 
 Verifikation je Phase: `pytest` (124 grün halten) + Kampf-Simulator + Live-Smoke.
+Letalitäts-Regler `damage_scale`/`shield_regen_ratio` sind die zentralen Tuning-Knöpfe.
