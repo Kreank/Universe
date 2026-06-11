@@ -218,11 +218,18 @@ Rapidfire (Bomber) mit erfasst, ODER ihm ~0 effektive Hülle geben, sodass er tr
    `combat.damage_scale=2.0` (globaler Letalitäts-Regler, ersetzt Rapidfire-Durchsatz),
    `max_rounds 6→8`, Kinetik-vs-Schild `0.25→0.1`. Sim: entscheidend-mit-Verlusten in 8
    Runden, KOMBI schlägt Mono beidseitig, Entern/Standoff/Schild-Matrix intakt, 124/124 grün.
-2. **Stats & Kosten** — Zerstörer = Glaskanone bestätigt (Werte unverändert gut). OFFEN:
-   Rollenschiff-Stat-Feinschliff + Kosten an Stärke/Rolle koppeln.
-3. **Gating** — Werft-Stufen-Voraussetzungen + Freischaltungs-Verteilung. OFFEN.
-4. **Todesstern-Mechaniken** — Träger-Beladung verallgemeinern + Drohnen-Forschung +
-   Mondzerstörung (Engine). OFFEN.
+2. ✅ **ERLEDIGT (`a2f36ce`) — Stats & Kosten.** Zerstörer = Glaskanone bestätigt. Abfangjäger
+   war krass unterpreist (4000 Kosten / 400 Energie-Angriff = Auto-Pick) → Mehrkosten über
+   Deuterium (12000, bleibt fragil da Hülle=(Metall+Kristall)/10). Restliche Kosten plausibel
+   (Rollenschiff-Stärke = Effekt, nicht Rapidfire). Finale Zahlen via Playtest tunebar.
+3. ✅ **ERLEDIGT (`a2f36ce`) — Gating/Verteilung.** Jedes Schiff hat eine Werft-Stufe als
+   Bauvoraussetzung (`requires.shipyard`, Staffel 1–12) → die 9 impulse_drive-Schiffe verteilen
+   sich über Werft 2–7. Backend prüft generisch (kein Code).
+4. ✅ **ERLEDIGT (`a5d9507`) — Todesstern.** Drohnenträger verallgemeinert (capacity_by_type:
+   carrier 8 / deathstar 50, per computer_tech bis 100). Mondzerstörung NEU (maybe_destroy_moon):
+   nach gewonnenem PvP-Angriff belagern überlebende RIPs den Ziel-Mond, Chance ~ RIPs/Mondgröße,
+   Rückschlag-Risiko, löscht den Mond. Config `moon.destruction`. ⚠ DB-Pfade pure-function +
+   Compile + Startup verifiziert; In-Game-Klick-Test offen (Test-Suite rein pure-function).
 
 Verifikation je Phase: `pytest` (124 grün halten) + Kampf-Simulator + Live-Smoke.
 Letalitäts-Regler `damage_scale`/`shield_regen_ratio` sind die zentralen Tuning-Knöpfe.
