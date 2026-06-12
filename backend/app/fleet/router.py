@@ -59,6 +59,8 @@ async def send(
         cargo = {body.offer_res: body.offer_amount}
     if body.ability_keys:
         mission_data["ability_keys"] = body.ability_keys
+    if body.mission == "expedition" and body.expedition_hours is not None:
+        mission_data["expedition_hours"] = body.expedition_hours
     try:
         fleet = await send_fleet(
             session,

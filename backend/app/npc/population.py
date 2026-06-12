@@ -140,6 +140,9 @@ async def npc_population_tick() -> None:
     max_positions = bal.positions_per_system
     radius = int(cfg.get("radius_systems", 0))
     auto_radius = int(cfg.get("auto_discover_radius", 0))
+    reserve = int(cfg.get("reserve_positions_per_system", 0))
+    # NPC-Belegungsgrenze je System: laesst immer >= reserve Positionen fuer Spieler frei.
+    npc_system_cap = max(1, max_positions - reserve)
     templates = cfg.get("templates", {})
     weights = cfg.get("profile_weights", {})
 
@@ -185,6 +188,36 @@ async def npc_population_tick() -> None:
             if not (npc.baseline or {}):
                 npc.baseline = {"fleet": dict(npc.fleet or {}), "defenses": dict(npc.defenses or {})}
 
+        # 7b) NPC-Abbau (Muellabfuhr): verwaiste FEINDLICHE NPCs entfernen, deren naechster Spieler
+        # weiter als decay.radius_systems weg ist (> Spawn-Radius -> frische/aktive NPCs nie betroffen).
+        # Handelszentren (permanente Infrastruktur) ausgenommen; Schonfrist nach Spawn (min_age_seconds).
+        decay_cfg = cfg.get("decay", {})
+        if decay_cfg.get("enabled", False) and player_systems:
+            from app.universe.service import vacate_cell
+            d_radius = int(decay_cfg.get("radius_systems", 0))
+            d_max = int(decay_cfg.get("max_removals_per_tick", 0))
+            d_min_age = float(decay_cfg.get("min_age_seconds", 0))
+            now = dt.datetime.now(dt.timezone.utc)
+            removed = 0
+            for npc in seeds:
+                if removed >= d_max:
+                    break
+                if npc.behavior_profile == "trade_center":
+                    continue
+                created = npc.created_at
+                if created is not None:
+                    if created.tzinfo is None:
+                        created = created.replace(tzinfo=dt.timezone.utc)
+                    if (now - created).total_seconds() < d_min_age:
+                        continue
+                nearest = min((abs(int(npc.system) - ps) for ps in player_systems), default=None)
+                if nearest is not None and nearest > d_radius:
+                    await vacate_cell(session, npc.galaxy, npc.system, npc.position)
+                    await session.delete(npc)
+                    removed += 1
+            if removed:
+                log.info("NPC-Decay: %d verwaiste NPC(s) entfernt (Galaxie %d)", removed, galaxy)
+
         # 4) Wie viele NPCs sind zu spawnen? (Dichte-Defizit, gedeckelt)
         to_spawn = _density_deficit(player_systems, list(npc_systems), cfg)
         candidates = _underserved_players(player_systems, list(npc_systems), cfg)
@@ -211,8 +244,9 @@ async def npc_population_tick() -> None:
                     anchor + rng.randint(-radius, radius), 1, max_systems
                 )
                 occ_set = occupied.setdefault(cand_sys, set())
+                # Reserve-Garantie: nur platzieren, wenn danach noch >= reserve Positionen frei sind.
                 pos = first_free_position(occ_set, max_positions)
-                if pos is not None:
+                if pos is not None and len(occ_set) < npc_system_cap:
                     system, position = cand_sys, pos
                     break
             if system is None:  # alle Versuche voll -> diesen Spawn ueberspringen

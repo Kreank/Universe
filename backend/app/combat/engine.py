@@ -167,6 +167,22 @@ def _defense_disabled(units: list[Unit]) -> dict[str, int]:
     return out
 
 
+def ambush_detect_chance(sensors: int, spy_tech: int, cfg: dict) -> float:
+    """Weiche Entdeckungs-Chance eines Tarnkappen-Hinterhalts (analog interception.catch_chance,
+    2026-06-12): Sensor-Schiffe (detect_per_sensor=1%/Schiff, Cap detect_ship_cap=90%) plus
+    spy_tech-Forschung (detect_per_research_level=0,5%/Stufe, die reservierten letzten 5% =
+    detect_research_cap, Stufe 1-10). Gesamt-Cap detect_cap=95% -- NIE 100%: ein Hinterhalt kann
+    immer durchrutschen. Schiffe allein kommen nur bis 90%; die letzten 5% nur ueber Forschung."""
+    per = float(cfg.get("detect_per_sensor", 0.01))
+    ship_cap = float(cfg.get("detect_ship_cap", 0.90))
+    ship_part = min(ship_cap, per * max(0, int(sensors)))
+    res_per = float(cfg.get("detect_per_research_level", 0.005))
+    res_cap = float(cfg.get("detect_research_cap", 0.05))
+    res_part = min(res_cap, res_per * max(0, int(spy_tech)))
+    cap = float(cfg.get("detect_cap", 0.95))
+    return max(0.0, min(cap, ship_part + res_part))
+
+
 def simulate_battle(
     attacker: dict[str, Any],
     defender: dict[str, Any],
@@ -215,7 +231,6 @@ def simulate_battle(
     ambush_cfg = combat.get("ambush", {})
     ambush_enabled = ambush_cfg.get("enabled", False)
     ambush_dist = order.index(ambush_cfg["distance"]) if ambush_cfg.get("distance") in order else 0
-    detect_sensors = int(ambush_cfg.get("detect_sensors", 0))
 
     # Ionen-Lahmlegung von Verteidigung (C): Verteidigung bekommt eine System-Integritaet
     # (wie ein Antriebs-Pool), die Ionen-Treffer herabsetzen; bei <= 0 feuert sie nicht mehr.
@@ -390,10 +405,17 @@ def simulate_battle(
         return survivors, losses
 
     # Hinterhalt (Tarnkappe, Doku 03b §9): hat der Angreifer Stealth-Schiffe, eroeffnet er mit
-    # einer Ueberraschungsrunde aus dem Nahbereich -- nur der Angreifer feuert. Konter: genug
-    # Sensor-Schiffe beim Verteidiger entdecken den Hinterhalt und negieren ihn.
-    _detected = detect_sensors > 0 and sum(1 for u in def_units if u.sensor) >= detect_sensors
-    if ambush_enabled and not _detected and atk_units and def_units and any(u.stealth for u in atk_units):
+    # einer Ueberraschungsrunde aus dem Nahbereich -- nur der Angreifer feuert. Konter (weiches
+    # Modell): Sensor-Schiffe + spy_tech-Forschung beim Verteidiger entdecken den Hinterhalt mit
+    # einer Chance (nie 100%) und negieren ihn. Der Wurf faellt NUR, wenn ueberhaupt ein
+    # Tarnkappen-Hinterhalt droht -> kein Stoeren des RNG-Stroms normaler Schlachten.
+    _has_stealth = bool(atk_units) and any(u.stealth for u in atk_units)
+    _detected = False
+    if ambush_enabled and _has_stealth and def_units:
+        _sensors = sum(1 for u in def_units if u.sensor)
+        _spy = int(defender.get("tech", {}).get("spy_tech", 0))
+        _detected = rng.random() < ambush_detect_chance(_sensors, _spy, ambush_cfg)
+    if ambush_enabled and not _detected and _has_stealth and def_units:
         for u in atk_units:
             u.shield = u.shield_max
         for u in def_units:

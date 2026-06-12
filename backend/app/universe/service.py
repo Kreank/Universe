@@ -53,3 +53,18 @@ async def occupy_cell(
         session.add(cell)
     cell.occupant_type = occupant_type
     cell.ref_id = ref_id
+
+
+async def vacate_cell(session: AsyncSession, galaxy: int, system: int, position: int) -> None:
+    """Gibt eine Zelle frei (occupant_type 'empty', ref_id None) — fuer NPC-Decay/Abbau,
+    damit die Position wieder fuer Spieler/Spawns verfuegbar ist (kein dangling ref)."""
+    cell = (await session.execute(
+        select(UniverseCell).where(
+            UniverseCell.galaxy == galaxy,
+            UniverseCell.system == system,
+            UniverseCell.position == position,
+        )
+    )).scalar_one_or_none()
+    if cell is not None:
+        cell.occupant_type = "empty"
+        cell.ref_id = None

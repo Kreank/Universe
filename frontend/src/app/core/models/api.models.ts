@@ -283,6 +283,8 @@ export interface FleetSendRequest {
   escort_ids?: string[];
   /** Scharfzuschaltende erlernte Kommandeur-Faehigkeiten (Keys, bis arm_slots). */
   ability_keys?: string[];
+  /** Expedition (mission == 'expedition'): gewuenschte Verweildauer in Stunden (1..max). */
+  expedition_hours?: number;
 }
 
 /** Ein Eintrag im Faehigkeiten-Katalog (RPG-Entwicklung). */

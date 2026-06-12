@@ -167,4 +167,9 @@ async def galaxy_view(
             trade=trade,
             asteroid=asteroid,
         ))
+
+    # Galaktische Weiten: synthetischer Deep-Space-Slot (nur per Expedition erreichbar).
+    deep = int(bal.data.get("expedition", {}).get("deep_space_position", 0))
+    if deep:
+        cells.append(CellOut(position=deep, occupant_type="deep_space", name="Galaktische Weiten"))
     return GalaxyViewOut(cells=cells)

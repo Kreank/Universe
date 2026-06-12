@@ -107,6 +107,10 @@ interface DispatchCtx {
                   <div class="acts">
                     <button class="ic mine" type="button" (click)="openDispatch(cellCoord(c), c.name, 'mine')" title="Hier Erz abbauen (Bergbauschiff nötig)">⛏</button>
                   </div>
+                } @else if (c.occupant_type === 'deep_space') {
+                  <div class="acts">
+                    <button class="ic exp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'expedition')" title="Expedition in die galaktischen Weiten (Expeditionsschiff + Astrophysik nötig)">🌌</button>
+                  </div>
                 } @else if (c.occupant_type === 'empty') {
                   <div class="acts">
                     <button class="ic col" type="button" (click)="openDispatch(cellCoord(c), null, 'colonize')" title="Hier kolonisieren (Kolonieschiff nötig)">🌱</button>
@@ -415,6 +419,8 @@ export class GalaxyComponent {
         return base + 'debris_field.png';
       case 'asteroid_field':
         return base + 'debris_field.png';
+      case 'deep_space':
+        return base + 'deep_space.png';
       default:
         return null;
     }
@@ -442,6 +448,8 @@ export class GalaxyComponent {
         return '💥 Trümmerfeld';
       case 'asteroid_field':
         return '☄️ Asteroidenfeld';
+      case 'deep_space':
+        return '🌌 Galaktische Weiten';
       default:
         return c.occupant_type;
     }

@@ -67,6 +67,7 @@ export const galaxyStyles = `
   .ic.trp:hover { border-color: var(--ok); color: var(--ok); }
   .ic.mine:hover { border-color: var(--warn, #d9a441); color: var(--warn, #d9a441); }
   .ic.col:hover { border-color: var(--ok); color: var(--ok); }
+  .ic.exp:hover { border-color: var(--accent); color: var(--accent); }
 
   .chip { color: var(--text-dim); font-size: 0.7rem; border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap; }
   .chip.disc { color: var(--accent); border-color: var(--accent-dim); cursor: help; }

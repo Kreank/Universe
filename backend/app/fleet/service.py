@@ -57,18 +57,58 @@ def flight_seconds(distance: int, slowest_speed: float, speed_pct: int) -> float
     return raw / fleet_speed
 
 
-def fuel_cost(ships: dict[str, int], distance: int) -> int:
-    """Sprit (Deuterium): Summe(Schiff-Sprit) * Distanz / speed_factor * fuel_per_distance_unit."""
+def fuel_cost(ships: dict[str, int], distance: int, round_trip: bool = False) -> int:
+    """Sprit (Deuterium): Summe(Schiff-Sprit) * Distanz / speed_factor * fuel_per_distance_unit.
+    ``round_trip`` verdoppelt (Hin + Rueck) — fuer Missionen, die zurueckkehren."""
     bal = get_balance()
     catalog = bal.ships
     factor = bal.fleet["fuel_per_distance_unit"]
     speed_factor = bal.fleet["speed_factor"]
+    legs = 2 if round_trip else 1
     total = 0.0
     for typ, count in ships.items():
         cfg = catalog.get(typ)
         if cfg:
             total += cfg.get("fuel", 0) * count
-    return max(1, int(math.ceil(total * distance / speed_factor * factor)))
+    return max(1, int(math.ceil(total * distance / speed_factor * factor * legs)))
+
+
+def ship_range(typ: str, round_trip: bool = True) -> float:
+    """Maximale EINFACHE Distanz, die dieser Schiffstyp mit vollem Tank schafft.
+
+    Tank (``fuel_tank``) ist ein dedizierter Sprit-Vorrat pro Schiff (getrennt von Fracht).
+    Verbrauch je Distanzeinheit = ``fuel * fuel_per_distance_unit / speed_factor``; bei
+    ``round_trip`` muss der Tank Hin + Rueck decken -> halbe Reichweite. Schiffe ohne Sprit
+    (z. B. Solarsatellit) sind ortsfest -> keine Begrenzung (inf)."""
+    bal = get_balance()
+    cfg = bal.ships.get(typ)
+    if not cfg:
+        return float("inf")
+    fuel = float(cfg.get("fuel", 0))
+    if fuel <= 0:
+        return float("inf")
+    sf = bal.fleet["speed_factor"]
+    fpu = bal.fleet["fuel_per_distance_unit"]
+    legs = 2 if round_trip else 1
+    tank = float(cfg.get("fuel_tank", 0))
+    return tank * sf / (fuel * fpu * legs)
+
+
+def fleet_max_range(ships: dict[str, int], round_trip: bool = True) -> tuple[float, str | None]:
+    """Reichweite der gesamten Flotte = das schwaechste mitfliegende Schiff bestimmt sie.
+    Liefert (max_einfache_distanz, limitierender_schiffstyp)."""
+    best: float | None = None
+    limiting: str | None = None
+    for typ, count in ships.items():
+        if count <= 0:
+            continue
+        r = ship_range(typ, round_trip)
+        if r == float("inf"):
+            continue
+        if best is None or r < best:
+            best = r
+            limiting = typ
+    return (float("inf"), None) if best is None else (best, limiting)
 
 
 # Reise-Antriebe (Forschung) -> Tempobonus. Reihenfolge = Prioritaet (hoechster Antrieb gewinnt),
@@ -289,12 +329,27 @@ async def send_fleet(
 
     # Expedition erfordert Expeditions-Schiffe in der Flotte.
     if mission == "expedition":
+        from app.fleet.expedition import clamp_hours, max_expedition_hours
         e_cfg = bal.data.get("expedition", {})
         etype = e_cfg.get("ship_type", "expedition_ship")
         if ships.get(etype, 0) < e_cfg.get("min_ships", 1):
             raise RuntimeError(
                 f"Expedition benoetigt mindestens {e_cfg.get('min_ships', 1)} {etype}"
             )
+        # Ziel MUSS der Deep-Space-Slot sein (galaktische Weiten).
+        deep = int(e_cfg.get("deep_space_position", 16))
+        if target[2] != deep:
+            raise ValueError(f"Expeditionen fliegen nur in die galaktischen Weiten (Position {deep}).")
+        # Astrophysik schaltet Expeditionen frei + bestimmt die Maximaldauer.
+        exp_research = await get_research_levels(session, player.id)
+        astro = int(exp_research.get("astrophysics", 0))
+        if max_expedition_hours(astro, e_cfg) <= 0:
+            raise RuntimeError("Astrophysik Stufe 1 nötig, um Expeditionen zu entsenden.")
+        hours = clamp_hours(int(mission_data.get("expedition_hours", 1)), astro, e_cfg)
+        mission_data = {**mission_data, "expedition_hours": hours}
+    elif target[2] == int(bal.data.get("expedition", {}).get("deep_space_position", 16)):
+        # Position 16 ist reiner Expeditions-Slot — andere Missionen haben dort kein Ziel.
+        raise ValueError("Position 16 (galaktische Weiten) ist nur per Expedition erreichbar.")
 
     # Handel erfordert einen Haendler-NPC am Ziel + einen gueltigen Auftrag.
     # Die Angebots-Ressource faehrt als Fracht mit (cargo wird vom Router gesetzt).
@@ -382,9 +437,19 @@ async def send_fleet(
             if tgt_npc and tgt_npc.behavior_profile == "trade_center":
                 raise RuntimeError("Handelszentren sind neutral und koennen nicht angegriffen werden")
 
-    # Distanz, Tempo, Sprit.
+    # Distanz, Tempo, Sprit. Deploy bleibt einfach (Schiff bleibt vor Ort); alles andere kehrt
+    # zurueck -> Sprit + Reichweite muessen Hin + Rueck decken.
     origin = (planet.galaxy, planet.system, planet.position)
     distance = compute_distance(origin, target)
+    round_trip = mission != "deploy"
+    # Reichweiten-Grenze (Treibstoff-Tank pro Schiff): das schwaechste Schiff begrenzt die Flotte.
+    max_range, limiting = fleet_max_range(ships, round_trip=round_trip)
+    if distance > max_range:
+        leg = "Hin + Rück" if round_trip else "einfach"
+        raise ValueError(
+            f"Reichweite zu kurz: Ziel-Distanz {distance}, Flotte schafft max. {int(max_range)} "
+            f"({leg}) — limitierend: {limiting}. Tank reicht nicht für die Strecke."
+        )
     research = await get_research_levels(session, player.id)
     secs = flight_seconds(distance, slowest_ship_speed(ships, research), speed_pct)
     # Commander-Tempobonus verkuerzt die Flugzeit (moral-skaliert).
@@ -398,7 +463,7 @@ async def send_fleet(
         _sb, speed_bonus = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(ships.keys()))
         if speed_bonus > 0:
             secs = int(round(secs / (1.0 + speed_bonus)))
-    fuel = fuel_cost(ships, distance)
+    fuel = fuel_cost(ships, distance, round_trip=round_trip)
 
     # Scharfgeschaltete Faehigkeiten (RPG): Eilmarsch (Flugzeit) / Sparflug (Sprit).
     if commander is not None and mission_data:
@@ -431,7 +496,11 @@ async def send_fleet(
 
     depart = _now()
     arrive = depart + dt.timedelta(seconds=secs)
-    return_at = arrive + dt.timedelta(seconds=secs)
+    # Expedition: Aufenthalt in den galaktischen Weiten vor dem Rueckflug.
+    hold_seconds = 0
+    if mission == "expedition":
+        hold_seconds = int(mission_data.get("expedition_hours", 1)) * 3600
+    return_at = arrive + dt.timedelta(seconds=hold_seconds + secs)
 
     fleet = Fleet(
         player_id=player.id,
@@ -690,6 +759,7 @@ async def fleet_arrive(fleet_id: str) -> None:
         mission = fleet.mission
 
         stationed = False
+        exp_result: dict | None = None
         if mission == "attack":
             await resolve_attack(session, fleet)
         elif mission == "spy":
@@ -701,14 +771,26 @@ async def fleet_arrive(fleet_id: str) -> None:
         elif mission == "mine":
             await resolve_mine(session, fleet)
         elif mission == "expedition":
-            await resolve_expedition(session, fleet)
+            exp_result = await resolve_expedition(session, fleet)
         elif mission == "trade":
             await resolve_trade(session, fleet)
         elif mission == "deploy":
             stationed = await resolve_deploy(session, fleet)
 
-        # Nach Ankunft kehrt die Flotte zurueck (ausser sie wurde stationiert).
-        if not stationed:
+        wiped = bool(exp_result and exp_result.get("wiped"))
+        if wiped:
+            # Totalverlust (Schwarzes Loch / vernichtende Begegnung): keine Rueckkehr.
+            # Der bereits geplante fleet_return-Job laeuft ins Leere (Guard: status == 'done').
+            fleet.status = "done"
+        elif not stationed:
+            # Expeditions-Ereignis kann die Rueckkehr verlaengern (return_at + extra_hours).
+            extra_h = int(exp_result.get("extra_hours", 0)) if exp_result else 0
+            if extra_h > 0 and fleet.return_at is not None:
+                ret = fleet.return_at
+                if ret.tzinfo is None:
+                    ret = ret.replace(tzinfo=dt.timezone.utc)
+                fleet.return_at = ret + dt.timedelta(hours=extra_h)
+                schedule_at(fleet.return_at, fleet_return, str(fleet.id), job_id=f"fleet-return:{fleet.id}")
             fleet.status = "returning"
         await session.commit()
 

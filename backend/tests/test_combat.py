@@ -5,7 +5,7 @@ import copy
 import json
 import os
 
-from app.combat.engine import simulate_battle
+from app.combat.engine import ambush_detect_chance, simulate_battle
 
 
 def _load_balance() -> dict:
@@ -247,12 +247,36 @@ def test_artillery_is_crackable_glass_cannon():
     assert r["defender_survivors"].get("destroyer", 0) < 15        # nicht mehr unverwundbar
 
 
-def test_sensor_negates_stealth_ambush():
-    """Sensor-Schiffe (Tief-Aufklaerer) beim Verteidiger entdecken den Hinterhalt -> keine Ueberraschungsrunde."""
+def test_ambush_detect_chance_soft_model():
+    """Weiches Entdeckungs-Modell (analog Abfangen): Sensor 1%/Schiff, Cap 90%; spy_tech 0,5%/Stufe
+    als reservierte letzte 5%; Gesamt-Cap 95%, nie 100%."""
+    cfg = BALANCE["combat"]["ambush"]
+    assert ambush_detect_chance(0, 0, cfg) == 0.0
+    assert round(ambush_detect_chance(50, 0, cfg), 4) == 0.50
+    assert ambush_detect_chance(200, 0, cfg) == 0.90              # Schiffe deckeln bei 90%
+    assert ambush_detect_chance(90, 0, cfg) == 0.90              # ohne Forschung nie ueber 90%
+    assert round(ambush_detect_chance(50, 10, cfg), 4) == 0.55   # Forschung addiert obendrauf
+    assert round(ambush_detect_chance(50, 20, cfg), 4) == 0.55   # Forschungs-Band-Cap (Stufe>10 nutzlos)
+    assert ambush_detect_chance(90, 10, cfg) == 0.95             # Gesamt-Cap, letzte 5% nur via Forschung
+    assert ambush_detect_chance(200, 40, cfg) == 0.95           # nie 100%
+
+
+def test_sensor_detection_is_probabilistic():
+    """Sensor-Schiffe (Tief-Aufklaerer) entdecken den Hinterhalt mit einer CHANCE statt binaer.
+    Viele Sensoren (90 -> 90%) entdecken ueber viele Seeds meist; ohne Sensoren nie."""
     pirate = {"ships": {"stealth_corvette": 30}, "tech": {}, "attack_mult": 1.0}
-    guarded = {"ships": {"cruiser": 5, "deep_scout": 2}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
-    r = simulate_battle(pirate, guarded, 5, BALANCE)
-    assert r["rounds"][0].get("ambush") is not True               # entdeckt -> kein Ambush
+    guarded = {"ships": {"cruiser": 5, "deep_scout": 90}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    detected = sum(
+        1 for s in range(100)
+        if simulate_battle(pirate, guarded, s, BALANCE)["rounds"][0].get("ambush") is not True
+    )
+    assert detected > 60                                          # ~90% erwartet, robust gegen Seed-Varianz
+    # Ohne Sensoren: NIE entdeckt -> immer Hinterhalt.
+    nosense = {"ships": {"cruiser": 5}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    assert all(
+        simulate_battle(pirate, nosense, s, BALANCE)["rounds"][0].get("ambush") is True
+        for s in range(20)
+    )
 
 
 # ---- Todesstern-Mondzerstoerung (03d): Chance-Formel ----

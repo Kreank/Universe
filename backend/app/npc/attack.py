@@ -251,7 +251,7 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
         )).scalars().all()
         def_defenses = {r.type: r.count for r in def_rows if r.count > 0}
         research = await get_research_levels(session, player.id)
-        def_tech = {k: research.get(k, 0) for k in ("weapons_tech", "shield_tech", "armor_tech")}
+        def_tech = {k: research.get(k, 0) for k in ("weapons_tech", "shield_tech", "armor_tech", "spy_tech")}
         # Mond-Unterstuetzung (Orbitalbatterie + Schildkuppel) verteidigt den Planeten mit.
         from app.planets.moon import moon_defense_support
         _extra_def, _shield_bonus = await moon_defense_support(session, planet, bal)
@@ -261,7 +261,12 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
             def_tech["shield_tech"] = def_tech.get("shield_tech", 0) + _shield_bonus
 
         seed = random.randrange(1, 2 ** 62)
-        attacker = {"ships": commit, "tech": dict(bal.npc["attack"].get("npc_tech", {})), "attack_mult": 1.0}
+        # NPC-Tier (hergeleitet, konsistent zur Verteidigung) skaliert auch die ANGRIFFS-Tech.
+        from app.npc.scaling import nearest_player_score, npc_tier, tier_tech
+        _tier_cfg = bal.npc.get("tier", {})
+        _ntier = npc_tier(npc.galaxy, npc.system, npc.position,
+                          await nearest_player_score(session, npc.galaxy, npc.system, npc.position), _tier_cfg)
+        attacker = {"ships": commit, "tech": tier_tech(bal.npc["attack"].get("npc_tech", {}), _ntier, _tier_cfg), "attack_mult": 1.0}
         defender = {"ships": def_ships, "defenses": def_defenses, "tech": def_tech, "attack_mult": 1.0}
         result = simulate_battle(attacker, defender, seed, bal.data)
 

@@ -263,7 +263,7 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
   },
   spy_tech: {
     branch: 'Aufklärung',
-    summary: 'Tiefere Spionageberichte je Stufe; schaltet Spionagesonde & Tief-Aufklärer frei.',
+    summary: 'Tiefere Spionageberichte je Stufe; schaltet Spionagesonde & Tief-Aufklärer frei. +0,5 % Hinterhalt-Entdeckung je Stufe (die letzten 5 % über dem 90-%-Sensor-Cap, bis Stufe 10).',
   },
   computer_tech: {
     branch: 'Kommando',
@@ -482,8 +482,8 @@ export const SHIP_META: Record<string, DisplayMeta> = {
     desc: 'Eine fliegende Mine. Setzt sich auf Asteroiden und reiche Felder und fördert Rohstoffe fern der Heimat — der Motor jeder Bergbau-Expansion.',
   },
   deep_scout: {
-    label: 'Tief-Aufklaerer', glyph: '🔭', blurb: 'Langstrecken-Aufklaerung.',
-    desc: 'Späht weiter, als jede Sonde reicht. Der Tief-Aufklärer kartiert ferne Systeme und Anomalien — die Augen des Imperiums an seinen Rändern.',
+    label: 'Tief-Aufklaerer', glyph: '🔭', blurb: 'Sensor-Schiff: entlarvt Tarnkappen-Hinterhalte.',
+    desc: 'Ein hochauflösendes Sensor-Array spürt getarnte Angreifer auf. Jeder Tief-Aufklärer in deiner Kampfflotte erhöht die Chance, einen Tarnkappen-Hinterhalt zu entdecken (+1 % je Schiff, bis 90 %); die letzten 5 % bis zum 95-%-Cap gibt es nur über Spionagetech. Wird der Hinterhalt entdeckt, verliert der Gegner seine Überraschungsrunde — den Erstschlag. Gegen Tarnkappen-Korvetten unverzichtbar; ganz sicher ist man aber nie. (Planeten ausspionieren ist Sache der Spionagesonde.)',
   },
   expedition_ship: {
     label: 'Expeditions-Schiff', glyph: '🧭', blurb: 'Erkundung und Langstrecke.',

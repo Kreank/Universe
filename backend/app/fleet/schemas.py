@@ -54,3 +54,5 @@ class SendFleetRequest(BaseModel):
     escort_ids: list[str] = Field(default_factory=list)
     # Scharfzuschaltende erlernte Kommandeur-Faehigkeiten (Keys; bis arm_slots).
     ability_keys: list[str] = Field(default_factory=list)
+    # Expedition (mission == 'expedition'): gewuenschte Verweildauer in Stunden (1..max, max aus Astrophysik).
+    expedition_hours: int | None = None

@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { BalanceService } from '../../core/services/balance.service';
 import { Coordinate, EscortOffer, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit, TradeIndex } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
 import { IconTileComponent } from './icon-tile.component';
@@ -43,7 +44,7 @@ import { IconTileComponent } from './icon-tile.component';
 
         <!-- Missionswahl -->
         <div class="mission-tabs">
-          @for (m of missions; track m) {
+          @for (m of missions(); track m) {
             <button
               type="button"
               class="mtab"
@@ -173,6 +174,27 @@ import { IconTileComponent } from './icon-tile.component';
           </div>
         }
 
+        @if (mission() === 'expedition') {
+          <div class="field">
+            @if (maxExpHours() > 0) {
+              <label class="tip" data-tip="Länger = mehr Ertrag, aber mehr Risiko (Piraten/Aliens/Schwarzes Loch). Forschung Astrophysik hebt das Maximum (bis 24h).">
+                🌌 Verweildauer {{ expHours() }} / {{ maxExpHours() }} h
+              </label>
+              <input type="range" min="1" [max]="maxExpHours()" step="1" [ngModel]="expHours()" (ngModelChange)="setExpHours($event)" />
+            } @else {
+              <p class="hint small">Astrophysik Stufe 1 nötig, um Expeditionen in die galaktischen Weiten zu entsenden.</p>
+            }
+          </div>
+        }
+
+        @if (rangeInfo(); as r) {
+          <div class="range-info small" [class.out]="!r.inRange">
+            <span class="tip" data-tip="Distanz zwischen Startplanet und Ziel (OGame-Distanzmodell)">📏 Distanz {{ r.distance.toLocaleString('de-DE') }}</span>
+            <span class="tip" [attr.data-tip]="'Reichweite der Flotte (Tank). Limitierendes Schiff: ' + shipLabel(r.limiting)">🛰 Reichweite {{ r.maxRangeText }}</span>
+            <span class="tip" data-tip="Treibstoff (Deuterium) vom Startplaneten">🛢️ {{ r.fuel.toLocaleString('de-DE') }} {{ r.roundTrip ? '(Hin+Rück)' : '(einfach)' }}</span>
+          </div>
+        }
+
         <div class="actions">
           <button class="btn btn-primary" type="button" [disabled]="!canSend() || sending()" (click)="send()">
             {{ sending() ? 'Sende…' : (missionMeta(mission()).glyph + ' ' + missionMeta(mission()).label + ' starten') }}
@@ -180,6 +202,10 @@ import { IconTileComponent } from './icon-tile.component';
         </div>
         @if (!hasSelection()) {
           <p class="hint small">Mindestens ein Schiff auswählen.</p>
+        } @else if (rangeInfo(); as r) {
+          @if (!r.inRange) {
+            <p class="hint small">Außer Reichweite: {{ shipLabel(r.limiting) }} schafft nur {{ r.maxRangeText }} (Hin+Rück). Kürzeres Ziel wählen, das schwächste Schiff weglassen oder per Stationierung vorschieben.</p>
+          }
         }
       </div>
     </div>
@@ -257,6 +283,8 @@ import { IconTileComponent } from './icon-tile.component';
       .actions { margin-top: 1rem; }
       .actions .btn { width: 100%; }
       .hint { color: var(--warn); margin: 0.4rem 0 0; }
+      .range-info { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; margin-top: 0.8rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); }
+      .range-info.out { border-color: var(--warn); color: var(--warn); }
     `,
   ],
 })
@@ -264,6 +292,7 @@ export class FleetDispatchComponent {
   private readonly api = inject(ApiService);
   private readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+  private readonly balanceSvc = inject(BalanceService);
 
   readonly target = input.required<Coordinate>();
   readonly targetName = input<string | null>(null);
@@ -272,8 +301,14 @@ export class FleetDispatchComponent {
   readonly close = output<void>();
   readonly sent = output<void>();
 
-  /** Auf die galaxie-relevanten Missionen beschraenkt. */
-  protected readonly missions: FleetMission[] = ['attack', 'transport', 'spy', 'deploy', 'colonize', 'mine', 'trade'];
+  /** Missionswahl: am Deep-Space-Slot (Position 16) NUR Expedition, sonst die normalen Missionen. */
+  protected readonly missions = computed<FleetMission[]>(() => {
+    const deep = this.bnum((this.balanceSvc.value as any)?.expedition?.deep_space_position);
+    if (deep && this.target().position === deep) {
+      return ['expedition'];
+    }
+    return ['attack', 'transport', 'spy', 'deploy', 'colonize', 'mine', 'trade'];
+  });
   protected readonly mission = linkedSignal<FleetMission>(() => this.initialMission());
 
   protected readonly cargoFields = [
@@ -378,6 +413,7 @@ export class FleetDispatchComponent {
     spy: { type: 'spy_probe', label: 'Spionagesonde' },
     colonize: { type: 'colony_ship', label: 'Kolonieschiff' },
     mine: { type: 'miner', label: 'Bergbauschiff' },
+    expedition: { type: 'expedition_ship', label: 'Expeditionsschiff' },
   };
 
   toggleEscort(id: string): void {
@@ -395,6 +431,11 @@ export class FleetDispatchComponent {
     this.api.getEscortOffers().subscribe((list) => this.escortOffers.set(list));
     // Faehigkeiten-Katalog (fuer Labels der Scharfschalt-Auswahl).
     this.api.getAbilityCatalog().subscribe((c) => this.abilityCatalog.set(c.catalog as Record<string, { label: string }>));
+    // Astrophysik-Stufe (begrenzt die Expeditions-Verweildauer).
+    this.api.getResearch().subscribe((r) => {
+      const astro = (r.research ?? []).find((x) => x.type === 'astrophysics');
+      this.astroLevel.set(astro?.level ?? 0);
+    });
     // Kurs-Schnappschuss/Typ des Zielhaendlers laden (Handelszentrum vs. Legacy).
     effect(() => {
       const t = this.target();
@@ -432,11 +473,99 @@ export class FleetDispatchComponent {
     if (!this.hasSelection() || !this.state.activePlanetId() || this.missionHint()) {
       return false;
     }
+    if (this.rangeInfo()?.inRange === false) {
+      return false;
+    }
+    if (this.mission() === 'expedition') {
+      return this.maxExpHours() > 0;
+    }
     if (this.mission() === 'trade') {
       return this.offerAmount() > 0 && this.offerRes() !== this.wantRes();
     }
     return true;
   });
+
+  // -- Treibstoff-Tank: Reichweite (Hin+Rück) + Spritkosten, gespiegelt aus fleet/service.py ----
+  private bnum(v: unknown, d = 0): number {
+    return typeof v === 'number' ? v : d;
+  }
+
+  /** Max. einfache Distanz eines Schiffstyps mit vollem Tank (round_trip = Hin+Rück). */
+  private shipRange(type: string, roundTrip: boolean): number {
+    const bal = this.balanceSvc.value as any;
+    const cfg = bal?.ships?.[type];
+    if (!cfg) return Infinity;
+    const fuel = this.bnum(cfg.fuel);
+    if (fuel <= 0) return Infinity; // ortsfest -> keine Begrenzung
+    const f = bal.fleet;
+    const legs = roundTrip ? 2 : 1;
+    return (this.bnum(cfg.fuel_tank) * this.bnum(f.speed_factor)) / (fuel * this.bnum(f.fuel_per_distance_unit) * legs);
+  }
+
+  /** OGame-Distanzmodell (balance.fleet.distance), gespiegelt aus compute_distance. */
+  private distanceTo(): number | null {
+    const p = this.state.activePlanet();
+    const t = this.target();
+    const bal = this.balanceSvc.value as any;
+    const d = bal?.fleet?.distance;
+    if (!p || !d) return null;
+    if (p.galaxy !== t.galaxy) return this.bnum(d.inter_galaxy_per_galaxy) * Math.abs(p.galaxy - t.galaxy);
+    if (p.system !== t.system) return this.bnum(d.same_galaxy_base) + this.bnum(d.same_galaxy_per_system) * Math.abs(p.system - t.system);
+    if (p.position !== t.position) return this.bnum(d.same_system_base) + this.bnum(d.same_system_per_position) * Math.abs(p.position - t.position);
+    return this.bnum(d.same_position);
+  }
+
+  protected readonly rangeInfo = computed<{
+    distance: number; maxRange: number; maxRangeText: string;
+    limiting: string | null; fuel: number; roundTrip: boolean; inRange: boolean;
+  } | null>(() => {
+    const entries = Object.entries(this.selection()).filter(([, n]) => n > 0);
+    const dist = this.distanceTo();
+    if (!entries.length || dist === null) return null;
+    const roundTrip = this.mission() !== 'deploy';
+    let maxRange = Infinity;
+    let limiting: string | null = null;
+    for (const [type] of entries) {
+      const r = this.shipRange(type, roundTrip);
+      if (r < maxRange) { maxRange = r; limiting = type; }
+    }
+    const bal = this.balanceSvc.value as any;
+    const f = bal?.fleet;
+    const legs = roundTrip ? 2 : 1;
+    let total = 0;
+    for (const [type, n] of entries) total += this.bnum(bal?.ships?.[type]?.fuel) * n;
+    const fuel = Math.max(1, Math.ceil((total * dist) / this.bnum(f?.speed_factor, 1) * this.bnum(f?.fuel_per_distance_unit, 1) * legs));
+    return {
+      distance: dist,
+      maxRange,
+      maxRangeText: maxRange === Infinity ? '∞' : Math.floor(maxRange).toLocaleString('de-DE'),
+      limiting,
+      fuel,
+      roundTrip,
+      inRange: dist <= maxRange,
+    };
+  });
+
+  shipLabel(type: string | null): string {
+    return type ? metaFor(SHIP_META, type).label : '';
+  }
+
+  // -- Expedition: Verweildauer (1..max, max aus Astrophysik) -------------------
+  protected readonly astroLevel = signal(0);
+  protected readonly expHours = signal(1);
+
+  /** Maximale Verweildauer = min(astrophysics * per_level, hour_cap); 0 = nicht freigeschaltet. */
+  protected readonly maxExpHours = computed(() => {
+    const dur = (this.balanceSvc.value as any)?.expedition?.duration ?? {};
+    const per = this.bnum(dur.max_hours_per_astro_level, 1);
+    const cap = this.bnum(dur.hour_cap, 24);
+    return Math.max(0, Math.min(cap, Math.floor(this.astroLevel() * per)));
+  });
+
+  setExpHours(v: number): void {
+    const mx = this.maxExpHours();
+    this.expHours.set(Math.max(1, Math.min(mx || 1, Math.floor(v || 1))));
+  }
 
   shipCount(type: string): number {
     return this.selection()[type] ?? 0;
@@ -477,6 +606,9 @@ export class FleetDispatchComponent {
       speed_pct: this.speed(),
       ability_keys: [...this.armed()],
     };
+    if (this.mission() === 'expedition') {
+      body.expedition_hours = this.expHours();
+    }
     if (this.mission() === 'trade') {
       // Angebots-Ressource faehrt als Fracht mit; der Server baut Cargo + mission_data.
       body.offer_res = this.offerRes();

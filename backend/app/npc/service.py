@@ -19,6 +19,13 @@ from app.npc.attack import maybe_launch_attack
 from app.npc.behavior import NpcContext
 from app.npc.expansion import first_free_position, should_expand
 from app.npc.profiles import build_tree
+from app.npc.scaling import (
+    nearest_score_from_rows,
+    npc_tier,
+    scale_garrison,
+    scale_resources,
+    tier_strength_mult,
+)
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
@@ -57,6 +64,10 @@ async def _try_expand(session, npc: NpcEmpire, exp_cfg: dict, max_positions: int
     Vorbedingung (should_expand) wird vom Aufrufer geprueft. Zieht Kosten ab, legt eine neue
     'defensive' NPC-Garnison an und belegt die Zelle."""
     occupied = await _occupied_positions(session, npc.galaxy, npc.system)
+    # Reserve-Garantie: Expansion blockt, wenn das System schon voll genug ist (>= reserve frei lassen).
+    reserve = int(get_balance().npc.get("population", {}).get("reserve_positions_per_system", 0))
+    if len(occupied) >= max(1, max_positions - reserve):
+        return False
     pos = first_free_position(occupied, max_positions)
     if pos is None:
         return False
@@ -103,6 +114,7 @@ async def npc_behavior_tick() -> None:
     npc_cfg = bal.npc
     income = npc_cfg["income_per_tick"]
     cap = npc_cfg["resource_cap"]
+    tier_cfg = npc_cfg.get("tier", {})
     profiles_cfg = npc_cfg["profiles"]
     fallback_profile = profiles_cfg["defensive"]
     ship_costs = bal.ships
@@ -120,6 +132,12 @@ async def npc_behavior_tick() -> None:
 
     async with session_scope() as session:
         npcs = (await session.execute(select(NpcEmpire))).scalars().all()
+        # Spieler-Score je Planet EINMAL laden -> pro NPC den naechsten Spieler bestimmen (Tier).
+        from app.platform.models import Planet, Player
+        score_rows = (await session.execute(
+            select(Planet.galaxy, Planet.system, Planet.position, Player.score)
+            .join(Player, Planet.player_id == Player.id)
+        )).all()
         # NPC-Dichte je System (inkl. im selben Tick neu gegruendeter).
         system_counts: dict[tuple[int, int], int] = {}
         for n in npcs:
@@ -127,14 +145,21 @@ async def npc_behavior_tick() -> None:
             system_counts[key] = system_counts.get(key, 0) + 1
 
         for npc in npcs:
-            # baseline beim ersten Tick als Schnappschuss der Soll-Garnison setzen.
+            # baseline beim ersten Tick als Schnappschuss der Soll-Garnison setzen (Template-Niveau, Tier 1).
             baseline = npc.baseline or {}
             if not baseline:
                 baseline = {"fleet": dict(npc.fleet or {}), "defenses": dict(npc.defenses or {})}
                 npc.baseline = baseline
 
-            # Passives Einkommen (gedeckelt) -- neues dict.
-            resources = _apply_income(npc.resources or {}, income, cap)
+            # NPC-Tier (hergeleitet): Region + naechster Spieler. Skaliert Garnison-Soll, Einkommen UND
+            # Loot-Cap gemeinsam -> NPCs wachsen mit der Spielerstaerke/Region mit (PvE-Relevanz).
+            score = nearest_score_from_rows(score_rows, npc.galaxy, npc.system, npc.position)
+            tier = npc_tier(npc.galaxy, npc.system, npc.position, score, tier_cfg)
+            mult = tier_strength_mult(tier, tier_cfg)
+            scaled_baseline = scale_garrison(baseline, mult)
+
+            # Passives Einkommen (gedeckelt) -- skaliert mit Tier (mehr Beute bei staerkeren NPCs).
+            resources = _apply_income(npc.resources or {}, scale_resources(income, mult), scale_resources(cap, mult))
 
             # Arbeitskopien fuer den Behavior-Tree.
             fleet = dict(npc.fleet or {})
@@ -145,7 +170,7 @@ async def npc_behavior_tick() -> None:
                 fleet=fleet,
                 defenses=defenses,
                 resources=resources,
-                baseline=baseline,
+                baseline=scaled_baseline,
                 balance=npc_cfg,
                 profile=profile,
                 ship_costs=ship_costs,

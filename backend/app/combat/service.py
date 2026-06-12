@@ -234,6 +234,13 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         def_ships = dict(npc.fleet or {})
         def_defenses = dict(npc.defenses or {})
         npc_resources = dict(npc.resources or {})
+        # NPC-Tier (hergeleitet) skaliert auch die VERTEIDIGUNGS-Tech (vorher 0): hoeheres Tier =
+        # bessere Waffen/Schild/Panzerung, nicht nur mehr Schiffe.
+        from app.npc.scaling import nearest_player_score, npc_tier, tier_tech
+        _tier_cfg = bal.npc.get("tier", {})
+        _ntier = npc_tier(npc.galaxy, npc.system, npc.position,
+                          await nearest_player_score(session, npc.galaxy, npc.system, npc.position), _tier_cfg)
+        def_tech = tier_tech(bal.npc.get("attack", {}).get("npc_tech", {}), _ntier, _tier_cfg)
     elif cell is not None and cell.occupant_type == "player" and cell.ref_id is not None:
         # PvP: Spieler-Planet als Verteidiger (Garnison + Verteidigung + Forschung).
         def_planet = await session.get(Planet, cell.ref_id)
