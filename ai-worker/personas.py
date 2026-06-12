@@ -334,10 +334,14 @@ def build_npc_situation_prompt(npc: Mapping[str, Any], situation: str, count: in
 def build_npc_persona_enrichment_prompt(npc: Mapping[str, Any]) -> tuple[str, str]:
     f = npc_persona_fields(npc)
     user = (
-        f"Erstelle ein Persona-Profil fuer das Sternenimperium \"{f['name']}\" ({f['profile']}).\n\n"
-        "Gib AUSSCHLIESSLICH ein JSON-Objekt mit genau diesen zwei Feldern zurueck:\n"
+        f"Entwirf ein Sternenimperium der Art: {f['profile']} (bisherige Arbeitsbezeichnung "
+        f"\"{f['name']}\").\n\n"
+        "Gib AUSSCHLIESSLICH ein JSON-Objekt mit genau diesen drei Feldern zurueck:\n"
         '{\n'
-        '  "background": "2-3 Saetze Hintergrund/Kultur des Imperiums, passend zur Faktion",\n'
+        '  "name": "ein evokativer, einzigartiger Eigenname des Imperiums (KEINE Nummer, KEINE '
+        'generische Gattung wie \'Handelsgilde\'; z.B. \'Konsortium der Eisernen Hand\', '
+        '\'Sternengilde von Veth\', \'Aschefürsten\')",\n'
+        '  "background": "2-3 Saetze Hintergrund/Kultur, passend zu Name und Faktion",\n'
         '  "voice": "1-2 Saetze, die den typischen Funkstil/Tonfall beschreiben"\n'
         "}\n"
         "Kein Text vor oder nach dem JSON. Antworte auf Deutsch."
@@ -383,7 +387,8 @@ def parse_persona_json(raw: str) -> Optional[dict[str, str]]:
     if not isinstance(data, dict):
         return None
     result: dict[str, str] = {}
-    for key in ("background", "voice"):
+    # "name" nur bei NPC-Anreicherung vorhanden (Commander-Prompt fragt ihn nicht ab) -> harmlos.
+    for key in ("name", "background", "voice"):
         value = data.get(key)
         if isinstance(value, str) and value.strip():
             result[key] = value.strip()

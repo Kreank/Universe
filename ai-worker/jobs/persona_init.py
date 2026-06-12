@@ -31,15 +31,21 @@ async def _run_npc(job: Job, db: Database, ollama: OllamaClient) -> None:
         return
     data = dict(npc)
     persona = dict(data.get("persona") or {})
-    if needs_persona_enrichment(data):
+    # Gate auf den 'named'-Marker: so werden auch Alt-NPCs (Persona ohne evokativen Namen) einmal
+    # umbenannt+neu angereichert. Name + Background + Voice entstehen zusammen (Background nutzt den Namen).
+    if not persona.get("named"):
         system, user = build_npc_persona_enrichment_prompt(data)
         raw = await ollama.generate(system, user)  # OllamaUnavailable -> requeue
         enriched = parse_persona_json(raw)
         if enriched:
-            persona = {**persona, **enriched}
+            new_name = (enriched.pop("name", "") or "").strip()
+            persona = {**persona, **enriched, "named": True}
             await db.update_npc_persona(str(data["id"]), persona)
+            if new_name:
+                await db.update_npc_name(str(data["id"]), new_name)
+                data["name"] = new_name
             data["persona"] = persona
-            log.info("NPC-Persona fuer %s angereichert (background/voice)", data.get("name"))
+            log.info("NPC angereichert: %s (name/background/voice)", data.get("name"))
         else:
             log.warning("NPC-Persona-Anreicherung fuer %s ohne gueltiges JSON — fahre fort", data.get("name"))
     total = 0

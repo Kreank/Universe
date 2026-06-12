@@ -83,6 +83,11 @@ class Database:
             "UPDATE npc_empires SET persona = $2 WHERE id = $1", npc_id, persona
         )
 
+    async def update_npc_name(self, npc_id: str, name: str) -> None:
+        await self.pool.execute(
+            "UPDATE npc_empires SET name = $2 WHERE id = $1", npc_id, name
+        )
+
     # ------------------------------------------------------------ reaction_banks
     # kind ∈ {"commander","npc"} -> waehlt die FK-Spalte (commander_id ODER npc_id).
     @staticmethod

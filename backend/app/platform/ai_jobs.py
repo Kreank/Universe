@@ -59,7 +59,9 @@ async def enqueue_nightly_batches() -> None:
     for nid, persona, profile in npcs:
         if profile == "trade_center":
             continue  # neutrale Infrastruktur funkt (noch) nicht
-        if persona:
+        # persona_init, solange noch nicht 'named' (deckt leere Persona UND Alt-NPCs ohne
+        # evokativen Namen ab -> einmalige Umbenennung); danach nur noch nightly_batch.
+        if (persona or {}).get("named"):
             await event_bus.enqueue_job({"job_type": "nightly_batch", "npc_id": str(nid)})
         else:
             await event_bus.enqueue_job({"job_type": "persona_init", "npc_id": str(nid)})
