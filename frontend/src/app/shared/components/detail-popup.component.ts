@@ -10,6 +10,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { ResourceCost } from '../../core/models/api.models';
 import { BalanceService } from '../../core/services/balance.service';
+import { GameStateService } from '../../core/services/game-state.service';
 import {
   BUILDING_META,
   DEFENSE_META,
@@ -417,6 +418,7 @@ interface RapidFireRow {
 })
 export class DetailPopupComponent {
   private readonly balance = inject(BalanceService);
+  private readonly gameState = inject(GameStateService);
 
   readonly kind = input.required<DetailKind>();
   readonly type = input.required<string>();
@@ -616,6 +618,20 @@ export class DetailPopupComponent {
       push('📦', 'Frachtraum', num('cargo'));
       push('🚀', 'Speed', num('speed'));
       push('⛽', 'Treibstoff', num('fuel'));
+    }
+    // Solarsatellit: temperaturabhaengige Energie je Einheit (am aktuell gewaehlten Planeten).
+    if (this.type() === 'solar_satellite') {
+      const cfg = e['energy_prod'] as { temp_offset?: number; divisor?: number } | undefined;
+      if (cfg) {
+        const planet = this.gameState.activePlanet();
+        const temp = planet?.temp_max ?? 0;
+        const per = Math.max(0, Math.floor((temp + (cfg.temp_offset ?? 0)) / (cfg.divisor ?? 1)));
+        rows.push({
+          glyph: '⚡',
+          label: 'Energie/Einheit',
+          value: planet ? `+${per} (bei ${temp}°C)` : `+${per}`,
+        });
+      }
     }
     return rows;
   });
