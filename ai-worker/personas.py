@@ -413,6 +413,13 @@ _NARRATORS: dict[str, tuple[str, str]] = {
         "stimmungsvoll und knapp. Sprich Deutsch, kein Meta-Text, keine Zahlentabellen.",
         "Expeditions-Log",
     ),
+    "news_anchor": (
+        "Du bist der Galaktische Nachrichtendienst, eine ueberparteiliche Funk-Agentur in einem "
+        "deutschsprachigen Sci-Fi-Weltraum-MMO. Du meldest bemerkenswerte Ereignisse im Universum "
+        "knapp, sachlich-pointiert und mit dramatischem Unterton, wie eine Schlagzeile mit kurzer "
+        "Meldung. Sprich Deutsch, kein Meta-Text, keine Zahlentabellen.",
+        "📡 Galaktische Nachrichten",
+    ),
 }
 
 

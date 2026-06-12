@@ -23,27 +23,30 @@ log = logging.getLogger("job.flavor")
 
 
 async def run(job: Job, db: Database, ollama: OllamaClient, redis: aioredis.Redis) -> None:
-    player_id = job.player_id
-    if not player_id:
-        log.warning("flavor ohne player_id — verworfen")
-        return
-
     narrator = job.context.narrator or "expedition_log"
-    system, user = build_flavor_prompt(narrator, job.context)
-    body = await ollama.generate(system, user)  # OllamaUnavailable -> Aufrufer requeued
     subject = job.context.subject or narrator_subject(narrator)
 
-    row = await db.insert_transmission(
-        player_id=player_id,
-        commander_id=None,
-        ttype="big_moment",
-        subject=subject,
-        body=body,
-    )
-    transmission = _transmission_to_dict(row)
+    # Zielspieler: Broadcast (Galaxie-News -> alle) ODER ein einzelner Spieler.
+    if job.context.broadcast:
+        targets = await db.active_player_ids()
+    elif job.player_id:
+        targets = [job.player_id]
+    else:
+        log.warning("flavor ohne player_id/broadcast — verworfen")
+        return
+    if not targets:
+        log.info("flavor (%s): keine Zielspieler", narrator)
+        return
 
-    channel = f"ws:player:{player_id}"
-    message = json.dumps({"type": "transmission", "transmission": transmission}, ensure_ascii=False)
-    receivers = await redis.publish(channel, message)
-    log.info("flavor (%s) an player=%s gesendet (transmission=%s, %d WS-Empfaenger)",
-             narrator, player_id, transmission["id"], receivers)
+    system, user = build_flavor_prompt(narrator, job.context)
+    body = await ollama.generate(system, user)  # EINMAL generieren (OllamaUnavailable -> requeue)
+
+    for pid in targets:
+        row = await db.insert_transmission(
+            player_id=pid, commander_id=None, ttype="big_moment", subject=subject, body=body,
+        )
+        transmission = _transmission_to_dict(row)
+        message = json.dumps({"type": "transmission", "transmission": transmission}, ensure_ascii=False)
+        await redis.publish(f"ws:player:{pid}", message)
+    log.info("flavor (%s) an %d Spieler gesendet%s",
+             narrator, len(targets), " [broadcast]" if job.context.broadcast else "")

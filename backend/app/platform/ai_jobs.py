@@ -23,14 +23,14 @@ async def enqueue_npc_persona_init(npc_id) -> None:
 
 
 async def enqueue_flavor(
-    player_id, *, narrator: str, situation=None, planet=None, outcome=None,
-    detail: dict | None = None, subject=None,
+    player_id=None, *, narrator: str, situation=None, planet=None, outcome=None,
+    detail: dict | None = None, subject=None, broadcast: bool = False,
 ) -> None:
-    """Erzaehlerischen Flavor-Text (Phase 2) einreihen — Live-Generierung ohne Entitaet/Bank
-    (Spionage-Berichte, Expeditions-Funde, …). Additiv: der Basis-Bericht existiert ohnehin."""
-    await event_bus.enqueue_job({
+    """Erzaehlerischen Flavor-Text einreihen — Live-Generierung ohne Entitaet/Bank.
+    Phase 2: an EINEN Spieler (Spionage/Expedition). Phase 4: ``broadcast=True`` -> einmal generieren,
+    an ALLE Spieler verteilen (Galaxie-News). Additiv: ein Basis-Bericht existiert ohnehin."""
+    job: dict = {
         "job_type": "flavor",
-        "player_id": str(player_id),
         "context": {
             "narrator": narrator,
             "situation": situation,
@@ -38,8 +38,12 @@ async def enqueue_flavor(
             "outcome": outcome,
             "detail": detail or {},
             "subject": subject,
+            "broadcast": broadcast,
         },
-    })
+    }
+    if player_id is not None:
+        job["player_id"] = str(player_id)
+    await event_bus.enqueue_job(job)
 
 
 async def enqueue_nightly_batches() -> None:

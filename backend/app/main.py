@@ -22,6 +22,7 @@ from app.fleet.router import router as fleet_router
 from app.fleet.stationing import station_fuel_tick
 from app.fleet.trade import market_regen_tick
 from app.fleet.trade_index import index_tick
+from app.messaging.news import news_tick
 from app.messaging.router import router as messaging_router
 from app.npc.population import ensure_trade_centers, npc_population_tick
 from app.npc.service import npc_behavior_tick
@@ -94,6 +95,8 @@ async def lifespan(app: FastAPI):
         await enqueue_nightly_batches()
     except Exception:  # noqa: BLE001 — Bootstrap darf den Start nie verhindern
         log.warning("AI-Bootstrap (nightly_batches) fehlgeschlagen — Scheduler holt es nach")
+    # Galaxie-Nachrichten-Ticker (Phase 4): bemerkenswerte Schlachten als Broadcast-Bulletin.
+    schedule_interval(news_tick, hours=6, job_id="galaxy-news")
     # Treibstoff-Tick: vorgeschobene Stationierungen zehren ihren Deuterium-Vorrat; leer -> heim.
     schedule_interval(
         station_fuel_tick,

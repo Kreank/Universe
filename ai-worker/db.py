@@ -88,6 +88,11 @@ class Database:
             "UPDATE npc_empires SET name = $2 WHERE id = $1", npc_id, name
         )
 
+    async def active_player_ids(self) -> list[str]:
+        """Alle Spieler-IDs (fuer Galaxie-News-Broadcast). MVP: alle Spieler."""
+        rows = await self.pool.fetch("SELECT id FROM players")
+        return [str(r["id"]) for r in rows]
+
     # ------------------------------------------------------------ reaction_banks
     # kind ∈ {"commander","npc"} -> waehlt die FK-Spalte (commander_id ODER npc_id).
     @staticmethod

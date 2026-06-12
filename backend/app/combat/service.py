@@ -563,6 +563,9 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     if def_player is not None:
         outcome_json["defender_kind"] = "player"
         outcome_json["defender_name"] = def_player.display_name
+    elif npc is not None:
+        outcome_json["defender_kind"] = "npc"
+        outcome_json["defender_name"] = npc.name
     report = CombatReport(
         attacker_id=fleet.player_id,
         defender_id=defender_player_id,

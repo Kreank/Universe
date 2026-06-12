@@ -24,6 +24,8 @@ class JobContext(BaseModel):
     narrator: Optional[str] = None
     subject: Optional[str] = None
     detail: Optional[dict[str, Any]] = None
+    # Broadcast (Phase 4, Galaxie-News): einmal generieren, an ALLE aktiven Spieler verteilen.
+    broadcast: Optional[bool] = None
 
 
 class Job(BaseModel):
