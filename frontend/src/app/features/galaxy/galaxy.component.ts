@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
+import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import {
   Coordinate,
@@ -52,11 +53,13 @@ interface DispatchCtx {
           <button class="btn btn-sm" type="button" (click)="stepSystem(-1)" aria-label="System zurueck">◀</button>
           <div class="coordbox">
             <label>Galaxie</label>
-            <input type="number" min="1" [(ngModel)]="viewG" />
+            <input type="number" min="1" [max]="maxG()" [ngModel]="viewG"
+                   (ngModelChange)="viewG = $event; clampOnInput()" />
           </div>
           <div class="coordbox">
             <label>System</label>
-            <input type="number" min="1" [(ngModel)]="viewS" />
+            <input type="number" min="1" [max]="maxS()" [ngModel]="viewS"
+                   (ngModelChange)="viewS = $event; clampOnInput()" />
           </div>
           <button class="btn btn-sm" type="button" (click)="stepSystem(1)" aria-label="System vor">▶</button>
           <button class="btn btn-primary btn-sm" type="button" (click)="scan()">Scannen</button>
@@ -219,9 +222,26 @@ export class GalaxyComponent {
   private readonly api = inject(ApiService);
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+  private readonly balance = inject(BalanceService);
 
   /** Standard-Sondenzahl der Schnell-Spionage (L2-Intel, balance.spy.level2_probes). */
   private readonly DEFAULT_PROBES = 3;
+
+  /** Universums-Grenzen aus balance.json (Fallback 8 / 200). */
+  protected maxG(): number { return this.balance.value?.universe?.galaxies ?? 8; }
+  protected maxS(): number { return this.balance.value?.universe?.systems_per_galaxy ?? 200; }
+
+  /** Haelt Galaxie/System in den gueltigen Grenzen [1..max] (vor dem Scannen). */
+  private clampView(): void {
+    this.viewG = Math.min(this.maxG(), Math.max(1, Math.round(this.viewG) || 1));
+    this.viewS = Math.min(this.maxS(), Math.max(1, Math.round(this.viewS) || 1));
+  }
+
+  /** Live beim Tippen: nur das Maximum kappen (Min/Runden erst beim Scannen, sonst stoert es das Tippen). */
+  protected clampOnInput(): void {
+    if (this.viewG > this.maxG()) { this.viewG = this.maxG(); }
+    if (this.viewS > this.maxS()) { this.viewS = this.maxS(); }
+  }
 
   viewG = 1;
   viewS = 1;
@@ -285,6 +305,7 @@ export class GalaxyComponent {
   }
 
   scan(): void {
+    this.clampView();
     this.loading.set(true);
     this.api.getGalaxy(this.viewG, this.viewS).subscribe({
       next: (res) => {
@@ -299,7 +320,7 @@ export class GalaxyComponent {
   }
 
   stepSystem(delta: number): void {
-    this.viewS = Math.max(1, this.viewS + delta);
+    this.viewS = Math.min(this.maxS(), Math.max(1, this.viewS + delta));
     this.scan();
   }
 

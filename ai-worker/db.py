@@ -68,40 +68,64 @@ class Database:
             "UPDATE commanders SET persona = $2 WHERE id = $1", commander_id, persona
         )
 
+    # --------------------------------------------------------------- npc_empires
+    async def get_npc(self, npc_id: str) -> Optional[asyncpg.Record]:
+        return await self.pool.fetchrow(
+            """
+            SELECT id, name, behavior_profile, persona, galaxy, system, position
+            FROM npc_empires WHERE id = $1
+            """,
+            npc_id,
+        )
+
+    async def update_npc_persona(self, npc_id: str, persona: dict[str, Any]) -> None:
+        await self.pool.execute(
+            "UPDATE npc_empires SET persona = $2 WHERE id = $1", npc_id, persona
+        )
+
     # ------------------------------------------------------------ reaction_banks
-    async def count_bank(self, commander_id: str, situation: str) -> int:
+    # kind ∈ {"commander","npc"} -> waehlt die FK-Spalte (commander_id ODER npc_id).
+    @staticmethod
+    def _entity_col(kind: str) -> str:
+        return "npc_id" if kind == "npc" else "commander_id"
+
+    async def count_bank(self, entity_id: str, situation: str, kind: str = "commander") -> int:
+        col = self._entity_col(kind)
         val = await self.pool.fetchval(
-            "SELECT count(*) FROM reaction_banks WHERE commander_id = $1 AND situation = $2",
-            commander_id, situation,
+            f"SELECT count(*) FROM reaction_banks WHERE {col} = $1 AND situation = $2",
+            entity_id, situation,
         )
         return int(val or 0)
 
     async def nearest_reaction_distance(
-        self, commander_id: str, situation: str, embedding: list[float]
+        self, entity_id: str, situation: str, embedding: list[float], kind: str = "commander"
     ) -> Optional[float]:
         """Cosine-Distanz zum aehnlichsten vorhandenen Bank-Eintrag (oder None)."""
+        col = self._entity_col(kind)
         val = await self.pool.fetchval(
-            """
+            f"""
             SELECT embedding <=> $3 AS dist
             FROM reaction_banks
-            WHERE commander_id = $1 AND situation = $2 AND embedding IS NOT NULL
+            WHERE {col} = $1 AND situation = $2 AND embedding IS NOT NULL
             ORDER BY embedding <=> $3
             LIMIT 1
             """,
-            commander_id, situation, embedding,
+            entity_id, situation, embedding,
         )
         return float(val) if val is not None else None
 
     async def insert_reaction(
-        self, commander_id: str, situation: str, template_text: str, embedding: list[float]
+        self, entity_id: str, situation: str, template_text: str, embedding: list[float],
+        kind: str = "commander",
     ) -> Any:
+        col = self._entity_col(kind)
         return await self.pool.fetchval(
-            """
-            INSERT INTO reaction_banks (commander_id, situation, template_text, embedding)
+            f"""
+            INSERT INTO reaction_banks ({col}, situation, template_text, embedding)
             VALUES ($1, $2, $3, $4)
             RETURNING id
             """,
-            commander_id, situation, template_text, embedding,
+            entity_id, situation, template_text, embedding,
         )
 
     # --------------------------------------------------------------- flavor_pool

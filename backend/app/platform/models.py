@@ -240,7 +240,13 @@ class ReactionBank(Base):
     # Hinweis: Spalte ``embedding`` (vector(768)) wird bewusst NICHT gemappt.
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    commander_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="CASCADE"))
+    # Genau EINES von commander_id/npc_id ist gesetzt (Persona-Quelle: Spieler-Commander ODER NPC-Imperium).
+    commander_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="CASCADE"), nullable=True
+    )
+    npc_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("npc_empires.id", ondelete="CASCADE"), nullable=True
+    )
     situation: Mapped[str] = mapped_column(Text, nullable=False)
     template_text: Mapped[str] = mapped_column(Text, nullable=False)
     used: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -324,6 +330,8 @@ class NpcEmpire(Base):
     baseline: Mapped[dict] = mapped_column(JSONB, default=dict)
     # Haendler-Markt (nur fuer behavior_profile=='merchant'): {spec, stock:{metal,crystal,deuterium}}.
     market: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # KI-Persona (background/voice) — vom ai-worker per persona_init angereichert (Funksprueche).
+    persona: Mapped[dict] = mapped_column(JSONB, default=dict)
     last_action_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_attack_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

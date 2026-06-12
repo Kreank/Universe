@@ -39,6 +39,22 @@ _SUBJECT = {
     "mutiny": "Meuterei-Warnung",
 }
 
+# NPC-Funksprueche (Phase 1): Fallback je Situation, wenn die NPC-Bank leer ist. {enemy}=Spieler, {planet}=Ort.
+_NPC_FALLBACK = {
+    "attack": "Wir kommen fuer dich, {enemy}. {planet} wird brennen.",
+    "defend_win": "Du bist gescheitert, {enemy}. Wage es nicht erneut, uns bei {planet} anzugreifen.",
+    "defend_loss": "Das wirst du bereuen, {enemy}. {planet} ist nicht das Ende — wir kehren zurueck.",
+    "spied": "Wir haben deine Sonden bei {planet} entdeckt, {enemy}. Spioniere uns nicht aus.",
+    "taunt": "Beuge dich, {enemy}, oder erfahre unseren Zorn.",
+}
+_NPC_SUBJECT = {
+    "attack": "Feindliche Funkuebertragung",
+    "defend_win": "Trotzige Funkuebertragung",
+    "defend_loss": "Funkuebertragung des Geschlagenen",
+    "spied": "Warnung eines fremden Imperiums",
+    "taunt": "Unerbetene Funkuebertragung",
+}
+
 
 def _format_loot(loot: dict | None) -> str:
     if not loot:
@@ -150,6 +166,77 @@ async def after_combat_reaction(
         "Reaktion (%s) fuer player=%s commander=%s bank=%s decisive=%s",
         situation, player_id, commander.id if commander else None, used_bank, decisive,
     )
+    return transmission
+
+
+async def npc_reaction(
+    session: AsyncSession,
+    *,
+    player_id: uuid.UUID,
+    npc,
+    situation: str,
+    context: dict,
+    big_moment: bool = False,
+) -> Transmission | None:
+    """Ein NPC-Imperium funkt den Spieler an (Phase 1). Zieht eine ungenutzte NPC-Bank-Zeile zur
+    Situation, Slot-Fill ({enemy}=Spieler, {planet}=Ort), schreibt eine Transmission + WS-Push.
+    Fallback-Template, wenn die Bank leer ist. ``big_moment=True`` enqueued zusaetzlich einen
+    frischen, kontextbezogenen LLM-Funkspruch (ai-worker)."""
+    npc_persona = bool(getattr(npc, "persona", None))
+    body_template: str | None = None
+    used_bank = False
+    bank = (await session.execute(
+        select(ReactionBank)
+        .where(
+            ReactionBank.npc_id == npc.id,
+            ReactionBank.situation == situation,
+            ReactionBank.used.is_(False),
+        )
+        .limit(1)
+    )).scalar_one_or_none()
+    if bank is not None:
+        bank.used = True
+        body_template = bank.template_text
+        used_bank = True
+    if body_template is None:
+        body_template = _NPC_FALLBACK.get(situation, _NPC_FALLBACK["taunt"])
+
+    body = _slot_fill(body_template, context)
+    subject = f"{getattr(npc, 'name', 'Fremdes Imperium')}: {_NPC_SUBJECT.get(situation, 'Funkuebertragung')}"
+    transmission = Transmission(
+        player_id=player_id,
+        commander_id=None,
+        type="reaction",
+        subject=subject,
+        body=body,
+        requires_decision=False,
+        decision_payload=None,
+        read=False,
+        created_at=dt.datetime.now(dt.timezone.utc),
+    )
+    session.add(transmission)
+    await session.flush()
+
+    await event_bus.publish_ws(player_id, {
+        "type": "transmission",
+        "transmission": transmission_to_dict(transmission),
+    })
+
+    # Frischen LLM-Funkspruch nur, wenn die Persona schon angereichert ist (sonst wenig Mehrwert).
+    if big_moment and npc_persona:
+        await event_bus.enqueue_job({
+            "job_type": "big_moment",
+            "npc_id": str(npc.id),
+            "player_id": str(player_id),
+            "context": {
+                "situation": situation,
+                "enemy": context.get("enemy"),
+                "planet": context.get("planet"),
+                "outcome": context.get("outcome"),
+            },
+        })
+
+    log.info("NPC-Reaktion (%s) npc=%s player=%s bank=%s", situation, npc.id, player_id, used_bank)
     return transmission
 
 

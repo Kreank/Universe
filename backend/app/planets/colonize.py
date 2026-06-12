@@ -65,13 +65,16 @@ async def resolve_colonize(session: AsyncSession, fleet: Fleet) -> dict | None:
     )).scalars().first()
     colony_ships = colony_ship_row.count if colony_ship_row else 0
 
-    # Astrophysik-Forschung hebt das Kolonie-Limit (+N je Stufe).
+    # Kolonie-Limit (OHNE Heimatplanet): base_colonies + Astrophysik (+N/Stufe), hart bei max_colonies.
+    # max_planets = 1 (Heimat) + Kolonien.
     from app.economy.service import get_research_levels
     research = await get_research_levels(session, fleet.player_id)
     reff = bal.data["research"].get("effects", {})
-    max_planets = int(cfg.get("max_planets", 9)) + int(reff.get("astrophysics_colonies_per_level", 0)) * int(
-        research.get("astrophysics", 0)
-    )
+    base_colonies = int(cfg.get("base_colonies", 3))
+    max_colonies = int(cfg.get("max_colonies", 20))
+    per_level = int(reff.get("astrophysics_colonies_per_level", 1))
+    colonies = min(max_colonies, base_colonies + per_level * int(research.get("astrophysics", 0)))
+    max_planets = 1 + colonies
     ok, reason = colonize_check(occupant, int(planet_count), max_planets, colony_ships)
     if not ok:
         log.info("Kolonisierung @ %d:%d:%d abgelehnt: %s", g, s, p, reason)

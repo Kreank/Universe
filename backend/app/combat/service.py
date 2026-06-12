@@ -602,6 +602,23 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         decisive=decisive,
     )
 
+    # NPC-Imperium funkt zurueck (Phase 1): Trotz bei gelungener Abwehr / Rache nach Niederlage.
+    if npc is not None:
+        from app.messaging.service import npc_reaction
+        _atk_name = attacker_player.display_name if attacker_player else "Ein Admiral"
+        await npc_reaction(
+            session,
+            player_id=fleet.player_id,
+            npc=npc,
+            situation="defend_loss" if winner == "attacker" else "defend_win",
+            context={
+                "enemy": _atk_name,
+                "planet": location,
+                "outcome": "Sieg des Admirals" if winner == "attacker" else "Abwehr gelungen",
+            },
+            big_moment=decisive,
+        )
+
     # Postfach: anklickbarer Kampfbericht (offensiv). decision_payload traegt die report_id,
     # damit das Frontend den vollen Report (Runden/Distanz/Verluste) nachladen kann.
     won = winner == "attacker"

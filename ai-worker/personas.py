@@ -249,6 +249,121 @@ def build_persona_enrichment_prompt(commander: Mapping[str, Any]) -> tuple[str, 
     return _PERSONA_ENRICH_SYSTEM, user
 
 
+# ============================================================================
+# NPC-Imperien (Phase 1): eigene Personas + Funksprueche an den Spieler.
+# Eigene Situationen (NPC -> Spieler), eigener Faktions-Flavor je behavior_profile.
+# ============================================================================
+
+NPC_SITUATIONS: dict[str, dict[str, str]] = {
+    "attack": {
+        "label": "Angriff/Kriegserklaerung",
+        "subject": "Feindliche Funkuebertragung",
+        "hint": "Dieses Imperium greift den Admiral an. Drohend, ueberlegen, hoehnisch oder fanatisch.",
+    },
+    "defend_win": {
+        "label": "Angriff abgewehrt",
+        "subject": "Trotzige Funkuebertragung",
+        "hint": "Der Admiral hat dieses Imperium angegriffen und VERLOREN. Trotz, Spott, Warnung.",
+    },
+    "defend_loss": {
+        "label": "Niederlage gegen den Spieler",
+        "subject": "Funkuebertragung des Geschlagenen",
+        "hint": "Der Admiral hat dieses Imperium besiegt/gepluendert. Hass, Rachegeluebde oder bittere Unterwerfung.",
+    },
+    "spied": {
+        "label": "Spionage entdeckt",
+        "subject": "Warnung eines fremden Imperiums",
+        "hint": "Das Imperium hat die Spionagesonden des Admirals entdeckt. Verstimmt, warnend, drohend.",
+    },
+    "taunt": {
+        "label": "Unaufgeforderte Drohung/Tribut",
+        "subject": "Unerbetene Funkuebertragung",
+        "hint": "Eine unaufgeforderte Drohung oder Tribut-Forderung an den Admiral. Selbstgewiss, einschuechternd.",
+    },
+}
+
+_NPC_PROFILE_DE: dict[str, str] = {
+    "aggressive": "ein kriegerisches Raeuber-Imperium — lebt von Beute, sucht den Kampf, verachtet Schwaeche",
+    "defensive": "ein verschanztes, misstrauisches Imperium — haelt seine Grenzen, warnt Eindringlinge",
+    "merchant": "ein Haendler-Klan — berechnend, geschaeftstuechtig, droht eher mit Embargo als mit Waffen",
+    "expansive": "ein expandierendes Siedler-Imperium — landhungrig, sieht jede Welt als sein Recht",
+    "trade_center": "ein neutrales Handelszentrum — diplomatisch, ueberparteilich",
+}
+
+
+def npc_persona_fields(npc: Mapping[str, Any]) -> dict[str, str]:
+    """Prompt-fertige Persona-Felder eines NPC-Imperiums."""
+    persona = _as_dict(npc.get("persona"))
+    profile = str(npc.get("behavior_profile") or "")
+    return {
+        "name": str(npc.get("name") or "Unbekanntes Imperium"),
+        "profile": _NPC_PROFILE_DE.get(profile, "ein fremdes Sternenimperium"),
+        "background": str(persona.get("background") or "(noch kein Hintergrund — bleibe glaubwuerdig, knapp, bedrohlich)"),
+        "voice": str(persona.get("voice") or "(kein fester Stil — passe ihn an die Faktion an)"),
+    }
+
+
+_NPC_SYSTEM = (
+    "Du bist die Stimme eines fremden Sternenimperiums in einem deutschsprachigen Sci-Fi-Weltraum-MMO. "
+    "Du funkst den gegnerischen Admiral (den Spieler) an. Bleibe IMMER in der Rolle des Imperiums, "
+    "sprich Deutsch, sei praegnant und charaktervoll. Kein Meta-Text, keine Erklaerungen."
+)
+
+
+def build_npc_system_prompt(npc: Mapping[str, Any]) -> str:
+    f = npc_persona_fields(npc)
+    return (
+        f"{_NPC_SYSTEM}\n\n"
+        f"Imperium: {f['name']} — {f['profile']}.\n"
+        f"Hintergrund: {f['background']}\n"
+        f"Funkstil: {f['voice']}"
+    )
+
+
+def build_npc_situation_prompt(npc: Mapping[str, Any], situation: str, count: int) -> str:
+    sit = NPC_SITUATIONS.get(situation, {"label": situation, "hint": ""})
+    return (
+        f"Schreibe {count} verschiedene, kurze Funksprueche (je 1-2 Saetze) des Imperiums an den Admiral.\n"
+        f"Situation: {sit['label']}. {sit.get('hint', '')}\n"
+        "Verwende woertlich die Platzhalter {enemy} (der Admiral/Spieler) und {planet} (der Ort), "
+        "wo es passt — NICHT ersetzen, exakt so stehen lassen.\n"
+        "Eine Zeile pro Funkspruch, keine Nummerierung, keine Anfuehrungszeichen, kein weiterer Text."
+    )
+
+
+def build_npc_persona_enrichment_prompt(npc: Mapping[str, Any]) -> tuple[str, str]:
+    f = npc_persona_fields(npc)
+    user = (
+        f"Erstelle ein Persona-Profil fuer das Sternenimperium \"{f['name']}\" ({f['profile']}).\n\n"
+        "Gib AUSSCHLIESSLICH ein JSON-Objekt mit genau diesen zwei Feldern zurueck:\n"
+        '{\n'
+        '  "background": "2-3 Saetze Hintergrund/Kultur des Imperiums, passend zur Faktion",\n'
+        '  "voice": "1-2 Saetze, die den typischen Funkstil/Tonfall beschreiben"\n'
+        "}\n"
+        "Kein Text vor oder nach dem JSON. Antworte auf Deutsch."
+    )
+    return _NPC_SYSTEM, user
+
+
+def build_npc_big_moment_prompt(npc: Mapping[str, Any], situation: str, ctx: JobContext) -> str:
+    sit = NPC_SITUATIONS.get(situation, {"label": situation, "hint": ""})
+    f = npc_persona_fields(npc)
+    lines = [f"Situation: {sit['label']}", sit.get("hint", ""), "", "Konkreter Kontext:"]
+    if ctx.enemy:
+        lines.append(f"- Gegner (der Admiral): {ctx.enemy}")
+    if ctx.planet:
+        lines.append(f"- Ort: {ctx.planet}")
+    if ctx.outcome:
+        lines.append(f"- Ausgang: {ctx.outcome}")
+    lines.append("")
+    lines.append(
+        f"Verfasse GENAU EINEN Funkspruch des Imperiums {f['name']} an den Admiral. "
+        "1 bis 3 Saetze, in deinem Charakter, mit den konkreten Details oben. "
+        "Keine Platzhalter, kein Meta-Text. Gib ausschliesslich den Funkspruch-Text aus."
+    )
+    return "\n".join(lines)
+
+
 _JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 

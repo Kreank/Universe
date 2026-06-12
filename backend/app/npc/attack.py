@@ -188,6 +188,20 @@ async def maybe_launch_attack(session: AsyncSession, npc: NpcEmpire, cfg: dict) 
               f"{target.position}. Voraussichtliches Eintreffen in ca. {int(secs // 60)} Minuten."),
         ttype="system",
     )
+    # NPC-Funkspruch (Phase 1): charaktervolle Kriegserklaerung begleitet die Anflug-Warnung.
+    try:
+        from app.messaging.service import npc_reaction
+        _victim = await session.get(Player, target.player_id)
+        await npc_reaction(
+            session, player_id=target.player_id, npc=npc, situation="attack",
+            context={
+                "enemy": _victim.display_name if _victim else "Admiral",
+                "planet": f"{target.galaxy}:{target.system}:{target.position}",
+            },
+            big_moment=False,
+        )
+    except Exception:  # noqa: BLE001 — Funkspruch darf den Angriff nie verhindern
+        pass
     log.info("NPC %s greift %s an -> %d:%d:%d (ETA %ds)",
              npc.name, target.player_id, target.galaxy, target.system, target.position, int(secs))
     return {

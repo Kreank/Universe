@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import random
 
 from sqlalchemy import select
 
@@ -198,6 +199,35 @@ async def npc_behavior_tick() -> None:
                 if warning is not None:
                     attacks_done += 1
                     pending_warnings.append(warning)
+
+        # Ambient-Funkspruch (Phase 1): selten droht EIN hostiles Imperium (mit Persona) einem nahen
+        # Spieler unaufgefordert. Max 1 pro Tick (stuendlich) -> nicht spammy.
+        if random.random() < 0.15:
+            from app.platform.models import Player
+            cand = [n for n in npcs if (n.persona or {}) and n.behavior_profile in ("aggressive", "expansive")]
+            prows = (await session.execute(
+                select(Player.id, Planet.galaxy, Planet.system, Planet.position)
+                .join(Planet, Planet.player_id == Player.id)
+            )).all()
+            if cand and prows:
+                taunter = random.choice(cand)
+                nearest = min(
+                    prows,
+                    key=lambda r: abs(int(r[2]) - taunter.system) + (0 if int(r[1]) == taunter.galaxy else 10000),
+                )
+                try:
+                    from app.messaging.service import npc_reaction
+                    pl = await session.get(Player, nearest[0])
+                    await npc_reaction(
+                        session, player_id=nearest[0], npc=taunter, situation="taunt",
+                        context={
+                            "enemy": pl.display_name if pl else "Admiral",
+                            "planet": f"{nearest[1]}:{nearest[2]}:{nearest[3]}",
+                        },
+                        big_moment=False,
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
         await session.commit()
 
     # WS-Warnungen erst NACH dem Commit pushen (keine Phantom-Warnung bei Rollback).

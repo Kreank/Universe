@@ -187,6 +187,13 @@ _STATEMENTS: list[str] = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_asteroid_coords ON asteroid_fields(galaxy, system, position)",
+    # -- Feature: KI-Personas/Funksprueche fuer NPC-Imperien (Phase 1) ---------
+    # reaction_banks fuer NPCs verallgemeinern: commander_id nullable + npc_id (eines von beiden).
+    "ALTER TABLE reaction_banks ALTER COLUMN commander_id DROP NOT NULL",
+    "ALTER TABLE reaction_banks ADD COLUMN IF NOT EXISTS npc_id UUID REFERENCES npc_empires(id) ON DELETE CASCADE",
+    "CREATE INDEX IF NOT EXISTS idx_reaction_npc ON reaction_banks(npc_id, situation)",
+    # NPC-Persona (background/voice), vom ai-worker per persona_init angereichert.
+    "ALTER TABLE npc_empires ADD COLUMN IF NOT EXISTS persona JSONB NOT NULL DEFAULT '{}'::jsonb",
 ]
 
 

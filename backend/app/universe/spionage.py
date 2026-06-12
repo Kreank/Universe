@@ -244,6 +244,23 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
         ttype="spy_report",
         decision_payload=intel,
     )
+
+    # NPC-Funkspruch (Phase 1): manchmal entdeckt ein feindliches Imperium die Sonden und warnt.
+    if spy_npc is not None and getattr(spy_npc, "behavior_profile", None) not in ("trade_center", "merchant"):
+        import random as _random
+        if _random.random() < 0.35:
+            try:
+                from app.messaging.service import npc_reaction
+                from app.platform.models import Player
+                _spy = await session.get(Player, fleet.player_id)
+                await npc_reaction(
+                    session, player_id=fleet.player_id, npc=spy_npc, situation="spied",
+                    context={"enemy": _spy.display_name if _spy else "Admiral", "planet": coords},
+                    big_moment=False,
+                )
+            except Exception:  # noqa: BLE001 — Funkspruch darf die Spionage nie stoeren
+                pass
+
     log.info(
         "Spionage: player=%s coords=%s level=%d probes=%d spy_tech=%d",
         fleet.player_id, coords, level, probes, spy_tech,

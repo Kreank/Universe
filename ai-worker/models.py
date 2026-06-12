@@ -27,6 +27,7 @@ class Job(BaseModel):
 
     job_type: JobType
     commander_id: Optional[str] = None
+    npc_id: Optional[str] = None
     player_id: Optional[str] = None
     context: JobContext = Field(default_factory=JobContext)
     enqueued_at: Optional[str] = None

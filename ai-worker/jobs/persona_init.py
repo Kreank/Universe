@@ -13,7 +13,9 @@ from generation import fill_reaction_bank
 from models import Job
 from ollama_client import OllamaClient
 from personas import (
+    NPC_SITUATIONS,
     SITUATIONS,
+    build_npc_persona_enrichment_prompt,
     build_persona_enrichment_prompt,
     needs_persona_enrichment,
     parse_persona_json,
@@ -22,7 +24,36 @@ from personas import (
 log = logging.getLogger("job.persona_init")
 
 
+async def _run_npc(job: Job, db: Database, ollama: OllamaClient) -> None:
+    npc = await db.get_npc(job.npc_id)
+    if npc is None:
+        log.warning("persona_init: NPC %s nicht gefunden — verworfen", job.npc_id)
+        return
+    data = dict(npc)
+    persona = dict(data.get("persona") or {})
+    if needs_persona_enrichment(data):
+        system, user = build_npc_persona_enrichment_prompt(data)
+        raw = await ollama.generate(system, user)  # OllamaUnavailable -> requeue
+        enriched = parse_persona_json(raw)
+        if enriched:
+            persona = {**persona, **enriched}
+            await db.update_npc_persona(str(data["id"]), persona)
+            data["persona"] = persona
+            log.info("NPC-Persona fuer %s angereichert (background/voice)", data.get("name"))
+        else:
+            log.warning("NPC-Persona-Anreicherung fuer %s ohne gueltiges JSON — fahre fort", data.get("name"))
+    total = 0
+    for situation in NPC_SITUATIONS:
+        total += await fill_reaction_bank(
+            db, ollama, data, situation, settings.persona_init_bank_count, kind="npc"
+        )
+    log.info("persona_init(npc) fuer %s abgeschlossen: %d Varianten", data.get("name"), total)
+
+
 async def run(job: Job, db: Database, ollama: OllamaClient) -> None:
+    if job.npc_id:
+        await _run_npc(job, db, ollama)
+        return
     if not job.commander_id:
         log.warning("persona_init ohne commander_id — verworfen")
         return

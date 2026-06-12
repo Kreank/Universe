@@ -13,12 +13,25 @@ from db import Database
 from generation import fill_reaction_bank
 from models import Job
 from ollama_client import OllamaClient
-from personas import SITUATIONS
+from personas import NPC_SITUATIONS, SITUATIONS
 
 log = logging.getLogger("job.nightly_batch")
 
 
 async def run(job: Job, db: Database, ollama: OllamaClient) -> None:
+    if job.npc_id:
+        npc = await db.get_npc(job.npc_id)
+        if npc is None:
+            log.warning("nightly_batch: NPC %s nicht gefunden — verworfen", job.npc_id)
+            return
+        data = dict(npc)
+        total = 0
+        for situation in NPC_SITUATIONS:
+            total += await fill_reaction_bank(
+                db, ollama, data, situation, settings.bank_target_per_situation, kind="npc"
+            )
+        log.info("nightly_batch(npc) fuer %s: %d neue Varianten", data.get("name"), total)
+        return
     if not job.commander_id:
         log.warning("nightly_batch ohne commander_id — verworfen")
         return

@@ -18,8 +18,11 @@ from db import Database
 from models import Job
 from ollama_client import OllamaClient, OllamaUnavailable
 from personas import (
+    NPC_SITUATIONS,
     SITUATIONS,
     build_big_moment_prompt,
+    build_npc_big_moment_prompt,
+    build_npc_system_prompt,
     build_system_prompt,
 )
 
@@ -54,7 +57,51 @@ def _transmission_to_dict(row: Any) -> dict[str, Any]:
     }
 
 
+async def _run_npc(job: Job, db: Database, ollama: OllamaClient, redis: aioredis.Redis) -> None:
+    """NPC-Funkspruch an den Spieler (gleiche RAG-/Dedup-Mechanik, NPC-Persona/Situationen)."""
+    npc = await db.get_npc(job.npc_id)
+    if npc is None:
+        log.warning("big_moment: NPC %s nicht gefunden — verworfen", job.npc_id)
+        return
+    data = dict(npc)
+    player_id = job.player_id
+    if not player_id:
+        log.warning("big_moment(npc): kein player_id — verworfen")
+        return
+    situation = job.context.situation or "taunt"
+    sit = NPC_SITUATIONS.get(situation, {"label": situation, "subject": "Funkuebertragung"})
+
+    system = build_npc_system_prompt(data)
+    user = build_npc_big_moment_prompt(data, situation, job.context)
+    body: str | None = None
+    candidate = ""
+    for attempt in range(1, settings.max_generation_attempts + 1):
+        candidate = await ollama.generate(system, user)
+        embedding = await ollama.embed(candidate)
+        dist = await db.nearest_reaction_distance(str(data["id"]), situation, embedding, "npc")
+        if dist is None or dist >= settings.dedup_cosine_threshold:
+            body = candidate
+            break
+        log.info("big_moment(npc) zu aehnlich (dist=%.4f) — Versuch %d", dist, attempt)
+    if body is None:
+        body = candidate
+
+    row = await db.insert_transmission(
+        player_id=player_id, commander_id=None, ttype="big_moment",
+        subject=sit.get("subject", "Funkuebertragung"), body=body,
+    )
+    transmission = _transmission_to_dict(row)
+    channel = f"ws:player:{player_id}"
+    message = json.dumps({"type": "transmission", "transmission": transmission}, ensure_ascii=False)
+    receivers = await redis.publish(channel, message)
+    log.info("big_moment(npc) fuer %s gesendet (transmission=%s, %d WS-Empfaenger)",
+             data.get("name"), transmission["id"], receivers)
+
+
 async def run(job: Job, db: Database, ollama: OllamaClient, redis: aioredis.Redis) -> None:
+    if job.npc_id:
+        await _run_npc(job, db, ollama, redis)
+        return
     if not job.commander_id:
         log.warning("big_moment ohne commander_id — verworfen")
         return
