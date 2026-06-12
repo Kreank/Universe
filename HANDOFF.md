@@ -1,11 +1,18 @@
-# 🛰️ Handoff — Universe (Stand 2026-06-11)
+# 🛰️ Handoff — Universe (Stand 2026-06-13)
 
 > Übergabe für die nächste Session. Projekt: browserbasiertes Weltraum-Aufbau-MMO
 > *Universe* (OGame-Tradition + persistentes Universum + KI-Crews als USP).
-> Server-Pfad: `/srv/storage/projects/universe` · Branch: `master` (lokal, kein Remote).
+> Server-Pfad: `/srv/storage/projects/universe` · Branch: `master`.
 > Live: `universe.tech-artist.de` · lokal Frontend `:4200`, API `:8100→8000`.
-> ✅ **Working tree SAUBER** (Stand Ende 2026-06-11). 1 echter Account (`sascha-richter@hotmail.com`),
-> Test-Account `uitest@example.com` / `Test1234!` (frisch, keine Forschung/Monde). **0 Kampfberichte** in der DB.
+> ✅ **Working tree SAUBER** (Stand 2026-06-13, letzter Commit `e7c6f0f`). 1 echter Account
+> (`sascha-richter@hotmail.com`), Test-Account `uitest@example.com` / `Test1234!`.
+> ⚠️ Diese Session lief teils PARALLEL zu einem zweiten Agenten (Asteroidenfelder, Reise-Treibstoff/
+> Reichweite, Temperatur-Streuung, UI-Icons) — dessen Arbeit ist mit in den Commits. Alles committet & live.
+>
+> **KI-Test-Gotcha (neu):** ai-worker-Jobs lassen sich NICHT per `docker exec game-server python` enqueuen
+> (event_bus.redis ist im Exec nicht verbunden → still verworfen). Test-Jobs direkt:
+> `docker compose … exec -T redis redis-cli LPUSH ai:jobs '{"job_type":"flavor",…}'`. Der ai-worker ist
+> SEQUENZIELL auf der RTX 3070 (8 GB) → ~15 s/Job, Queue dauert. Nach Worker-Code-Änderung `build ai-worker`.
 >
 > **Verifikations-Loop (Sandbox-Eigenheiten — wichtig, s. Memory `project_universe_devloop`):**
 > - **Backend-Tests:** `docker compose -f infra/docker-compose.yml --env-file infra/.env run --rm --no-deps -v "$(pwd)/backend/tests:/app/tests" game-server python -m pytest tests/ -q` (mountet nur tests/; **Backend-Code ist ins Image gebacken → nach Code-Änderung erst `build game-server`**, sonst läuft pytest gegen alten Code).
@@ -13,6 +20,65 @@
 > - **Frontend-Compile:** `cd frontend && npx ng build --configuration development` (strikt, ~3–7 s).
 > - **Deploy:** Code-Änderung → `build game-server` + `up -d game-server` (lädt Image + gemountete balance neu); reine balance.json-Änderung → nur `up -d game-server` (restart) reicht. Frontend-balance ist gebacken → `build frontend` + `up -d frontend`. **`frontend/src/assets/balance.json` ist ein manueller Mirror von `shared/balance.json` → nach jeder balance-Änderung `cp shared/balance.json frontend/src/assets/balance.json`.**
 > - **DB-Schreibzugriff + `docker exec … psql`/Seeden sind Auto-Mode-gesperrt** → Test-Daten nur über API/Spiel. Read-only `docker exec game-server python -c "…"` (ohne rm/cp) ist erlaubt.
+
+---
+
+## 🗓️ Session 2026-06-12/13 (MARATHON) — Flug/Abfang-Überholung + NPCs lebendig + KOMPLETTE KI-Roadmap
+
+> Sehr große Session. Alles committet (`6f12f07` … `e7c6f0f`), getestet (**178/178**), deployt & live.
+> Detail-Memories: `project_universe_fleet_pvp`, `project_universe_ai` (neu). Reihenfolge unten = grob chronologisch.
+
+### ⚙️ Flugzeiten + Abfang-Redesign (`6f12f07`, `569be3b`, `3801973`)
+- **OGame-Flugzeiten:** Distanzklassen waren Platzhalter + Konstante `3500` statt `35000` → Flüge dauerten
+  SEKUNDEN. `compute_distance` jetzt echtes OGame-Modell (Position im System zählt). **Eigener Regler
+  `universe.fleet_speed` (1.0)** entkoppelt Flottentempo von `universe.speed` (=Produktion). Nachbarsystem-
+  Kolonieschiff ~20 min @Antrieb 0. Antriebsforschung wirkt (war schon da).
+- **In-Flug-Abfang neu, GETRENNTE ACHSEN:** Fangen = nur Abfangjäger (1 %/Schiff, Cap **90 %**) + Forschung
+  `hyperspace_interdiction` (0,5 %/Stufe, reservierte letzte 5 %, Cap **95 %, nie 100 %**). Interdiktor fängt
+  NICHT mehr — er pinnt nur im Kampf (`engine.disengage_phase`). → Forschung immer wirksam.
+- **Patrouille kostet 1 Flotten-Slot** (`service.py used_fleet_slots`) → harte Obergrenze gegen Omnipräsenz.
+- **Treibstoff:** Tank = mitgeführtes Deuterium (länger patrouillieren = Transporter mitladen). Vorgeschoben
+  zehrt immer (Modell C); eigenes Gebiet nur als Patrouille + langsamer; Starter-Tank für Sofort-Heim-Patrouille.
+- **„Abfangen" als eigene Mission** (`intercept`) im Flotten-Versand + Radius (Default **0**, Cap **6** via
+  Forschung); der verwirrende Intercept-Schalter im Handel-Tab ist raus (nur noch read-only Status + Rückruf).
+- **Hinterhalt-Entdeckung weich** (Tief-Aufklärer): analog Abfangen (1 %/Sensor, Cap 90 %, spy_tech die letzten
+  5 %). Tief-Aufklärer-Text korrigiert (war irreführend „Langstrecke", ist Anti-Tarnkappe).
+
+### 👾 NPCs lebendiger (`569be3b`, `a8efad4`)
+- **NPC-Tier-Skalierung** (hergeleitet, kein DB-Feld): Kombi Region (Kern-Entfernung) + nächster Spieler
+  (`Player.score`). Skaliert Garnison, Einkommen, Loot-Cap UND Tech gemeinsam → NPCs wachsen mit (waren vorher
+  trivialer Fix-Level-Loot). NPC-Verteidiger hatten vorher **Tech 0** — jetzt Basis 4 + Tier.
+- **Dichte-Sicherungen:** je System bleiben ≥ `reserve_positions_per_system` (5) Plätze FREI für Spieler
+  (Spawn + Expansion blocken); **NPC-Decay** entfernt verwaiste NPCs (nächster Spieler > 30 Sys weg) im
+  Populations-Tick (Handelszentren ausgenommen, Schonfrist 1 h).
+- **Kolonie-Limit** OGame-Stil: base 3, +1/Astrophysik-Stufe, hart bei 20 (war fix 9 inkl. Heimat).
+- **Galaxie-View:** Galaxie/System-Eingaben auf Universums-Max (8 / 200) begrenzt.
+
+### 🤖 KI-Roadmap KOMPLETT (Phase 0–5) — `a8efad4`, `7649a67`, `5d98814`, `42541dd`, `e7c6f0f`
+> Detail in Memory `project_universe_ai`. Alles über die entkoppelte ai-worker/Ollama-Pipeline (llama3.1:8b).
+- **Phase 0:** nightly_batch läuft automatisch (24h-Scheduler + Startup-Bootstrap) — vorher liefen Banken leer.
+- **Phase 1:** NPC-Personas + Diplomatie-Funksprüche (Schema verallgemeinert: `reaction_banks.npc_id`,
+  `npc_empires.persona`). 4 Trigger: NPC greift an / du greifst NPC an / Spionage entdeckt (35 %) / Ambient.
+  Fallback-Templates → greifen sofort, werden charaktervoll sobald Banken voll.
+- **Phase 2:** Spionage- & Expeditions-Flavor via neuem `flavor`-Job (Erzähler-Stimme, kein Entity/Bank, Live).
+- **Phase 3a:** evokative NPC-Namen per LLM („Aschefürsten von Khrazix" statt „Handelsgilde 8901"; `named`-Marker
+  benennt auch Alt-NPCs um). System-Lore (3b) bewusst ausgelassen (schwächster Posten).
+- **Phase 4:** Galaxie-Nachrichten-Ticker — `messaging/news.py` aggregiert größte Schlacht (6h) → Broadcast-
+  flavor-Job (Erzähler `news_anchor`, an alle Spieler).
+- **Phase 5:** Spieler-Berater — `messaging/advisor.py` fasst Imperiums-Zustand + Schwachstellen zusammen →
+  advisor-flavor-Job mit Empfehlungs-Anweisung. Frontend: „🧠 Berater fragen" im Postfach, Rat kommt via WS.
+
+### 🔭 Offen / für morgen
+- **KI optional (alle im Memory `project_universe_ai`):** Modellwechsel **`gemma2:9b`** (`! ollama pull gemma2:9b`,
+  dann `OLLAMA_MODEL` in `infra/.env` + `up -d ai-worker`) — besseres Deutsch + mehr Namens-Varianz, wertet ALLE
+  KI-Features auf einmal auf. 2 NPCs scheitern gelegentlich am Persona-JSON (llama3.1 8B) → heilen via Nacht-Tick.
+  Weiter offen: System-/Sektor-Lore (3b), adaptive „Haltung"-Schicht (LLM setzt offline NPC-Posture), echte
+  Tribut-Mechanik (Phase 1 war nur Flavor).
+- **Kampf/Abfang im echten Spiel fühlen + tunen:** die Balance-Knöpfe (damage_scale etc., fleet.speed, Abfang-Cap,
+  Hinterhalt-Cap). Reine balance.json → `cp` in frontend/assets + `up -d game-server`.
+- **In-Game-Klick-Smoke** vieler Mechaniken steht weiter aus (Test-Account ist dünn; DB-Seeding gesperrt):
+  Abfang-Mission, Treibstoff-Leerlauf→Rückkehr, NPC-Tier im Kampf, Mondzerstörung, Trümmer-Recycling.
+- Älteres weiter offen: NPC-Carrier-Tuning, Gegen-Spionage.
 
 ---
 
