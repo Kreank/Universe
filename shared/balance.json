@@ -32,7 +32,12 @@
       { "max_pos": 12, "type": "cold" },
       { "max_pos": 15, "type": "ice" }
     ],
-    "temp": { "inner": 220, "outer": -40 }
+    "temp": {
+      "_note": "Temperatur linear von inner (Pos 1, sonnennah) nach outer (Pos 15). variance = +/- Streuung um den Positions-Wert, per (galaxy:system:position) geseedet (mittenlastig, stabil) -> jeder Slot hat eine feste, leicht abweichende Temperatur (Min-Max-Spanne je Position = Zentrum +/- variance). variance 0 = deterministisch.",
+      "inner": 220,
+      "outer": -40,
+      "variance": 15
+    }
   },
 
   "buildings": {
@@ -350,9 +355,10 @@
   },
 
   "colonization": {
-    "_note": "Doku 06a: 'colonize'-Mission gruendet eine Kolonie auf einer leeren (oder reinen Truemmer-) Zelle. max_planets = Gesamtlimit inkl. Heimatplanet (Pionier-Doktrin erhoeht es spaeter). Das Kolonieschiff wird beim Gruenden verbraucht; mitgefuehrte Fracht wird zur Start-Ressource der Kolonie.",
+    "_note": "Doku 06a: 'colonize'-Mission gruendet eine Kolonie auf einer leeren (oder reinen Truemmer-) Zelle. Kolonie-Limit OHNE Heimatplanet (OGame-Stil): base_colonies + astrophysics_colonies_per_level * Astrophysik-Stufe, HART gedeckelt bei max_colonies. Gesamt-Planeten = 1 (Heimat) + Kolonien. Das Kolonieschiff wird beim Gruenden verbraucht; mitgefuehrte Fracht wird zur Start-Ressource der Kolonie.",
     "ship_type": "colony_ship",
-    "max_planets": 9,
+    "base_colonies": 3,
+    "max_colonies": 20,
     "colony_resources": { "metal": 500, "crystal": 500, "deuterium": 0 },
     "colony_buildings": {}
   },

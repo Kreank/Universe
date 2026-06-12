@@ -38,6 +38,27 @@ def _field_center(position: int) -> int:
     return int(curve[pos - 1])
 
 
+def _temp_center(position: int) -> float:
+    """Deterministischer Temperatur-Stuetzwert: linear inner (Pos 1) -> outer (Pos n)."""
+    cfg = _planets_cfg()
+    n = len(cfg["field_curve"])
+    pos = max(1, min(int(position), n))
+    inner = float(cfg["temp"]["inner"])
+    outer = float(cfg["temp"]["outer"])
+    return inner if n <= 1 else inner + (outer - inner) * (pos - 1) / (n - 1)
+
+
+def rolled_temp(galaxy: int, system: int, position: int) -> int:
+    """Temperatur eines Slots: Positions-Wert +/- variance, mittenlastig und per Koordinate
+    geseedet (eigener Salt 'temp' -> entkoppelt vom Feld-Roll). variance 0 = deterministisch."""
+    center = _temp_center(position)
+    variance = float(_planets_cfg()["temp"].get("variance", 0.0))
+    if variance <= 0.0:
+        return int(round(center))
+    rng = random.Random(f"temp:{int(galaxy)}:{int(system)}:{int(position)}")
+    return int(round(rng.triangular(center - variance, center + variance, center)))
+
+
 def rolled_fields(galaxy: int, system: int, position: int) -> int:
     """Tatsaechliche Feldanzahl eines Slots: mittenlastiger Roll um den Stuetzwert,
     geseedet per Koordinate -> stabil und pro Slot verschieden."""
@@ -58,14 +79,14 @@ def rolled_fields(galaxy: int, system: int, position: int) -> int:
 def derive_planet(galaxy: int, system: int, position: int) -> dict:
     """Leitet ``{planet_type, temp_max, fields_max}`` aus der Position ab.
 
-    Typ/Temp sind deterministisch; ``fields_max`` ist der koordinaten-geseedete Roll.
-    Position wird auf ``1..len(field_curve)`` geklemmt."""
+    Typ ist deterministisch (Positions-Band); ``temp_max`` und ``fields_max`` sind koordinaten-
+    geseedete Rolls (feste, aber je Slot variierende Werte). Position wird auf ``1..len`` geklemmt."""
     cfg = _planets_cfg()
-    curve = cfg["field_curve"]
-    n = len(curve)
+    n = len(cfg["field_curve"])
     pos = max(1, min(int(position), n))
 
     fields_max = rolled_fields(galaxy, system, position)
+    temp_max = rolled_temp(galaxy, system, position)
 
     # Typ: erstes Band, dessen max_pos die Position abdeckt.
     planet_type = "normal"
@@ -73,12 +94,6 @@ def derive_planet(galaxy: int, system: int, position: int) -> dict:
         if pos <= int(band["max_pos"]):
             planet_type = str(band["type"])
             break
-
-    # Temperatur: linear von inner (Pos 1) nach outer (Pos n).
-    inner = float(cfg["temp"]["inner"])
-    outer = float(cfg["temp"]["outer"])
-    temp = inner if n <= 1 else inner + (outer - inner) * (pos - 1) / (n - 1)
-    temp_max = int(round(temp))
 
     return {"planet_type": planet_type, "temp_max": temp_max, "fields_max": fields_max}
 

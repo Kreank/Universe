@@ -1,5 +1,5 @@
 """Tests fuer den koordinaten-geseedeten Feld-Roll (Planetengroesse / Glueck)."""
-from app.planets.derive import _field_center, derive_planet, fields_max_for, rolled_fields
+from app.planets.derive import _field_center, _temp_center, derive_planet, fields_max_for, rolled_fields, rolled_temp
 from app.platform.balance import get_balance
 
 
@@ -59,14 +59,30 @@ def test_homeworld_keeps_minimum_guarantee():
     assert fields_max_for(1, 1, 15, is_homeworld=False) < hw_min
 
 
-def test_derive_planet_keeps_type_and_temp_deterministic():
-    # Typ/Temp bleiben rein positionsbestimmt (unabhaengig von galaxy/system).
+def test_derive_planet_type_is_position_deterministic():
+    # Typ bleibt rein positionsbestimmt (unabhaengig von galaxy/system).
     a = derive_planet(1, 5, 2)
     b = derive_planet(7, 199, 2)
     assert a["planet_type"] == b["planet_type"]
-    assert a["temp_max"] == b["temp_max"]
-    # Felder duerfen sich zwischen verschiedenen Slots unterscheiden.
-    # (kein assert auf Gleichheit — Variation ist gewollt)
+    # Temp + Felder duerfen sich zwischen Slots unterscheiden (Variation gewollt).
+
+
+def test_temp_is_stable_per_slot_and_within_band():
+    cfg = _cfg()
+    variance = float(cfg["temp"]["variance"])
+    # Stabil pro Koordinate.
+    assert rolled_temp(2, 137, 8) == rolled_temp(2, 137, 8)
+    # Innerhalb Zentrum +/- variance fuer jede Position.
+    for pos in range(1, len(cfg["field_curve"]) + 1):
+        center = _temp_center(pos)
+        for s in range(1, 60):
+            t = rolled_temp(4, s, pos)
+            assert center - variance - 1 <= t <= center + variance + 1, (pos, s, t)
+
+
+def test_temp_varies_across_slots():
+    vals = {rolled_temp(1, s, 8) for s in range(1, 120)}
+    assert len(vals) > 5  # echte Streuung, nicht konstant
 
 
 def test_variance_zero_is_deterministic(monkeypatch):
