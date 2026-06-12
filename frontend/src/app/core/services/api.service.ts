@@ -274,6 +274,11 @@ export class ApiService {
     return this.http.delete<{ ok: boolean }>(`/api/transmissions/read`);
   }
 
+  /** KI-Berater anfordern (Phase 5): der Rat trifft kurz darauf als Funkspruch im Postfach ein. */
+  requestAdvisor(): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`/api/advisor`, {});
+  }
+
   // --- Combat-Report ---
   getCombatReport(id: string): Observable<CombatReport> {
     return this.http.get<CombatReport>(`/api/combat-reports/${id}`);

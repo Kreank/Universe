@@ -420,6 +420,28 @@ _NARRATORS: dict[str, tuple[str, str]] = {
         "Meldung. Sprich Deutsch, kein Meta-Text, keine Zahlentabellen.",
         "📡 Galaktische Nachrichten",
     ),
+    "advisor": (
+        "Du bist der Chef-Stratege und persoenliche Berater des Admirals in einem deutschsprachigen "
+        "Sci-Fi-Weltraum-MMO (OGame-Tradition: Minen, Forschung, Flotte, Verteidigung, Kolonien). Du "
+        "analysierst die Lage des Imperiums und gibst konkrete, umsetzbare Handlungsempfehlungen. "
+        "Sprich den Admiral direkt an, pragmatisch und klar.",
+        "🧠 Berater: Lagebericht",
+    ),
+}
+
+# Abschluss-Anweisung je Erzaehler (Default = stimmungsvoller Bericht; der Berater will Empfehlungen).
+_DEFAULT_INSTRUCTION = (
+    "Verfasse GENAU EINEN kurzen, stimmungsvollen Bericht (2 bis 4 Saetze) auf Deutsch, der diese "
+    "Fakten erzaehlerisch einbettet. Keine Aufzaehlung, keine Zahlentabelle, kein Meta-Text. "
+    "Gib ausschliesslich den Bericht-Text aus."
+)
+_NARRATOR_INSTRUCTION: dict[str, str] = {
+    "advisor": (
+        "Gib dem Admiral auf Basis dieser Fakten 2 bis 4 KONKRETE, priorisierte Handlungsempfehlungen "
+        "(Wichtigstes zuerst) — z.B. welche Mine/Forschung/Werft als naechstes, wo Verteidigung fehlt, "
+        "ob sich eine Kolonie lohnt. Kurz und klar, direkte Anrede, gern als knappe Stichpunkte. "
+        "Keine Zahlentabelle, kein Meta-Text. Nur die Empfehlungen."
+    ),
 }
 
 
@@ -440,10 +462,6 @@ def build_flavor_prompt(narrator: str, ctx: JobContext) -> tuple[str, str]:
     for key, value in (ctx.detail or {}).items():
         lines.append(f"- {key}: {value}")
     facts = "\n".join(lines) if lines else "(keine besonderen Details)"
-    user = (
-        f"Fakten:\n{facts}\n\n"
-        "Verfasse GENAU EINEN kurzen, stimmungsvollen Bericht (2 bis 4 Saetze) auf Deutsch, "
-        "der diese Fakten erzaehlerisch einbettet. Keine Aufzaehlung, keine Zahlentabelle, "
-        "kein Meta-Text. Gib ausschliesslich den Bericht-Text aus."
-    )
+    instruction = _NARRATOR_INSTRUCTION.get(narrator, _DEFAULT_INSTRUCTION)
+    user = f"Fakten:\n{facts}\n\n{instruction}"
     return system, user

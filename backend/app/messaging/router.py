@@ -22,6 +22,18 @@ from app.platform.security import get_current_player
 router = APIRouter(tags=["messaging"])
 
 
+@router.post("/advisor", status_code=202, response_model=OkResponse)
+async def request_advisor_endpoint(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> OkResponse:
+    """KI-Berater anfordern (Phase 5): fasst die Imperiums-Lage zusammen + reiht einen advisor-
+    flavor-Job ein. Der Rat trifft kurz darauf als Funkspruch im Postfach ein (WS-Push)."""
+    from app.messaging.advisor import request_advisor
+    await request_advisor(session, player)
+    return OkResponse(ok=True)
+
+
 @router.get("/transmissions", response_model=list[TransmissionOut])
 async def list_transmissions(
     unread: bool = False,

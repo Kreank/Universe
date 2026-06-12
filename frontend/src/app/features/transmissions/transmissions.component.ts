@@ -48,6 +48,10 @@ interface SpyIntelView {
     <div class="bar-row">
       <app-tab-bar [tabs]="filterTabs()" [active]="onlyUnread() ? 'unread' : 'all'"
         (select)="onlyUnread.set($event === 'unread')" />
+      <button class="btn btn-sm btn-primary" [disabled]="advisorBusy()" (click)="askAdvisor()"
+        title="Der KI-Berater analysiert dein Imperium und schickt Empfehlungen ins Postfach">
+        🧠 {{ advisorBusy() ? 'Berater denkt…' : 'Berater fragen' }}
+      </button>
       <button class="btn btn-sm btn-ghost del-read" [disabled]="!readCount()" (click)="deleteRead()">
         🗑 Gelesene löschen{{ readCount() ? ' (' + readCount() + ')' : '' }}
       </button>
@@ -200,6 +204,7 @@ export class TransmissionsComponent {
   private readonly notify = inject(NotificationService);
 
   protected readonly onlyUnread = signal(false);
+  protected readonly advisorBusy = signal(false);
   protected readonly filterTabs = computed(() => [
     { key: 'all', label: 'Alle', glyph: '📨' },
     { key: 'unread', label: 'Ungelesen', glyph: '●', count: this.state.unreadTransmissions() },
@@ -283,6 +288,24 @@ export class TransmissionsComponent {
     this.state.removeTransmission(t.id);
     this.api.deleteTransmission(t.id).subscribe({
       error: () => void this.state.reloadTransmissions(),
+    });
+  }
+
+  askAdvisor(): void {
+    if (this.advisorBusy()) {
+      return;
+    }
+    this.advisorBusy.set(true);
+    this.api.requestAdvisor().subscribe({
+      next: () => {
+        this.notify.success('Berater angefordert',
+          'Der Stratege analysiert dein Imperium — der Rat trifft gleich im Postfach ein.');
+        setTimeout(() => this.advisorBusy.set(false), 8000);
+      },
+      error: (err) => {
+        this.advisorBusy.set(false);
+        this.notify.warning('Berater nicht erreichbar', err?.error?.detail ?? 'Bitte spaeter erneut.');
+      },
     });
   }
 
