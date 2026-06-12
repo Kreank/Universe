@@ -9,7 +9,7 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-JobType = Literal["big_moment", "nightly_batch", "persona_init"]
+JobType = Literal["big_moment", "nightly_batch", "persona_init", "flavor"]
 
 
 class JobContext(BaseModel):
@@ -20,6 +20,10 @@ class JobContext(BaseModel):
     planet: Optional[str] = None
     loot: Optional[dict[str, Any]] = None
     outcome: Optional[str] = None
+    # Flavor-Jobs (Phase 2): erzaehlerischer Text ohne Entitaet/Bank (Spionage, Expedition, …).
+    narrator: Optional[str] = None
+    subject: Optional[str] = None
+    detail: Optional[dict[str, Any]] = None
 
 
 class Job(BaseModel):

@@ -1,1 +1,1 @@
-"""Job-Handler des ai-worker (persona_init, nightly_batch, big_moment)."""
+"""Job-Handler des ai-worker (persona_init, nightly_batch, big_moment, flavor)."""

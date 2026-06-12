@@ -179,6 +179,30 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
         result["lost"] = lost
         result["wiped"] = True
 
+    # Flavor (Phase 2): erzaehlerischer Expeditions-Log-Bericht via ai-worker (additiv, best effort).
+    try:
+        from app.platform.ai_jobs import enqueue_flavor
+        _otype_de = {
+            "resources": "Rohstofffund", "ships": "Schiffsfund", "pirates": "Piraten-Begegnung",
+            "aliens": "Alien-Begegnung", "delay": "Verzoegerung", "blackhole": "Schwarzes Loch",
+            "nothing": "nichts Bemerkenswertes",
+        }
+        _detail: dict = {}
+        if result.get("found"):
+            _detail["Funde"] = result["found"]
+        if result.get("found_ships"):
+            _detail["geborgene Schiffe"] = result["found_ships"]
+        if result.get("lost"):
+            _detail["Verluste"] = result["lost"]
+        if result.get("battle"):
+            _detail["Gefecht"] = "gewonnen" if result.get("won") else "verloren"
+        await enqueue_flavor(
+            fleet.player_id, narrator="expedition_log", situation="Expedition in den galaktischen Weiten",
+            planet=result["location"], outcome=_otype_de.get(otype, otype), detail=_detail,
+        )
+    except Exception:  # noqa: BLE001 — Flavor darf die Expedition nie stoeren
+        pass
+
     log.info("Expedition @ %s [%dh] -> %s", result["location"], hours, otype)
     return result
 

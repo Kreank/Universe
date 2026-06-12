@@ -261,6 +261,23 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
             except Exception:  # noqa: BLE001 — Funkspruch darf die Spionage nie stoeren
                 pass
 
+    # Flavor (Phase 2): ab Detailstufe 2 fasst der Aufklaerungs-Offizier den Bericht erzaehlerisch
+    # zusammen (additiv zum nuechternen Bericht; gedrosselt, da Spionage haeufig ist).
+    if level >= 2:
+        try:
+            from app.platform.ai_jobs import enqueue_flavor
+            _strength = ships_total + defenses_total
+            _verdict = ("stark verteidigt" if _strength > 50
+                        else "maessig verteidigt" if _strength > 10 else "schwach verteidigt")
+            await enqueue_flavor(
+                fleet.player_id, narrator="intel_officer", situation="Spionage-Aufklaerung",
+                planet=coords, outcome=_verdict,
+                detail={"Ziel": target["name"], "Flotte (Schiffe)": ships_total, "Verteidigung": defenses_total},
+                subject=f"Aufklaerung: {target['name']} ({coords})",
+            )
+        except Exception:  # noqa: BLE001 — Flavor darf die Spionage nie stoeren
+            pass
+
     log.info(
         "Spionage: player=%s coords=%s level=%d probes=%d spy_tech=%d",
         fleet.player_id, coords, level, probes, spy_tech,

@@ -388,3 +388,50 @@ def parse_persona_json(raw: str) -> Optional[dict[str, str]]:
         if isinstance(value, str) and value.strip():
             result[key] = value.strip()
     return result or None
+
+
+# ============================================================================
+# Flavor-Erzaehler (Phase 2): erzaehlerischer Text an bestehende Ereignisse,
+# OHNE Entitaet/Bank (Spionage-Berichte, Expeditions-Funde, spaeter Lore/News).
+# ============================================================================
+
+_NARRATORS: dict[str, tuple[str, str]] = {
+    "intel_officer": (
+        "Du bist der Aufklaerungs-Offizier an Bord des Flaggschiffs des Admirals in einem "
+        "deutschsprachigen Sci-Fi-Weltraum-MMO. Du fasst einen Spionagebericht knapp, nuechtern und "
+        "atmosphaerisch zusammen. Sprich Deutsch, kein Meta-Text, keine Zahlentabellen.",
+        "Aufklaerung: Lagebericht",
+    ),
+    "expedition_log": (
+        "Du bist das Bordlogbuch einer Expeditionsflotte in den galaktischen Weiten eines "
+        "deutschsprachigen Sci-Fi-Weltraum-MMO. Du schilderst, was die Crew erlebt/gefunden hat — "
+        "stimmungsvoll und knapp. Sprich Deutsch, kein Meta-Text, keine Zahlentabellen.",
+        "Expeditions-Log",
+    ),
+}
+
+
+def narrator_subject(narrator: str) -> str:
+    return _NARRATORS.get(narrator, _NARRATORS["expedition_log"])[1]
+
+
+def build_flavor_prompt(narrator: str, ctx: JobContext) -> tuple[str, str]:
+    """System-/User-Prompt fuer EINEN erzaehlerischen Flavor-Text (kein Slot, keine Bank)."""
+    system = _NARRATORS.get(narrator, _NARRATORS["expedition_log"])[0]
+    lines: list[str] = []
+    if ctx.situation:
+        lines.append(f"Anlass: {ctx.situation}")
+    if ctx.planet:
+        lines.append(f"Ort: {ctx.planet}")
+    if ctx.outcome:
+        lines.append(f"Ausgang: {ctx.outcome}")
+    for key, value in (ctx.detail or {}).items():
+        lines.append(f"- {key}: {value}")
+    facts = "\n".join(lines) if lines else "(keine besonderen Details)"
+    user = (
+        f"Fakten:\n{facts}\n\n"
+        "Verfasse GENAU EINEN kurzen, stimmungsvollen Bericht (2 bis 4 Saetze) auf Deutsch, "
+        "der diese Fakten erzaehlerisch einbettet. Keine Aufzaehlung, keine Zahlentabelle, "
+        "kein Meta-Text. Gib ausschliesslich den Bericht-Text aus."
+    )
+    return system, user

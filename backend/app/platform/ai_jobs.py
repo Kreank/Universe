@@ -22,6 +22,26 @@ async def enqueue_npc_persona_init(npc_id) -> None:
     await event_bus.enqueue_job({"job_type": "persona_init", "npc_id": str(npc_id)})
 
 
+async def enqueue_flavor(
+    player_id, *, narrator: str, situation=None, planet=None, outcome=None,
+    detail: dict | None = None, subject=None,
+) -> None:
+    """Erzaehlerischen Flavor-Text (Phase 2) einreihen — Live-Generierung ohne Entitaet/Bank
+    (Spionage-Berichte, Expeditions-Funde, …). Additiv: der Basis-Bericht existiert ohnehin."""
+    await event_bus.enqueue_job({
+        "job_type": "flavor",
+        "player_id": str(player_id),
+        "context": {
+            "narrator": narrator,
+            "situation": situation,
+            "planet": planet,
+            "outcome": outcome,
+            "detail": detail or {},
+            "subject": subject,
+        },
+    })
+
+
 async def enqueue_nightly_batches() -> None:
     """Periodischer Tick: fuellt die Reaktions-Banken automatisch auf.
     - Commander: nightly_batch.

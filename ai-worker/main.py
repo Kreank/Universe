@@ -15,7 +15,7 @@ import redis.asyncio as aioredis
 
 from config import settings
 from db import Database
-from jobs import big_moment, nightly_batch, persona_init
+from jobs import big_moment, flavor, nightly_batch, persona_init
 from logging_setup import setup_logging
 from models import Job
 from ollama_client import OllamaClient, OllamaUnavailable
@@ -86,6 +86,8 @@ class Worker:
                 await nightly_batch.run(job, self.db, self.ollama)
             elif job.job_type == "big_moment":
                 await big_moment.run(job, self.db, self.ollama, self.redis)
+            elif job.job_type == "flavor":
+                await flavor.run(job, self.db, self.ollama, self.redis)
             else:  # pragma: no cover — Literal verhindert das eigentlich.
                 log.warning("Unbekannter job_type: %s — verworfen", job.job_type)
         except OllamaUnavailable as exc:
