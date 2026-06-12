@@ -135,6 +135,26 @@ interface RapidFireRow {
           </div>
         }
 
+        @if (nextLevels(); as nl) {
+          <section class="block">
+            <div class="block-title">📈 Nächste Stufen{{ nl.note }}</div>
+            <table class="next-levels">
+              <thead>
+                <tr><th>Stufe</th><th>{{ nl.glyph }} {{ nl.outLabel }}</th><th>Zuwachs</th></tr>
+              </thead>
+              <tbody>
+                @for (r of nl.rows; track r.level) {
+                  <tr>
+                    <td class="mono">{{ r.level }}</td>
+                    <td class="mono">{{ r.value }}{{ nl.unit }}</td>
+                    <td class="mono delta">+{{ r.delta }}{{ nl.unit }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </section>
+        }
+
         @if (rapidfire().length) {
           <section class="block">
             <div class="block-title tip" data-tip="Schnellfeuer: diese Einheit darf nach einem Treffer sofort erneut auf das genannte Ziel feuern (Wahrscheinlichkeit (n−1)/n).">
@@ -348,6 +368,13 @@ interface RapidFireRow {
         font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
         color: #b9c6de; margin-bottom: 0.5rem;
       }
+      .next-levels { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+      .next-levels th {
+        text-align: left; font-weight: 600; color: #9fb0cc; padding: 0.25rem 0.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .next-levels td { padding: 0.25rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+      .next-levels td.delta { color: var(--ok, #5fd08a); }
       .rf-list, .req-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
       .rf, .req {
         display: inline-flex; align-items: center; gap: 0.3rem;
@@ -491,6 +518,82 @@ export class DetailPopupComponent {
     const lvl = this.level() ?? 0;
     const fmt = (n: number) => (unit === '%' ? `+${n}${unit}` : `${n}${unit}`);
     return { label, current: fmt(base + perLevel * lvl), next: fmt(base + perLevel * (lvl + 1)) };
+  });
+
+  /** Produktions-Vorschau der naechsten 5 Stufen (nur Produktionsgebaeude: Minen/Solar/Fusion). */
+  protected readonly nextLevels = computed<
+    { glyph: string; outLabel: string; unit: string; note: string; rows: { level: number; value: string; delta: string }[] } | null
+  >(() => {
+    if (this.kind() !== 'building') {
+      return null;
+    }
+    const e = this.entry();
+    const b = this.balance.value as any;
+    if (!e || !b) {
+      return null;
+    }
+    const n = (k: string) => (typeof e[k] === 'number' ? (e[k] as number) : null);
+    const speed = typeof b.universe?.speed === 'number' ? b.universe.speed : 1;
+
+    let base: number | null = null;
+    let growth = 1;
+    let glyph = '📦';
+    let outLabel = 'Produktion';
+    let unit = '';
+    let note = '';
+    let useSpeed = false;
+
+    if (n('prod_base') != null && n('prod_growth') != null) {
+      // Minen: prod_base * Stufe * growth^Stufe * Universums-Speed (pro Stunde).
+      base = n('prod_base');
+      growth = n('prod_growth')!;
+      useSpeed = true;
+      unit = '/h';
+      const map: Record<string, [string, string]> = {
+        metal_mine: ['⛏️', 'Metall'],
+        crystal_mine: ['💎', 'Kristall'],
+        deuterium_synth: ['🛢️', 'Deuterium'],
+      };
+      const m = map[this.type()];
+      if (m) {
+        glyph = m[0];
+        outLabel = m[1];
+      }
+      if (this.type() === 'deuterium_synth') {
+        note = ' (ohne Temperatur-Faktor)';
+      }
+    } else if (n('energy_prod_base') != null && n('energy_prod_growth') != null) {
+      // Solarkraftwerk: Energie (nicht speed-skaliert). Fusionsreaktor ausgenommen — sein
+      // Wachstum haengt an der Energietechnik, nicht an energy_prod_growth.
+      base = n('energy_prod_base');
+      growth = n('energy_prod_growth')!;
+      glyph = '⚡';
+      outLabel = 'Energie';
+    }
+    if (base == null) {
+      return null; // kein Produktionsgebaeude
+    }
+
+    const at = (lvl: number): number => {
+      if (lvl <= 0) {
+        return 0;
+      }
+      const raw = base! * lvl * Math.pow(growth, lvl);
+      return useSpeed ? raw * speed : raw;
+    };
+    const cur = this.level() ?? 0;
+    const rows = [];
+    for (let i = 1; i <= 5; i++) {
+      const lvl = cur + i;
+      const value = at(lvl);
+      const delta = value - at(lvl - 1);
+      rows.push({
+        level: lvl,
+        value: Math.round(value).toLocaleString('de-DE'),
+        delta: Math.round(delta).toLocaleString('de-DE'),
+      });
+    }
+    return { glyph, outLabel, unit, note, rows };
   });
 
   protected readonly stats = computed<StatRow[]>(() => {
