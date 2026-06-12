@@ -249,7 +249,7 @@ async def send_fleet(
     {offer_res, offer_amount, want_res}) und wird auf ``fleet.mission_data`` gesetzt."""
     bal = get_balance()
     mission_data = mission_data or {}
-    valid_missions = {"attack", "transport", "spy", "deploy", "recycle", "colonize", "mine", "expedition", "trade"}
+    valid_missions = {"attack", "transport", "spy", "deploy", "recycle", "colonize", "mine", "expedition", "trade", "intercept"}
     if mission not in valid_missions:
         raise ValueError(f"Mission muss eine von {sorted(valid_missions)} sein")
 
@@ -326,6 +326,14 @@ async def send_fleet(
             raise RuntimeError(
                 f"Mining benoetigt mindestens {m_cfg.get('min_ships', 1)} {mtype}"
             )
+
+    # Abfangen: die Flotte fliegt zum Zielsystem und wird dort zur Abfang-Patrouille.
+    # Radius (Default 0 = nur das Zielsystem) wird auf den forschungs-abhaengigen Cap geklemmt.
+    if mission == "intercept":
+        from app.fleet.stationing import intercept_radius_cap
+        cap = intercept_radius_cap(research)
+        radius = max(0, min(cap, int(mission_data.get("radius", 0) or 0)))
+        mission_data = {**mission_data, "radius": radius}
 
     # Expedition erfordert Expeditions-Schiffe in der Flotte.
     if mission == "expedition":
@@ -776,6 +784,8 @@ async def fleet_arrive(fleet_id: str) -> None:
             await resolve_trade(session, fleet)
         elif mission == "deploy":
             stationed = await resolve_deploy(session, fleet)
+        elif mission == "intercept":
+            stationed = await resolve_deploy(session, fleet, intercept=True)
 
         wiped = bool(exp_result and exp_result.get("wiped"))
         if wiped:

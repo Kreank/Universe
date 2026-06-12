@@ -112,6 +112,13 @@ import { fleetStyles } from './fleet.styles';
             }
           </div>
 
+          @if (missionSig() === 'intercept') {
+            <div class="field">
+              <label class="tip" data-tip="0 = nur das Zielsystem. Reichweite steigt mit Hyperraum-Interdiktion-Forschung (max 6).">Abfang-Radius {{ interceptRadius() }} Sys</label>
+              <input type="number" min="0" max="6" [ngModel]="interceptRadius()" (ngModelChange)="interceptRadius.set(+$event || 0)" />
+            </div>
+          }
+
           <div class="field">
             <label class="tip" data-tip="Langsamer = weniger Sprit">Tempo {{ speed() }}%</label>
             <input type="range" min="10" max="100" step="10" [ngModel]="speed()" (ngModelChange)="speed.set($event)" />
@@ -209,7 +216,7 @@ export class FleetComponent {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly missions: FleetMission[] = [
-    'attack', 'transport', 'spy', 'deploy', 'recycle', 'colonize', 'mine', 'expedition',
+    'attack', 'transport', 'spy', 'deploy', 'intercept', 'recycle', 'colonize', 'mine', 'expedition',
   ];
 
   // Pflicht-Schiff je Spezial-Mission (Backend erzwingt es; hier als Hinweis).
@@ -231,6 +238,7 @@ export class FleetComponent {
   targetP = 1;
   commanderId: string | null = null;
   protected readonly speed = signal(100);
+  protected readonly interceptRadius = signal(0);
   protected readonly sending = signal(false);
 
   protected readonly availableShips = computed<PlanetUnit[]>(
@@ -344,6 +352,7 @@ export class FleetComponent {
         cargo: { metal: 0, crystal: 0, deuterium: 0 },
         commander_id: this.commanderId,
         speed_pct: this.speed(),
+        radius: this.missionSig() === 'intercept' ? this.interceptRadius() : undefined,
       })
       .subscribe({
         next: () => {
@@ -373,7 +382,7 @@ export class FleetComponent {
       }
     }
     this.sending.set(true);
-    this.api.patrolHome(origin, { ships, radius: 1 }).subscribe({
+    this.api.patrolHome(origin, { ships, radius: 0 }).subscribe({
       next: () => {
         this.sending.set(false);
         this.selection.set({});

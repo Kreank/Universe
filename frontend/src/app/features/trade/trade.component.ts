@@ -146,17 +146,11 @@ type Res = 'metal' | 'crystal' | 'deuterium';
                   <input class="mini" type="number" min="0" max="10" step="0.5" [ngModel]="s.escort_fee_pct * 100" (ngModelChange)="updateEscort(s, { escort_fee_pct: (+$event || 0) / 100 })" />%
                 </span>
               }
-              <label class="toggle small">
-                <input type="checkbox" [ngModel]="s.intercept_enabled" (ngModelChange)="updateIntercept(s, { intercept_enabled: $event })" />
-                ⚔ Abfangen
-                @if (s.has_interdictor) { <span class="tag-ok">Interdiktor: sicherer Stopp</span> }
-                @else if (s.interceptors > 0) { <span class="muted">{{ s.interceptors }}× Abfangjäger → höhere Chance</span> }
-                @else { <span class="muted">nur Chance (Interdiktor/Abfangjäger erhöhen sie)</span> }
-              </label>
               @if (s.intercept_enabled) {
-                <span class="small">Abfang-Radius
-                  <input class="mini" type="number" min="0" max="15" [ngModel]="s.intercept_radius" (ngModelChange)="updateIntercept(s, { intercept_radius: +$event || 0 })" />
-                  Sys — fängt durchreisende Feindflotten ab (Basis-Max 5, höher per Forschung „Hyperraum-Interdiktion")
+                <span class="small tag-ok" title="Aktive Abfang-Patrouille — gestartet über die Flotten-Mission „Abfangen“. Zum Beenden zurückrufen.">
+                  📡 Abfang-Patrouille · Radius {{ s.intercept_radius }} Sys
+                  @if (s.has_interdictor) { · Interdiktor (Pin) }
+                  @else if (s.interceptors > 0) { · {{ s.interceptors }}× Abfangjäger }
                 </span>
               }
               <button class="btn btn-ghost btn-sm" type="button" (click)="recall(s)">↩ Zurückrufen</button>
@@ -311,22 +305,6 @@ export class TradeComponent implements OnInit {
           this.stationed.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));
         },
         error: (err) => this.notify.warning('Eskorte fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
-      });
-  }
-
-  updateIntercept(s: StationedFleet, patch: Partial<StationedFleet>): void {
-    const merged = { ...s, ...patch };
-    let radius = merged.intercept_radius;
-    if (merged.intercept_enabled && (!radius || radius <= 0)) {
-      radius = 1; // sinnvoller lokaler Default beim Aktivieren
-    }
-    this.api
-      .setInterceptMode(s.id, { enabled: merged.intercept_enabled, radius })
-      .subscribe({
-        next: (updated) => {
-          this.stationed.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));
-        },
-        error: (err) => this.notify.warning('Abfang-Modus fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
       });
   }
 

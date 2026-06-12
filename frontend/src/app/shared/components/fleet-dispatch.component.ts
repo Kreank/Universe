@@ -297,6 +297,8 @@ export class FleetDispatchComponent {
   readonly target = input.required<Coordinate>();
   readonly targetName = input<string | null>(null);
   readonly initialMission = input<FleetMission>('attack');
+  /** 'moon' -> Angriff/Spionage zielt auf den Mond statt den Planeten an der Koordinate. */
+  readonly targetType = input<'moon' | null>(null);
 
   readonly close = output<void>();
   readonly sent = output<void>();
@@ -608,6 +610,9 @@ export class FleetDispatchComponent {
     };
     if (this.mission() === 'expedition') {
       body.expedition_hours = this.expHours();
+    }
+    if (this.targetType() === 'moon') {
+      body.target_type = 'moon';
     }
     if (this.mission() === 'trade') {
       // Angebots-Ressource faehrt als Fracht mit; der Server baut Cargo + mission_data.

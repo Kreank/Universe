@@ -217,6 +217,7 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     def_tech = {"weapons_tech": 0, "shield_tech": 0, "armor_tech": 0}
     defender_player_id = None
     npc_resources: dict = {}
+    target_moon = (fleet.mission_data or {}).get("target_type") == "moon"
 
     if cell and cell.occupant_type == "npc" and cell.ref_id is not None:
         npc = await session.get(NpcEmpire, cell.ref_id)
@@ -242,10 +243,24 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
                           await nearest_player_score(session, npc.galaxy, npc.system, npc.position), _tier_cfg)
         def_tech = tier_tech(bal.npc.get("attack", {}).get("npc_tech", {}), _ntier, _tier_cfg)
     elif cell is not None and cell.occupant_type == "player" and cell.ref_id is not None:
-        # PvP: Spieler-Planet als Verteidiger (Garnison + Verteidigung + Forschung).
-        def_planet = await session.get(Planet, cell.ref_id)
-        if def_planet is None:
+        # PvP: Spieler-Planet ODER dessen Mond als Verteidiger (Garnison + Verteidigung + Forschung).
+        planet_here = await session.get(Planet, cell.ref_id)
+        if planet_here is None:
             return None
+        if target_moon:
+            from app.planets.moon import moon_of
+            moon = await moon_of(session, planet_here.id)
+            if moon is None:
+                await create_system_transmission(
+                    session, player_id=fleet.player_id,
+                    subject=f"Angriff abgedreht ({fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position})",
+                    body="An diesem Ziel gibt es keinen Mond. Deine Flotte dreht ab und kehrt heim.",
+                    ttype="system",
+                )
+                return None
+            def_planet = moon
+        else:
+            def_planet = planet_here
         def_player = await session.get(Player, def_planet.player_id)
         if def_player is None:
             return None
@@ -273,9 +288,14 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         def_defenses = {r.type: r.count for r in def_rows if r.count > 0}
         d_research = await get_research_levels(session, def_player.id)
         def_tech = dict(d_research)
-        # Mond-Unterstuetzung: Orbitalbatterie + Schildkuppel verteidigen den Planeten mit.
-        from app.planets.moon import moon_defense_support
-        _extra_def, _shield_bonus = await moon_defense_support(session, def_planet, bal)
+        # Mond-Gebaeude verteidigen mit: beim Mond-Angriff der Mond SELBST (Orbitalbatterie/Schildkuppel),
+        # sonst der Mond unterstuetzt seinen Planeten.
+        if target_moon:
+            from app.planets.moon import moon_building_defense
+            _extra_def, _shield_bonus = await moon_building_defense(session, def_planet, def_player.id, bal)
+        else:
+            from app.planets.moon import moon_defense_support
+            _extra_def, _shield_bonus = await moon_defense_support(session, def_planet, bal)
         for _t, _n in _extra_def.items():
             def_defenses[_t] = def_defenses.get(_t, 0) + _n
         if _shield_bonus:
@@ -329,7 +349,7 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
 
     # -- Todesstern-Mondzerstoerung (03d): ueberlebende Todessterne belagern den Ziel-Mond --
     moon_destroyed = None
-    if winner == "attacker" and def_planet is not None and int(atk_survivors.get("deathstar", 0)) > 0:
+    if winner == "attacker" and def_planet is not None and not target_moon and int(atk_survivors.get("deathstar", 0)) > 0:
         from app.planets.moon import maybe_destroy_moon
         n_ds = int(atk_survivors.get("deathstar", 0))
         moon_destroyed = await maybe_destroy_moon(session, def_planet, n_ds, random)

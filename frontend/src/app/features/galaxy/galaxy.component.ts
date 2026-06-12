@@ -23,6 +23,7 @@ interface DispatchCtx {
   target: Coordinate;
   name: string | null;
   mission: FleetMission;
+  targetType?: 'moon';
 }
 
 /**
@@ -87,7 +88,23 @@ interface DispatchCtx {
                   @if (c.asteroid; as a) {
                     <span class="chip rock tip" [attr.data-tip]="asteroidTip(a)">⛏ {{ a.metal | shortNumber }}M / {{ a.crystal | shortNumber }}K</span>
                   }
+                  @if (c.moon; as m) {
+                    <span class="chip moon tip" [attr.data-tip]="m.own ? 'Dein Mond' : ('Mond von ' + (m.player_name ?? 'Spieler') + ' — angreifbar/spionierbar')">🌙 {{ m.name }}</span>
+                  }
                 </div>
+                @if (c.asteroid) {
+                  <div class="acts">
+                    <button class="ic mine" type="button" (click)="openDispatch(cellCoord(c), 'Asteroidenfeld', 'mine')" title="Hier Erz abbauen (Bergbauschiff nötig)">⛏</button>
+                  </div>
+                }
+                @if (c.moon; as m) {
+                  @if (!m.own) {
+                    <div class="acts">
+                      <button class="ic spy" type="button" (click)="openDispatch(cellCoord(c), m.name, 'spy', 'moon')" title="Mond spionieren">🌙🛰</button>
+                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), m.name, 'attack', 'moon')" title="Mond angreifen">🌙⚔</button>
+                    </div>
+                  }
+                }
                 @if (isHostile(c)) {
                   <div class="acts">
                     @if (c.discovered) {
@@ -103,10 +120,6 @@ interface DispatchCtx {
                   </div>
                 } @else if (isOwn(c)) {
                   <span class="chip own">dein Planet</span>
-                } @else if (c.occupant_type === 'asteroid_field') {
-                  <div class="acts">
-                    <button class="ic mine" type="button" (click)="openDispatch(cellCoord(c), c.name, 'mine')" title="Hier Erz abbauen (Bergbauschiff nötig)">⛏</button>
-                  </div>
                 } @else if (c.occupant_type === 'deep_space') {
                   <div class="acts">
                     <button class="ic exp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'expedition')" title="Expedition in die galaktischen Weiten (Expeditionsschiff + Astrophysik nötig)">🌌</button>
@@ -183,6 +196,7 @@ interface DispatchCtx {
         [target]="d.target"
         [targetName]="d.name"
         [initialMission]="d.mission"
+        [targetType]="d.targetType ?? null"
         (sent)="onDispatched()"
         (close)="dispatch.set(null)"
       />
@@ -314,8 +328,8 @@ export class GalaxyComponent {
 
   // --- Schnellaktionen ---------------------------------------------------
   /** Versand-Overlay fuer Angriff/Transport am Ziel oeffnen. */
-  openDispatch(target: Coordinate, name: string | null, mission: FleetMission): void {
-    this.dispatch.set({ target, name, mission });
+  openDispatch(target: Coordinate, name: string | null, mission: FleetMission, targetType?: 'moon'): void {
+    this.dispatch.set({ target, name, mission, targetType });
   }
 
   onDispatched(): void {
@@ -406,6 +420,10 @@ export class GalaxyComponent {
 
   cellImage(c: GalaxyCell): string | null {
     const base = 'assets/img/backgrounds/';
+    // Asteroidenfeld-Overlay auf sonst leerem Feld -> Trümmer-/Felsoptik.
+    if (c.asteroid && (c.occupant_type === 'empty' || !c.occupant_type)) {
+      return base + 'debris_field.png';
+    }
     switch (c.occupant_type) {
       case 'player':
         return base + (this.isOwn(c) ? 'planet_homeworld.png' : 'planet_normal.png');

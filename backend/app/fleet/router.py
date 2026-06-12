@@ -61,6 +61,10 @@ async def send(
         mission_data["ability_keys"] = body.ability_keys
     if body.mission == "expedition" and body.expedition_hours is not None:
         mission_data["expedition_hours"] = body.expedition_hours
+    if body.mission == "intercept" and body.radius is not None:
+        mission_data["radius"] = body.radius
+    if body.target_type == "moon":
+        mission_data["target_type"] = "moon"
     try:
         fleet = await send_fleet(
             session,
@@ -129,12 +133,12 @@ class EscortOfferRequest(BaseModel):
 
 class InterceptModeRequest(BaseModel):
     enabled: bool
-    radius: int = 1
+    radius: int = 0
 
 
 class HomePatrolRequest(BaseModel):
     ships: dict[str, int]
-    radius: int = 1
+    radius: int = 0
 
 
 @router.get("/stationed")

@@ -336,8 +336,10 @@
       "chance_per_interdiction_level": 0.005,
       "interdiction_chance_cap": 0.05,
       "chance_cap": 0.95,
-      "max_radius": 5,
-      "radius_per_interdiction_level": 1
+      "base_radius": 1,
+      "max_radius": 6,
+      "radius_per_interdiction_level": 1,
+      "_radius_note": "Patrouillen-Reichweite: Default 0 (nur das Stationssystem). Waehlbar bis intercept_radius_cap = min(max_radius, base_radius + radius_per_interdiction_level * hyperspace_interdiction-Stufe). Ohne Forschung also bis 1; Forschung dehnt +1/Stufe, hart gedeckelt bei max_radius (6, bei Stufe 5)."
     }
   },
 

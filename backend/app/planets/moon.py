@@ -29,21 +29,20 @@ async def moon_of(session: AsyncSession, planet_id) -> Planet | None:
     )).scalars().first()
 
 
-async def moon_defense_support(session: AsyncSession, planet: Planet, bal) -> tuple[dict, int]:
-    """Mond-Unterstuetzung beim Angriff auf den Planeten: (extra_defenses, shield_tech_bonus).
+async def moon_building_defense(session: AsyncSession, moon: Planet, owner_id, bal) -> tuple[dict, int]:
+    """Verteidigungs-Beitrag der Mond-GEBAEUDE: (extra_defenses, shield_tech_bonus).
 
-    Orbitalbatterie -> orbital_gun-Einheiten in die Verteidigung; Schildkuppel -> Schild-Tech-Bonus."""
+    Orbitalbatterie -> orbital_gun-Einheiten; Schildkuppel -> Schild-Tech-Bonus. Genutzt sowohl fuer
+    die Unterstuetzung des Planeten (moon_defense_support) als auch fuer den DIREKTEN Mond-Angriff
+    (resolve_attack mit target_type='moon')."""
     from app.economy.service import get_building_levels, get_research_levels
 
-    if planet is None or planet.planet_type == "moon":
-        return {}, 0
-    moon = await moon_of(session, planet.id)
     if moon is None:
         return {}, 0
     levels = await get_building_levels(session, moon.id)
     mcfg = bal.data["moon"]
     eff = bal.data["research"]["effects"]
-    research = await get_research_levels(session, planet.player_id)
+    research = await get_research_levels(session, owner_id)
     extra: dict[str, int] = {}
     ob = levels.get("orbital_battery", 0)
     if ob > 0:
@@ -51,6 +50,16 @@ async def moon_defense_support(session: AsyncSession, planet: Planet, bal) -> tu
         extra["orbital_gun"] = ob * per
     shield_bonus = levels.get("shield_dome_moon", 0) * int(mcfg["shield_dome_tech_per_level"])
     return extra, shield_bonus
+
+
+async def moon_defense_support(session: AsyncSession, planet: Planet, bal) -> tuple[dict, int]:
+    """Mond-Unterstuetzung beim Angriff auf den PLANETEN: (extra_defenses, shield_tech_bonus)."""
+    if planet is None or planet.planet_type == "moon":
+        return {}, 0
+    moon = await moon_of(session, planet.id)
+    if moon is None:
+        return {}, 0
+    return await moon_building_defense(session, moon, planet.player_id, bal)
 
 
 def moon_chance(debris_metal: float, debris_crystal: float, cfg: dict) -> float:

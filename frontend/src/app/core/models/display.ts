@@ -575,6 +575,7 @@ export const MISSION_META: Record<string, DisplayMeta> = {
   mine: { label: 'Bergbau', glyph: '⛏️' },
   expedition: { label: 'Expedition', glyph: '🧭' },
   trade: { label: 'Handel', glyph: '💱' },
+  intercept: { label: 'Abfangen', glyph: '📡' },
 };
 
 export const SPECIALIZATION_META: Record<string, DisplayMeta> = {

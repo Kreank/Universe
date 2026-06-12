@@ -12,12 +12,11 @@ import datetime as dt
 import logging
 import random
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platform.balance import get_balance
 from app.platform.models import AsteroidField, UniverseCell
-from app.universe.service import occupy_cell
 
 log = logging.getLogger("universe.asteroids")
 
@@ -116,8 +115,9 @@ async def _occupied_positions(session: AsyncSession, galaxy: int, system: int) -
 
 
 async def ensure_asteroid_fields(session: AsyncSession | None = None) -> int:
-    """Stellt je Galaxie die Ziel-Dichte an Asteroidenfeldern her (idempotent: spawnt nur
-    das Defizit auf freien Zellen). Liefert die Anzahl neu erzeugter Felder."""
+    """Stellt je Galaxie die Ziel-Dichte an Asteroidenfeldern her (idempotent: spawnt nur das
+    Defizit). Asteroidenfelder sind ein OVERLAY (eigene Tabelle, geteilt mit der Position wie ein
+    Mond) — sie belegen die Zelle NICHT und blockieren keine Kolonisierung. Liefert neu erzeugte Felder."""
     from app.platform.db import session_scope
     if session is None:
         async with session_scope() as s:
@@ -127,6 +127,15 @@ async def ensure_asteroid_fields(session: AsyncSession | None = None) -> int:
 
     bal = get_balance()
     cfg = _cfg()
+
+    # Einmalige Normalisierung: frueher belegten Asteroiden die Zelle (occupant 'asteroid_field').
+    # Jetzt Overlay -> Zelle zurueck auf 'empty' (Feld lebt in asteroid_fields, per Koordinate).
+    await session.execute(
+        update(UniverseCell)
+        .where(UniverseCell.occupant_type == "asteroid_field")
+        .values(occupant_type="empty", ref_id=None)
+    )
+
     target = int(cfg.get("density_per_galaxy", 0))
     if target <= 0:
         return 0
@@ -142,6 +151,12 @@ async def ensure_asteroid_fields(session: AsyncSession | None = None) -> int:
         deficit = target - have
         if deficit <= 0:
             continue
+        # Bereits belegte Asteroiden-Koordinaten dieser Galaxie (UNIQUE-Schutz, kein Doppel-Spawn).
+        existing = {
+            (s, p) for s, p in (await session.execute(
+                select(AsteroidField.system, AsteroidField.position).where(AsteroidField.galaxy == g)
+            )).all()
+        }
         spawned = 0
         tries = 0
         max_tries = deficit * 20 + 50
@@ -150,24 +165,23 @@ async def ensure_asteroid_fields(session: AsyncSession | None = None) -> int:
             tries += 1
             s_idx = rng.randint(1, bal.systems_per_galaxy)
             p = rng.randint(pos_min, pos_max)
+            if (s_idx, p) in existing:
+                continue
             occ = occ_cache.get(s_idx)
             if occ is None:
                 occ = await _occupied_positions(session, g, s_idx)
                 occ_cache[s_idx] = occ
             if p in occ:
-                continue
-            occ.add(p)  # innerhalb dieses Laufs nicht doppelt belegen
+                continue  # bevorzugt freie Sektoren beim Seeden (kein Spawn auf Planet/NPC)
+            existing.add((s_idx, p))
             name, mult = roll_richness(rng, cfg)
             m_max, c_max = field_capacity(mult, cfg)
-            field = AsteroidField(
+            session.add(AsteroidField(
                 galaxy=g, system=s_idx, position=p,
                 richness=name, mult=mult,
                 metal_remaining=m_max, crystal_remaining=c_max,
                 metal_max=m_max, crystal_max=c_max,
-            )
-            session.add(field)
-            await session.flush()
-            await occupy_cell(session, g, s_idx, p, "asteroid_field", field.id)
+            ))
             spawned += 1
             created += 1
 

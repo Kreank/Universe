@@ -235,7 +235,7 @@ export interface ShipyardBuildResponse {
 // --- Flotte -------------------------------------------------------------
 
 export type FleetMission =
-  | 'attack' | 'transport' | 'spy' | 'deploy' | 'recycle' | 'colonize' | 'mine' | 'expedition' | 'trade';
+  | 'attack' | 'transport' | 'spy' | 'deploy' | 'recycle' | 'colonize' | 'mine' | 'expedition' | 'trade' | 'intercept';
 export type FleetStatus = 'flying' | 'arrived' | 'returning' | 'returned';
 
 export interface Coordinate {
@@ -285,6 +285,10 @@ export interface FleetSendRequest {
   ability_keys?: string[];
   /** Expedition (mission == 'expedition'): gewuenschte Verweildauer in Stunden (1..max). */
   expedition_hours?: number;
+  /** Ziel-Typ: 'moon' greift/spioniert den Mond statt des Planeten an der Koordinate. */
+  target_type?: 'moon';
+  /** Abfangen (mission == 'intercept'): Patrouillen-Radius in Systemen (Default 0 = nur Zielsystem). */
+  radius?: number;
 }
 
 /** Ein Eintrag im Faehigkeiten-Katalog (RPG-Entwicklung). */
@@ -323,6 +327,13 @@ export interface GalaxyCell {
     crystal: number;
     metal_max: number;
     crystal_max: number;
+  } | null;
+  /** Mond am Ort (teilt die Position) — eigenes Angriffs-/Spionageziel. */
+  moon?: {
+    name: string;
+    player_id: string;
+    player_name: string | null;
+    own: boolean;
   } | null;
 }
 

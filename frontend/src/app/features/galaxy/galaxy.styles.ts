@@ -75,6 +75,7 @@ export const galaxyStyles = `
   .chip.lvl { color: var(--accent); border-color: var(--accent-dim); margin-right: 0.3rem; }
   .chip.trade { color: var(--accent); border-color: var(--accent-dim); background: rgba(46, 230, 214, 0.1); cursor: help; margin-right: 0.3rem; }
   .chip.rock { color: var(--warn, #d9a441); border-color: var(--warn, #d9a441); background: rgba(217, 164, 65, 0.1); cursor: help; margin-right: 0.3rem; }
+  .chip.moon { color: #b9c2d0; border-color: #6b7686; background: rgba(185, 194, 208, 0.08); cursor: help; margin-right: 0.3rem; }
 
   /* --- Ziel-Verzeichnis --- */
   .target-row {

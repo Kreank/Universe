@@ -24,6 +24,7 @@ class CellOut(BaseModel):
     discovered: bool = False  # hat dieser Spieler das Ziel schon aufgeklaert?
     trade: dict | None = None  # P2P-Handelsanzeige des Spielers (falls aktiviert)
     asteroid: dict | None = None  # Asteroidenfeld am Ort {richness, mult, metal, crystal} (Restvorrat)
+    moon: dict | None = None  # Mond am Ort {name, player_id, player_name, own} — eigenes Angriffs-/Spionageziel
 
 
 class GalaxyViewOut(BaseModel):
@@ -112,31 +113,58 @@ async def galaxy_view(
     by_pos = {c.position: c for c in rows}
     discovered = await _player_discoveries(session, player.id)
 
+    # Asteroidenfelder sind ein OVERLAY (geteilte Position wie ein Mond) -> per Koordinate laden
+    # und an die Zelle haengen, unabhaengig vom Belegungstyp (auch auf 'empty'/'player'/'npc').
+    ast_rows = (await session.execute(
+        select(AsteroidField).where(
+            AsteroidField.galaxy == galaxy, AsteroidField.system == system
+        )
+    )).scalars().all()
+
+    def _asteroid_overlay(pos: int) -> dict | None:
+        field = next((f for f in ast_rows if f.position == pos), None)
+        if not field:
+            return None
+        return {
+            "richness": field.richness,
+            "mult": round(field.mult, 2),
+            "metal": round(field.metal_remaining, 0),
+            "crystal": round(field.crystal_remaining, 0),
+            "metal_max": round(field.metal_max, 0),
+            "crystal_max": round(field.crystal_max, 0),
+        }
+
+    # Monde sind ein OVERLAY (teilen die Position des Planeten) -> eigenes Angriffs-/Spionageziel.
+    moon_rows = (await session.execute(
+        select(Planet).where(
+            Planet.galaxy == galaxy, Planet.system == system, Planet.planet_type == "moon"
+        )
+    )).scalars().all()
+    moon_by_pos = {m.position: m for m in moon_rows}
+
     cells: list[CellOut] = []
     for pos in range(1, bal.positions_per_system + 1):
         cell = by_pos.get(pos)
+        asteroid = _asteroid_overlay(pos)
+        moon_obj = moon_by_pos.get(pos)
+        moon = None
+        if moon_obj is not None:
+            m_owner = await session.get(Player, moon_obj.player_id)
+            moon = {
+                "name": moon_obj.name,
+                "player_id": str(moon_obj.player_id),
+                "player_name": m_owner.display_name if m_owner else None,
+                "own": moon_obj.player_id == player.id,
+            }
         if cell is None or cell.occupant_type == "empty":
-            cells.append(CellOut(position=pos, occupant_type="empty"))
+            cells.append(CellOut(position=pos, occupant_type="empty", asteroid=asteroid, moon=moon))
             continue
         name = None
         player_id = None
         player_name = None
         npc_id = None
         trade = None
-        asteroid = None
-        if cell.occupant_type == "asteroid_field" and cell.ref_id:
-            field = await session.get(AsteroidField, cell.ref_id)
-            if field:
-                name = f"Asteroidenfeld ({field.richness})"
-                asteroid = {
-                    "richness": field.richness,
-                    "mult": round(field.mult, 2),
-                    "metal": round(field.metal_remaining, 0),
-                    "crystal": round(field.crystal_remaining, 0),
-                    "metal_max": round(field.metal_max, 0),
-                    "crystal_max": round(field.crystal_max, 0),
-                }
-        elif cell.occupant_type == "player" and cell.ref_id:
+        if cell.occupant_type == "player" and cell.ref_id:
             planet = await session.get(Planet, cell.ref_id)
             if planet:
                 name = planet.name
@@ -166,6 +194,7 @@ async def galaxy_view(
             discovered=(galaxy, system, pos) in discovered,
             trade=trade,
             asteroid=asteroid,
+            moon=moon,
         ))
 
     # Galaktische Weiten: synthetischer Deep-Space-Slot (nur per Expedition erreichbar).

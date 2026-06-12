@@ -56,3 +56,7 @@ class SendFleetRequest(BaseModel):
     ability_keys: list[str] = Field(default_factory=list)
     # Expedition (mission == 'expedition'): gewuenschte Verweildauer in Stunden (1..max, max aus Astrophysik).
     expedition_hours: int | None = None
+    # Ziel-Typ an der Koordinate: 'moon' greift/spioniert den Mond statt des Planeten (sonst Planet).
+    target_type: str | None = None
+    # Abfangen (mission == 'intercept'): Patrouillen-Radius in Systemen (Default 0 = nur Zielsystem).
+    radius: int | None = None

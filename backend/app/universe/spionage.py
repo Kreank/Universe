@@ -51,7 +51,7 @@ def _intel_level(probes: int, spy_tech: int, cfg: dict) -> int:
 
 
 async def _gather_target(
-    session: AsyncSession, galaxy: int, system: int, position: int
+    session: AsyncSession, galaxy: int, system: int, position: int, target_moon: bool = False
 ) -> dict | None:
     """Sammelt den IST-Zustand eines Ziels (NPC oder Spieler-Planet).
 
@@ -89,9 +89,12 @@ async def _gather_target(
             "npc": npc,
         }
 
-    # -- Spieler-Planet ----------------------------------------------------
+    # -- Spieler-Planet (oder dessen Mond) ---------------------------------
     if cell is not None and cell.occupant_type == "player" and cell.ref_id:
         planet = await session.get(Planet, cell.ref_id)
+        if planet is not None and target_moon:
+            from app.planets.moon import moon_of
+            planet = await moon_of(session, planet.id)  # None -> kein Mond -> nichts spionierbar
         if planet is not None:
             ships = (await session.execute(
                 select(Ship).where(Ship.planet_id == planet.id, Ship.fleet_id.is_(None))
@@ -171,8 +174,9 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
     rlevels = await get_research_levels(session, fleet.player_id)
     spy_tech = int(rlevels.get("spy_tech", 0))
 
+    target_moon = (fleet.mission_data or {}).get("target_type") == "moon"
     target = await _gather_target(
-        session, fleet.target_galaxy, fleet.target_system, fleet.target_position
+        session, fleet.target_galaxy, fleet.target_system, fleet.target_position, target_moon
     )
     if target is None:
         await create_system_transmission(

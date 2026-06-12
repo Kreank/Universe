@@ -99,10 +99,13 @@ def starter_reserve(ships: dict, bal) -> float:
 
 # -- deploy: Stationierung ----------------------------------------------------
 
-async def resolve_deploy(session: AsyncSession, fleet: Fleet) -> bool:
+async def resolve_deploy(session: AsyncSession, fleet: Fleet, intercept: bool = False) -> bool:
     """Stationiert die Flotten-Schiffe am Ziel als StationedFleet. True = stationiert
-    (Flotte ``done``, kehrt nicht zurueck). Cargo wird mit heimgenommen? -> nein, deploy
-    ist fuer Schiffe; etwaige Fracht bleibt unberuehrt (Versand sollte keine mitgeben)."""
+    (Flotte ``done``, kehrt nicht zurueck).
+
+    ``intercept=True`` (Mission 'Abfangen'): die stationierte Flotte wird sofort zur aktiven
+    Abfang-Patrouille (intercept_enabled, Radius aus mission_data, auf den Forschungs-Cap geklemmt)
+    und erfasst bereits fliegende Feindflotten, deren Route sie kreuzt."""
     rows = (await session.execute(
         select(Ship).where(Ship.fleet_id == fleet.id)
     )).scalars().all()
@@ -123,6 +126,17 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet) -> bool:
     )).scalars().first()
     cargo = fleet.cargo or {}
     fuel_reserve = float(cargo.get("deuterium", 0) or 0)
+
+    radius = 0
+    if intercept:
+        from app.economy.service import get_research_levels
+        research = await get_research_levels(session, fleet.player_id)
+        cap = intercept_radius_cap(research)
+        radius = max(0, min(cap, int((fleet.mission_data or {}).get("radius", 0) or 0)))
+        # Patrouille ohne mitgefuehrtes Deuterium bekommt einen Starter-Tank, sonst Sofort-Rueckkehr.
+        if fuel_reserve <= 0:
+            fuel_reserve = starter_reserve(ships, get_balance())
+
     st = StationedFleet(
         owner_id=fleet.player_id,
         home_planet_id=fleet.origin_planet_id,
@@ -131,27 +145,41 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet) -> bool:
         position=fleet.target_position,
         ships=ships,
         fuel=fuel_reserve,
+        intercept_enabled=intercept,
+        intercept_radius=radius,
     )
     session.add(st)
     for r in rows:
         await session.delete(r)
     fleet.status = "done"
     fleet.cargo = {}
-    if own_here is not None:
+
+    if intercept:
+        await session.flush()
+        from app.fleet.interception import scan_inflight_for_station
+        try:
+            await scan_inflight_for_station(session, st)
+        except Exception:  # noqa: BLE001
+            pass
+        scope = "im Stationssystem" if radius <= 0 else f"+/- {radius} Systeme"
+        body = (f"Deine Abfang-Patrouille ist bei {coords} aktiv ({scope}) mit {int(fuel_reserve)} "
+                f"Deuterium-Vorrat. Sie stellt feindliche Flotten, deren Route sie kreuzt; der Vorrat "
+                f"zehrt mit der Zeit (leer -> Rueckkehr). Fuer Ausdauer mehr Deuterium mitladen.")
+        subject = f"Abfang-Patrouille aktiv ({coords})"
+    elif own_here is not None:
         body = (f"Deine Flotte ist bei {coords} (eigenes Gebiet) stationiert mit {int(fuel_reserve)} "
                 f"Deuterium-Vorrat. Geparkt/als Eskorte kein Unterhalt; als Patrouille zehrt der "
                 f"Vorrat langsam (leer -> Rueckkehr). Fuer Ausdauer mehr Deuterium mitladen.")
+        subject = f"Flotte stationiert ({coords})"
     else:
         body = (f"Deine Flotte ist VORGESCHOBEN bei {coords} stationiert mit {int(fuel_reserve)} "
                 f"Deuterium-Vorrat. Der Vorrat zehrt mit der Zeit; ist er leer, kehrt die Flotte "
                 f"automatisch heim. Lade beim Stationieren genug Deuterium als Fracht.")
+        subject = f"Flotte stationiert ({coords})"
     await create_system_transmission(
-        session, player_id=fleet.player_id,
-        subject=f"Flotte stationiert ({coords})",
-        body=body,
-        ttype="system",
+        session, player_id=fleet.player_id, subject=subject, body=body, ttype="system",
     )
-    log.info("Deploy: player=%s stationiert %s @ %s", fleet.player_id, ships, coords)
+    log.info("Deploy(intercept=%s): player=%s stationiert %s @ %s", intercept, fleet.player_id, ships, coords)
     return True
 
 
@@ -227,11 +255,14 @@ def station_out(st: StationedFleet) -> dict:
 
 
 def intercept_radius_cap(research: dict | None = None) -> int:
-    """Maximaler Abfang-Radius = Basis-Cap + Hyperraum-Interdiktion-Forschung."""
+    """Maximal waehlbarer Abfang-Radius = base_radius + Hyperraum-Interdiktion-Forschung,
+    hart gedeckelt bei max_radius. Ohne Forschung also base_radius (1); Forschung dehnt
+    +radius_per_interdiction_level/Stufe bis max_radius (6). Default-Radius einer Patrouille ist 0."""
     icfg = get_balance().data.get("combat", {}).get("interception", {})
-    base = int(icfg.get("max_radius", 5))
+    base = int(icfg.get("base_radius", 1))
+    hard_cap = int(icfg.get("max_radius", 6))
     lvl = int((research or {}).get("hyperspace_interdiction", 0))
-    return base + int(icfg.get("radius_per_interdiction_level", 0)) * lvl
+    return min(hard_cap, base + int(icfg.get("radius_per_interdiction_level", 0)) * lvl)
 
 
 def set_intercept_mode(st: StationedFleet, enabled: bool, radius: int, max_radius: int | None = None) -> None:
