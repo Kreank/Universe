@@ -28,23 +28,33 @@ def _now() -> dt.datetime:
 
 
 def compute_distance(o: tuple[int, int, int], t: tuple[int, int, int]) -> int:
-    """Distanzklassen (balance.fleet.distance)."""
-    dist = get_balance().fleet["distance"]
+    """OGame-Distanzmodell (balance.fleet.distance). o/t = (Galaxie, System, Position).
+
+    - Andere Galaxie:   per_galaxy * |Galaxie-Diff|.
+    - Anderes System:   same_galaxy_base + per_system * |System-Diff|.
+    - Andere Position:  same_system_base + per_position * |Positions-Diff| (Position zaehlt jetzt).
+    - Gleiche Koords (z.B. Mond<->Planet): same_position (klein)."""
+    d = get_balance().fleet["distance"]
     if o[0] != t[0]:
-        return dist["inter_galaxy"]
+        return d["inter_galaxy_per_galaxy"] * abs(o[0] - t[0])
     if o[1] != t[1]:
-        return abs(o[1] - t[1]) * dist["same_galaxy_per_system"]
-    return dist["same_system"]
+        return d["same_galaxy_base"] + d["same_galaxy_per_system"] * abs(o[1] - t[1])
+    if o[2] != t[2]:
+        return d["same_system_base"] + d["same_system_per_position"] * abs(o[2] - t[2])
+    return d["same_position"]
 
 
 def flight_seconds(distance: int, slowest_speed: float, speed_pct: int) -> float:
-    """flight_seconds = (10 + 3500/speed_pct * sqrt(distance*10/slowest_ship_speed)) / universe_speed."""
+    """flight_seconds = (10 + 35000/speed_pct * sqrt(distance*10/slowest_ship_speed)) / fleet_speed.
+
+    35000 = echte OGame-Konstante. fleet_speed (universe.fleet_speed) ist der eigenstaendige
+    Flotten-Tempo-Regler, BEWUSST getrennt von speed (=Wirtschaft/Produktion)."""
     bal = get_balance()
-    universe_speed = bal.speed
+    fleet_speed = max(0.01, bal.fleet_speed)
     speed_pct = max(1, speed_pct)
     slowest_speed = max(1.0, slowest_speed)
-    raw = 10 + (3500 / speed_pct) * math.sqrt(distance * 10 / slowest_speed)
-    return raw / universe_speed
+    raw = 10 + (35000 / speed_pct) * math.sqrt(distance * 10 / slowest_speed)
+    return raw / fleet_speed
 
 
 def fuel_cost(ships: dict[str, int], distance: int) -> int:
@@ -129,6 +139,25 @@ async def active_fleet_count(session: AsyncSession, player_id: uuid.UUID) -> int
     return len(rows)
 
 
+async def active_patrol_count(session: AsyncSession, player_id: uuid.UUID) -> int:
+    """Aktive Abfang-Patrouillen (intercept_enabled StationedFleets). Jede belegt EINEN Flottenslot
+    (Anti-Omnipraesenz, 2026-06-12): Patrouillen sind dadurch hart begrenzt -> nur Chokepoints
+    deckbar, nicht die ganze Galaxie. Stationierte Flotten OHNE Abfang zaehlen NICHT."""
+    from app.platform.models import StationedFleet
+    rows = (await session.execute(
+        select(StationedFleet).where(
+            StationedFleet.owner_id == player_id,
+            StationedFleet.intercept_enabled.is_(True),
+        )
+    )).scalars().all()
+    return len(rows)
+
+
+async def used_fleet_slots(session: AsyncSession, player_id: uuid.UUID) -> int:
+    """Belegte Flottenslots = Flotten im Flug + aktive Abfang-Patrouillen."""
+    return await active_fleet_count(session, player_id) + await active_patrol_count(session, player_id)
+
+
 async def _fleet_ship_map(session: AsyncSession, fleet_id: uuid.UUID) -> dict[str, int]:
     rows = (await session.execute(
         select(Ship).where(Ship.fleet_id == fleet_id)
@@ -192,9 +221,9 @@ async def send_fleet(
     if not ships:
         raise ValueError("Keine Schiffe ausgewaehlt")
 
-    # Flottenslots pruefen.
+    # Flottenslots pruefen (Flotten im Flug + aktive Abfang-Patrouillen belegen je einen Slot).
     slots = await fleet_slots(session, player.id)
-    if await active_fleet_count(session, player.id) >= slots:
+    if await used_fleet_slots(session, player.id) >= slots:
         raise RuntimeError("Keine freien Flottenslots")
 
     # Schiffsbestand pruefen.

@@ -52,7 +52,7 @@ fleet_status_enum = ENUM(
     name="fleet_status", create_type=False,
 )
 occupant_type_enum = ENUM(
-    "empty", "player", "npc", "debris",
+    "empty", "player", "npc", "debris", "asteroid_field",
     name="occupant_type", create_type=False,
 )
 transmission_type_enum = ENUM(
@@ -288,6 +288,25 @@ class UniverseCell(Base):
     ref_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # Truemmerfeld am Ort (nach Kaempfen), {metal, crystal}; vom Recycler einsammelbar.
     debris_field: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+
+class AsteroidField(Base):
+    """Endliches, regenerierendes Erz-Vorkommen (occupant 'asteroid_field' der Zelle).
+    Bergbauschiffe (mine-Mission) foerdern hier; Reichtum (mult) skaliert Vorrat + Ertrag."""
+    __tablename__ = "asteroid_fields"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    galaxy: Mapped[int] = mapped_column(Integer, nullable=False)
+    system: Mapped[int] = mapped_column(Integer, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    richness: Mapped[str] = mapped_column(Text, default="normal")  # Tier-Name
+    mult: Mapped[float] = mapped_column(Float, default=1.0)        # Reichtums-Multiplikator
+    metal_remaining: Mapped[float] = mapped_column(Float, default=0.0)
+    crystal_remaining: Mapped[float] = mapped_column(Float, default=0.0)
+    metal_max: Mapped[float] = mapped_column(Float, default=0.0)
+    crystal_max: Mapped[float] = mapped_column(Float, default=0.0)
+    last_regen_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class NpcEmpire(Base):

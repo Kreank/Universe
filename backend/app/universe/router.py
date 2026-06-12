@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platform.balance import get_balance
 from app.platform.db import get_session
-from app.platform.models import NpcEmpire, Planet, Player, PlayerDiscovery, UniverseCell
+from app.platform.models import AsteroidField, NpcEmpire, Planet, Player, PlayerDiscovery, UniverseCell
 from app.platform.security import get_current_player
 
 router = APIRouter(tags=["universe"])
@@ -23,6 +23,7 @@ class CellOut(BaseModel):
     npc_id: str | None = None
     discovered: bool = False  # hat dieser Spieler das Ziel schon aufgeklaert?
     trade: dict | None = None  # P2P-Handelsanzeige des Spielers (falls aktiviert)
+    asteroid: dict | None = None  # Asteroidenfeld am Ort {richness, mult, metal, crystal} (Restvorrat)
 
 
 class GalaxyViewOut(BaseModel):
@@ -122,7 +123,20 @@ async def galaxy_view(
         player_name = None
         npc_id = None
         trade = None
-        if cell.occupant_type == "player" and cell.ref_id:
+        asteroid = None
+        if cell.occupant_type == "asteroid_field" and cell.ref_id:
+            field = await session.get(AsteroidField, cell.ref_id)
+            if field:
+                name = f"Asteroidenfeld ({field.richness})"
+                asteroid = {
+                    "richness": field.richness,
+                    "mult": round(field.mult, 2),
+                    "metal": round(field.metal_remaining, 0),
+                    "crystal": round(field.crystal_remaining, 0),
+                    "metal_max": round(field.metal_max, 0),
+                    "crystal_max": round(field.crystal_max, 0),
+                }
+        elif cell.occupant_type == "player" and cell.ref_id:
             planet = await session.get(Planet, cell.ref_id)
             if planet:
                 name = planet.name
@@ -151,5 +165,6 @@ async def galaxy_view(
             npc_id=npc_id,
             discovered=(galaxy, system, pos) in discovered,
             trade=trade,
+            asteroid=asteroid,
         ))
     return GalaxyViewOut(cells=cells)

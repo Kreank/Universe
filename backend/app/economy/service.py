@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platform.balance import get_balance
-from app.platform.models import Building, Planet, Research, Resource
+from app.platform.models import Building, Planet, Research, Resource, Ship
 
 RESOURCE_KEYS = ("metal", "crystal", "deuterium")
 STORAGE_BUILDING = {
@@ -41,11 +41,24 @@ async def get_research_levels(session: AsyncSession, player_id: uuid.UUID) -> di
     return {r.type: r.level for r in rows}
 
 
+def solar_satellite_energy(temp_max: int, count: int) -> float:
+    """Energie stationierter Solarsatelliten (OGame): je Sat floor((temp_max + offset) / divisor),
+    temperaturabhaengig -> sonnennahe (heisse) Planeten produzieren mehr. Nie negativ."""
+    if count <= 0:
+        return 0.0
+    cfg = get_balance().ships.get("solar_satellite", {}).get("energy_prod")
+    if not cfg:
+        return 0.0
+    per_sat = max(0, int((temp_max + int(cfg.get("temp_offset", 0))) // int(cfg.get("divisor", 1))))
+    return float(per_sat * int(count))
+
+
 def compute_production_and_energy(
     buildings: dict[str, int],
     temp_max: int,
     energy_tech: int,
     mining_level: int = 0,
+    solar_satellites: int = 0,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """Berechnet (Minen-Roh-Produktion pro Stunde bei speed=1) und die Energie-Bilanz.
 
@@ -87,12 +100,14 @@ def compute_production_and_energy(
     # -- Energie: Verbrauch der Minen ----------------------------------------
     consumed = energy_use("metal_mine") + energy_use("crystal_mine") + energy_use("deuterium_synth")
 
-    # -- Energie: Erzeugung (Solar + Fusion) ---------------------------------
+    # -- Energie: Erzeugung (Solarkraftwerk + Solarsatelliten + Fusion) ------
     solar = b["solar_plant"]
     solar_lvl = lvl("solar_plant")
     produced = 0.0
     if solar_lvl > 0:
         produced += solar["energy_prod_base"] * solar_lvl * (solar["energy_prod_growth"] ** solar_lvl)
+    # Solarsatelliten (Schiffe, auf dem Planeten stationiert): temperaturabhaengig.
+    produced += solar_satellite_energy(temp_max, solar_satellites)
     fusion_lvl = lvl("fusion_reactor")
     fusion_deut_use = 0.0
     if fusion_lvl > 0:
@@ -121,11 +136,14 @@ def compute_rates(
     energy_tech: int,
     mining_level: int = 0,
     storage_level: int = 0,
+    solar_satellites: int = 0,
 ) -> tuple[dict[str, float], dict[str, float], dict[str, float]]:
     """Liefert (effektive Stundenraten inkl. Grundeinkommen & Speed, energy, capacities)."""
     bal = get_balance()
     speed = bal.speed
-    rates_raw, energy = compute_production_and_energy(buildings, temp_max, energy_tech, mining_level)
+    rates_raw, energy = compute_production_and_energy(
+        buildings, temp_max, energy_tech, mining_level, solar_satellites
+    )
     factor = energy["factor"]
     base = bal.base_income
 
@@ -156,9 +174,18 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     buildings = await get_building_levels(session, planet.id)
     research = await get_research_levels(session, planet.player_id)
     energy_tech = research.get("energy_tech", 0)
+    # Auf dem Planeten stationierte Solarsatelliten (fleet_id NULL) -> Energiebeitrag.
+    solar_sats = int((await session.execute(
+        select(Ship.count).where(
+            Ship.planet_id == planet.id,
+            Ship.fleet_id.is_(None),
+            Ship.type == "solar_satellite",
+        )
+    )).scalar() or 0)
     new_rates, energy, capacities = compute_rates(
         buildings, planet.temp_max, energy_tech,
         research.get("mining_efficiency", 0), research.get("storage_tech", 0),
+        solar_sats,
     )
 
     # Gouverneur-Bonus (Kommandeur auf dem Planeten) auf die Produktionsrate.

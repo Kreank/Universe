@@ -174,7 +174,7 @@ export const TECH_META: Record<string, DisplayMeta> = {
   },
   hyperspace_interdiction: {
     label: 'Hyperraum-Interdiktion', glyph: '🧲', blurb: 'Größere Abfang-Reichweite & Fang-Chance.',
-    desc: 'Künstlich aufgespannte Massefelder reißen durchreisende Flotten aus dem Hyperraum. Jede Stufe erweitert die Reichweite deiner Abfang-Patrouillen um ein System und erhöht die Chance, eine Flotte ohne Interdiktor-Schiff zu stellen. Endlich lässt sich weiträumige Raumüberwachung erforschen, statt sie zu verschenken.',
+    desc: 'Künstlich aufgespannte Massefelder reißen durchreisende Flotten aus dem Hyperraum. Erweitert die Reichweite deiner Abfang-Patrouillen (+1 System je Stufe bis Stufe 5) und erhöht ihre Fang-Chance um +0,5 % je Stufe (bis Stufe 10 = +5 %). Die letzten Prozent bis zum 95-%-Cap sind ausschließlich über diese Forschung erreichbar — reine Abfangjäger-Masse deckelt bei 90 %.',
   },
   ion_disruptors: {
     label: 'Ionen-Disruptoren', glyph: '🌀', blurb: 'Stärkere Ionenwaffen & Verteidigungs-Lähmung.',
@@ -321,7 +321,7 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
   },
   hyperspace_interdiction: {
     branch: 'Abfangen',
-    summary: '+1 Abfang-Reichweite je Stufe und höhere Fang-Chance der Patrouillen (+8 %/Stufe ohne Interdiktor).',
+    summary: '+1 Abfang-Reichweite je Stufe (bis Stufe 5) und +0,5 % Fang-Chance je Stufe (bis Stufe 10 = +5 %, einziger Weg über den 90-%-Schiffs-Cap).',
     levelEffect: { label: 'Abfang-Radius', perLevel: 1, unit: ' Sys', base: 5 },
   },
   ion_disruptors: {

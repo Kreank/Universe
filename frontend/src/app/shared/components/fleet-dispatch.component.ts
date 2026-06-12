@@ -273,7 +273,7 @@ export class FleetDispatchComponent {
   readonly sent = output<void>();
 
   /** Auf die galaxie-relevanten Missionen beschraenkt. */
-  protected readonly missions: FleetMission[] = ['attack', 'transport', 'spy', 'deploy', 'colonize', 'trade'];
+  protected readonly missions: FleetMission[] = ['attack', 'transport', 'spy', 'deploy', 'colonize', 'mine', 'trade'];
   protected readonly mission = linkedSignal<FleetMission>(() => this.initialMission());
 
   protected readonly cargoFields = [
@@ -377,6 +377,7 @@ export class FleetDispatchComponent {
   private readonly missionRequires: Partial<Record<FleetMission, { type: string; label: string }>> = {
     spy: { type: 'spy_probe', label: 'Spionagesonde' },
     colonize: { type: 'colony_ship', label: 'Kolonieschiff' },
+    mine: { type: 'miner', label: 'Bergbauschiff' },
   };
 
   toggleEscort(id: string): void {

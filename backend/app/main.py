@@ -28,6 +28,7 @@ from app.npc.service import npc_behavior_tick
 from app.platform.balance import get_balance
 from app.platform.eventbus import event_bus
 from app.planets.derive import backfill_planets
+from app.universe.asteroids import ensure_asteroid_fields
 from app.platform.migrations import ensure_schema
 from app.platform.recovery import recover_pending_jobs
 from app.platform.scheduler import schedule_interval, shutdown_scheduler, start_scheduler
@@ -49,6 +50,8 @@ async def lifespan(app: FastAPI):
     await ensure_schema()
     # Bestehende Planeten auf positionsabhaengigen Typ/Temp/Felder bringen (idempotent).
     await backfill_planets()
+    # Asteroidenfelder auf Ziel-Dichte je Galaxie seeden (idempotent, spawnt nur Defizit).
+    await ensure_asteroid_fields()
     # Offene Timer nach Neustart wiederherstellen (MemoryJobStore ist fluechtig).
     await recover_pending_jobs()
     # Stuendlicher Moral-Drift / Neglect-Decay (balance.commander.morale).
@@ -87,6 +90,12 @@ async def lifespan(app: FastAPI):
         station_fuel_tick,
         seconds=get_balance().fleet["station_fuel"]["tick_interval_seconds"],
         job_id="station-fuel",
+    )
+    # Asteroiden-Seeding-Tick: haelt die Ziel-Dichte je Galaxie (spawnt nur Defizit).
+    schedule_interval(
+        ensure_asteroid_fields,
+        seconds=get_balance().data["asteroids"]["seed_tick_interval_seconds"],
+        job_id="asteroid-seed",
     )
     try:
         yield

@@ -166,6 +166,27 @@ _STATEMENTS: list[str] = [
     # Treibstoff-Unterhalt vorgeschobener Stationierung: NULL = eigenes Gebiet (gratis),
     # Zahl = mitgefuehrter Deuterium-Vorrat (zehrt per Tick, leer -> Zwangs-Rueckkehr).
     "ALTER TABLE stationed_fleets ADD COLUMN IF NOT EXISTS fuel DOUBLE PRECISION",
+    # -- Feature: Asteroidenfelder (endliche, regenerierende Erz-Vorkommen) ---
+    # ENUM-Wert MUSS vor seiner Nutzung committet sein (AUTOCOMMIT je Statement).
+    "ALTER TYPE occupant_type ADD VALUE IF NOT EXISTS 'asteroid_field'",
+    """
+    CREATE TABLE IF NOT EXISTS asteroid_fields (
+        id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        galaxy            INT NOT NULL,
+        system            INT NOT NULL,
+        position          INT NOT NULL,
+        richness          TEXT NOT NULL DEFAULT 'normal',
+        mult              DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+        metal_remaining   DOUBLE PRECISION NOT NULL DEFAULT 0,
+        crystal_remaining DOUBLE PRECISION NOT NULL DEFAULT 0,
+        metal_max         DOUBLE PRECISION NOT NULL DEFAULT 0,
+        crystal_max       DOUBLE PRECISION NOT NULL DEFAULT 0,
+        last_regen_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (galaxy, system, position)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_asteroid_coords ON asteroid_fields(galaxy, system, position)",
 ]
 
 

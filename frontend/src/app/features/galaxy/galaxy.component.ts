@@ -15,6 +15,7 @@ import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/mode
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 import { PhalanxPanelComponent } from '../../shared/components/phalanx-panel.component';
+import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 import { galaxyStyles } from './galaxy.styles';
 
 /** Offenes Versand-Overlay (Schnellangriff / Schnelltransport / …). */
@@ -36,7 +37,7 @@ interface DispatchCtx {
 @Component({
   selector: 'app-galaxy',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, DatePipe, FleetDispatchComponent, MessageComposeComponent, PhalanxPanelComponent],
+  imports: [FormsModule, DatePipe, ShortNumberPipe, FleetDispatchComponent, MessageComposeComponent, PhalanxPanelComponent],
   template: `
     <h1>Galaxie · Karte</h1>
     <p class="sub">Erkunde Systeme, finde Ziele und entsende deine Flotten — Schnellaktionen direkt am Ziel.</p>
@@ -83,6 +84,9 @@ interface DispatchCtx {
                   @if (c.trade; as tr) {
                     <span class="chip trade tip" [attr.data-tip]="tradeTip(tr, c.player_name)">💱 {{ tr.offer }}→{{ tr.want }}{{ tr.rate ? ' @' + tr.rate : '' }}</span>
                   }
+                  @if (c.asteroid; as a) {
+                    <span class="chip rock tip" [attr.data-tip]="asteroidTip(a)">⛏ {{ a.metal | shortNumber }}M / {{ a.crystal | shortNumber }}K</span>
+                  }
                 </div>
                 @if (isHostile(c)) {
                   <div class="acts">
@@ -99,6 +103,10 @@ interface DispatchCtx {
                   </div>
                 } @else if (isOwn(c)) {
                   <span class="chip own">dein Planet</span>
+                } @else if (c.occupant_type === 'asteroid_field') {
+                  <div class="acts">
+                    <button class="ic mine" type="button" (click)="openDispatch(cellCoord(c), c.name, 'mine')" title="Hier Erz abbauen (Bergbauschiff nötig)">⛏</button>
+                  </div>
                 } @else if (c.occupant_type === 'empty') {
                   <div class="acts">
                     <button class="ic col" type="button" (click)="openDispatch(cellCoord(c), null, 'colonize')" title="Hier kolonisieren (Kolonieschiff nötig)">🌱</button>
@@ -405,9 +413,21 @@ export class GalaxyComponent {
       }
       case 'debris':
         return base + 'debris_field.png';
+      case 'asteroid_field':
+        return base + 'debris_field.png';
       default:
         return null;
     }
+  }
+
+  /** Tooltip eines Asteroidenfelds: Reichtum + Vorrat/Maximum. */
+  asteroidTip(a: NonNullable<GalaxyCell['asteroid']>): string {
+    return (
+      `Asteroidenfeld · Reichtum: ${a.richness} (×${a.mult})\n` +
+      `Metall: ${Math.round(a.metal)} / ${Math.round(a.metal_max)}\n` +
+      `Kristall: ${Math.round(a.crystal)} / ${Math.round(a.crystal_max)}\n` +
+      `Bergbauschiff hinschicken (⛏), Vorrat regeneriert mit der Zeit.`
+    );
   }
 
   occupantLabel(c: GalaxyCell): string {
@@ -420,6 +440,8 @@ export class GalaxyComponent {
         return '🤖 NPC-Imperium';
       case 'debris':
         return '💥 Trümmerfeld';
+      case 'asteroid_field':
+        return '☄️ Asteroidenfeld';
       default:
         return c.occupant_type;
     }

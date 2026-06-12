@@ -2,7 +2,13 @@
 Reise-Antrieben (ship_speed/slowest_ship_speed/flight_seconds)."""
 from app.fleet.expedition import pick_outcome
 from app.fleet.mining import mine_yield
-from app.fleet.service import carrier_drone_capacity, flight_seconds, ship_speed, slowest_ship_speed
+from app.fleet.service import (
+    carrier_drone_capacity,
+    compute_distance,
+    flight_seconds,
+    ship_speed,
+    slowest_ship_speed,
+)
 
 _CARRIER_CFG = {
     "capacity_by_type": {"carrier": 8, "deathstar": 50},
@@ -75,8 +81,49 @@ def test_slowest_ship_speed_uses_research_per_ship():
 
 def test_drive_research_reduces_eta():
     fleet = {"light_fighter": 1}
-    distance = 95
+    distance = 2795
     base = flight_seconds(distance, slowest_ship_speed(fleet, {}), 100)
     fast = flight_seconds(distance, slowest_ship_speed(fleet, {"combustion_drive": 5}), 100)
     # Hoehere Antriebsstufe -> schnellere Flotte -> kuerzere Flugzeit.
     assert fast < base
+
+
+def test_compute_distance_ogame_model():
+    # Gleiche Koordinaten (z.B. Mond<->Planet) -> same_position (klein).
+    assert compute_distance((1, 1, 1), (1, 1, 1)) == 5
+    # Position im System zaehlt jetzt: same_system_base 1000 + 5*|Pos-Diff|.
+    assert compute_distance((1, 1, 1), (1, 1, 2)) == 1005
+    assert compute_distance((1, 1, 11), (1, 1, 1)) == 1050
+    # Anderes System (gleiche Galaxie): same_galaxy_base 2700 + 95*|Sys-Diff| (Position egal).
+    assert compute_distance((1, 1, 1), (1, 2, 1)) == 2795
+    assert compute_distance((1, 5, 3), (1, 1, 9)) == 2700 + 95 * 4
+    # Andere Galaxie: per_galaxy 40000 * |Gal-Diff| (System/Position egal).
+    assert compute_distance((1, 1, 1), (2, 1, 1)) == 40000
+    assert compute_distance((1, 1, 1), (3, 50, 7)) == 80000
+
+
+_ICFG = {
+    "chance_per_interceptor": 0.01,
+    "ship_chance_cap": 0.90,
+    "chance_per_interdiction_level": 0.005,
+    "interdiction_chance_cap": 0.05,
+    "chance_cap": 0.95,
+}
+
+
+def test_catch_chance_soft_model_axis_split():
+    from app.fleet.interception import catch_chance
+
+    # 1 Abfangjaeger = 1%, linear.
+    assert catch_chance({"interceptor": 1}, _ICFG) == 0.01
+    assert round(catch_chance({"interceptor": 50}, _ICFG), 4) == 0.50
+    # Schiffe deckeln bei 90% (auch mit 200 Jaegern).
+    assert catch_chance({"interceptor": 200}, _ICFG) == 0.90
+    # Forschung addiert 0,5%/Stufe obendrauf, gedeckelt bei +5% (Stufe 10).
+    assert round(catch_chance({"interceptor": 50}, _ICFG, 10), 4) == 0.55
+    assert round(catch_chance({"interceptor": 50}, _ICFG, 20), 4) == 0.55  # Band-Cap, Stufe>10 nutzlos
+    # 90 Jaeger + Forschung 10 = 95% (Gesamt-Cap); die letzten 5% nur ueber Forschung.
+    assert catch_chance({"interceptor": 90}, _ICFG, 10) == 0.95
+    assert catch_chance({"interceptor": 90}, _ICFG, 0) == 0.90  # ohne Forschung nie ueber 90%
+    # Achsentrennung: ein Interdiktor im Mix gibt KEIN Auto-100% mehr (nur Abfangjaeger zaehlen fuers Fangen).
+    assert catch_chance({"interceptor": 10, "interdictor": 5}, _ICFG) == 0.10

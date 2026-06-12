@@ -7,7 +7,9 @@
 
   "universe": {
     "speed": 7,
-    "_speed_note": "Korridor 5-10 (GDD §12). 7 = modern/zugaenglich. Multipliziert Produktion UND Flottentempo.",
+    "_speed_note": "Korridor 5-10 (GDD §12). 7 = modern/zugaenglich. Multipliziert Produktion/Bau (Wirtschaft). NICHT mehr Flottentempo — das hat seit 2026-06-12 einen eigenen Regler fleet_speed.",
+    "fleet_speed": 1.0,
+    "_fleet_speed_note": "Eigenstaendiger Flotten-Tempo-Regler (OGame: eigenes Universumssetting). Teilt die Flugzeit, entkoppelt von speed (=Wirtschaft). Hoeher = schnellere Fluege. 1.0 = strategisch (Nachbarsystem ~20min Kolonieschiff @Antrieb 0). Reine Restart-Aenderung.",
     "base_income": { "metal": 30, "crystal": 15, "deuterium": 0 },
     "galaxies": 8,
     "systems_per_galaxy": 200,
@@ -15,8 +17,13 @@
   },
 
   "planets": {
-    "_note": "Position bestimmt Typ/Temperatur/fields_max (Doku 06a). field_curve: Stuetzwert je Position 1..15 (1 Feld pro Gebaeudestufe). type_bands: erstes Band mit pos <= max_pos gewinnt. temp linear von inner (Pos 1) nach outer (Pos 15). homeworld_min_fields garantiert fairen Start.",
+    "_note": "Position bestimmt Typ/Temperatur/fields_max (Doku 06a). field_curve: ZENTRUM-Stuetzwert je Position 1..15 (1 Feld pro Gebaeudestufe). Die tatsaechlichen Felder eines Slots werden per (galaxy:system:position)-geseedetem RNG um diesen Wert gerollt (field_roll) -> jeder Slot hat feste, aber variierende Groesse (Glueck), stabil ueber Neustarts. type_bands: erstes Band mit pos <= max_pos gewinnt. temp linear von inner (Pos 1) nach outer (Pos 15). homeworld_min_fields garantiert fairen Start.",
     "field_curve": [90, 110, 130, 165, 200, 230, 255, 265, 255, 230, 200, 165, 135, 110, 95],
+    "field_roll": {
+      "_note": "Felder = triangular(center*(1-variance), center*(1+variance), mode=center), geseedet per Slot-Koordinate. Mittenlastig -> Max-Feld-Planeten sind selten (Glueck). floor = harte Untergrenze. variance auf 0 setzen = wieder deterministisch.",
+      "variance": 0.30,
+      "floor": 60
+    },
     "homeworld_min_fields": 190,
     "type_bands": [
       { "max_pos": 3,  "type": "fire" },
@@ -129,7 +136,7 @@
       "hyperspace_tech":    { "cost": { "metal": 0,     "crystal": 4000,  "deuterium": 2000 },  "requires": { "research_lab": 7, "energy_tech": 5, "shield_tech": 5 }, "effect": "Grundlage fuer Hyperraumantrieb und Grosskampfschiffe." },
       "hyperspace_drive":   { "cost": { "metal": 10000, "crystal": 20000, "deuterium": 6000 },  "requires": { "research_lab": 7, "hyperspace_tech": 3 }, "effect": "Antrieb schwerer Kriegsschiffe (Schlachtschiff, Zerstoerer)." },
       "graviton_tech":      { "cost": { "metal": 0,     "crystal": 0,     "deuterium": 300000 },"requires": { "research_lab": 12, "hyperspace_tech": 6 }, "effect": "Benoetigt enorme Energie. Ermoeglicht den Bau des Todessterns." },
-      "hyperspace_interdiction": { "cost": { "metal": 6000, "crystal": 9000, "deuterium": 3000 }, "requires": { "research_lab": 8, "hyperspace_tech": 4, "ion_tech": 4 }, "effect": "Hyperraum-Interdiktionsfeld: +1 Abfang-Reichweite je Stufe und hoehere Fang-Chance der Patrouillen." },
+      "hyperspace_interdiction": { "cost": { "metal": 6000, "crystal": 9000, "deuterium": 3000 }, "requires": { "research_lab": 8, "hyperspace_tech": 4, "ion_tech": 4 }, "max_level": 10, "effect": "Hyperraum-Interdiktionsfeld: +1 Abfang-Reichweite je Stufe (bis Stufe 5) und +0,5% Fang-Chance je Stufe ohne Interdiktor (bis Stufe 10 = +5%)." },
       "ion_disruptors":     { "cost": { "metal": 3000, "crystal": 5000, "deuterium": 1500 }, "requires": { "research_lab": 6, "ion_tech": 6 }, "effect": "Verstaerkte Ionenwaffen: +10% Schild-Strip/Antriebsschaden je Stufe und staerkere Verteidigungs-Lahmlegung." },
       "boarding_doctrine":  { "cost": { "metal": 4000, "crystal": 2000, "deuterium": 1000 }, "requires": { "research_lab": 5, "armor_tech": 5, "impulse_drive": 5 }, "effect": "Enter-Taktik: +1 gekapertes Schiff je Enterschiff und Stufe." },
       "leadership_doctrine": { "cost": { "metal": 1500, "crystal": 2500, "deuterium": 1000 }, "requires": { "research_lab": 4, "command_doctrine": 2 }, "effect": "Fuehrungsdoktrin: senkt den Unmut-Aufbau der Kommandeure je Stufe (seltener Forderungen/Meuterei)." },
@@ -154,7 +161,7 @@
     "large_cargo":      { "cost": { "metal": 6000,    "crystal": 6000,    "deuterium": 0 },       "attack": 5,      "shield": 25,    "cargo": 25000,   "speed": 7500,  "fuel": 50,   "rapidfire": {}, "requires": { "shipyard": 2, "combustion_drive": 6 } },
     "colony_ship":      { "cost": { "metal": 10000,   "crystal": 20000,   "deuterium": 0 },       "attack": 50,     "shield": 100,   "cargo": 7500,    "speed": 2500,  "fuel": 1000, "rapidfire": {}, "requires": { "shipyard": 4, "impulse_drive": 3 } },
     "recycler":         { "cost": { "metal": 10000,   "crystal": 6000,    "deuterium": 2000 },    "attack": 1,      "shield": 10,    "cargo": 20000,   "speed": 2000,  "fuel": 300,  "rapidfire": {}, "requires": { "shipyard": 4, "combustion_drive": 6, "shield_tech": 2 } },
-    "solar_satellite":  { "cost": { "metal": 0,       "crystal": 2000,    "deuterium": 0 },       "attack": 0,      "shield": 1,     "cargo": 0,       "speed": 0,     "fuel": 0,    "rapidfire": {}, "requires": { "shipyard": 1 } },
+    "solar_satellite":  { "cost": { "metal": 0,       "crystal": 2000,    "deuterium": 0 },       "attack": 0,      "shield": 1,     "cargo": 0,       "speed": 0,     "fuel": 0,    "rapidfire": {}, "requires": { "shipyard": 1 }, "energy_prod": { "_note": "Solarsatellit: Energie je Sat = floor((temp_max + temp_offset) / divisor) (OGame). Heisse (sonnennahe) Planeten -> mehr Ertrag; aussen ~3x weniger. Auf dem Planeten stationiert (fleet_id NULL), zaehlt zur Energiebilanz.", "temp_offset": 160, "divisor": 6 } },
     "spy_probe":        { "cost": { "metal": 0,       "crystal": 1000,    "deuterium": 0 },       "attack": 0,      "shield": 0,     "cargo": 5,       "speed": 100000000, "fuel": 1, "rapidfire": {}, "requires": { "shipyard": 1, "spy_tech": 1, "combustion_drive": 1 } },
     "battleship":       { "cost": { "metal": 45000,   "crystal": 15000,   "deuterium": 0 },       "attack": 1000,   "shield": 200,   "cargo": 1500,    "speed": 10000, "fuel": 500,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 4 } },
     "battlecruiser":    { "cost": { "metal": 30000,   "crystal": 40000,   "deuterium": 15000 },   "attack": 700,    "shield": 400,   "cargo": 750,     "speed": 10000, "fuel": 250,  "rapidfire": {}, "requires": { "shipyard": 8, "hyperspace_tech": 5, "laser_tech": 12 } },
@@ -318,14 +325,15 @@
       "survivor_ship_bonus_max": 0.25
     },
     "interception": {
-      "_note": "Abfangen im Flug (A, dedizierte Patrouille + Interdiktor). Eine StationedFleet mit intercept_enabled faengt feindliche Flotten ab, deren galaxie-interne Route ihr System (+/- intercept_radius) kreuzt. MIT Interdiktor (combat_roster.interdictor) in der Patrouille = sicherer Stopp (chance 1.0). OHNE = base_chance + chance_per_interceptor je Abfangjaeger (interceptor) in der Patrouille, gedeckelt auf chance_cap (so offen wie moeglich, kein harter Filter). Inter-Galaxie-Fluege haben keinen modellierten Pfad -> nur am Ziel fangbar. Patrouille ist Aggressor (kann nicht fliehen), die abgefangene Flotte darf fliehen (vom Interdiktor unterdrueckt). Ueberlebt die Flotte, fliegt sie weiter.",
+      "_note": "Abfangen im Flug (A, dedizierte Patrouille). Eine StationedFleet mit intercept_enabled faengt feindliche Flotten ab, deren galaxie-interne Route ihr System (+/- intercept_radius) kreuzt. GETRENNTE ACHSEN (2026-06-12): (1) FANGEN haengt NUR an Abfangjaegern + Forschung = WEICHES Modell, nie 100%: Chance = min(ship_chance_cap, chance_per_interceptor * Abfangjaeger) + min(interdiction_chance_cap, chance_per_interdiction_level * hyperspace_interdiction-Stufe), gesamt gedeckelt auf chance_cap. Schiffe kommen NUR bis ship_chance_cap (0.90) -> die letzten 5% (bis 0.95) gibt es ausschliesslich ueber Forschung, damit die Forschung auf jeder Stufe wirksam bleibt und der einzige Weg an die 95% ist. (2) Der INTERDIKTOR faengt NICHT mehr; er unterdrueckt nur das Fliehen der bereits gestellten Flotte, und das passiert im Kampf-Engine (combat.drive_stages/disengage zaehlt interdictor-Einheiten), NICHT hier. Inter-Galaxie-Fluege haben keinen modellierten Pfad -> nur am Ziel fangbar. Patrouille ist Aggressor (kann nicht fliehen), die abgefangene Flotte darf fliehen (sofern keine Interdiktor-Einheiten im Gefecht). Ueberlebt die Flotte, fliegt sie weiter.",
       "enabled": true,
-      "base_chance": 0.40,
-      "chance_per_interceptor": 0.06,
+      "chance_per_interceptor": 0.01,
+      "ship_chance_cap": 0.90,
+      "chance_per_interdiction_level": 0.005,
+      "interdiction_chance_cap": 0.05,
       "chance_cap": 0.95,
       "max_radius": 5,
-      "radius_per_interdiction_level": 1,
-      "chance_per_interdiction_level": 0.08
+      "radius_per_interdiction_level": 1
     }
   },
 
@@ -344,10 +352,26 @@
   },
 
   "mining": {
-    "_note": "Doku 03c: Mining-Mission ('mine'). Bergbauschiffe bauen im Zielsektor Erz ab; Ertrag je Schiff (metal/crystal), gedeckelt durch die Frachtkapazitaet der Flotte. Kostet Sprit + Zeit + Flottenslot. min_ships = benoetigte Bergbauschiffe.",
+    "_note": "Doku 03c: Mining-Mission ('mine'). Bergbauschiffe bauen an einem ASTEROIDENFELD (occupant 'asteroid_field') Erz ab; Ertrag je Schiff (metal/crystal) x Feld-Reichtum, gedeckelt durch Restvorrat des Feldes UND Frachtkapazitaet der Flotte. Kostet Sprit + Zeit + Flottenslot. min_ships = benoetigte Bergbauschiffe. Ohne Asteroidenfeld am Ziel: kein Ertrag.",
     "ship_type": "miner",
     "min_ships": 1,
     "yield_per_miner": { "metal": 4000, "crystal": 2000 }
+  },
+
+  "asteroids": {
+    "_note": "Asteroidenfelder: endliche, regenerierende Erz-Vorkommen, per RNG im Universum verteilt (eigene Zelle, occupant 'asteroid_field'). Reichtums-Tier (gewichtet gerollt) skaliert Vorrat UND Mining-Ertrag. capacity x mult = Max-Vorrat; erschoepft beim Minen, regeneriert lazy mit regen_ratio_per_hour x Max bis zur Deckelung. density_per_galaxy = Ziel-Anzahl Felder je Galaxie (auf leeren Zellen geseedet).",
+    "density_per_galaxy": 50,
+    "seed_tick_interval_seconds": 21600,
+    "position_min": 1,
+    "position_max": 15,
+    "richness_tiers": [
+      { "name": "karg",     "weight": 35, "mult": 0.5 },
+      { "name": "normal",   "weight": 40, "mult": 1.0 },
+      { "name": "reich",    "weight": 18, "mult": 1.8 },
+      { "name": "ergiebig", "weight": 7,  "mult": 3.0 }
+    ],
+    "capacity": { "metal": 240000, "crystal": 120000 },
+    "regen_ratio_per_hour": 0.03
   },
 
   "expedition": {
@@ -551,18 +575,24 @@
     "slots_per_computer_tech": 1,
     "fuel_per_distance_unit": 1.0,
     "station_fuel": {
-      "_note": "Treibstoff-Unterhalt vorgeschobener Stationierung (auf fremdem Gebiet). Vorrat = mitgefuehrtes Deuterium (Fracht der Deploy-Flotte). Pro Tick zehrt upkeep_ratio_per_tick * Summe(Schiff-fuel). Leer -> Zwangs-Rueckkehr. Eigenes Gebiet: fuel=NULL, kein Unterhalt.",
+      "_note": "Treibstoff-Unterhalt. Vorrat (fuel) = mitgefuehrtes Deuterium (Fracht der Deploy-Flotte) -> laenger patrouillieren = Transporter mit Deuterium mitladen. Pro Tick zehrt Ratio * Summe(Schiff-fuel). Leer -> Zwangs-Rueckkehr. VORGESCHOBEN (fremdes Gebiet): zehrt IMMER mit upkeep_ratio_per_tick (Modell C, auch geparkt). EIGENES Gebiet: geparkt/Eskorte gratis; NUR als Patrouille (intercept_enabled) zehrt es, und langsamer (own_upkeep_ratio_per_tick). Sofort-Heim-Patrouille aus Garnison (ohne Fracht) bekommt einen Starter-Tank = starter_reserve_factor * Summe(Schiff-fuel).",
       "upkeep_ratio_per_tick": 0.05,
+      "own_upkeep_ratio_per_tick": 0.02,
+      "starter_reserve_factor": 0.5,
       "tick_interval_seconds": 3600
     },
     "distance": {
-      "_note": "Distanzklassen (Doku 06). Vereinfacht fuer Vertical Slice.",
-      "same_system": 5,
+      "_note": "OGame-Distanzmodell (2026-06-12, loest die alten Vertical-Slice-Distanzklassen ab). Position im System zaehlt jetzt. same_position = gleiche Koords (Mond<->Planet). Innersystem: same_system_base + per_position*|Pos-Diff|. Innergalaktisch: same_galaxy_base + per_system*|Sys-Diff|. Inter-Galaxie: per_galaxy*|Gal-Diff| (40000 -> Galaxienwechsel ~1.25h Kolonieschiff).",
+      "same_position": 5,
+      "same_system_base": 1000,
+      "same_system_per_position": 5,
+      "same_galaxy_base": 2700,
       "same_galaxy_per_system": 95,
-      "inter_galaxy": 20000
+      "inter_galaxy_per_galaxy": 40000
     },
     "speed_factor": 35000,
-    "_speed_note": "flight_seconds = (10 + 3500/speed_pct * sqrt(distance*10/slowest_ship_speed)) / universe_speed"
+    "_speed_factor_note": "NUR der Sprit-Divisor in fuel_cost. NICHT die Flugzeitkonstante (die 35000 in flight_seconds ist hartkodiert, OGame-Wert).",
+    "_flight_note": "flight_seconds = (10 + 35000/speed_pct * sqrt(distance*10/slowest_ship_speed)) / universe.fleet_speed"
   },
 
   "npc": {

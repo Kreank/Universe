@@ -17,7 +17,7 @@ CREATE TYPE commander_rank  AS ENUM ('cadet', 'officer', 'veteran', 'elite', 'le
 CREATE TYPE specialization  AS ENUM ('combat', 'logistics', 'spy', 'research', 'trade');
 CREATE TYPE fleet_mission   AS ENUM ('attack', 'transport', 'deploy', 'hold', 'colonize', 'spy', 'recycle', 'expedition', 'return', 'mine', 'trade');
 CREATE TYPE fleet_status    AS ENUM ('flying', 'arrived', 'returning', 'done');
-CREATE TYPE occupant_type   AS ENUM ('empty', 'player', 'npc', 'debris');
+CREATE TYPE occupant_type   AS ENUM ('empty', 'player', 'npc', 'debris', 'asteroid_field');
 CREATE TYPE transmission_type AS ENUM ('routine', 'reaction', 'demand', 'combat_report', 'big_moment', 'system', 'spy_report');
 
 -- ---------------------------------------------------------------------
@@ -240,6 +240,24 @@ CREATE TABLE universe_cells (
     debris_field  JSONB NOT NULL DEFAULT '{}'::jsonb,  -- Truemmer am Ort {metal, crystal}
     PRIMARY KEY (galaxy, system, position)
 );
+
+-- Asteroidenfelder: endliche, regenerierende Erz-Vorkommen (occupant 'asteroid_field').
+CREATE TABLE asteroid_fields (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    galaxy           INT NOT NULL,
+    system           INT NOT NULL,
+    position         INT NOT NULL,
+    richness         TEXT NOT NULL DEFAULT 'normal',   -- Tier-Name (karg/normal/reich/ergiebig)
+    mult             DOUBLE PRECISION NOT NULL DEFAULT 1.0,  -- Reichtums-Multiplikator
+    metal_remaining  DOUBLE PRECISION NOT NULL DEFAULT 0,
+    crystal_remaining DOUBLE PRECISION NOT NULL DEFAULT 0,
+    metal_max        DOUBLE PRECISION NOT NULL DEFAULT 0,
+    crystal_max      DOUBLE PRECISION NOT NULL DEFAULT 0,
+    last_regen_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (galaxy, system, position)
+);
+CREATE INDEX idx_asteroid_coords ON asteroid_fields(galaxy, system, position);
 
 CREATE TABLE npc_empires (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),

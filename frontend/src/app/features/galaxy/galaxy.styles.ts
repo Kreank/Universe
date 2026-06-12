@@ -65,12 +65,15 @@ export const galaxyStyles = `
   .ic.phx:hover { border-color: var(--accent); color: var(--accent); }
   .ic.atk:hover { border-color: var(--magenta); color: var(--magenta); }
   .ic.trp:hover { border-color: var(--ok); color: var(--ok); }
+  .ic.mine:hover { border-color: var(--warn, #d9a441); color: var(--warn, #d9a441); }
+  .ic.col:hover { border-color: var(--ok); color: var(--ok); }
 
   .chip { color: var(--text-dim); font-size: 0.7rem; border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap; }
   .chip.disc { color: var(--accent); border-color: var(--accent-dim); cursor: help; }
   .chip.own { color: var(--accent); border-color: var(--accent-dim); }
   .chip.lvl { color: var(--accent); border-color: var(--accent-dim); margin-right: 0.3rem; }
   .chip.trade { color: var(--accent); border-color: var(--accent-dim); background: rgba(46, 230, 214, 0.1); cursor: help; margin-right: 0.3rem; }
+  .chip.rock { color: var(--warn, #d9a441); border-color: var(--warn, #d9a441); background: rgba(217, 164, 65, 0.1); cursor: help; margin-right: 0.3rem; }
 
   /* --- Ziel-Verzeichnis --- */
   .target-row {

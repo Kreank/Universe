@@ -78,14 +78,14 @@ async def resolve_colonize(session: AsyncSession, fleet: Fleet) -> dict | None:
         return {"ok": False, "reason": reason, "location": f"{g}:{s}:{p}"}
 
     # Planet gründen.
-    derived = derive_planet(p)
+    derived = derive_planet(g, s, p)
     planet = Planet(
         player_id=fleet.player_id,
         galaxy=g, system=s, position=p,
         name=f"Kolonie {g}:{s}:{p}",
         planet_type=derived["planet_type"],
         temp_max=derived["temp_max"],
-        fields_max=fields_max_for(p, is_homeworld=False),
+        fields_max=fields_max_for(g, s, p, is_homeworld=False),
         is_homeworld=False,
     )
     session.add(planet)

@@ -46,14 +46,14 @@ async def register_player(
     # Heimatplanet auf freier Zelle. Typ/Temp/Felder aus der Position ableiten
     # (Heimatplanet erhaelt das garantierte Mindest-Feldbudget).
     g, s, p = await find_free_cell(session)
-    derived = derive_planet(p)
+    derived = derive_planet(g, s, p)
     planet = Planet(
         player_id=player.id,
         galaxy=g, system=s, position=p,
         name="Heimatplanet",
         planet_type=derived["planet_type"],
         temp_max=derived["temp_max"],
-        fields_max=fields_max_for(p, is_homeworld=True),
+        fields_max=fields_max_for(g, s, p, is_homeworld=True),
         is_homeworld=True,
     )
     session.add(planet)

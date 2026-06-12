@@ -313,6 +313,15 @@ export interface GalaxyCell {
   discovered?: boolean;
   /** P2P-Handelsanzeige des Spielers (falls aktiviert). */
   trade?: { offer: string | null; want: string | null; rate: number | null; note: string | null } | null;
+  /** Asteroidenfeld am Ort (Restvorrat) — Bergbauschiffe koennen hier minen. */
+  asteroid?: {
+    richness: string;
+    mult: number;
+    metal: number;
+    crystal: number;
+    metal_max: number;
+    crystal_max: number;
+  } | null;
 }
 
 export interface GalaxyResponse {

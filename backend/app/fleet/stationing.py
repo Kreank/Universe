@@ -85,8 +85,16 @@ def station_power(ships: dict, bal) -> float:
 
 def station_upkeep(ships: dict, bal) -> float:
     """Treibstoff-Unterhalts-Basis pro Tick (vor upkeep_ratio): Summe(Schiff-fuel * Anzahl).
-    Pure Funktion fuer Tuning/Tests; nur fuer vorgeschobene Stationierung relevant."""
+    Pure Funktion fuer Tuning/Tests."""
     return float(sum(bal.ships.get(t, {}).get("fuel", 0) * int(c) for t, c in (ships or {}).items()))
+
+
+def starter_reserve(ships: dict, bal) -> float:
+    """Starter-Treibstoff-Tank fuer Patrouillen ohne mitgefuehrtes Deuterium (z.B. Sofort-Heim-
+    Patrouille aus der Garnison). = starter_reserve_factor * station_upkeep. Fuer echte Ausdauer
+    laedt man stattdessen Deuterium (Transporter) als Fracht der Deploy-Flotte mit."""
+    cfg = bal.fleet.get("station_fuel", {})
+    return station_upkeep(ships, bal) * float(cfg.get("starter_reserve_factor", 0.5))
 
 
 # -- deploy: Stationierung ----------------------------------------------------
@@ -102,8 +110,9 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet) -> bool:
     if not ships:
         return False
     coords = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
-    # Vorgeschoben (kein eigener Planet am Ziel) -> Treibstoff-Vorrat aus mitgefuehrtem
-    # Deuterium (zehrt per Tick, leer -> Zwangs-Rueckkehr). Eigenes Gebiet: fuel=NULL, gratis.
+    # Treibstoff-Tank = mitgefuehrtes Deuterium (Fracht). Wird als Vorrat BEHALTEN (auch auf
+    # eigenem Gebiet). Gezehrt wird erst im station_fuel_tick: vorgeschoben immer, eigenes Gebiet
+    # nur als Patrouille (und langsamer). Laenger patrouillieren -> mehr Deuterium mitladen.
     own_here = (await session.execute(
         select(Planet).where(
             Planet.player_id == fleet.player_id,
@@ -113,7 +122,7 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet) -> bool:
         )
     )).scalars().first()
     cargo = fleet.cargo or {}
-    fuel_reserve = None if own_here is not None else float(cargo.get("deuterium", 0) or 0)
+    fuel_reserve = float(cargo.get("deuterium", 0) or 0)
     st = StationedFleet(
         owner_id=fleet.player_id,
         home_planet_id=fleet.origin_planet_id,
@@ -128,9 +137,10 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet) -> bool:
         await session.delete(r)
     fleet.status = "done"
     fleet.cargo = {}
-    if fuel_reserve is None:
-        body = (f"Deine Flotte ist bei {coords} (eigenes Gebiet) stationiert — kein Treibstoff-"
-                f"Unterhalt. Gebunden bis zum Rueckruf; als Eskorte anbietbar (Handel-Tab).")
+    if own_here is not None:
+        body = (f"Deine Flotte ist bei {coords} (eigenes Gebiet) stationiert mit {int(fuel_reserve)} "
+                f"Deuterium-Vorrat. Geparkt/als Eskorte kein Unterhalt; als Patrouille zehrt der "
+                f"Vorrat langsam (leer -> Rueckkehr). Fuer Ausdauer mehr Deuterium mitladen.")
     else:
         body = (f"Deine Flotte ist VORGESCHOBEN bei {coords} stationiert mit {int(fuel_reserve)} "
                 f"Deuterium-Vorrat. Der Vorrat zehrt mit der Zeit; ist er leer, kehrt die Flotte "
@@ -225,10 +235,14 @@ def intercept_radius_cap(research: dict | None = None) -> int:
 
 
 def set_intercept_mode(st: StationedFleet, enabled: bool, radius: int, max_radius: int | None = None) -> None:
-    """Setzt/aktualisiert den Abfang-Modus einer Patrouille (Radius-Cap aus balance + Forschung)."""
+    """Setzt/aktualisiert den Abfang-Modus einer Patrouille (Radius-Cap aus balance + Forschung).
+    Schaltet man eine Patrouille OHNE Treibstoff-Tank scharf (fuel None, z.B. Alt-Stationierung
+    auf eigenem Gebiet), bekommt sie einen Starter-Tank, damit der Unterhalt greift."""
     cap = max_radius if max_radius is not None else intercept_radius_cap()
     st.intercept_enabled = bool(enabled)
     st.intercept_radius = max(0, min(int(cap), int(radius or 0)))
+    if st.intercept_enabled and getattr(st, "fuel", None) is None:
+        st.fuel = starter_reserve(st.ships or {}, get_balance())
 
 
 async def create_home_patrol(
@@ -273,6 +287,7 @@ async def create_home_patrol(
         owner_id=player.id, home_planet_id=planet.id,
         galaxy=planet.galaxy, system=planet.system, position=planet.position,
         ships=moved, intercept_enabled=True, intercept_radius=max(0, min(int(cap), int(radius or 0))),
+        fuel=starter_reserve(moved, get_balance()),
     )
     session.add(st)
     await session.flush()
@@ -345,37 +360,61 @@ async def recall_station(session: AsyncSession, player: Player, station_id) -> F
 
 async def station_fuel_tick() -> None:
     """Periodischer Job (balance.fleet.station_fuel.tick_interval_seconds): zehrt den Treibstoff-
-    Vorrat vorgeschobener Stationierungen (fuel IS NOT NULL). Ist er leer -> Zwangs-Rueckkehr heim.
-    Eigene Stationierungen (fuel NULL) bleiben unberuehrt."""
+    Vorrat (fuel IS NOT NULL). Ist er leer -> Zwangs-Rueckkehr heim.
+
+    Zwei Saetze (getrennt von der Patrouillen-Slot-Logik): VORGESCHOBEN (Stationssystem ist KEIN
+    eigener Planet) zehrt IMMER mit upkeep_ratio_per_tick (Modell C, auch geparkt). EIGENES Gebiet
+    zehrt NUR als Patrouille (intercept_enabled) und langsamer (own_upkeep_ratio_per_tick) — geparkte
+    Eigen-Flotten/Eskorten bleiben gratis."""
     from app.platform.db import session_scope
 
     bal = get_balance()
     cfg = bal.fleet.get("station_fuel", {})
-    ratio = float(cfg.get("upkeep_ratio_per_tick", 0.0))
-    if ratio <= 0:
+    fwd_ratio = float(cfg.get("upkeep_ratio_per_tick", 0.0))
+    own_ratio = float(cfg.get("own_upkeep_ratio_per_tick", 0.0))
+    if fwd_ratio <= 0 and own_ratio <= 0:
         return
     async with session_scope() as session:
         stations = (await session.execute(
             select(StationedFleet).where(StationedFleet.fuel.isnot(None))
         )).scalars().all()
+        owned_cache: dict = {}  # owner_id -> set[(galaxy, system, position)]
         recalled = 0
         for st in stations:
+            owned = owned_cache.get(st.owner_id)
+            if owned is None:
+                planets = (await session.execute(
+                    select(Planet.galaxy, Planet.system, Planet.position)
+                    .where(Planet.player_id == st.owner_id)
+                )).all()
+                owned = {(p.galaxy, p.system, p.position) for p in planets}
+                owned_cache[st.owner_id] = owned
+            is_own = (st.galaxy, st.system, st.position) in owned
+            if is_own:
+                if not st.intercept_enabled:
+                    continue  # eigenes Gebiet, geparkt -> gratis
+                ratio = own_ratio
+            else:
+                ratio = fwd_ratio  # vorgeschoben -> immer
+            if ratio <= 0:
+                continue
             st.fuel = float(st.fuel or 0) - station_upkeep(st.ships or {}, bal) * ratio
             if st.fuel <= 0:
                 coords = f"{st.galaxy}:{st.system}:{st.position}"
                 owner_id = st.owner_id
+                where = "Patrouille" if is_own else "vorgeschobenen Flotte"
                 fleet = await _send_station_home(session, st)
                 if fleet is not None:
                     recalled += 1
                     await create_system_transmission(
                         session, player_id=owner_id,
                         subject=f"⛽ Treibstoff leer — Flotte kehrt heim ({coords})",
-                        body=(f"Der Deuterium-Vorrat deiner vorgeschobenen Flotte bei {coords} ist "
-                              f"erschoepft. Sie tritt automatisch den Rueckflug an."),
+                        body=(f"Der Deuterium-Vorrat deiner {where} bei {coords} ist erschoepft. "
+                              f"Sie tritt automatisch den Rueckflug an."),
                         ttype="system",
                     )
         if recalled:
-            log.info("Treibstoff-Tick: %d vorgeschobene Flotte(n) heimgeschickt (leer)", recalled)
+            log.info("Treibstoff-Tick: %d Flotte(n) heimgeschickt (leer)", recalled)
 
 
 def set_escort_offer(st: StationedFleet, enabled: bool, radius: int, fee_pct: float) -> None:

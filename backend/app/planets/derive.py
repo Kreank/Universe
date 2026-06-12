@@ -1,12 +1,18 @@
 """Ableitung von Planetentyp, Temperatur und Feldern aus der Systemposition.
 
-Die Position im System bestimmt deterministisch drei Eigenschaften (Doku 06a):
-- ``planet_type`` ueber Typ-Baender (erstes Band mit ``pos <= max_pos`` gewinnt),
-- ``temp_max``  ueber lineare Interpolation innen (heiss) -> aussen (kalt),
-- ``fields_max`` ueber die Stuetzkurve ``field_curve`` (1 Feld je Gebaeudestufe).
+Die Position im System bestimmt (Doku 06a):
+- ``planet_type`` ueber Typ-Baender (erstes Band mit ``pos <= max_pos`` gewinnt) — deterministisch,
+- ``temp_max``  ueber lineare Interpolation innen (heiss) -> aussen (kalt) — deterministisch,
+- ``fields_max`` ueber die Stuetzkurve ``field_curve`` als ZENTRUM, plus einen per Slot-Koordinate
+  (galaxy:system:position) geseedeten Zufalls-Roll (``field_roll``). Dadurch hat jeder Slot eine
+  feste, aber gegenueber den Nachbarn variierende Groesse: einen Max-Feld-Planeten zu erwischen ist
+  Glueck. Der Seed haengt nur an der Koordinate -> der Roll ist ueber Neustarts/Backfill stabil
+  (idempotent, keine Migration noetig). ``variance=0`` stellt das alte deterministische Verhalten her.
 
-Keine Zufallsquellen -> reproduzierbar. Alle Zahlen leben in ``balance.planets``."""
+Alle Zahlen leben in ``balance.planets``."""
 from __future__ import annotations
+
+import random
 
 from sqlalchemy import select
 
@@ -24,17 +30,42 @@ def homeworld_min_fields() -> int:
     return int(_planets_cfg()["homeworld_min_fields"])
 
 
-def derive_planet(position: int) -> dict:
+def _field_center(position: int) -> int:
+    """Zentrum-Feldwert (Stuetzkurve) fuer eine geklemmte Position."""
+    curve = _planets_cfg()["field_curve"]
+    n = len(curve)
+    pos = max(1, min(int(position), n))
+    return int(curve[pos - 1])
+
+
+def rolled_fields(galaxy: int, system: int, position: int) -> int:
+    """Tatsaechliche Feldanzahl eines Slots: mittenlastiger Roll um den Stuetzwert,
+    geseedet per Koordinate -> stabil und pro Slot verschieden."""
+    cfg = _planets_cfg()
+    center = _field_center(position)
+    roll = cfg.get("field_roll", {})
+    variance = float(roll.get("variance", 0.0))
+    if variance <= 0.0:
+        return center  # deterministischer Fallback
+    floor = int(roll.get("floor", 1))
+    low = center * (1.0 - variance)
+    high = center * (1.0 + variance)
+    rng = random.Random(f"{int(galaxy)}:{int(system)}:{int(position)}")
+    value = rng.triangular(low, high, center)  # mode=center -> Extreme selten
+    return max(floor, int(round(value)))
+
+
+def derive_planet(galaxy: int, system: int, position: int) -> dict:
     """Leitet ``{planet_type, temp_max, fields_max}`` aus der Position ab.
 
-    Position wird auf ``1..len(field_curve)`` geklemmt. Deterministisch."""
+    Typ/Temp sind deterministisch; ``fields_max`` ist der koordinaten-geseedete Roll.
+    Position wird auf ``1..len(field_curve)`` geklemmt."""
     cfg = _planets_cfg()
     curve = cfg["field_curve"]
     n = len(curve)
     pos = max(1, min(int(position), n))
 
-    # Felder: direkter Stuetzwert nach Index (Position 1 -> Index 0).
-    fields_max = int(curve[pos - 1])
+    fields_max = rolled_fields(galaxy, system, position)
 
     # Typ: erstes Band, dessen max_pos die Position abdeckt.
     planet_type = "normal"
@@ -52,20 +83,28 @@ def derive_planet(position: int) -> dict:
     return {"planet_type": planet_type, "temp_max": temp_max, "fields_max": fields_max}
 
 
-def fields_max_for(position: int, is_homeworld: bool) -> int:
-    """fields_max inkl. Heimatplanet-Mindestgrenze."""
-    base = derive_planet(position)["fields_max"]
+def fields_max_for(galaxy: int, system: int, position: int, is_homeworld: bool) -> int:
+    """fields_max inkl. Heimatplanet-Mindestgrenze (Glueck darf nach oben abweichen)."""
+    base = rolled_fields(galaxy, system, position)
     return max(base, homeworld_min_fields()) if is_homeworld else base
 
 
 async def backfill_planets() -> None:
-    """Startup-Backfill: leitet fuer JEDEN Planeten Typ/Temp/Felder aus der
-    Position neu ab (Heimatplanet-Minimum beachtet). Idempotent, da deterministisch."""
+    """Startup-Backfill: leitet fuer JEDEN Planeten Typ/Temp/Felder aus der Koordinate neu ab
+    (Heimatplanet-Minimum beachtet). Idempotent, da der Feld-Roll koordinaten-geseedet ist.
+    Monde haben eigene Feld-Logik (effective_fields_max) -> werden hier nicht ueberschrieben."""
     async with session_scope() as session:
         planets = (await session.execute(select(Planet))).scalars().all()
         for planet in planets:
-            derived = derive_planet(planet.position)
+            if planet.planet_type == "moon":
+                continue
+            derived = derive_planet(planet.galaxy, planet.system, planet.position)
             planet.planet_type = derived["planet_type"]
             planet.temp_max = derived["temp_max"]
-            planet.fields_max = fields_max_for(planet.position, planet.is_homeworld)
+            rolled = fields_max_for(
+                planet.galaxy, planet.system, planet.position, planet.is_homeworld
+            )
+            # Etablierte Planeten nie unter ihre bereits bebauten Felder schrumpfen lassen
+            # (Roll darf nur nach oben Glueck bringen, nicht bestehenden Bau entwerten).
+            planet.fields_max = max(rolled, int(planet.fields_used or 0))
         await session.commit()

@@ -5,10 +5,11 @@ Eine ``StationedFleet`` mit ``intercept_enabled`` faengt feindliche Flotten ab, 
 pro Galaxie linear in der System-Differenz (fleet.service.compute_distance) — der Abfang-
 Zeitpunkt liegt also anteilig entlang der Flugzeit am Kreuzungssystem.
 
-- **MIT Interdiktor** (combat_roster.interdictor) in der Patrouille -> sicherer Stopp (Chance 1.0)
-  und die abgefangene Flotte kann nicht aus der Schlacht fliehen (Interdiktion).
-- **OHNE Interdiktor** -> Chance = base_chance + chance_per_interceptor je Abfangjaeger,
-  gedeckelt (balance.combat.interception) — so offen wie moeglich, kein harter Filter.
+Getrennte Achsen (2026-06-12): **Fangen** haengt NUR an Abfangjaeger-Masse + Hyperraum-
+Interdiktion-Forschung (weich, Cap 95%, nie 100% — immer ein Rest-Schlupf; s. ``catch_chance``).
+Der **Interdiktor faengt NICHT**; er ist auf die zweite Achse spezialisiert und unterdrueckt
+das Fliehen der bereits gestellten Flotte — das geschieht im Kampf-Engine
+(``engine.disengage_phase`` zaehlt interdictor-Einheiten), nicht hier.
 
 Die Patrouille ist Aggressor (Angreifer-Seite, kann nicht fliehen); die abgefangene Flotte
 ist Verteidiger und darf fliehen. Ueberlebt die Flotte das Gefecht, fliegt sie weiter zu
@@ -43,19 +44,29 @@ def _aware(t: dt.datetime | None) -> dt.datetime | None:
     return t.replace(tzinfo=UTC) if t.tzinfo is None else t
 
 
-def _has_interdictor(ships: dict, roster: dict) -> bool:
-    return any(bool(roster.get(t, {}).get("interdictor")) for t in ships)
+def catch_chance(station_ships: dict, icfg: dict, interdiction_lvl: int = 0) -> float:
+    """Fang-Chance einer Patrouille — WEICHES Modell, getrennte Achsen (2026-06-12).
 
+    Das FANGEN haengt NUR an Abfangjaeger-Masse + Hyperraum-Interdiktion-Forschung und ist
+    NIE 100% (Cap 95%, immer ein Rest-Schlupf). Der Interdiktor faengt NICHT mehr (kein
+    Auto-100%): er ist auf die ZWEITE Achse spezialisiert — er unterdrueckt das Fliehen der
+    bereits gestellten Flotte, und das passiert im Kampf-Engine (engine.disengage_phase zaehlt
+    interdictor-Einheiten). Darum hier kein Interdiktor-Sonderfall.
 
-def catch_chance(station_ships: dict, roster: dict, icfg: dict) -> float:
-    """Abfang-Chance einer Patrouille. Interdiktor -> 1.0; sonst base + je Abfangjaeger, gedeckelt."""
-    if _has_interdictor(station_ships, roster):
-        return 1.0
-    base = float(icfg.get("base_chance", 0.4))
-    per = float(icfg.get("chance_per_interceptor", 0.06))
+    chance = min(ship_chance_cap, chance_per_interceptor * Abfangjaeger)
+           + min(interdiction_chance_cap, chance_per_interdiction_level * Forschungsstufe)
+    Schiffe kommen nur bis ship_chance_cap (0.90); die letzten 5% (bis chance_cap=0.95) gibt es
+    ausschliesslich ueber Forschung -> Forschung bleibt auf jeder Stufe wirksam und ist der
+    einzige Weg an die 95%.
+    """
+    per = float(icfg.get("chance_per_interceptor", 0.01))
+    ship_cap = float(icfg.get("ship_chance_cap", 0.90))
+    ship_part = min(ship_cap, per * int(station_ships.get("interceptor", 0)))
+    res_per = float(icfg.get("chance_per_interdiction_level", 0.005))
+    res_cap = float(icfg.get("interdiction_chance_cap", 0.05))
+    res_part = min(res_cap, res_per * max(0, int(interdiction_lvl)))
     cap = float(icfg.get("chance_cap", 0.95))
-    interceptors = int(station_ships.get("interceptor", 0))
-    return max(0.0, min(cap, base + per * interceptors))
+    return max(0.0, min(cap, ship_part + res_part))
 
 
 def _frac_time(depart: dt.datetime, arrive: dt.datetime, origin_sys: int, target_sys: int,
@@ -216,7 +227,6 @@ async def resolve_interception(fleet_id: str, station_id: str) -> None:
 
         bal = get_balance()
         icfg = bal.data["combat"].get("interception", {})
-        roster = bal.data.get("combat_roster", {})
         loc = f"{station.galaxy}:{station.system}:{station.position}"
 
         attacker_player = await session.get(Player, station.owner_id)
@@ -225,15 +235,12 @@ async def resolve_interception(fleet_id: str, station_id: str) -> None:
         def_name = defender_player.display_name if defender_player else "Eine Flotte"
 
         # -- Stopp-Wurf -------------------------------------------------------
-        # Hyperraum-Interdiktion-Forschung des Patrouillen-Besitzers hebt die Fang-Chance.
+        # Fangen = Abfangjaeger-Masse + Hyperraum-Interdiktion-Forschung (weich, nie 100%).
+        # Der Interdiktor faengt NICHT (Achsentrennung) — er unterdrueckt spaeter im Kampf
+        # (engine.disengage_phase) das Fliehen der bereits gestellten Flotte.
         owner_research = await get_research_levels(session, station.owner_id)
         interdiction_lvl = int(owner_research.get("hyperspace_interdiction", 0))
-        chance = catch_chance(station_ships, roster, icfg)
-        if chance < 1.0 and interdiction_lvl > 0:
-            chance = min(
-                float(icfg.get("chance_cap", 0.95)),
-                chance + float(icfg.get("chance_per_interdiction_level", 0.0)) * interdiction_lvl,
-            )
+        chance = catch_chance(station_ships, icfg, interdiction_lvl)
         if random.random() >= chance:
             # Durchgerutscht: beide Seiten informieren, Flotte fliegt weiter.
             await create_system_transmission(

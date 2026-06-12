@@ -200,12 +200,17 @@ async def set_intercept_endpoint(
     fliegende Feindflotten erfasst, deren Route diese Patrouille kreuzt."""
     from app.economy.service import get_research_levels
     from app.fleet.interception import scan_inflight_for_station
+    from app.fleet.service import fleet_slots, used_fleet_slots
     from app.fleet.stationing import intercept_radius_cap, set_intercept_mode, station_out
     from app.platform.models import StationedFleet
 
     st = await session.get(StationedFleet, station_id)
     if st is None or st.owner_id != player.id:
         raise HTTPException(status_code=404, detail="Patrouille nicht gefunden")
+    # Eine NEUE Patrouille (aus->an) belegt einen Flottenslot. Radius aendern oder ausschalten nicht.
+    if body.enabled and not st.intercept_enabled:
+        if await used_fleet_slots(session, player.id) >= await fleet_slots(session, player.id):
+            raise HTTPException(status_code=400, detail="Keine freien Flottenslots fuer eine Patrouille")
     cap = intercept_radius_cap(await get_research_levels(session, player.id))
     set_intercept_mode(st, body.enabled, body.radius, max_radius=cap)
     await session.flush()
@@ -228,8 +233,12 @@ async def patrol_home_endpoint(
     """Stellt Garnisons-Schiffe sofort als Abfang-Patrouille im eigenen System auf."""
     from app.economy.service import get_research_levels
     from app.fleet.interception import scan_inflight_for_station
+    from app.fleet.service import fleet_slots, used_fleet_slots
     from app.fleet.stationing import create_home_patrol, intercept_radius_cap, station_out
 
+    # Jede neue Patrouille belegt einen Flottenslot (Anti-Omnipraesenz).
+    if await used_fleet_slots(session, player.id) >= await fleet_slots(session, player.id):
+        raise HTTPException(status_code=400, detail="Keine freien Flottenslots fuer eine Patrouille")
     cap = intercept_radius_cap(await get_research_levels(session, player.id))
     try:
         st = await create_home_patrol(session, player, planet_id, body.ships, body.radius, max_radius=cap)

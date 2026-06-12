@@ -30,6 +30,12 @@ class Balance:
         return int(self.data["universe"]["speed"])
 
     @property
+    def fleet_speed(self) -> float:
+        """Separater Flotten-Tempo-Regler (OGame: eigenes Universumssetting). Teilt die Flugzeit,
+        entkoppelt von speed (=Wirtschaft/Bau). Hoeher = schnellere Fluege. Default 1.0."""
+        return float(self.data["universe"].get("fleet_speed", 1.0))
+
+    @property
     def base_income(self) -> dict[str, float]:
         return self.data["universe"]["base_income"]
 
