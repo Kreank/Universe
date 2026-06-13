@@ -14,13 +14,15 @@ import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/d
 import { missionIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { NotificationService } from '../../core/services/notification.service';
 import { fleetStyles } from './fleet.styles';
+import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 
 @Component({
   selector: 'app-fleet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, CountdownComponent, IconTileComponent],
+  imports: [FormsModule, RouterLink, CountdownComponent, IconTileComponent, BtnIconComponent, EmptyStateComponent],
   template: `
     <h1>Flotte</h1>
 
@@ -171,7 +173,7 @@ import { fleetStyles } from './fleet.styles';
             </div>
           }
         } @else {
-          <p class="muted small">Keine Flotten unterwegs.</p>
+          <app-empty-state art="empty_fleet">Keine Flotten unterwegs.</app-empty-state>
         }
       </section>
 
@@ -191,7 +193,7 @@ import { fleetStyles } from './fleet.styles';
                 }
               </div>
               <div class="fleet-act">
-                <button class="btn btn-danger btn-sm" type="button" (click)="recallPatrol(s)">↩ Rueckruf</button>
+                <button class="btn btn-danger btn-sm" type="button" (click)="recallPatrol(s)"><app-btn-icon [src]="missionIcon('return')" glyph="↩" /> Rueckruf</button>
               </div>
             </div>
           }

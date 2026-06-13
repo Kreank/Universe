@@ -85,6 +85,8 @@ export const commanderDetailStyles = `
     border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--border); font-size: var(--fs-md);
   }
   .ability-card.learned .ac-glyph { border-color: var(--accent-dim); color: var(--accent); }
+  .ac-ico { width: 18px; height: 18px; object-fit: contain; }
+  .ac-glyph-fb { display: none; }
   .ac-name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-sm); flex: 1; line-height: 1.1; }
   .ac-pips { display: inline-flex; gap: 3px; flex: 0 0 auto; }
   .ac-pips .pip {

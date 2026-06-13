@@ -5,12 +5,14 @@ import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Commander, DecisionChoice, Transmission } from '../../core/models/api.models';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { defenseIcon, resourceIcon, shipIcon } from '../../core/models/icon-assets';
+import { defenseIcon, missionIcon, navIcon, resourceIcon, shipIcon, uiIcon } from '../../core/models/icon-assets';
 import { transmissionStyles } from './transmission.styles';
 import { CombatReportComponent } from './combat-report.component';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 import { TabBarComponent } from '../../shared/components/tab-bar.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 
 /** Eine Einheit-Zeile im Spionagebericht (Bild/Glyph + deutscher Name + Anzahl). */
 interface IntelUnit {
@@ -44,7 +46,7 @@ interface SpyIntelView {
 @Component({
   selector: 'app-transmissions',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, CombatReportComponent, IconTileComponent, MessageComposeComponent, TabBarComponent],
+  imports: [DatePipe, CombatReportComponent, BtnIconComponent, IconTileComponent, MessageComposeComponent, TabBarComponent, EmptyStateComponent],
   template: `
     <h1>Postfach · Funksprüche</h1>
     <p class="sub">Eingehende Transmissionen und Crew-Forderungen.</p>
@@ -54,10 +56,10 @@ interface SpyIntelView {
         (select)="onlyUnread.set($event === 'unread')" />
       <button class="btn btn-sm btn-primary" [disabled]="advisorBusy()" (click)="askAdvisor()"
         title="Der KI-Berater analysiert dein Imperium und schickt Empfehlungen ins Postfach">
-        🧠 {{ advisorBusy() ? 'Berater denkt…' : 'Berater fragen' }}
+        <app-btn-icon [src]="uiIcon('advisor')" glyph="🧠" /> {{ advisorBusy() ? 'Berater denkt…' : 'Berater fragen' }}
       </button>
       <button class="btn btn-sm btn-ghost del-read" [disabled]="!readCount()" (click)="deleteRead()">
-        🗑 Gelesene löschen{{ readCount() ? ' (' + readCount() + ')' : '' }}
+        <app-btn-icon [src]="uiIcon('trash')" glyph="🗑" /> Gelesene löschen{{ readCount() ? ' (' + readCount() + ')' : '' }}
       </button>
     </div>
 
@@ -168,24 +170,24 @@ interface SpyIntelView {
             } @else {
               <div class="msg-actions">
                 @if (reportId(t); as rid) {
-                  <button class="btn btn-sm btn-primary" (click)="openReport(t, rid)">⚔️ Bericht öffnen</button>
+                  <button class="btn btn-sm btn-primary" (click)="openReport(t, rid)"><app-btn-icon [src]="missionIcon('attack')" glyph="⚔️" /> Bericht öffnen</button>
                 }
                 @if (t.from_player_id) {
-                  <button class="btn btn-sm btn-primary" (click)="reply(t)">✉ Antworten</button>
+                  <button class="btn btn-sm btn-primary" (click)="reply(t)"><app-btn-icon [src]="navIcon('mail')" glyph="✉" /> Antworten</button>
                 }
                 @if (!t.read) {
                   <button class="btn btn-sm btn-ghost" (click)="markRead(t)">Als gelesen markieren</button>
                 }
-                <button class="btn btn-sm btn-ghost del" (click)="deleteOne(t)" title="Funkspruch loeschen">🗑 Löschen</button>
+                <button class="btn btn-sm btn-ghost del" (click)="deleteOne(t)" title="Funkspruch loeschen"><app-btn-icon [src]="uiIcon('trash')" glyph="🗑" /> Löschen</button>
               </div>
             }
           </article>
         }
       </div>
     } @else {
-      <p class="empty-state">
+      <app-empty-state art="empty_inbox">
         {{ onlyUnread() ? 'Keine ungelesenen Funksprueche.' : 'Funkstille. Keine Transmissionen.' }}
-      </p>
+      </app-empty-state>
     }
 
     @if (openReportId(); as rid) {
@@ -206,6 +208,11 @@ export class TransmissionsComponent {
   private readonly api = inject(ApiService);
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+
+  /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
+  protected readonly missionIcon = missionIcon;
+  protected readonly navIcon = navIcon;
+  protected readonly uiIcon = uiIcon;
 
   protected readonly onlyUnread = signal(false);
   protected readonly advisorBusy = signal(false);

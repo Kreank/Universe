@@ -63,6 +63,11 @@ export function navIcon(key: string): string {
   return `assets/img/nav/${key}.png`;
 }
 
+/** Generisches UI-Icon (Aktions-Buttons): ``assets/img/ui/<name>.png``. */
+export function uiIcon(name: string): string {
+  return `assets/img/ui/${name}.png`;
+}
+
 /**
  * Missions-Icon. ``trade`` besitzt (noch) keine eigene Datei und faellt
  * im Aufrufer auf den Glyph zurueck (``null`` => kein Bild).
@@ -71,4 +76,20 @@ export function missionIcon(type: string): string | null {
   if (type === 'trade') return null;
   const file = MISSION_FILE[type] ?? type;
   return `assets/img/missions/${file}.png`;
+}
+
+/**
+ * Stat-Icon fuers Detail-Popup (Angriff/Schild/Fracht/Speed/Treibstoff/Energie).
+ * Dateien unter assets/img/icons/spec/stat_<key>.png; Glyph-Fallback im Aufrufer.
+ */
+export function statIcon(key: string): string {
+  return `assets/img/icons/spec/stat_${key}.png`;
+}
+
+/**
+ * Faehigkeits-Kategorie-Icon (Commander-Abilities). Dateien unter
+ * assets/img/icons/traits/trait_category_<category>.png; Glyph-Fallback im Aufrufer.
+ */
+export function abilityCategoryIcon(category: string): string {
+  return `assets/img/icons/traits/trait_category_${category}.png`;
 }

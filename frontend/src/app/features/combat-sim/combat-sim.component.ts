@@ -11,8 +11,10 @@ import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { CombatReport } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
+import { navIcon, uiIcon } from '../../core/models/icon-assets';
 import { CombatReportComponent } from '../transmissions/combat-report.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
 /** Eine waehlbare Einheit im Picker (Schiff oder Verteidigung). */
 interface PickRow {
@@ -33,7 +35,7 @@ interface PickRow {
 @Component({
   selector: 'app-combat-sim',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CombatReportComponent, IconTileComponent],
+  imports: [FormsModule, CombatReportComponent, IconTileComponent, BtnIconComponent],
   template: `
     <section class="sim">
       <header class="sim-head">
@@ -54,7 +56,7 @@ interface PickRow {
               🛡 Deine Flotte
               @if (ownTotal()) { <span class="ptotal mono">{{ ownTotal() }}</span> }
               <button class="mini" type="button" [disabled]="!garrisonCombat().length"
-                title="Schiffe vom aktiven Planeten übernehmen" (click)="fillOwnFromFleet()">🚀 Meine Flotte</button>
+                title="Schiffe vom aktiven Planeten übernehmen" (click)="fillOwnFromFleet()"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" /> Meine Flotte</button>
             </div>
             @for (s of combatShips(); track s.type) {
               <label class="row">
@@ -121,7 +123,7 @@ interface PickRow {
           >
             {{ pending() ? 'Simuliere …' : '⚔️ Simulieren' }}
           </button>
-          <button class="btn btn-ghost" type="button" (click)="clearAll()">🧹 Leeren</button>
+          <button class="btn btn-ghost" type="button" (click)="clearAll()"><app-btn-icon [src]="uiIcon('broom')" glyph="🧹" /> Leeren</button>
           @if (error()) {
             <span class="err">{{ error() }}</span>
           }
@@ -207,6 +209,10 @@ export class CombatSimComponent {
   private readonly api = inject(ApiService);
   private readonly balance = inject(BalanceService);
   private readonly state = inject(GameStateService);
+
+  /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
+  protected readonly navIcon = navIcon;
+  protected readonly uiIcon = uiIcon;
 
   protected readonly ownCounts = signal<Record<string, number>>({});
   protected readonly enemyShipCounts = signal<Record<string, number>>({});

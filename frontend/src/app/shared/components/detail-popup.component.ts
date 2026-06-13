@@ -19,7 +19,7 @@ import {
   metaFor,
   TECH_EFFECTS,
 } from '../../core/models/display';
-import { techIcon } from '../../core/models/icon-assets';
+import { statIcon, techIcon } from '../../core/models/icon-assets';
 import { CostLineComponent } from './cost-line.component';
 import { IconTileComponent } from './icon-tile.component';
 
@@ -36,6 +36,7 @@ interface StatRow {
   glyph: string;
   label: string;
   value: string;
+  iconKey?: string;
 }
 
 /** Kurz-Tag (z. B. Waffentyp, Reichweite, Antrieb) — vom aufrufenden Screen. */
@@ -128,7 +129,14 @@ interface RapidFireRow {
           <div class="stat-grid">
             @for (s of stats(); track s.label) {
               <div class="stat">
-                <span class="stat-glyph">{{ s.glyph }}</span>
+                <span class="stat-glyph">
+                  @if (s.iconKey) {
+                    <img class="stat-ico" [src]="statIconFn(s.iconKey)" alt="" (error)="onStatIcoError($event)" />
+                    <span class="stat-glyph-fb">{{ s.glyph }}</span>
+                  } @else {
+                    {{ s.glyph }}
+                  }
+                </span>
                 <span class="stat-label">{{ s.label }}</span>
                 <span class="stat-val mono">{{ s.value }}</span>
               </div>
@@ -361,7 +369,9 @@ interface RapidFireRow {
         background: rgba(255,255,255,0.03); border: 1px solid var(--border);
         border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3);
       }
-      .stat-glyph { font-size: var(--fs-md); }
+      .stat-glyph { font-size: var(--fs-md); display: inline-flex; align-items: center; }
+      .stat-ico { width: 18px; height: 18px; object-fit: contain; }
+      .stat-glyph-fb { display: none; }
       .stat-label { font-size: var(--fs-sm); color: var(--text-dim); flex: 1; }
       .stat-val { font-size: var(--fs-base); font-weight: 600; }
 
@@ -488,6 +498,18 @@ export class DetailPopupComponent {
     (event.target as HTMLImageElement).style.display = 'none';
   }
 
+  protected readonly statIconFn = statIcon;
+
+  /** Stat-Icon nicht ladbar -> Glyph-Fallback (Geschwister-Span) einblenden. */
+  onStatIcoError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
+    const fb = img.nextElementSibling as HTMLElement | null;
+    if (fb) {
+      fb.style.display = 'inline';
+    }
+  }
+
   /** Roh-Eintrag aus balance.json fuer dieses Objekt. */
   private readonly entry = computed<Record<string, unknown> | null>(() => {
     const b = this.balance.value;
@@ -608,19 +630,19 @@ export class DetailPopupComponent {
     }
     const num = (k: string) => (typeof e[k] === 'number' ? (e[k] as number) : null);
     const rows: StatRow[] = [];
-    const push = (glyph: string, label: string, v: number | null, suffix = '') => {
+    const push = (glyph: string, iconKey: string, label: string, v: number | null, suffix = '') => {
       if (v !== null && v !== 0) {
-        rows.push({ glyph, label, value: this.fmt(v) + suffix });
+        rows.push({ glyph, iconKey, label, value: this.fmt(v) + suffix });
       }
     };
     if (this.kind() === 'ship' || this.kind() === 'defense') {
-      push('⚔️', 'Angriff', num('attack'));
-      push('🛡️', 'Schild', num('shield'));
+      push('⚔️', 'attack', 'Angriff', num('attack'));
+      push('🛡️', 'shield', 'Schild', num('shield'));
     }
     if (this.kind() === 'ship') {
-      push('📦', 'Frachtraum', num('cargo'));
-      push('🚀', 'Speed', num('speed'));
-      push('⛽', 'Treibstoff', num('fuel'));
+      push('📦', 'cargo', 'Frachtraum', num('cargo'));
+      push('🚀', 'speed', 'Speed', num('speed'));
+      push('⛽', 'fuel', 'Treibstoff', num('fuel'));
     }
     // Solarsatellit: temperaturabhaengige Energie je Einheit (am aktuell gewaehlten Planeten).
     if (this.type() === 'solar_satellite') {

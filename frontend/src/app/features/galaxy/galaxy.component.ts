@@ -13,11 +13,14 @@ import {
 } from '../../core/models/api.models';
 import { NotificationService } from '../../core/services/notification.service';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
+import { missionIcon, navIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 import { PhalanxPanelComponent } from '../../shared/components/phalanx-panel.component';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 import { galaxyStyles } from './galaxy.styles';
+import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 
 /** Offenes Versand-Overlay (Schnellangriff / Schnelltransport / …). */
 interface DispatchCtx {
@@ -39,7 +42,7 @@ interface DispatchCtx {
 @Component({
   selector: 'app-galaxy',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, DatePipe, ShortNumberPipe, FleetDispatchComponent, MessageComposeComponent, PhalanxPanelComponent],
+  imports: [FormsModule, DatePipe, ShortNumberPipe, BtnIconComponent, FleetDispatchComponent, MessageComposeComponent, PhalanxPanelComponent, EmptyStateComponent],
   template: `
     <h1>Galaxie · Karte</h1>
     <p class="sub">Erkunde Systeme, finde Ziele und entsende deine Flotten — Schnellaktionen direkt am Ziel.</p>
@@ -97,7 +100,7 @@ interface DispatchCtx {
                 </div>
                 @if (c.asteroid) {
                   <div class="acts">
-                    <button class="ic mine" type="button" (click)="openDispatch(cellCoord(c), 'Asteroidenfeld', 'mine')" title="Hier Erz abbauen (Bergbauschiff nötig)">⛏</button>
+                    <button class="ic mine" type="button" (click)="openDispatch(cellCoord(c), 'Asteroidenfeld', 'mine')" title="Hier Erz abbauen (Bergbauschiff nötig)"><app-btn-icon [src]="missionIcon('mine')" glyph="⛏" [size]="18" /></button>
                   </div>
                 }
                 @if (c.moon; as m) {
@@ -114,22 +117,22 @@ interface DispatchCtx {
                       <span class="chip disc tip" data-tip="Automatisch aufgeklärt: spawnte nahe deinem Planeten (≤ 8 Systeme). Sende eine Sonde für tiefere/aktuellere Daten.">🛰 aufgeklärt</span>
                     }
                     @if (c.occupant_type === 'player' && c.player_id) {
-                      <button class="ic msg" type="button" (click)="messagePlayer(c)" title="Nachricht an Spieler">✉</button>
+                      <button class="ic msg" type="button" (click)="messagePlayer(c)" title="Nachricht an Spieler"><app-btn-icon [src]="navIcon('mail')" glyph="✉" [size]="18" /></button>
                     }
-                    <button class="ic phx" type="button" (click)="phalanxTarget.set(cellCoord(c))" title="Sensorphalanx-Scan (Flottenbewegungen)">📡</button>
-                    <button class="ic spy" type="button" (click)="quickSpy(cellCoord(c), c.name)" [title]="spyTitle()">🛰</button>
-                    <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), c.name, 'attack')" title="Angreifen">⚔</button>
-                    <button class="ic trp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'transport')" [title]="c.trade ? 'Transport (P2P-Handel: Ware schicken)' : 'Transport'">🚚</button>
+                    <button class="ic phx" type="button" (click)="phalanxTarget.set(cellCoord(c))" title="Sensorphalanx-Scan (Flottenbewegungen)"><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" [size]="18" /></button>
+                    <button class="ic spy" type="button" (click)="quickSpy(cellCoord(c), c.name)" [title]="spyTitle()"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="18" /></button>
+                    <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), c.name, 'attack')" title="Angreifen"><app-btn-icon [src]="missionIcon('attack')" glyph="⚔" [size]="18" /></button>
+                    <button class="ic trp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'transport')" [title]="c.trade ? 'Transport (P2P-Handel: Ware schicken)' : 'Transport'"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" [size]="18" /></button>
                   </div>
                 } @else if (isOwn(c)) {
                   <span class="chip own">dein Planet</span>
                 } @else if (c.occupant_type === 'deep_space') {
                   <div class="acts">
-                    <button class="ic exp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'expedition')" title="Expedition in die galaktischen Weiten (Expeditionsschiff + Astrophysik nötig)">🌌</button>
+                    <button class="ic exp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'expedition')" title="Expedition in die galaktischen Weiten (Expeditionsschiff + Astrophysik nötig)"><app-btn-icon [src]="missionIcon('expedition')" glyph="🌌" [size]="18" /></button>
                   </div>
                 } @else if (c.occupant_type === 'empty') {
                   <div class="acts">
-                    <button class="ic col" type="button" (click)="openDispatch(cellCoord(c), null, 'colonize')" title="Hier kolonisieren (Kolonieschiff nötig)">🌱</button>
+                    <button class="ic col" type="button" (click)="openDispatch(cellCoord(c), null, 'colonize')" title="Hier kolonisieren (Kolonieschiff nötig)"><app-btn-icon [src]="missionIcon('colonize')" glyph="🌱" [size]="18" /></button>
                   </div>
                 }
               </div>
@@ -174,22 +177,22 @@ interface DispatchCtx {
               }
               <div class="target-act">
                 <button class="btn btn-ghost btn-sm" type="button" (click)="jumpTo(t)">Anfliegen</button>
-                <button class="btn btn-ghost btn-sm" type="button" (click)="quickSpy(targetCoord(t), t.name)">🛰 Spionieren</button>
-                <button class="btn btn-ghost btn-sm" type="button" (click)="phalanxTarget.set(targetCoord(t))">📡 Scan</button>
-                <button class="btn btn-ghost btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'transport')">🚚 Transport</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="quickSpy(targetCoord(t), t.name)"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" /> Spionieren</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="phalanxTarget.set(targetCoord(t))"><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" /> Scan</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'transport')"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" /> Transport</button>
                 @if (t.intel?.merchant) {
-                  <button class="btn btn-trade btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'trade')">💱 Handeln</button>
+                  <button class="btn btn-trade btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'trade')"><app-btn-icon [src]="navIcon('market')" glyph="💱" /> Handeln</button>
                 }
                 @if (t.npc_id && !t.intel?.trade_center) {
-                  <button class="btn btn-danger btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'attack')">⚔ Angreifen</button>
+                  <button class="btn btn-danger btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'attack')"><app-btn-icon [src]="missionIcon('attack')" glyph="⚔" /> Angreifen</button>
                 }
               </div>
             </div>
           }
         } @else {
-          <p class="muted small">
+          <app-empty-state art="empty_search">
             Noch keine Ziele aufgeklärt. Entsende Spionagesonden (🛰) auf belegte Felder im Scanner.
-          </p>
+          </app-empty-state>
         }
       </section>
     </div>
@@ -223,6 +226,10 @@ export class GalaxyComponent {
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
   private readonly balance = inject(BalanceService);
+
+  /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
+  protected readonly missionIcon = missionIcon;
+  protected readonly navIcon = navIcon;
 
   /** Standard-Sondenzahl der Schnell-Spionage (L2-Intel, balance.spy.level2_probes). */
   private readonly DEFAULT_PROBES = 3;

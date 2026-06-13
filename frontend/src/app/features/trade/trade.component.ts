@@ -10,6 +10,8 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Coordinate, EscortOffer, StationedFleet, TradeIndex, TradePartner, TradeProfile } from '../../core/models/api.models';
+import { missionIcon, navIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
 
@@ -23,7 +25,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
 @Component({
   selector: 'app-trade',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, MessageComposeComponent, FleetDispatchComponent],
+  imports: [FormsModule, BtnIconComponent, MessageComposeComponent, FleetDispatchComponent],
   template: `
     <section class="trade">
       <header class="page-head">
@@ -108,9 +110,9 @@ type Res = 'metal' | 'crystal' | 'deuterium';
             </div>
             @if (p.note) { <div class="partner-note small muted">„{{ p.note }}"</div> }
             <div class="partner-act">
-              <button class="btn btn-ghost btn-sm" type="button" (click)="message(p)">✉ Nachricht</button>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="message(p)"><app-btn-icon [src]="navIcon('mail')" glyph="✉" /> Nachricht</button>
               @if (p.coords) {
-                <button class="btn btn-trade btn-sm" type="button" (click)="trade(p)">💱 Transport schicken</button>
+                <button class="btn btn-trade btn-sm" type="button" (click)="trade(p)"><app-btn-icon [src]="missionIcon('transport')" glyph="💱" /> Transport schicken</button>
               }
             </div>
           </div>
@@ -153,7 +155,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
                   @else if (s.interceptors > 0) { · {{ s.interceptors }}× Abfangjäger }
                 </span>
               }
-              <button class="btn btn-ghost btn-sm" type="button" (click)="recall(s)">↩ Zurückrufen</button>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="recall(s)"><app-btn-icon [src]="missionIcon('return')" glyph="↩" /> Zurückrufen</button>
             </div>
           </div>
         }
@@ -284,6 +286,10 @@ type Res = 'metal' | 'crystal' | 'deuterium';
 export class TradeComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly notify = inject(NotificationService);
+
+  /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
+  protected readonly missionIcon = missionIcon;
+  protected readonly navIcon = navIcon;
 
   protected readonly resList = [
     { key: 'metal' as const, glyph: '⛏️', label: 'Metall' },

@@ -16,7 +16,7 @@ import {
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
-import { rankIcon, specIcon, traitIcon } from '../../core/models/icon-assets';
+import { abilityCategoryIcon, rankIcon, specIcon, traitIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { commanderDetailStyles } from './commander-detail.styles';
 
@@ -140,7 +140,10 @@ import { commanderDetailStyles } from './commander-detail.styles';
               @for (a of abilityList(); track a.key) {
                 <div class="ability-card" [class.learned]="a.level > 0" [class.locked]="!rankOk(c, a.def)">
                   <div class="ac-top">
-                    <span class="ac-glyph" [attr.data-cat]="a.def.category">{{ catGlyph(a.def.category) }}</span>
+                    <span class="ac-glyph" [attr.data-cat]="a.def.category">
+                      <img class="ac-ico" [src]="catIcon(a.def.category)" alt="" (error)="onCatIcoError($event)" />
+                      <span class="ac-glyph-fb">{{ catGlyph(a.def.category) }}</span>
+                    </span>
                     <span class="ac-name">{{ a.def.label }}</span>
                     <span class="ac-pips" [attr.title]="'Stufe ' + a.level + '/' + a.def.max_level">
                       @for (i of pipArray(a.def.max_level); track i) {
@@ -301,6 +304,17 @@ export class CommanderDetailComponent {
     combat: '⚔', logistics: '📦', spy: '🛰️', research: '🔬', admin: '🏛️', general: '✦',
   };
   catGlyph = (c: string) => this.CAT_GLYPH[c] ?? '✦';
+  catIcon = abilityCategoryIcon;
+
+  /** Kategorie-Icon nicht ladbar -> Glyph-Fallback einblenden. */
+  onCatIcoError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
+    const fb = img.nextElementSibling as HTMLElement | null;
+    if (fb) {
+      fb.style.display = 'inline';
+    }
+  }
   pipArray = (n: number) => Array.from({ length: n }, (_, i) => i);
 
   effectText(def: AbilityCatalog['catalog'][string]): string {

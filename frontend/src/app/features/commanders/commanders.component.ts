@@ -17,6 +17,8 @@ import {
 } from '../../core/models/display';
 import { rankIcon, specIcon, traitIcon } from '../../core/models/icon-assets';
 import { commanderStyles } from './commander.styles';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 
 /** Eine waehlbare Investitions-Stufe (aus balance.json abgeleitet). */
 interface TierOption {
@@ -36,7 +38,7 @@ interface GradesConfig {
 @Component({
   selector: 'app-commanders',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, BtnIconComponent, EmptyStateComponent],
   template: `
     <div class="head">
       <div>
@@ -49,7 +51,7 @@ interface GradesConfig {
         [disabled]="!canTrain()"
         (click)="toggleTrain()"
       >
-        🎖️ {{ showTrain() ? 'Abbrechen' : 'Kadett ausbilden' }}
+        <app-btn-icon [src]="rankIcon('cadet')" glyph="🎖️" /> {{ showTrain() ? 'Abbrechen' : 'Kadett ausbilden' }}
       </button>
     </div>
 
@@ -204,9 +206,9 @@ interface GradesConfig {
         }
       </div>
     } @else {
-      <p class="empty-state">
+      <app-empty-state art="empty_commanders">
         Noch keine Commander. Baue eine Kommando-Akademie und bilde deinen ersten Offizier aus.
-      </p>
+      </app-empty-state>
     }
   `,
   styles: [commanderStyles],
