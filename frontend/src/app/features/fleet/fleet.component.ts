@@ -16,6 +16,7 @@ import { CountdownComponent } from '../../shared/components/countdown.component'
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { NotificationService } from '../../core/services/notification.service';
+import { BalanceService } from '../../core/services/balance.service';
 import { fleetStyles } from './fleet.styles';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 
@@ -216,6 +217,7 @@ export class FleetComponent {
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
+  private readonly balance = inject(BalanceService);
 
   protected readonly missions: FleetMission[] = [
     'attack', 'transport', 'spy', 'deploy', 'intercept', 'recycle', 'colonize', 'mine', 'expedition',
@@ -243,9 +245,16 @@ export class FleetComponent {
   protected readonly interceptRadius = signal(0);
   protected readonly sending = signal(false);
 
-  protected readonly availableShips = computed<PlanetUnit[]>(
-    () => this.state.activePlanet()?.ships?.filter((s) => s.count > 0) ?? [],
-  );
+  // Nur entsendbare Schiffe: count > 0 UND mit Antrieb (stationaere Einheiten wie der
+  // Solarsatellit haben speed 0 und bleiben in der Umlaufbahn -> nicht waehlbar).
+  protected readonly availableShips = computed<PlanetUnit[]>(() => {
+    const ships = this.balance.value?.ships as Record<string, { speed?: number }> | undefined;
+    return (
+      this.state.activePlanet()?.ships?.filter(
+        (s) => s.count > 0 && (ships?.[s.type]?.speed ?? 1) > 0,
+      ) ?? []
+    );
+  });
 
   protected readonly assignableCommanders = computed(() =>
     this.state.commanders().filter((c) => c.status !== 'training' && !c.assigned_fleet_id),

@@ -641,6 +641,10 @@ export class DetailPopupComponent {
     if (this.kind() === 'ship' || this.kind() === 'defense') {
       push('⚔️', 'attack', 'Angriff', num('attack'));
       push('🛡️', 'shield', 'Schild', num('shield'));
+      // Huelle = (Metall + Kristall) / 10 (wie Kampf-Engine; kein eigenes balance-Feld).
+      const cost = e['cost'] as Record<string, number> | undefined;
+      const hull = cost ? Math.round(((cost['metal'] ?? 0) + (cost['crystal'] ?? 0)) / 10) : null;
+      push('🩹', 'hull', 'Hülle', hull);
     }
     if (this.kind() === 'ship') {
       push('📦', 'cargo', 'Frachtraum', num('cargo'));

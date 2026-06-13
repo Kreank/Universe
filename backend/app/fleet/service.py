@@ -141,6 +141,14 @@ def ship_speed(typ: str, research: dict[str, int] | None = None) -> float:
     return base
 
 
+def is_sendable(typ: str) -> bool:
+    """Ob ein Schiffstyp ueberhaupt entsendet werden kann. Stationaere Einheiten ohne
+    Antrieb (Grundtempo 0, z.B. Solarsatellit) bleiben in der Umlaufbahn und sind nicht
+    flottenfaehig."""
+    cfg = get_balance().ships.get(typ)
+    return bool(cfg) and float(cfg.get("speed", 0)) > 0
+
+
 def slowest_ship_speed(ships: dict[str, int], research: dict[str, int] | None = None) -> float:
     """Tempo der langsamsten Flotteneinheit (bestimmt die Flugzeit) inkl. Antriebsforschung."""
     bal = get_balance()
@@ -294,6 +302,10 @@ async def send_fleet(
     for typ, count in ships.items():
         if typ not in bal.ships:
             raise ValueError(f"Unbekannter Schiffstyp: {typ}")
+        # Stationaere Einheiten (kein Antrieb, speed 0 -> z.B. Solarsatellit) bleiben in der
+        # Umlaufbahn und koennen nicht entsendet werden.
+        if count > 0 and not is_sendable(typ):
+            raise ValueError(f"{typ} ist stationaer (kein Antrieb) und kann nicht entsendet werden")
         have = by_type.get(typ)
         if have is None or have.count < count:
             raise RuntimeError(f"Zu wenige Schiffe vom Typ {typ}")

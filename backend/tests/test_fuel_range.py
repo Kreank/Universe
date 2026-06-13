@@ -1,7 +1,7 @@
 """Tests fuer Treibstoff-Tank-Reichweite (Hin+Rueck) und Round-trip-Spritkosten."""
 import math
 
-from app.fleet.service import fleet_max_range, fuel_cost, ship_range
+from app.fleet.service import fleet_max_range, fuel_cost, is_sendable, ship_range
 from app.platform.balance import get_balance
 
 
@@ -27,6 +27,20 @@ def test_round_trip_halves_range():
 def test_immobile_ship_has_infinite_range():
     # Solarsatellit (fuel=0) ist ortsfest -> keine Reichweiten-Begrenzung.
     assert ship_range("solar_satellite") == float("inf")
+
+
+def test_solar_satellite_not_sendable():
+    # Solarsatellit hat keinen Antrieb (speed 0) -> nicht flottenfaehig.
+    assert is_sendable("solar_satellite") is False
+
+
+def test_mobile_ships_are_sendable():
+    for typ in ("battleship", "light_fighter", "spy_probe", "colony_ship", "recycler"):
+        assert is_sendable(typ) is True
+
+
+def test_unknown_ship_not_sendable():
+    assert is_sendable("nonexistent_ship") is False
 
 
 def test_role_ordering_scouts_and_haulers_outrange_fighters():

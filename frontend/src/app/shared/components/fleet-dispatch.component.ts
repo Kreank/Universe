@@ -466,9 +466,16 @@ export class FleetDispatchComponent {
     });
   }
 
-  protected readonly availableShips = computed<PlanetUnit[]>(
-    () => this.state.activePlanet()?.ships?.filter((s) => s.count > 0) ?? [],
-  );
+  // Nur entsendbare Schiffe: count > 0 UND mit Antrieb (stationaere Einheiten wie der
+  // Solarsatellit haben speed 0 und bleiben in der Umlaufbahn -> nicht waehlbar).
+  protected readonly availableShips = computed<PlanetUnit[]>(() => {
+    const ships = this.balanceSvc.value?.ships as Record<string, { speed?: number }> | undefined;
+    return (
+      this.state.activePlanet()?.ships?.filter(
+        (s) => s.count > 0 && (ships?.[s.type]?.speed ?? 1) > 0,
+      ) ?? []
+    );
+  });
   protected readonly planetRes = computed(() => this.state.activePlanet()?.resources ?? null);
   protected readonly assignableCommanders = computed(() =>
     this.state.commanders().filter((c) => c.status !== 'training' && !c.assigned_fleet_id),
