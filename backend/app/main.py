@@ -26,7 +26,7 @@ from app.messaging.news import news_tick
 from app.messaging.router import router as messaging_router
 from app.npc.population import ensure_trade_centers, npc_population_tick
 from app.npc.service import npc_behavior_tick
-from app.platform.ai_jobs import enqueue_nightly_batches
+from app.platform.ai_jobs import bootstrap_nightly_batches, enqueue_nightly_batches
 from app.platform.balance import get_balance
 from app.platform.eventbus import event_bus
 from app.planets.derive import backfill_planets
@@ -90,9 +90,10 @@ async def lifespan(app: FastAPI):
     # KI-Nacht-Batch: fuellt die Reaktions-Banken (Commander + NPC) automatisch auf (ai-worker,
     # GPU-schonend sequenziell). Vorher nur manuell ausloesbar -> Banken liefen leer.
     schedule_interval(enqueue_nightly_batches, hours=24, job_id="ai-nightly-batch")
-    # Bootstrap: sofort beim Start einmal einreihen (NPC-Personas/Banken nicht erst in 24h).
+    # Bootstrap: nur bei leeren Banken sofort einreihen (frischer Deploy) -> kein Queue-Flooding
+    # bei jedem Neustart (Befund #10); sonst pflegt der 24h-Scheduler.
     try:
-        await enqueue_nightly_batches()
+        await bootstrap_nightly_batches()
     except Exception:  # noqa: BLE001 — Bootstrap darf den Start nie verhindern
         log.warning("AI-Bootstrap (nightly_batches) fehlgeschlagen — Scheduler holt es nach")
     # Galaxie-Nachrichten-Ticker (Phase 4): bemerkenswerte Schlachten als Broadcast-Bulletin.

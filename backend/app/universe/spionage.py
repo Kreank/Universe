@@ -248,7 +248,9 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
     # NPC-Funkspruch (Phase 1): manchmal entdeckt ein feindliches Imperium die Sonden und warnt.
     if spy_npc is not None and getattr(spy_npc, "behavior_profile", None) not in ("trade_center", "merchant"):
         import random as _random
-        if _random.random() < 0.35:
+        # Entdeckungschance aus balance.json (Befund M-3) statt hartkodiert.
+        _detect = float(get_balance().data.get("spy", {}).get("npc_detect_reaction_chance", 0.35))
+        if _random.random() < _detect:
             try:
                 from app.messaging.service import npc_reaction
                 from app.platform.models import Player

@@ -47,7 +47,13 @@ async def _fleet_ships(session: AsyncSession, fleet_id: uuid.UUID) -> dict[str, 
 
 
 def _commander_mods(commander: Commander | None, fleet_ship_types: int) -> float:
-    """Berechnet den Angriffs-/Schild-Multiplikator aus Moral, Traits und Ueberdehnung.
+    """Berechnet den dualen Angriffs-/Schild-Multiplikator aus Moral und Ueberdehnung.
+
+    WICHTIG (Befund D-2): Trait-Kampfboni laufen NICHT hier durch. Dieser Multiplikator wirkt
+    in der Engine auf Angriff UND Schild (Moral-Band ist bewusst dual). Trait-Effekte sind
+    dagegen pro-Stat (attack/shield getrennt) und kommen ueber ``combat_bonuses.trait_mods`` als
+    ship_bonuses in die Engine -> sonst wuerde ein reiner Angriffs-Trait faelschlich auch den
+    Schild heben und sich mit trait_mods doppeln (aggressive = Glaskanone: +Angriff, -Schild).
 
     Ueberdehnung (Slice-Proxy): Zahl der Schiffstypen im Geschwader ueber span_capacity
     erzeugt je Ueberhang eine Koordinationsstrafe (balance: overstretch_penalty_per_excess).
@@ -57,10 +63,6 @@ def _commander_mods(commander: Commander | None, fleet_ship_types: int) -> float
         return 1.0
     band = bal.morale_band(commander.morale)
     mod = float(band["combat_mod"])
-    # Persoenlichkeits-Traits (combat_attack_mod aufsummieren).
-    traits_cfg = bal.commander["personality_traits"]
-    for trait in (commander.traits or []):
-        mod += float(traits_cfg.get(trait, {}).get("combat_attack_mod", 0.0))
     attack_mult = max(0.0, 1.0 + mod)
     # Ueberdehnung.
     span = max(1, commander.span_capacity)
@@ -759,13 +761,20 @@ async def _apply_commander(
     old_idx = _rank_index(commander.rank, bal)
     new_rank = bal.rank_for_xp(commander.xp)
     commander.rank = new_rank["key"]
-    commander.span_capacity = max(commander.span_capacity, new_rank["span_contrib"])
+    # Grad-Potenz auch beim Aufstieg auf die Span-Decke anwenden (Befund D-3) — analog
+    # create_commander; sonst verpufft der angeborene Grad-Vorteil und hohe Span faellt sogar
+    # auf den ungeskalten span_contrib zurueck. Grad defensiv normalisieren (Befund D-4).
+    _grade = commander.grade or "C"
+    grade_span = max(1, round(new_rank["span_contrib"] * bal.grade_potency(_grade)))
+    commander.span_capacity = max(commander.span_capacity, grade_span)
     new_idx = _rank_index(new_rank["key"], bal)
     if new_idx > old_idx:
         prog = bal.commander["ability_progression"]
         gained = (new_idx - old_idx) * int(prog["skill_points_per_rank"])
         grade_order = bal.commander["grades"]["order"]
-        if grade_order.index(commander.grade) >= grade_order.index(prog["grade_bonus_from"]):
+        # Defensiver Fallback: nie ValueError bei fehlendem/unbekanntem Grad (Befund D-4).
+        _gidx = grade_order.index(_grade) if _grade in grade_order else grade_order.index("C")
+        if _gidx >= grade_order.index(prog["grade_bonus_from"]):
             gained += int(prog["grade_bonus_points"])
         commander.skill_points = int(commander.skill_points or 0) + gained
 

@@ -62,11 +62,6 @@ async def moon_defense_support(session: AsyncSession, planet: Planet, bal) -> tu
     return await moon_building_defense(session, moon, planet.player_id, bal)
 
 
-def moon_chance(debris_metal: float, debris_crystal: float, cfg: dict) -> float:
-    total = max(0.0, float(debris_metal)) + max(0.0, float(debris_crystal))
-    return min(float(cfg["max_chance"]), total / float(cfg["value_per_chance"]))
-
-
 def moon_destroy_chance(n_deathstars: int, moon_fields: int, cfg: dict) -> float:
     """Mondzerstoerungs-Chance (03d): waechst mit der Zahl der Todessterne, sinkt mit der
     Mondgroesse (fields). Pure Funktion fuer Tuning/Tests."""
@@ -95,7 +90,9 @@ async def maybe_form_moon(session: AsyncSession, planet: Planet, debris_metal: f
     research = await get_research_levels(session, planet.player_id)
     cap = float(mcfg["max_chance"]) + int(research.get("gravitics", 0)) * float(eff.get("moon_chance_cap_per_level", 0.0))
     total = max(0.0, float(debris_metal)) + max(0.0, float(debris_crystal))
-    chance = min(cap, total / float(mcfg["value_per_chance"]))
+    # Auf 1.0 klemmen: bei hoher Gravitik kann ``cap`` >1 werden (Befund Mo-2) -> sonst
+    # waere die Entstehung effektiv garantiert und der Wahrscheinlichkeits-Charakter weg.
+    chance = min(1.0, cap, total / float(mcfg["value_per_chance"]))
     if chance <= 0 or random.random() >= chance:
         return False
 

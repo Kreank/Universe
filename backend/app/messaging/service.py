@@ -28,7 +28,6 @@ _FALLBACK = {
     "crushing_victory": "Vernichtender Sieg ueber {enemy} ({planet}). Kaum Verluste, Beute: {loot}.",
     "close_win": "Knapper Sieg bei {enemy} ({planet}). Es war eng, aber wir halten {loot}.",
     "defeat": "Niederlage bei {enemy} ({planet}). Wir mussten uns zurueckziehen.",
-    "mutiny": "Unruhe in der Crew bei {enemy} ({planet}).",
 }
 
 _SUBJECT = {
@@ -36,7 +35,6 @@ _SUBJECT = {
     "crushing_victory": "Ueberlegener Sieg",
     "close_win": "Knapper Sieg",
     "defeat": "Niederlage",
-    "mutiny": "Meuterei-Warnung",
 }
 
 # NPC-Funksprueche (Phase 1): Fallback je Situation, wenn die NPC-Bank leer ist. {enemy}=Spieler, {planet}=Ort.
@@ -114,7 +112,11 @@ async def after_combat_reaction(
                 ReactionBank.situation == situation,
                 ReactionBank.used.is_(False),
             )
+            # Deterministische Reihenfolge + Zeilensperre (Befund M-3): sonst koennen zwei
+            # parallele Kaempfe dieselbe Zeile lesen und denselben Funkspruch senden.
+            .order_by(ReactionBank.created_at)
             .limit(1)
+            .with_for_update(skip_locked=True)
         )).scalar_one_or_none()
         if bank is not None:
             bank.used = True
@@ -192,7 +194,10 @@ async def npc_reaction(
             ReactionBank.situation == situation,
             ReactionBank.used.is_(False),
         )
+        # Deterministisch + Zeilensperre (Befund M-3): kein Doppel-Funkspruch bei Parallelkampf.
+        .order_by(ReactionBank.created_at)
         .limit(1)
+        .with_for_update(skip_locked=True)
     )).scalar_one_or_none()
     if bank is not None:
         bank.used = True

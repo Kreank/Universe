@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
-from app.platform.models import Commander, NpcEmpire
+from app.platform.models import Commander, NpcEmpire, ReactionBank
 
 log = logging.getLogger("universe.ai_jobs")
 
@@ -72,3 +72,17 @@ async def enqueue_nightly_batches() -> None:
         npc_n += 1
     if cmd_ids or npc_n:
         log.info("AI-Banken-Tick: %d Commander + %d NPC eingereiht", len(cmd_ids), npc_n)
+
+
+async def bootstrap_nightly_batches() -> None:
+    """Startup-Bootstrap (Befund #10): reiht die Nacht-Batches NUR ein, wenn die Reaktions-Banken
+    noch komplett leer sind (frischer Deploy). Sind bereits Banken vorhanden, uebernimmt der
+    24h-Scheduler die Pflege -> kein erneutes Fluten der Job-Queue bei jedem (Dev-)Neustart."""
+    async with session_scope() as session:
+        bank_count = int((await session.execute(
+            select(func.count()).select_from(ReactionBank)
+        )).scalar_one() or 0)
+    if bank_count > 0:
+        log.info("AI-Bootstrap uebersprungen: %d Banken vorhanden (24h-Scheduler pflegt nach)", bank_count)
+        return
+    await enqueue_nightly_batches()

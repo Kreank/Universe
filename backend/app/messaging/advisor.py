@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy.service import get_building_levels, get_research_levels
+from app.platform.balance import get_balance
 from app.platform.models import Defense, Planet, Player, Ship
 
 log = logging.getLogger("universe.advisor")
@@ -59,9 +60,19 @@ async def build_advisor_context(session: AsyncSession, player: Player) -> dict:
         if p.fields_max and p.fields_used >= p.fields_max - 1:
             issues.append(f"{coord} ist fast voll bebaut ({p.fields_used}/{p.fields_max} Felder)")
 
+    # Kolonie-Limit aus balance.json (Befund M-3) statt Magic-Numbers — exakt wie planets/colonize:
+    # min(max_colonies, base_colonies + astro_per_level * astrophysics). Nur raten, Astrophysik zu
+    # erforschen, wenn dadurch ueberhaupt noch eine Kolonie freigeschaltet wird (nicht am Hartcap).
+    _bal = get_balance()
+    _ccfg = _bal.data.get("colonization", {})
+    _reff = _bal.data["research"].get("effects", {})
+    base_colonies = int(_ccfg.get("base_colonies", 3))
+    max_colonies = int(_ccfg.get("max_colonies", 20))
+    per_level = int(_reff.get("astrophysics_colonies_per_level", 1))
     astro = int(research.get("astrophysics", 0))
+    allowed_colonies = min(max_colonies, base_colonies + per_level * astro)
     colonies = max(0, len(planets) - 1)
-    if colonies >= 3 + astro and astro < 20:
+    if colonies >= allowed_colonies and allowed_colonies < max_colonies:
         issues.append("Kolonie-Limit erreicht — Astrophysik erforschen fuer weitere Kolonien")
     if total_ships < 20:
         issues.append("sehr kleine Flotte — angreifbar und kaum offensivfaehig")

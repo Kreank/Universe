@@ -508,14 +508,14 @@
     },
 
     "personality_traits": {
-      "aggressive":   { "combat_attack_mod": 0.10, "self_risk_mod": 0.10 },
-      "cautious":     { "combat_attack_mod": -0.05, "loss_reduction": 0.15, "retreat_early": true },
+      "aggressive":   { "self_risk_mod": 0.10 },
+      "cautious":     { "loss_reduction": 0.15, "retreat_early": true },
       "loyal":        { "morale_decay_mult": 0.5, "defect_risk_mult": 0.2 },
       "ambitious":    { "xp_mult": 1.25, "demands_promotion": true },
       "greedy":       { "morale_on_loot": 0.08, "demands_bigger_share": true },
       "honorable":    { "morale_on_fair_target": 0.10, "morale_on_bashing": -0.20 },
       "charismatic":  { "adjacent_morale_boost": 0.05 },
-      "hot_tempered": { "combat_attack_mod": 0.15, "morale_instability": 0.20, "mutiny_risk": true }
+      "hot_tempered": { "morale_instability": 0.20, "mutiny_risk": true }
     },
     "economy_bonus": {
       "_note": "Wirtschafts-Commander: +bonus * (morale/100) auf Planetenproduktion.",
@@ -756,7 +756,8 @@
     "level3_probes": 5,
     "level2_spy_tech": 2,
     "level3_spy_tech": 4,
-    "_note": "Spionage (Doku 04 §6). Detailstufe steigt mit Sondenanzahl bzw. Spionagetech: L1 Gesamtstaerke, L2 + Flotten-/Verteidigungs-Zusammensetzung, L3 + Ressourcen."
+    "npc_detect_reaction_chance": 0.35,
+    "_note": "Spionage (Doku 04 §6). Detailstufe steigt mit Sondenanzahl bzw. Spionagetech: L1 Gesamtstaerke, L2 + Flotten-/Verteidigungs-Zusammensetzung, L3 + Ressourcen. npc_detect_reaction_chance = Wahrscheinlichkeit, dass ein bespitzelter NPC die Sonden entdeckt und einen Warn-Funkspruch sendet (Befund M-3)."
   },
 
   "protection": {

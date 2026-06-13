@@ -11,6 +11,7 @@ Stufe N investierte Summe ist die geometrische Reihe ``base * (factor^N - 1)/(fa
 Forschung = ``base * 2^(stufe)`` -> kumuliert ``base * (2^N - 1)``."""
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 
@@ -30,7 +31,20 @@ from app.platform.models import (
     StationedFleet,
 )
 
+log = logging.getLogger("universe.ranking")
 POINTS_DIVISOR = 1000.0
+
+# Einmal-Warnung je unbekanntem Typ (Befund R-4): macht balance/DB-Drift sichtbar, ohne
+# pro Tick/Spieler zu spammen. Ein in balance.json umbenannter/entfernter Typ wuerde sonst
+# still mit 0 bewertet -> der Score eines Spielers stillschweigend zu niedrig.
+_warned_unknown: set[str] = set()
+
+
+def _warn_unknown(kind: str, typ: str) -> None:
+    key = f"{kind}:{typ}"
+    if key not in _warned_unknown:
+        _warned_unknown.add(key)
+        log.warning("Ranking: unbekannter %s-Typ '%s' nicht in balance.json -> mit 0 bewertet", kind, typ)
 
 
 def _sum_res(cost: dict) -> float:
@@ -47,6 +61,7 @@ def _cumulative_building_value(btype: str, level: int) -> float:
         return 0.0
     cfg = get_balance().buildings.get(btype)
     if not cfg:
+        _warn_unknown("building", btype)
         return 0.0
     factor = float(cfg.get("factor", 1.0))
     base = _sum_res(cfg.get("cost", {}))
@@ -60,6 +75,7 @@ def _cumulative_research_value(ttype: str, level: int) -> float:
         return 0.0
     cfg = get_balance().techs.get(ttype)
     if not cfg:
+        _warn_unknown("research", ttype)
         return 0.0
     base = _sum_res(cfg.get("cost", {}))
     return base * (2 ** level - 1)
@@ -67,7 +83,10 @@ def _cumulative_research_value(ttype: str, level: int) -> float:
 
 def _unit_value(cfg_map: dict, utype: str, count: int) -> float:
     cfg = cfg_map.get(utype)
-    if not cfg or count <= 0:
+    if cfg is None:
+        _warn_unknown("unit", utype)
+        return 0.0
+    if count <= 0:
         return 0.0
     return _sum_res(cfg.get("cost", {})) * count
 
@@ -158,7 +177,9 @@ async def compute_breakdowns(session: AsyncSession) -> dict[uuid.UUID, Breakdown
 async def recompute_and_store(session: AsyncSession) -> dict[uuid.UUID, Breakdown]:
     """Berechnet alle Breakdowns und schreibt den Gesamt-Score in ``Player.score``."""
     breakdowns = await compute_breakdowns(session)
-    players = (await session.execute(select(Player))).scalars().all()
+    # ORDER BY player_id -> deterministische UPDATE-Reihenfolge (Befund R-7: vermeidet
+    # Deadlock-Potenzial bei nebenlaeufigen Bulk-Updates).
+    players = (await session.execute(select(Player).order_by(Player.id))).scalars().all()
     for p in players:
         p.score = to_points(breakdowns.get(p.id, Breakdown()).total)
     return breakdowns

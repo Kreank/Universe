@@ -1,9 +1,10 @@
 """Router fuer Postfach/Funksprueche (api-contract §8)."""
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,13 +38,20 @@ async def request_advisor_endpoint(
 @router.get("/transmissions", response_model=list[TransmissionOut])
 async def list_transmissions(
     unread: bool = False,
+    limit: int = Query(default=100, ge=1, le=200),
+    before: dt.datetime | None = Query(default=None),
     player: Player = Depends(get_current_player),
     session: AsyncSession = Depends(get_session),
 ) -> list[TransmissionOut]:
+    # Paginiert (Befund M-2): neueste zuerst, max ``limit`` pro Seite; ``before`` (created_at der
+    # zuletzt geladenen Nachricht) blaettert weiter zurueck. Verhindert das Laden des gesamten,
+    # unbegrenzt wachsenden Postfachs in einem Request.
     stmt = select(Transmission).where(Transmission.player_id == player.id)
     if unread:
         stmt = stmt.where(Transmission.read.is_(False))
-    stmt = stmt.order_by(Transmission.created_at.desc())
+    if before is not None:
+        stmt = stmt.where(Transmission.created_at < before)
+    stmt = stmt.order_by(Transmission.created_at.desc()).limit(limit)
     rows = (await session.execute(stmt)).scalars().all()
 
     # Absendernamen fuer Spieler-Nachrichten aufloesen (ein Lookup je Batch).

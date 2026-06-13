@@ -57,7 +57,8 @@ def roll_grade(weights: dict[str, float], rng: random.Random) -> str:
 def generate_persona(rng: random.Random) -> tuple[str, dict, list[str]]:
     """Erzeugt (name, persona, traits)."""
     bal = get_balance()
-    trait_keys = list(bal.commander["personality_traits"].keys())
+    # ``_``-praefixierte Meta-Keys ausschliessen, damit kein "_note" als Trait gewuerfelt wird (#7).
+    trait_keys = [k for k in bal.commander["personality_traits"].keys() if not k.startswith("_")]
     name = f"{rng.choice(_FIRST)} {rng.choice(_LAST)}"
     persona = {
         "background": rng.choice(_BACKGROUNDS),
@@ -103,6 +104,10 @@ async def create_commander(
     grade_key = grade if grade in bal.grades["potency"] else "C"
     span = max(1, round(rank["span_contrib"] * bal.grade_potency(grade_key)))
 
+    # Startwerte aus balance.json (Single Source of Truth, Befund D-5) statt hartkodiert.
+    loyalty_start = int(bal.commander["satisfaction"].get("loyalty_start", 100))
+    start_skill_points = int(bal.commander["ability_progression"].get("start_skill_points", 1))
+
     commander = Commander(
         player_id=player_id,
         name=name,
@@ -113,8 +118,9 @@ async def create_commander(
         grade=grade_key,
         xp=rank["xp_threshold"],
         morale=morale_start,
-        loyalty=100,
+        loyalty=loyalty_start,
         span_capacity=span,
+        skill_points=start_skill_points,
         status=status,
         training_finishes_at=training_finishes_at,
         last_active_at=_now(),

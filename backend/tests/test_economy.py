@@ -98,3 +98,39 @@ def test_accrue_amount_already_empty_tank_uses_off_rate_whole_interval():
     # Deut bereits leer (t_deplete=0) -> Metall laeuft das GANZE Intervall mit der Off-Rate.
     grown = accrue_amount(100.0, 50.0, 10.0, t_deplete=0.0, rate_off=20.0)
     assert grown == 100.0 + 20.0 * 10.0  # 300
+
+
+# ---- Befund D-1: production_mult (Gouverneur) skaliert NUR den Minen-Anteil, nicht das Grundeinkommen ----
+
+def test_production_mult_scales_only_mine_part_not_base_income():
+    from app.economy.service import compute_rates
+    bal = get_balance()
+    speed = bal.speed
+    base_metal = float(bal.base_income.get("metal", 0))
+    buildings = {"metal_mine": 5, "crystal_mine": 5, "solar_plant": 12}
+    r1, _e1, _ = compute_rates(buildings, temp_max=40, energy_tech=0)
+    r2, _e2, _ = compute_rates(buildings, temp_max=40, energy_tech=0, production_mult=2.0)
+    # Minen-Anteil (= Rate/speed - Grundeinkommen) verdoppelt sich exakt ...
+    mine1 = r1["metal"] / speed - base_metal
+    mine2 = r2["metal"] / speed - base_metal
+    assert mine1 > 0
+    assert abs(mine2 - 2.0 * mine1) < 0.01
+    # ... das Grundeinkommen wird NICHT mitskaliert (sonst waere mine2 != 2*mine1 oben).
+
+
+def test_production_mult_does_not_scale_fusion_deuterium_burn():
+    from app.economy.service import compute_rates
+    bal = get_balance()
+    speed = bal.speed
+    # Fusionsreaktor verbrennt Deut (fixer Verbrauch). Der Bonus darf den Verbrauch NICHT senken.
+    buildings = {"deuterium_synth": 6, "fusion_reactor": 6, "solar_plant": 4}
+    _r1, e1, _ = compute_rates(buildings, temp_max=40, energy_tech=0)
+    burn = float(e1.get("deuterium_burn", 0.0))
+    assert burn > 0  # Vorbedingung: es wird ueberhaupt Deut verbrannt
+    r1, _, _ = compute_rates(buildings, temp_max=40, energy_tech=0, production_mult=1.0)
+    r2, _, _ = compute_rates(buildings, temp_max=40, energy_tech=0, production_mult=2.0)
+    # Differenz der Deut-Rate kommt allein aus dem verdoppelten Synth-Anteil; der Burn-Abzug
+    # (burn*speed) ist in beiden identisch -> er wurde nicht mitskaliert.
+    synth_part1 = r1["deuterium"] / speed - float(bal.base_income.get("deuterium", 0)) + burn
+    synth_part2 = r2["deuterium"] / speed - float(bal.base_income.get("deuterium", 0)) + burn
+    assert abs(synth_part2 - 2.0 * synth_part1) < 0.01

@@ -137,8 +137,14 @@ def compute_rates(
     mining_level: int = 0,
     storage_level: int = 0,
     solar_satellites: int = 0,
+    production_mult: float = 1.0,
 ) -> tuple[dict[str, float], dict[str, float], dict[str, float]]:
-    """Liefert (effektive Stundenraten inkl. Grundeinkommen & Speed, energy, capacities)."""
+    """Liefert (effektive Stundenraten inkl. Grundeinkommen & Speed, energy, capacities).
+
+    ``production_mult`` (z. B. Gouverneur-Bonus) wirkt NUR auf den Minen-/Gebaeudeanteil,
+    NICHT auf das freie Grundeinkommen und NICHT auf den fixen Deut-Verbrauch des Fusions-
+    reaktors (Befund D-1: sonst wuerde der Bonus den Trickle mitskalieren und beim Deut
+    faelschlich (Produktion-Verbrauch)*mult statt Produktion*mult-Verbrauch rechnen)."""
     bal = get_balance()
     speed = bal.speed
     rates_raw, energy = compute_production_and_energy(
@@ -149,9 +155,9 @@ def compute_rates(
 
     rates: dict[str, float] = {}
     for key in RESOURCE_KEYS:
-        # Minen werden gedrosselt, Grundeinkommen nicht; alles mit Speed skaliert.
-        effective = rates_raw[key] * factor + float(base.get(key, 0))
-        # Fusionsreaktor verbrennt Deuterium (fixer Verbrauch, NICHT energie-gedrosselt).
+        # Minen werden gedrosselt + produktions-skaliert, Grundeinkommen nicht; alles mit Speed.
+        effective = rates_raw[key] * factor * production_mult + float(base.get(key, 0))
+        # Fusionsreaktor verbrennt Deuterium (fixer Verbrauch, NICHT energie-/bonus-skaliert).
         if key == "deuterium":
             effective -= energy.get("deuterium_burn", 0.0)
         rates[key] = round(effective * speed, 4)
@@ -209,21 +215,20 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
             Ship.type == "solar_satellite",
         )
     )).scalar() or 0)
-    new_rates, energy, capacities = compute_rates(
-        buildings, planet.temp_max, energy_tech,
-        research.get("mining_efficiency", 0), research.get("storage_tech", 0),
-        solar_sats,
-    )
-
-    # Gouverneur-Bonus (Kommandeur auf dem Planeten) auf die Produktionsrate.
+    # Gouverneur-Bonus (Kommandeur auf dem Planeten) -> wirkt als production_mult NUR auf den
+    # Minen-/Gebaeudeanteil (Befund D-1), daher vor compute_rates ermitteln.
     gov_mult = 1.0
     if getattr(planet, "governor_commander_id", None):
         from app.commander.service import governor_production_mult
         from app.platform.models import Commander as _Commander
         gov = await session.get(_Commander, planet.governor_commander_id)
         gov_mult = governor_production_mult(gov, get_balance())
-        if gov_mult != 1.0:
-            new_rates = {k: v * gov_mult for k, v in new_rates.items()}
+
+    new_rates, energy, capacities = compute_rates(
+        buildings, planet.temp_max, energy_tech,
+        research.get("mining_efficiency", 0), research.get("storage_tech", 0),
+        solar_sats, production_mult=gov_mult,
+    )
 
     rows = (await session.execute(
         select(Resource).where(
@@ -254,9 +259,8 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
         off_rates, _e_off, _c_off = compute_rates(
             buildings_off, planet.temp_max, energy_tech,
             research.get("mining_efficiency", 0), research.get("storage_tech", 0), solar_sats,
+            production_mult=gov_mult,
         )
-        if gov_mult != 1.0:
-            off_rates = {k: v * gov_mult for k, v in off_rates.items()}
 
     result: dict[str, dict] = {}
     for key in RESOURCE_KEYS:
