@@ -19,35 +19,6 @@ export const authPanelStyles = `
     background-attachment: fixed;
   }
 
-  /* Cinematic Hintergrund-Loop (deckt das statische .auth-wrap-Bild; faellt darauf zurueck). */
-  .auth-bgvid {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-  }
-  /* Abdunkel-Veil ueber dem Video fuer Lesbarkeit des Glas-Panels. */
-  .auth-veil {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    background: linear-gradient(
-      165deg,
-      color-mix(in srgb, var(--bg-deep) 68%, transparent),
-      color-mix(in srgb, var(--bg-deep) 88%, transparent)
-    );
-  }
-  /* Reduced-Motion + Mobile: kein Video -> statisches Poster/CSS-Bild. */
-  @media (prefers-reduced-motion: reduce) {
-    .auth-bgvid { display: none; }
-  }
-  @media (max-width: 640px) {
-    .auth-bgvid, .auth-veil { display: none; }
-  }
-
   /* Sanft driftender Akzent-Schein (nur transform/opacity -> performant). */
   .auth-wrap::before {
     content: '';

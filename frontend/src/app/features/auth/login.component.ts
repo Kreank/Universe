@@ -10,22 +10,6 @@ import { authPanelStyles } from './auth.styles';
   imports: [FormsModule, RouterLink],
   template: `
     <div class="auth-wrap">
-      <!-- Cinematic Hintergrund-Loop (Poster = login.jpg; faellt bei fehlendem Video /
-           Reduced-Motion / Mobile auf das statische Bild zurueck). -->
-      <video
-        class="auth-bgvid"
-        autoplay
-        muted
-        loop
-        playsinline
-        poster="assets/img/backgrounds/login.jpg"
-        (error)="onVidError($event)"
-      >
-        <source src="assets/img/backgrounds/login.webm" type="video/webm" />
-        <source src="assets/img/backgrounds/login.mp4" type="video/mp4" />
-      </video>
-      <div class="auth-veil"></div>
-
       <div class="auth-card glass">
         <div class="brand">
           <span class="logo">✦</span>
@@ -77,11 +61,6 @@ export class LoginComponent {
   password = '';
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
-
-  /** Kein Video (404/Decode) -> ausblenden, das Poster/CSS-Bild (login.jpg) bleibt sichtbar. */
-  onVidError(event: Event): void {
-    (event.target as HTMLVideoElement).style.display = 'none';
-  }
 
   submit(): void {
     if (!this.email || !this.password) {
