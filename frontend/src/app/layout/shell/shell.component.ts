@@ -26,6 +26,25 @@ interface NavGroup {
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ShortNumberPipe],
   template: `
     <div class="shell">
+      <!-- Cinematic Loop-Backdrop je Screen (Desktop, Reduced-Motion/Mobile -> statisches Bild).
+           Poster = das jeweilige Standbild; faellt bei fehlendem Video sauber darauf zurueck.
+           @for mit Track-Key erzwingt Neuladen der Quellen beim Routenwechsel. -->
+      @for (bg of backdropList(); track bg.key) {
+        <video
+          class="app-backdrop"
+          autoplay
+          muted
+          loop
+          playsinline
+          [poster]="bg.poster"
+          (error)="onBackdropError($event)"
+        >
+          <source [src]="bg.webm" type="video/webm" />
+          <source [src]="bg.mp4" type="video/mp4" />
+        </video>
+        <div class="app-backdrop-veil"></div>
+      }
+
       <!-- Topbar: Ressourcen + Planet + Spieler -->
       <header class="topbar">
         <div class="topbar-left">
@@ -173,15 +192,42 @@ export class ShellComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly doc = inject(DOCUMENT);
 
+  /** Erstes Routen-Segment (Screen-Key) — steuert den Backdrop. */
+  private readonly screenKey = signal('dashboard');
+
+  /** Routen mit cinematic Loop-Backdrop (Basisname in backgrounds/). Rest = nur Standbild. */
+  private static readonly BACKDROP_VIDEO: Record<string, string> = {
+    dashboard: 'dashboard',
+    'combat-sim': 'bg_combat',
+    galaxy: 'system_view',
+  };
+
+  /** 0 oder 1 Backdrop-Video fuer die aktuelle Route (CSS blendet es mobil/reduced-motion aus). */
+  protected readonly backdropList = computed(() => {
+    const base = ShellComponent.BACKDROP_VIDEO[this.screenKey()];
+    if (!base) {
+      return [];
+    }
+    const p = `assets/img/backgrounds/${base}`;
+    return [{ key: base, webm: `${p}.webm`, mp4: `${p}.mp4`, poster: `${p}.jpg` }];
+  });
+
   constructor() {
-    // Screen-spezifischen (statischen) Hintergrund setzen: body[data-screen] = erstes Routen-Segment
-    // (styles.scss waehlt darueber den Desktop-Backdrop). Shell lebt app-weit -> kein Cleanup noetig.
+    // Screen-spezifischen Hintergrund setzen: body[data-screen] = erstes Routen-Segment
+    // (styles.scss waehlt darüber den statischen Desktop-Backdrop; backdropList das Video).
+    // Shell lebt app-weit -> kein Cleanup noetig.
     this.router.events.subscribe((e) => {
       if (e instanceof NavigationEnd) {
-        this.doc.body.dataset['screen'] =
-          this.router.url.split(/[?#]/)[0].split('/').filter(Boolean)[0] ?? 'dashboard';
+        const seg = this.router.url.split(/[?#]/)[0].split('/').filter(Boolean)[0] ?? 'dashboard';
+        this.doc.body.dataset['screen'] = seg;
+        this.screenKey.set(seg);
       }
     });
+  }
+
+  /** Video nicht ladbar -> ausblenden, das statische CSS-Backdrop (body) bleibt sichtbar. */
+  onBackdropError(event: Event): void {
+    (event.target as HTMLElement).style.display = 'none';
   }
 
   protected readonly planets = this.state.planets;

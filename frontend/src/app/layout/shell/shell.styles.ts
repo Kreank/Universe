@@ -7,6 +7,20 @@ export const shellStyles = `
     flex-direction: column;
   }
 
+  /* Cinematic Loop-Backdrop hinter der gesamten App (fix). Liegt ueber dem statischen
+     body-Backdrop, aber unter dem Inhalt; teiltransparente Leisten zeigen es durch. */
+  .app-backdrop {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; z-index: -2; pointer-events: none;
+  }
+  .app-backdrop-veil {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: linear-gradient(rgba(5, 7, 14, 0.62), rgba(5, 7, 14, 0.84));
+  }
+  /* Mobil + Reduced-Motion: kein Video -> statisches body-Backdrop bleibt. */
+  @media (prefers-reduced-motion: reduce) { .app-backdrop, .app-backdrop-veil { display: none; } }
+  @media (max-width: 899px) { .app-backdrop, .app-backdrop-veil { display: none; } }
+
   /* ---------- Topbar ---------- */
   .topbar {
     position: sticky;
