@@ -336,18 +336,67 @@ export class ShipyardComponent {
     this.counts.update((c) => ({ ...c, [type]: Math.max(1, Math.floor(value || 1)) }));
   }
 
+  /** Findet die Bau-Option (Schiff/Verteidigung) zu einem Typ im aktuellen Werft-Datensatz. */
+  private findOption(type: string, category: ShipyardCategory): ShipOption | undefined {
+    const d = this.data();
+    if (!d) {
+      return undefined;
+    }
+    const list = category === 'defense' ? d.defenses : d.ships;
+    return list?.find((o) => o.type === type);
+  }
+
+  /**
+   * Maximal baubare Stueckzahl mit den aktuellen Rohstoffen (Stueckkosten linear).
+   * Liefert Infinity, wenn die Einheit nichts kostet, und 0, wenn nicht mal eines geht.
+   */
+  private maxAffordable(cost: { metal?: number; crystal?: number; deuterium?: number }): number {
+    const bal = this.balances();
+    if (!bal) {
+      return Infinity; // Rohstoffe unbekannt -> nicht klemmen, Backend validiert.
+    }
+    let max = Infinity;
+    for (const key of ['metal', 'crystal', 'deuterium'] as const) {
+      const c = cost[key] ?? 0;
+      if (c > 0) {
+        max = Math.min(max, Math.floor(bal[key] / c));
+      }
+    }
+    return max === Infinity ? Infinity : Math.max(0, max);
+  }
+
   build(type: string, category: ShipyardCategory): void {
     const planetId = this.state.activePlanetId();
     if (!planetId) {
       return;
     }
-    const count = this.counts()[type] ?? 1;
+    let count = this.counts()[type] ?? 1;
+    const label = this.unitMeta(type, category).label;
+
+    // Statt einer Fehlermeldung bei zu hoher Menge: auf die maximal bezahlbare Anzahl klemmen.
+    const option = this.findOption(type, category);
+    if (option) {
+      const affordable = this.maxAffordable(option.cost);
+      if (affordable <= 0) {
+        this.notify.warning('Zu wenig Ressourcen', `Die Rohstoffe reichen nicht fuer ein ${label}.`);
+        return;
+      }
+      if (count > affordable) {
+        count = affordable;
+        this.setCount(type, count); // angepasste Menge im Eingabefeld spiegeln
+        this.notify.info(
+          'Menge angepasst',
+          `Rohstoffe reichen fuer ${count}× ${label} — so viele werden gebaut.`,
+        );
+      }
+    }
+
     this.pending.set(type);
     this.api.buildShips(planetId, { type, count, category }).subscribe({
       next: (res) => {
         this.pending.set(null);
         this.data.update((d) => (d ? { ...d, queue: res.queue } : d));
-        this.notify.info('In Bau', `${count}× ${this.unitMeta(type, category).label} eingereiht.`);
+        this.notify.info('In Bau', `${count}× ${label} eingereiht.`);
         void this.state.reloadActivePlanet();
       },
       error: (err) => {
