@@ -4,7 +4,7 @@
 > *Universe* (OGame-Tradition + persistentes Universum + KI-Crews als USP).
 > Server-Pfad: `/srv/storage/projects/universe` · Branch: `master`.
 > Live: `universe.tech-artist.de` · lokal Frontend `:4200`, API `:8100→8000`.
-> ✅ **Working tree SAUBER** (Stand 2026-06-13, letzter Commit `e7c6f0f`). 1 echter Account
+> ✅ **Working tree SAUBER** (Stand 2026-06-13, letzter Commit `6eca7b7` — Audit Runde 1/2). 1 echter Account
 > (`sascha-richter@hotmail.com`), Test-Account `uitest@example.com` / `Test1234!`.
 > ⚠️ Diese Session lief teils PARALLEL zu einem zweiten Agenten (Asteroidenfelder, Reise-Treibstoff/
 > Reichweite, Temperatur-Streuung, UI-Icons) — dessen Arbeit ist mit in den Commits. Alles committet & live.
@@ -20,6 +20,31 @@
 > - **Frontend-Compile:** `cd frontend && npx ng build --configuration development` (strikt, ~3–7 s).
 > - **Deploy:** Code-Änderung → `build game-server` + `up -d game-server` (lädt Image + gemountete balance neu); reine balance.json-Änderung → nur `up -d game-server` (restart) reicht. Frontend-balance ist gebacken → `build frontend` + `up -d frontend`. **`frontend/src/assets/balance.json` ist ein manueller Mirror von `shared/balance.json` → nach jeder balance-Änderung `cp shared/balance.json frontend/src/assets/balance.json`.**
 > - **DB-Schreibzugriff + `docker exec … psql`/Seeden sind Auto-Mode-gesperrt** → Test-Daten nur über API/Spiel. Read-only `docker exec game-server python -c "…"` (ohne rm/cp) ist erlaubt.
+> - **NEU — Lint-Guard:** `ruff check backend/app --select F` fängt Undefined-Name/Use-before-Assignment (F821/F823) in <1 s — genau die Klasse der Loop-Breaker, die die Tests NICHT abdecken. Verdrahtet als versionierter pre-commit-Hook (`.githooks/`, aktiv via `core.hooksPath`) + GitHub-Actions (`.github/workflows/lint.yml`). ruff lokal im user-site (`python3 -m ruff`).
+
+---
+
+## 🗓️ Session 2026-06-13 (B) — Audit Runde 1/2 behoben (15 Befunde) + Lint-Guard
+
+> Commit `6eca7b7`, getestet **185/185** (178 + 7 neue Regressionstests), deployt & live.
+> Detail-Memory: `project_universe_audit_tooling`.
+
+**Zwei Loop-Breaker lagen LIVE** (nur unentdeckt, weil die Suite die DB-Pfade nicht prüft):
+- **#1** `research` UnboundLocalError in `fleet/service.send_fleet` → Angriff/Abfangen crashten.
+- **#12** fehlender `Planet`-Import in `fleet/trade.py` → Handel mit Routenrisiko crashte.
+
+Weiter behoben: #2 Engine sortiert Units (Determinismus, Permutations-Test), #3 Abfang-Verteidiger
+nutzt echte Forschung, #4 Hinterhalt = **nur Stealth-Schiffe feuern** in der Überraschungsrunde
+(Verteidiger vorbereitet), #5 neuer ausgewogener weapon_type `orbital` + Roster-Eintrag (+ Roster-
+Vollständigkeitstest), #6 Deut-bewusste **stückweise** Lazy-Accrual (`accrue_amount`, Fusion-aus via
+`fusion_reactor=0`, 4 Tests), #7 `catalog_items()`-Helper, #8 max_rounds=8 (Doku angeglichen),
+#9/#15 Notizen, #10 zivile attack-Werte als Proxy dokumentiert (NICHT genullt — `fleet_power`/
+`station_power` lesen sie), #11 Report zeigt echten Schaden, #13 toter Code weg, #14 `/combat/simulate`
+optional `defender_tech`.
+
+> ⚠️ **Achtung Engine-Math:** bei #11 wäre fast `target.hull -= …` durch `applied += …` ersetzt statt
+> ergänzt worden → 7 Tests rot. Nur der Suite-Lauf gegen das NEU gebaute Image fing es. Engine nie
+> ohne `build game-server` + pytest anfassen.
 
 ---
 
