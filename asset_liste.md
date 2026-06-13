@@ -67,10 +67,10 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | login | `backgrounds/` (.webm **und** .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `login.jpg`** (Poster bleibt login.jpg). Sehr langsamer, edler Loop: driftende Sterne + leicht waberndes Nebel-Leuchten + minimaler Kamera-Push (Parallax). IM CODE BEREITS VERDRAHTET (Login-Screen). |
-| ⬜ | dashboard | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `dashboard.jpg`** (globaler App-Backdrop). Dezente Sternendrift + sanftes Nebel-Pulsieren, ruhige dunkle Mitte. |
-| ⬜ | bg_combat | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `bg_combat.jpg`**: ferne Explosions-Glut flackert leise an den Rändern, Wrackteile driften langsam, Funken. Mitte ruhig/dunkel. |
-| ⬜ | system_view | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `system_view.png`** (Galaxie-Ansicht): langsamer Scanner-/Radar-Sweep + Sternendrift. |
+| ✅ | login | `backgrounds/` (.webm **und** .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `login.jpg`** (Poster bleibt login.jpg). Sehr langsamer, edler Loop: driftende Sterne + leicht waberndes Nebel-Leuchten + minimaler Kamera-Push (Parallax). IM CODE BEREITS VERDRAHTET (Login-Screen). |
+| ✅ | dashboard | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `dashboard.jpg`** (globaler App-Backdrop). Dezente Sternendrift + sanftes Nebel-Pulsieren, ruhige dunkle Mitte. |
+| ✅ | bg_combat | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `bg_combat.jpg`**: ferne Explosions-Glut flackert leise an den Rändern, Wrackteile driften langsam, Funken. Mitte ruhig/dunkel. |
+| ✅ | system_view | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `system_view.png`** (Galaxie-Ansicht): langsamer Scanner-/Radar-Sweep + Sternendrift. |
 
 > **Format-/Stil-Brief für ALLE Loop-Videos:** nahtloser Loop ~8–12 s, 1920×1080, **Zielgröße ≤ ~2–3 MB**
 > je Datei (niedrige Bitrate — dunkle Szenen komprimieren gut). IMMER als Paar **`<name>.webm` (VP9)
@@ -128,6 +128,38 @@ Es gibt **zwei** Asset-Wurzeln:
 > mit Triebwerks-Glühen, Waffen-Techs mit Strahl) können nach demselben Schema folgen — erst diese Welle.
 > Falls APNG technisch nicht geht: gleichwertig **animiertes GIF gleichen Namens** (ohne weiche Alpha-
 > Kanten) — aber APNG ist klar bevorzugt (Alpha + Qualität).
+
+### 🎞️ KAMPF-KINO — Highlight-Clips im Kampfbericht (event-gekoppelt)
+
+> Generische, wiederverwendbare Kino-Clips. Der Kampfbericht erkennt aus den Schlacht-Daten das
+> markanteste Ereignis und spielt den passenden Clip oben im Bericht ab (Priorität ungefähr:
+> **Mondzerstörung > Todesstern-Rückschlag > Entern > Ionen-Lähmung > Hinterhalt > Schwarm/Duell >
+> Sieg/Niederlage/Flucht**). Kein per-Kampf-Unikat nötig — der Clip illustriert den TYP des Ereignisses.
+> Jeweils **`.webm` (VP9) + `.mp4` (H.264) + `.jpg` als Poster**, abspielen als „Replay" (einmal,
+> stummgeschaltet, mit Replay-Button); Reduced-Motion/Mobile → nur das Poster.
+
+| Status | Name | Pfad (`cinematics/`) | Format | Clip-Idee · Trigger |
+|:---:|---|---|---|---|
+| ⬜ | cine_ambush | `cinematics/cine_ambush.*` | webm+mp4+jpg, ~10 s, 1280×720 | **Tarnkappen-Eröffnung:** der Stealth-Jäger schält sich aus dem Nichts, erste lautlose Salve trifft ahnungslose Schiffe. · *Trigger: Hinterhalt-Runde.* |
+| ⬜ | cine_swarm_capital | `cinematics/cine_swarm_capital.*` | webm+mp4+jpg, ~10 s | **Schwarm vs. Koloss:** Jäger & Drohnen umkreisen einen Zerstörer, tänzeln durchs Abwehrfeuer, knabbern ihn nieder. · *Trigger: viele Leichtschiffe vs. Großkampfschiff.* |
+| ⬜ | cine_capital_duel | `cinematics/cine_capital_duel.*` | webm+mp4+jpg, ~10 s | **Breitseiten:** zwei Schlachtschiff-Linien tauschen schwere Salven, Schilde flackern, Treffer reißen Hüllen auf. · *Trigger: beide Seiten kapital-lastig.* |
+| ⬜ | cine_ion_disable | `cinematics/cine_ion_disable.*` | webm+mp4+jpg, ~8 s | **Lähmung:** Ionenstrahl trifft ein Schiff, Triebwerk erlischt, es treibt manövrierunfähig. · *Trigger: Antrieb-gelähmte Schiffe.* |
+| ⬜ | cine_boarding | `cinematics/cine_boarding.*` | webm+mp4+jpg, ~9 s | **Entern:** Enterschiff dockt an, Kaperkommando, das Schiff wechselt die Fraktionsfarbe. · *Trigger: gekaperte Schiffe.* |
+| ⬜ | cine_moon_destroy | `cinematics/cine_moon_destroy.*` | webm+mp4+jpg, **~14 s** (Showpiece) | **Mondzerstörung:** Todesstern lädt auf und feuert einen gewaltigen Laser auf den Mond — die Kruste löst sich in Platten, der Trabant glüht/verflüssigt, Risse durchziehen ihn, finale Explosion + Trümmerwolke. · *Trigger: Mond zerstört.* |
+| ⬜ | cine_deathstar_backfire | `cinematics/cine_deathstar_backfire.*` | webm+mp4+jpg, ~10 s | **Rückschlag:** der Todesstern-Laser überlädt/fehlzündet, der RIP wird von innen zerrissen. · *Trigger: Todesstern-Backfire.* |
+| ⬜ | cine_victory | `cinematics/cine_victory.*` | webm+mp4+jpg, ~8 s | **Triumph:** letzter Gegner explodiert, eigene Flotte zieht ungebrochen durchs treibende Trümmerfeld. · *Trigger: Sieg.* |
+| ⬜ | cine_defeat | `cinematics/cine_defeat.*` | webm+mp4+jpg, ~8 s | **Niederlage:** eigene Schiffe brennen & bersten, Wracks treiben ab. · *Trigger: Niederlage.* |
+| ⬜ | cine_retreat | `cinematics/cine_retreat.*` | webm+mp4+jpg, ~8 s | **Rückzug/Fleetsave:** Flotte klinkt aus, zieht in den Hyperraum-Sprung davon. · *Trigger: Disengage/Flucht.* |
+| ⬜ | cine_clash | `cinematics/cine_clash.*` | webm+mp4+jpg, ~9 s | **Generisches Aufeinandertreffen** (Fallback-Opener, wenn kein Spezial-Event passt). · *Trigger: Default.* |
+
+> **Brief Kampf-Kino:** dunkler Weltraum, cinematic, **kein Text/keine UI/keine HUD-Elemente**,
+> 16:9 ~1280×720, Ziel ≤ ~4–6 MB je Clip (einmaliges Replay, keine Endlosschleife). Schiffe dürfen
+> stilisiert sein (müssen nicht exakt die Spielmodelle treffen) — Hauptsache Stimmung + lesbares
+> Ereignis. Palette: Cyan/Blau für „eigene", Magenta/Rot `#ff4d7d` für Feind/Gefahr, warme Glut bei
+> Explosionen. Anfang/Ende dunkel (sauberer Ein-/Ausstieg im Bericht). Ablage `assets/cinematics/`
+> UND `frontend/src/assets/img/cinematics/`; Referenz `assets/img/cinematics/<name>.webm|.mp4|.jpg`.
+> Reihenfolge der Wichtigkeit für dich: **cine_moon_destroy** (Showpiece) zuerst, dann cine_ambush,
+> cine_victory, cine_defeat — der Rest nach Lust.
 | ✅ | advisor | `icons/ui/` → wird als `assets/img/ui/advisor.png` ausgeliefert | PNG transparent, 256×256 | Button-Icon „KI-Berater fragen" (Postfach). Stilisiertes Gehirn / KI-Knoten-Netz / Berater-Hologrammkopf, dezenter Cyan-Akzent `#2fe3d2`, Sci-Fi-UI-Linienstil, ohne Text. ~16px-tauglich. |
 | ✅ | broom | `icons/ui/` → wird als `assets/img/ui/broom.png` ausgeliefert | PNG transparent, 256×256 | Button-Icon „Leeren/Zurücksetzen" (Kampf-Simulator). Besen oder „Clear/Wisch"-Symbol, monochrom-hell, Sci-Fi-UI-Linienstil, ohne Text. ~16px-tauglich. |
 
