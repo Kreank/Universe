@@ -173,7 +173,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
             </div>
           }
         } @else {
-          <app-empty-state art="empty_fleet">Keine Flotten unterwegs.</app-empty-state>
+          <app-empty-state art="empty_fleet" [fill]="true">Keine Flotten unterwegs.</app-empty-state>
         }
       </section>
 

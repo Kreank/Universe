@@ -149,7 +149,7 @@ interface RapidFireRow {
             <div class="block-title">📈 Nächste Stufen{{ nl.note }}</div>
             <table class="next-levels">
               <thead>
-                <tr><th>Stufe</th><th>{{ nl.glyph }} {{ nl.outLabel }}</th><th>Zuwachs</th></tr>
+                <tr><th>Stufe</th><th><app-icon-tile [glyph]="nl.glyph" [src]="nl.img" [size]="16" variant="muted" /> {{ nl.outLabel }}</th><th>Zuwachs</th></tr>
               </thead>
               <tbody>
                 @for (r of nl.rows; track r.level) {
@@ -225,7 +225,7 @@ interface RapidFireRow {
             <div class="req-list">
               @for (u of unlocks(); track u.type) {
                 <span class="req unlock" [attr.data-tip]="u.kind + (u.reqLevel > 1 ? ' · ab Stufe ' + u.reqLevel : '')">
-                  <span class="rf-glyph">{{ u.glyph }}</span> {{ u.label }}
+                  <app-icon-tile [glyph]="u.glyph" [src]="u.img" [size]="18" variant="muted" /> {{ u.label }}
                   @if (u.reqLevel > 1) { <span class="req-lvl mono">St. {{ u.reqLevel }}</span> }
                 </span>
               }
@@ -549,7 +549,7 @@ export class DetailPopupComponent {
 
   /** Produktions-Vorschau der naechsten 5 Stufen (nur Produktionsgebaeude: Minen/Solar/Fusion). */
   protected readonly nextLevels = computed<
-    { glyph: string; outLabel: string; unit: string; note: string; rows: { level: number; value: string; delta: string }[] } | null
+    { glyph: string; img: string; outLabel: string; unit: string; note: string; rows: { level: number; value: string; delta: string }[] } | null
   >(() => {
     if (this.kind() !== 'building') {
       return null;
@@ -565,6 +565,7 @@ export class DetailPopupComponent {
     let base: number | null = null;
     let growth = 1;
     let glyph = '📦';
+    let img = '';
     let outLabel = 'Produktion';
     let unit = '';
     let note = '';
@@ -576,15 +577,16 @@ export class DetailPopupComponent {
       growth = n('prod_growth')!;
       useSpeed = true;
       unit = '/h';
-      const map: Record<string, [string, string]> = {
-        metal_mine: ['⛏️', 'Metall'],
-        crystal_mine: ['💎', 'Kristall'],
-        deuterium_synth: ['🛢️', 'Deuterium'],
+      const map: Record<string, [string, string, string]> = {
+        metal_mine: ['⛏️', 'Metall', 'metal'],
+        crystal_mine: ['💎', 'Kristall', 'crystal'],
+        deuterium_synth: ['🛢️', 'Deuterium', 'deuterium'],
       };
       const m = map[this.type()];
       if (m) {
         glyph = m[0];
         outLabel = m[1];
+        img = `assets/img/resources/${m[2]}.png`;
       }
       if (this.type() === 'deuterium_synth') {
         note = ' (ohne Temperatur-Faktor)';
@@ -595,6 +597,7 @@ export class DetailPopupComponent {
       base = n('energy_prod_base');
       growth = n('energy_prod_growth')!;
       glyph = '⚡';
+      img = 'assets/img/resources/energy.png';
       outLabel = 'Energie';
     }
     if (base == null) {
@@ -620,7 +623,7 @@ export class DetailPopupComponent {
         delta: Math.round(delta).toLocaleString('de-DE'),
       });
     }
-    return { glyph, outLabel, unit, note, rows };
+    return { glyph, img, outLabel, unit, note, rows };
   });
 
   protected readonly stats = computed<StatRow[]>(() => {
@@ -731,18 +734,19 @@ export class DetailPopupComponent {
   });
 
   /** Items, die dieses Objekt als Voraussetzung haben (Vorwaerts-Abhaengigkeiten). */
-  protected readonly unlocks = computed<{ type: string; label: string; glyph: string; reqLevel: number; kind: string }[]>(() => {
+  protected readonly unlocks = computed<{ type: string; label: string; glyph: string; img: string; reqLevel: number; kind: string }[]>(() => {
     const b = this.balance.value;
     if (!b) {
       return [];
     }
     const t = this.type();
-    const out: { type: string; label: string; glyph: string; reqLevel: number; kind: string }[] = [];
+    const out: { type: string; label: string; glyph: string; img: string; reqLevel: number; kind: string }[] = [];
     const seen = new Set<string>();
     const scan = (
       map: Record<string, Record<string, unknown>> | undefined,
       metaMap: Record<string, { label: string; glyph: string }>,
       kind: string,
+      imgBase: string,
     ) => {
       for (const [key, entry] of Object.entries(map ?? {})) {
         if (key === t || seen.has(key)) {
@@ -752,15 +756,15 @@ export class DetailPopupComponent {
         if (req && typeof req === 'object' && (req as Record<string, unknown>)[t] != null) {
           const m = metaFor(metaMap, key);
           const reqLevel = Number((req as Record<string, unknown>)[t]) || 1;
-          out.push({ type: key, label: m.label, glyph: m.glyph, reqLevel, kind });
+          out.push({ type: key, label: m.label, glyph: m.glyph, img: `assets/img/${imgBase}/${key}.png`, reqLevel, kind });
           seen.add(key);
         }
       }
     };
-    scan(b.research?.techs as Record<string, Record<string, unknown>>, TECH_META, 'Forschung');
-    scan(b.ships as Record<string, Record<string, unknown>>, SHIP_META, 'Schiff');
-    scan(b.defenses as Record<string, Record<string, unknown>>, DEFENSE_META, 'Verteidigung');
-    scan(b.buildings as Record<string, Record<string, unknown>>, BUILDING_META, 'Gebäude');
+    scan(b.research?.techs as Record<string, Record<string, unknown>>, TECH_META, 'Forschung', 'tech');
+    scan(b.ships as Record<string, Record<string, unknown>>, SHIP_META, 'Schiff', 'ships');
+    scan(b.defenses as Record<string, Record<string, unknown>>, DEFENSE_META, 'Verteidigung', 'defenses');
+    scan(b.buildings as Record<string, Record<string, unknown>>, BUILDING_META, 'Gebäude', 'buildings');
     return out;
   });
 

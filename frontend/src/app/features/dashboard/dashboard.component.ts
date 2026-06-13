@@ -35,11 +35,12 @@ import {
 } from '../../core/models/api.models';
 import { dashboardStyles } from './dashboard.styles';
 import { OnboardingPanelComponent } from '../../shared/components/onboarding-panel.component';
+import { IconTileComponent } from '../../shared/components/icon-tile.component';
 
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent, OnboardingPanelComponent],
+  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent, OnboardingPanelComponent, IconTileComponent],
   template: `
     <h1>Dashboard</h1>
 
@@ -93,7 +94,7 @@ import { OnboardingPanelComponent } from '../../shared/components/onboarding-pan
             @for (r of resources(); track r.key) {
               <div class="res-card">
                 <div class="row-between">
-                  <span>{{ r.glyph }} {{ r.label }}</span>
+                  <span class="res-name"><app-icon-tile [glyph]="r.glyph" [src]="r.img" [size]="18" variant="muted" /> {{ r.label }}</span>
                   <span class="mono">{{ r.amount | shortNumber }}</span>
                 </div>
                 <div class="bar" [class.full]="r.pct >= 100">
@@ -384,6 +385,7 @@ export class DashboardComponent {
         key,
         label: RESOURCE_META[key].label,
         glyph: RESOURCE_META[key].glyph,
+        img: `assets/img/resources/${key}.png`,
         amount,
         capacity,
         rate: pool?.rate ?? 0,
