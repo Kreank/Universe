@@ -96,6 +96,38 @@ Es gibt **zwei** Asset-Wurzeln:
 > sehr dezent (wird mit ~30–50 % Deckkraft eingeblendet), dunkel/cyan, kein Text. webm-VP9-mit-Alpha
 > als Haupt­format + **APNG-Fallback** (Safari kann webm-Alpha schlecht). Ablage `assets/fx/` UND
 > `frontend/src/assets/img/fx/`. Werden später per CSS/Overlay nur auf aktive Elemente gelegt.
+
+### 🟢 ANIMIERTE ARTWORKS — die Icons selbst leben (Hauptwunsch!)
+
+> **Animierte Version des JEWEILIGEN bestehenden Icons** (Mine raucht, Schiff verlässt Hangar,
+> Energie fließt, Triebwerk zündet …). **WICHTIG — Format & Ablage so, dass NULL Code-Änderung nötig
+> ist:** Liefere ein **APNG (animiertes PNG) unter EXAKT demselben Dateinamen `.png`**, das das
+> bestehende statische `.png` **ersetzt** (z.B. `buildings/metal_mine.png`). Das **erste Einzelbild
+> MUSS das aktuelle statische Artwork sein** (so bleibt überall ein sauberer Fallback und es animiert
+> automatisch dort, wo das Icon schon angezeigt wird — Kachel + Detail-Popup). Vorhandenes Artwork als
+> Basis nehmen (gleiche Komposition/Farbe/Perspektive), nur die genannten Teile bewegen — Rest ruhig.
+
+| Status | Name | Kategorie / Pfad (ersetzt das .png) | Format | Beschreibung / Referenz (was sich bewegt) |
+|:---:|---|---|---|---|
+| ⬜ | metal_mine | `buildings/metal_mine.png` | APNG, 256×256, alpha | Rauch steigt aus den Schornsteinen; Förderband/Bagger bewegt sich leicht. |
+| ⬜ | crystal_mine | `buildings/crystal_mine.png` | APNG, 256×256, alpha | Kristalle schimmern/pulsieren sanft, leichter Abbau-Funke. |
+| ⬜ | deuterium_synth | `buildings/deuterium_synth.png` | APNG, 256×256, alpha | Tanks blubbern, aufsteigende Gasblasen + leichter Dampf. |
+| ⬜ | solar_plant | `buildings/solar_plant.png` | APNG, 256×256, alpha | Energie fließt/leuchtet über die Solarpaneele (wandernder Lichtpuls). |
+| ⬜ | fusion_reactor | `buildings/fusion_reactor.png` | APNG, 256×256, alpha | Pulsierender Fusionskern, Energie-Glühen. |
+| ⬜ | shipyard | `buildings/shipyard.png` | APNG, 256×256, alpha | Schweißfunken + ein kleines Schiff dockt aus/läuft aus dem Hangar; Kran bewegt sich. |
+| ⬜ | robot_factory | `buildings/robot_factory.png` | APNG, 256×256, alpha | Roboterarme arbeiten in Schleife. |
+| ⬜ | combustion_drive | `tech/combustion_drive.png` | APNG, 256×256, alpha | Triebwerk zündet — Flammenstrahl pulsiert/flackert. |
+| ⬜ | impulse_drive | `tech/impulse_drive.png` | APNG, 256×256, alpha | Impuls-Triebwerk glüht rhythmisch (Plasma-Puls). |
+| ⬜ | hyperspace_drive | `tech/hyperspace_drive.png` | APNG, 256×256, alpha | Hyperraum-Wirbel dreht/leuchtet langsam. |
+| ⬜ | energy_tech | `tech/energy_tech.png` | APNG, 256×256, alpha | Energie-Bögen/Funken zucken zwischen den Knoten. |
+
+> **Brief animierte Artworks:** nahtloser Loop ~2–5 s, transparenter Hintergrund (alpha), **dezent**
+> (subtile Bewegung, kein hektisches Flackern), Stil/Komposition exakt wie das vorhandene `.png`,
+> **Frame 1 = aktuelles Standbild**. Ablage in `assets/<cat>/` UND `frontend/src/assets/img/<cat>/`
+> (beide ersetzen). APNG ist abwärtskompatibel (zeigt notfalls nur Frame 1). Weitere Artworks (Schiffe
+> mit Triebwerks-Glühen, Waffen-Techs mit Strahl) können nach demselben Schema folgen — erst diese Welle.
+> Falls APNG technisch nicht geht: gleichwertig **animiertes GIF gleichen Namens** (ohne weiche Alpha-
+> Kanten) — aber APNG ist klar bevorzugt (Alpha + Qualität).
 | ✅ | advisor | `icons/ui/` → wird als `assets/img/ui/advisor.png` ausgeliefert | PNG transparent, 256×256 | Button-Icon „KI-Berater fragen" (Postfach). Stilisiertes Gehirn / KI-Knoten-Netz / Berater-Hologrammkopf, dezenter Cyan-Akzent `#2fe3d2`, Sci-Fi-UI-Linienstil, ohne Text. ~16px-tauglich. |
 | ✅ | broom | `icons/ui/` → wird als `assets/img/ui/broom.png` ausgeliefert | PNG transparent, 256×256 | Button-Icon „Leeren/Zurücksetzen" (Kampf-Simulator). Besen oder „Clear/Wisch"-Symbol, monochrom-hell, Sci-Fi-UI-Linienstil, ohne Text. ~16px-tauglich. |
 
