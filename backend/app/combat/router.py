@@ -63,6 +63,9 @@ class CombatSimRequest(BaseModel):
     attacker_ships: dict[str, int]
     defender_ships: dict[str, int] = {}
     defender_defenses: dict[str, int] = {}
+    # Optionale Verteidiger-Forschung (weapons_/shield_/armor_tech). Default 0 = unerforschter
+    # Gegner (abwaertskompatibel); gesetzt erlaubt "gegen Tech-N simulieren" (Befund #14).
+    defender_tech: dict[str, int] = {}
     seed: int | None = None
 
 
@@ -117,9 +120,10 @@ async def simulate_combat(
 ) -> dict:
     """Simuliert eine hypothetische Schlacht ohne jeden Spielstand-Effekt.
 
-    Angreifer nutzt die ECHTE Forschung des Spielers, der Gegner kaempft mit Tech 0.
-    Es wird NICHTS persistiert. Die Antwort hat exakt die Form von
-    ``serialize_combat_report``, damit der Frontend-Viewer sie direkt rendert.
+    Angreifer nutzt die ECHTE Forschung des Spielers; der Gegner kaempft mit den optional
+    uebergebenen ``defender_tech``-Stufen (Default 0 = unerforscht). Es wird NICHTS persistiert.
+    Die Antwort hat exakt die Form von ``serialize_combat_report``, damit der Frontend-Viewer
+    sie direkt rendert.
     """
     bal = get_balance()
     attacker_ships, defender_ships, defender_defenses = _prepare_sim_input(
@@ -134,7 +138,13 @@ async def simulate_combat(
         "shield_tech": research.get("shield_tech", 0),
         "armor_tech": research.get("armor_tech", 0),
     }
+    # Verteidiger-Tech: Default 0, mit optional uebergebenen Stufen ueberschrieben (nur die
+    # drei Kampf-Stufen, defensiv gegen Negativwerte geklemmt).
     def_tech = {"weapons_tech": 0, "shield_tech": 0, "armor_tech": 0}
+    for _k in def_tech:
+        _v = body.defender_tech.get(_k)
+        if isinstance(_v, int) and not isinstance(_v, bool) and _v > 0:
+            def_tech[_k] = _v
 
     seed = body.seed if body.seed is not None else random.randrange(1, 2 ** 62)
     attacker = {"ships": attacker_ships, "tech": atk_tech, "attack_mult": 1.0, "ship_bonuses": {}}

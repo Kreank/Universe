@@ -316,6 +316,13 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         def_ships = merged
         first = interception_sources[0]["obj"]
         defender_player_id = getattr(first, "player_id", None) or getattr(first, "owner_id", None)
+        # Forschung des Hauptverteidigers laden: die abfangende Patrouille kaempft sonst mit dem
+        # Default-Tech 0 (Z. ~217) statt mit ihrer erforschten Waffen-/Schild-/Panzerungsstufe ->
+        # stiller, unfairer Nachteil genau im PvP-Moment. Naeherung bei gemischten Quell-Ownern:
+        # Tech des Hauptverteidigers (interception_sources[0]); die Nachbar-Pfade (interception.py,
+        # npc/attack.py) setzen die Verteidiger-Tech ebenfalls korrekt.
+        if defender_player_id is not None:
+            def_tech = dict(await get_research_levels(session, defender_player_id))
 
     seed = random.randrange(1, 2 ** 62)
     attacker = {
@@ -762,7 +769,6 @@ async def _apply_commander(
             gained += int(prog["grade_bonus_points"])
         commander.skill_points = int(commander.skill_points or 0) + gained
 
-    status = "active"
     # Permadeath/Evakuierung nur, wenn die Flotte des Commanders vernichtet ist.
     fleet_wiped = sum(atk_survivors.values()) == 0
     if fleet_wiped:
@@ -776,7 +782,6 @@ async def _apply_commander(
         chance = max(0.0, chance)
         # Ohne Ueberlebende kein survivor-Bonus (Doku 04 §8.2).
         if random.random() < chance:
-            status = "wounded"
             commander.status = "wounded"
             commander.morale = max(0, commander.morale - abs(deltas["defeat"]) // 2)
         else:
@@ -784,10 +789,8 @@ async def _apply_commander(
             from app.platform.models import Player
             player = await session.get(Player, commander.player_id)
             if player is not None and player.is_protected:
-                status = "wounded"
                 commander.status = "wounded"
             else:
-                status = "dead"
                 commander.status = "dead"
     return {
         "status": commander.status,

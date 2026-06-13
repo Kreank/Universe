@@ -81,7 +81,7 @@ Der Worker spricht standardmäßig den **Host-Ollama** via `host.docker.internal
    drosselt bei Defizit. Bauzeiten als geplante Jobs.
 3. **Forschung** (eine gleichzeitig) und **Werft** (Schiffe bauen).
 4. **Flotte** mit Commander auf ein **NPC-Ziel** schicken (Angriff).
-5. **Kampf** wird autoritativ aufgelöst (6 Runden, Rapidfire, Schild-Abprall, Moral-Mod) →
+5. **Kampf** wird autoritativ aufgelöst (8 Runden, Rapidfire, Schild-Abprall, Moral-Mod) →
    Combat-Report, Beute, Trümmer, **Commander-Moral/XP** verschieben sich.
 6. **Funkspruch**-Pipeline: Event → Bank-Lookup → Slot-Filling → Postfach + WS-Push
    (0 ms, kein LLM). Großmomente werden vom AI-Worker per LLM „nachgereicht".

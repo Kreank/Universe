@@ -294,3 +294,53 @@ def test_moon_destroy_chance_scales_with_deathstars_and_size():
     assert moon_destroy_chance(100, 1, cfg) <= float(cfg["chance_cap"]) + 1e-9
     # Exakter Wert: 2 RIPs, size_ref 10, mond 10 Felder, chance_per 0.15 -> 0.30.
     assert abs(moon_destroy_chance(2, 10, cfg) - 0.30) < 1e-9
+
+
+# ---- Determinismus: identisches Ergebnis unabhaengig von der Dict-Reihenfolge (Befund #2) ----
+
+def test_battle_is_invariant_to_ship_dict_order():
+    """Die Aufrufer bauen Flotten-Dicts aus ungeordneten DB-Queries. Bei gleichem Seed MUSS das
+    Ergebnis identisch sein, egal in welcher Key-Reihenfolge die Schiffe/Verteidigung ankommen
+    (sonst koennen Preview und protokollierter Kampf divergieren). _build_units sortiert nach Typ."""
+    seed = 123456789
+    atk_a = {"ships": {"light_fighter": 60, "cruiser": 12, "battleship": 5}, "tech": {"weapons_tech": 6}, "attack_mult": 1.0}
+    # Gleicher Inhalt, andere Insertion-Order:
+    atk_b = {"ships": {"battleship": 5, "light_fighter": 60, "cruiser": 12}, "tech": {"weapons_tech": 6}, "attack_mult": 1.0}
+    def_a = {"ships": {"heavy_fighter": 30, "destroyer": 4}, "defenses": {"light_laser": 20, "gauss_cannon": 6}, "tech": {}, "attack_mult": 1.0}
+    def_b = {"ships": {"destroyer": 4, "heavy_fighter": 30}, "defenses": {"gauss_cannon": 6, "light_laser": 20}, "tech": {}, "attack_mult": 1.0}
+
+    r1 = simulate_battle(atk_a, def_a, seed, BALANCE)
+    r2 = simulate_battle(atk_b, def_b, seed, BALANCE)
+
+    for field in ("winner", "attacker_survivors", "defender_survivors",
+                  "attacker_losses", "defender_losses"):
+        assert r1[field] == r2[field], f"Feld {field} haengt an der Dict-Reihenfolge"
+    assert len(r1["rounds"]) == len(r2["rounds"])
+
+
+# ---- Befund #5/#7: jedes Schiff und jede Verteidigung hat ein combat_roster-Profil ----
+
+def test_every_unit_has_a_combat_roster_entry():
+    """Fehlt ein Roster-Eintrag, faellt die Einheit still auf das kinetic/near-Default-Profil
+    zurueck (so wurde orbital_gun versehentlich kinetisch, Befund #5). _ -Meta-Keys ausgenommen."""
+    roster = BALANCE["combat_roster"]
+    missing = []
+    for catalog_key in ("ships", "defenses"):
+        for typ in BALANCE[catalog_key]:
+            if typ.startswith("_"):
+                continue
+            if typ not in roster:
+                missing.append(f"{catalog_key}.{typ}")
+    assert not missing, f"Ohne Roster-Profil (stiller kinetic/near-Fallback): {missing}"
+
+
+def test_roster_weapon_types_exist_in_damage_matrix():
+    """Jeder im Roster genutzte weapon_type muss in der damage_matrix definiert sein
+    (sonst feuert die Einheit nie -> matrix.get(typ) is None)."""
+    matrix = BALANCE["combat"]["damage_matrix"]
+    valid = {k for k in matrix if not k.startswith("_")}
+    for typ, prof in BALANCE["combat_roster"].items():
+        if typ.startswith("_") or not isinstance(prof, dict):
+            continue
+        wt = prof.get("weapon_type")
+        assert wt is None or wt in valid, f"{typ}: unbekannter weapon_type {wt!r}"

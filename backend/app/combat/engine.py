@@ -15,7 +15,7 @@ Rollen-Kampf (Doku 03b, Phase 1) — drei Achsen:
   naeher als optimal, greift die Standoff-Strafe (Artillerie schwach im Nahkampf). Verteidigung
   ist stationaer und feuert immer ohne Strafe.
 
-Beibehalten aus v1: Rundenmodell (max 6), Determinismus (Seed), Rapidfire-Ketten (Schwarm-
+Beibehalten aus v1: Rundenmodell (max 8, combat.max_rounds), Determinismus (Seed), Rapidfire-Ketten (Schwarm-
 Wuerze), Schild-Abprall bei Mini-Treffern, Explosion <70 % Huelle, Tech-/Commander-Boni.
 """
 from __future__ import annotations
@@ -95,7 +95,11 @@ def _build_units(
         return p if isinstance(p, dict) else _DEFAULT_PROFILE
 
     units: list[Unit] = []
-    for typ, count in (ships or {}).items():
+    # Stabile Iterationsreihenfolge (sortiert nach Typ): die Aufrufer bauen diese Dicts aus
+    # ungeordneten DB-Queries -> ohne Sortierung haengt die Unit-/Feuer-/RNG-Reihenfolge an
+    # der zufaelligen Heap-Lage der Zeilen und derselbe Seed kann divergieren. Die Engine
+    # verspricht Reinheit, also erzwingt sie die Ordnung selbst (Doku: "eine Wahrheit, kein Drift").
+    for typ, count in sorted((ships or {}).items()):
         cfg = ship_cat.get(typ)
         if cfg is None or count <= 0:
             continue
@@ -119,7 +123,7 @@ def _build_units(
     # echte Schiffe, die der Traeger beim Flottenstart aus der Garnison mitlaedt
     # (fleet.service.send_fleet) und die hier als normale Einheiten (oben) kaempfen.
     def_integrity = float(catalogs.get("defense_integrity", 0.0))
-    for typ, count in (defenses or {}).items():
+    for typ, count in sorted((defenses or {}).items()):
         cfg = def_cat.get(typ)
         if cfg is None or count <= 0:
             continue
@@ -295,6 +299,7 @@ def simulate_battle(
             target = targets[rng.randrange(len(targets))]
             # --- Treffer ueber die Subsystem-Matrix ---
             effective = False
+            applied = 0.0  # tatsaechlich an Schild/Antrieb/Huelle angewandter Schaden (nur Reporting)
             if target.shield > 0:
                 sd = base * m["shield"]
                 if sd <= 0 or sd < bounce_ratio * target.shield_max:
@@ -302,8 +307,10 @@ def simulate_battle(
                 elif sd <= target.shield:
                     target.shield -= sd
                     frac = 0.0   # Schild absorbiert, schuetzt Antrieb/Huelle
+                    applied += sd
                     effective = True
                 else:
+                    applied += target.shield  # Schild voll abgebaut, bevor es bricht
                     frac = (sd - target.shield) / sd  # Schild bricht -> Rest penetriert
                     target.shield = 0.0
                     effective = True
@@ -312,12 +319,17 @@ def simulate_battle(
             if frac > 0.0:
                 pen = base * frac
                 if m["drive"] > 0 and target.drive_max > 0:
+                    _d_before = target.drive
                     target.drive = max(0.0, target.drive - pen * m["drive"])
+                    applied += _d_before - target.drive
                 if m["hull"] > 0:
                     target.hull -= pen * m["hull"]
+                    applied += pen * m["hull"]
                 effective = True
             if effective:
-                dealt += base
+                # Reporting: tatsaechlich angewandter Schaden statt rohem ``base`` -> reine
+                # Schild-Absorption zaehlt nicht mehr als voller Treffer (Befund #11).
+                dealt += applied
             # Rapidfire-Kette gegen den getroffenen Typ.
             rf = unit.rapidfire.get(target.type, 0)
             if rf and rf > 1 and rng.random() < (rf - 1) / rf:
@@ -416,14 +428,17 @@ def simulate_battle(
         _spy = int(defender.get("tech", {}).get("spy_tech", 0))
         _detected = rng.random() < ambush_detect_chance(_sensors, _spy, ambush_cfg)
     if ambush_enabled and not _detected and _has_stealth and def_units:
-        for u in atk_units:
-            u.shield = u.shield_max
-        for u in def_units:
-            u.shield = u.shield_max
+        # Modell (Design-Entscheidung 2026-06-13): In der Ueberraschungsrunde sind NUR die
+        # Tarnkappen-Schiffe schon heran (vorausgeeilt) und eroeffnen das Feuer; der Rest der
+        # Flotte trifft erst zu Runde 1 ein und feuert ab da. Der Verteidiger SIEHT die
+        # anfliegende Flotte und ist vorbereitet (Schilde oben) -> KEIN Schild-Reset; der
+        # Stealth-Vorteil ist allein die einseitige Eroeffnungssalve der Tarnkappen-Schiffe.
         ambush_fire = 0.0
         for u in list(atk_units):
             if not def_units:
                 break
+            if not u.stealth:
+                continue  # nicht-getarnte Schiffe sind in dieser Runde noch im Anflug
             f = fire_factor(u, ambush_dist)
             if f is not None:
                 ambush_fire += fire(u, def_units, f)
@@ -551,7 +566,7 @@ def simulate_battle(
     elif not atk_alive and not def_alive:
         winner = "draw"
     else:
-        winner = "draw"  # nach 6 Runden beide ueberlebt
+        winner = "draw"  # nach max_rounds (Default 8) Runden beide ueberlebt
 
     return {
         "seed": seed,

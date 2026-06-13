@@ -261,7 +261,6 @@ async def resolve_interception(fleet_id: str, station_id: str) -> None:
         # -- Schlacht: Patrouille = Angreifer (haelt fest), Flotte = Verteidiger (darf fliehen) --
         atk_research = await get_research_levels(session, station.owner_id)
         def_research = await get_research_levels(session, fleet.player_id)
-        tech_keys = ("weapons_tech", "shield_tech", "armor_tech")
 
         # Commander-Boni der abgefangenen Flotte (defensiv).
         commander = await session.get(Commander, fleet.commander_id) if fleet.commander_id else None

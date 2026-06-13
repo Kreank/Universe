@@ -30,6 +30,7 @@ from app.platform.db import session_scope
 from app.platform.models import (
     Fleet,
     NpcEmpire,
+    Planet,
     PlayerDiscovery,
     Ship,
     TradeReputation,

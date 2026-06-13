@@ -25,7 +25,7 @@
 ## 2. Ablauf einer Schlacht
 
 Eine Schlacht wird beim Eintreffen der Flotte **sofort serverseitig berechnet** (autoritativ,
-Architektur §5.3) und läuft über **bis zu 6 Runden**:
+Architektur §5.3) und läuft über **bis zu 8 Runden** (`combat.max_rounds`):
 
 1. **Pro Runde** feuert jede Einheit auf ein **zufälliges** gegnerisches Ziel.
 2. **Schaden** trifft zuerst den **Schild**, Rest geht auf die **Hülle**.
@@ -137,7 +137,7 @@ PERMADEATH  →  Commander endgültig verloren; großer Trauer-/Crew-Moral-Effek
 2. **Evakuierungs-Regel:** ✅ **Entscheidung (2026-06-06): Entkommen nur, wenn eigene
    Schiffe überleben** (Logistik-Tech/Rang erhöhen die Chance). Totale Vernichtung = echtes
    Permadeath-Risiko.
-3. **Rundenzahl** (Default 6), **Trümmer-%** (Default 30, Schiffe; Verteidigung erzeugt
+3. **Rundenzahl** (Default 8), **Trümmer-%** (Default 30, Schiffe; Verteidigung erzeugt
    Trümmer? Default nein), **Plünderquote** (Default 50 %), **Verteidigungs-Regen %** —
    alles Prototyp-Tuning.
 4. **Rapidfire** — volle OGame-Tiefe beibehalten (empfohlen).

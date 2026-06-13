@@ -266,7 +266,7 @@ async def escort_offers(
     """Verzeichnis aktiver Eskort-Angebote (alle Patrouillen mit aktiviertem Angebot)."""
     from app.fleet.stationing import station_power
     from app.platform.balance import get_balance
-    from app.platform.models import Planet, StationedFleet
+    from app.platform.models import StationedFleet
 
     bal = get_balance()
     rows = (await session.execute(

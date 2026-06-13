@@ -9,7 +9,6 @@ der einzige DB-Helfer (eine Abfrage).
 """
 from __future__ import annotations
 
-import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

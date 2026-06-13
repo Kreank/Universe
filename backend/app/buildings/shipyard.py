@@ -16,10 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.economy.service import (
     get_building_levels,
     get_research_levels,
-    refresh_resources,
     spend_resources,
 )
-from app.platform.balance import get_balance
+from app.platform.balance import catalog_items, get_balance
 from app.platform.db import session_scope
 from app.platform.models import Defense, Planet, Ship, ShipyardQueueItem
 from app.platform.scheduler import schedule_at
@@ -78,10 +77,8 @@ async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
 
     def build_options(catalog: dict) -> list[dict]:
         out = []
-        for typ, cfg in catalog.items():
-            # ``_``-praefixierte Keys sind Meta-/Kommentar-Eintraege (z. B. "_note").
-            if typ.startswith("_") or not isinstance(cfg, dict):
-                continue
+        # ``catalog_items`` filtert ``_``-Meta-Keys + Nicht-Dicts zentral (Befund #7).
+        for typ, cfg in catalog_items(catalog):
             # Virtuelle Einheiten (z. B. Mond-Orbitalbatterie) sind nicht direkt baubar.
             if cfg.get("virtual"):
                 continue

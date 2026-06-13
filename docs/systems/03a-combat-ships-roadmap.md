@@ -8,7 +8,7 @@
 
 ## 0. Ist-Zustand (verifiziert) — was schon da ist ✅
 
-- **Engine** (`combat/engine.py`): deterministisch, 6 Runden, gezieltes Feuer, Schild→Hülle,
+- **Engine** (`combat/engine.py`): deterministisch, 8 Runden, gezieltes Feuer, Schild→Hülle,
   Schild-Regen/Runde, **Schild-Abprall** (<1 %), **Rapidfire-Ketten** `(rf-1)/rf`,
   Explosion <70 % Hülle, Tech-Boni (Waffen/Schild/Panzer), **Commander-Schiffsboni**. → solide.
 - **Balance** (`combat`-Sektion): Trümmer **30 %** (Schiffe; Verteidigung 0), Plünderung 50 %,

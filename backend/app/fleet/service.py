@@ -257,6 +257,11 @@ async def send_fleet(
     if planet is None or planet.player_id != player.id:
         raise ValueError("Startplanet nicht gefunden")
 
+    # Forschung einmal frueh laden: mehrere missionsspezifische Branches weiter unten
+    # (Traeger-Drohnenkapazitaet beim Angriff, Abfang-Radius, Flugzeit) lesen ``research``,
+    # bevor die fruehere Stelle der Zuweisung erreicht waere -> sonst UnboundLocalError.
+    research = await get_research_levels(session, player.id)
+
     ships = {t: int(c) for t, c in ships.items() if int(c) > 0}
     if not ships:
         raise ValueError("Keine Schiffe ausgewaehlt")
@@ -458,7 +463,6 @@ async def send_fleet(
             f"Reichweite zu kurz: Ziel-Distanz {distance}, Flotte schafft max. {int(max_range)} "
             f"({leg}) — limitierend: {limiting}. Tank reicht nicht für die Strecke."
         )
-    research = await get_research_levels(session, player.id)
     secs = flight_seconds(distance, slowest_ship_speed(ships, research), speed_pct)
     # Commander-Tempobonus verkuerzt die Flugzeit (moral-skaliert).
     if commander is not None:

@@ -10,7 +10,6 @@ import uuid
 import jwt
 from fastapi import Depends, Header, HTTPException, status
 from passlib.context import CryptContext
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platform.config import settings

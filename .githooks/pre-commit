@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Versionierter pre-commit-Hook (aktiv via: git config core.hooksPath .githooks).
+# Blockt Commits mit pyflakes-Fehlern (F-Klasse) im Backend -> faengt Undefined-Name /
+# Use-before-Assignment (F821/F823), die die reine-Engine-Tests nicht abdecken.
+set -euo pipefail
+
+if command -v ruff >/dev/null 2>&1; then
+    RUFF=(ruff)
+elif python3 -m ruff --version >/dev/null 2>&1; then
+    RUFF=(python3 -m ruff)
+else
+    echo "pre-commit: ruff nicht gefunden -> 'pip install --user ruff'. Lint uebersprungen." >&2
+    exit 0
+fi
+
+echo "pre-commit: ${RUFF[*]} check backend/app --select F"
+"${RUFF[@]}" check backend/app --select F

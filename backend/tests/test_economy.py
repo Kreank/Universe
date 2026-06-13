@@ -65,3 +65,36 @@ def test_lazy_growth_is_capped_at_capacity():
     # Kurzes Intervall: linear ohne Deckel.
     grown_short = min(caps["metal"], 0.0 + rates["metal"] * 1.0)
     assert abs(grown_short - rates["metal"]) < 1e-6
+
+
+# ---- Befund #6: Deuterium-bewusste stueckweise Lazy-Akkumulation ----
+
+def test_accrue_amount_linear_without_depletion():
+    from app.economy.service import accrue_amount
+    # Ohne Split: klassisches lineares Modell.
+    assert accrue_amount(100.0, 50.0, 2.0) == 200.0
+    # t_deplete >= dt_hours -> kein Split (Deut ueberlebt das Intervall).
+    assert accrue_amount(100.0, 50.0, 2.0, t_deplete=5.0, rate_off=10.0) == 200.0
+
+
+def test_accrue_amount_piecewise_throttles_after_depletion():
+    from app.economy.service import accrue_amount
+    # Metall/Kristall: bis t_deplete volle Rate (50), danach gedrosselte Off-Rate (20).
+    grown = accrue_amount(100.0, 50.0, 10.0, t_deplete=4.0, rate_off=20.0)
+    assert grown == 100.0 + 50.0 * 4.0 + 20.0 * 6.0  # 420
+    # MUSS kleiner sein als das naive lineare Modell (das den Exploit belohnte).
+    assert grown < accrue_amount(100.0, 50.0, 10.0)  # < 600
+
+
+def test_accrue_amount_deuterium_resets_at_depletion():
+    from app.economy.service import accrue_amount
+    # Deut faellt bei t_deplete auf 0, waechst danach nur mit der Off-Rate (Fusion aus).
+    grown = accrue_amount(1000.0, -100.0, 10.0, t_deplete=4.0, rate_off=20.0, is_deuterium=True)
+    assert grown == 20.0 * 6.0  # 120, unabhaengig vom Startbestand
+
+
+def test_accrue_amount_already_empty_tank_uses_off_rate_whole_interval():
+    from app.economy.service import accrue_amount
+    # Deut bereits leer (t_deplete=0) -> Metall laeuft das GANZE Intervall mit der Off-Rate.
+    grown = accrue_amount(100.0, 50.0, 10.0, t_deplete=0.0, rate_off=20.0)
+    assert grown == 100.0 + 20.0 * 10.0  # 300

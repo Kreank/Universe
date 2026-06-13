@@ -7,7 +7,6 @@ Menge ist durch die Frachtkapazität der Flotte begrenzt und landet als Fracht f
 from __future__ import annotations
 
 import logging
-import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -97,7 +97,7 @@
 
   "research": {
     "_formula_time": "hours = (metal + crystal) / (1000 * (1 + lab_lvl) * speed)",
-    "_formula_cost": "base * 2^(lvl-1)",
+    "_formula_cost": "Kosten Stufe c -> c+1 = base * 2^c (current_level als Exponent; vgl. research/service.py cost_for_level)",
     "divisor": 1000,
     "one_at_a_time": true,
     "effects": {
@@ -205,7 +205,7 @@
   },
 
   "combat_roster": {
-    "_note": "Rollen-Kampf-Profil (Doku 03b/03c) je Einheit: weapon_type (Schadenstyp, null=feuert nicht) + drive (Antriebs-Tier 1-5, *drive_integrity_per_tier = Pool; 0=stationaer/immobil) + range (near/medium/far). Eintrag fehlt -> Standard kinetic/near/drive 3. Verteidigung: drive 0 (nie gestrandet, feuert immer).",
+    "_note": "Rollen-Kampf-Profil (Doku 03b/03c) je Einheit: weapon_type (Schadenstyp, null=feuert nicht) + drive (Antriebs-Tier 1-5, *drive_integrity_per_tier = Pool; 0=stationaer/immobil) + range (near/medium/far). Eintrag fehlt -> Standard kinetic/near/drive 3. Verteidigung: drive 0 (nie gestrandet, feuert immer). Befund #10: Schiffe mit weapon_type=null (colony_ship, cargos, recycler) feuern NICHT, ihr ships.*.attack ist daher KEIN Kampfschaden -> aber bewusst >0 belassen, weil fleet_power/station_power/Expeditions-Verlustverteilung diesen Wert als groben Staerke-Proxy lesen (auf 0 setzen wuerde diese Proxies verfaelschen).",
     "light_fighter":   { "weapon_type": "kinetic", "drive": 5, "range": "near" },
     "heavy_fighter":   { "weapon_type": "kinetic", "drive": 4, "range": "near" },
     "cruiser":         { "weapon_type": "energy",  "drive": 4, "range": "medium" },
@@ -243,7 +243,8 @@
     "small_shield_dome":      { "weapon_type": null,      "drive": 0, "range": "far" },
     "large_shield_dome":      { "weapon_type": null,      "drive": 0, "range": "far" },
     "anti_ballistic_missile": { "weapon_type": null,      "drive": 0, "range": "far" },
-    "interplanetary_missile": { "weapon_type": "missile", "drive": 0, "range": "far" }
+    "interplanetary_missile": { "weapon_type": "missile", "drive": 0, "range": "far" },
+    "orbital_gun":            { "weapon_type": "orbital", "drive": 0, "range": "far" }
   },
 
   "tech_bonus": {
@@ -269,11 +270,12 @@
       "ion_disruptor_per_level": 0.10
     },
     "damage_matrix": {
-      "_note": "Rollen-Kampf (Doku 03b/03d): weapon_type -> Effektivitaet gegen {shield, drive, hull}. Schild regeneriert pro Runde, Antrieb NICHT (mission kill). RUECKGRAT seit 03d (kein Schiff-Rapidfire mehr): Energie strippt Schild -> Kinetik/Rakete zerlegt Huelle -> Ionen laehmt. Kinetik-vs-Schild bleibt vorerst 0.25; Schaerfung Richtung 0.1-0.0 ist Phase 2 (gemeinsam mit Stats/Kosten + Sim getunt, weil es die Glaskanonen-Rolle direkt beruehrt).",
+      "_note": "Rollen-Kampf (Doku 03b/03d): weapon_type -> Effektivitaet gegen {shield, drive, hull}. Schild regeneriert pro Runde, Antrieb NICHT (mission kill). RUECKGRAT seit 03d (kein Schiff-Rapidfire mehr): Energie strippt Schild -> Kinetik/Rakete zerlegt Huelle -> Ionen laehmt. Kinetik-vs-Schild steht auf 0.1 (Glaskanonen-Rolle, Phase-2-Schaerfung umgesetzt). 'orbital' (Mond-Orbitalbatterie, Befund #5): bewusst ausgewogen -> gut gegen Schild UND Huelle, aber in keiner Domain dominant (besondere, wertvolle Waffe, kein Overkill-Geschuetz).",
       "energy":  { "shield": 1.5,  "drive": 0.5,  "hull": 0.6 },
       "kinetic": { "shield": 0.1, "drive": 0.75, "hull": 1.3 },
       "ion":     { "shield": 1.4,  "drive": 1.6,  "hull": 0.0 },
-      "missile": { "shield": 0.5,  "drive": 0.7,  "hull": 1.2 }
+      "missile": { "shield": 0.5,  "drive": 0.7,  "hull": 1.2 },
+      "orbital": { "shield": 0.9,  "drive": 0.5,  "hull": 0.9 }
     },
     "drive_integrity_per_tier": 100,
     "range_bands": {

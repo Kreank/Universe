@@ -165,6 +165,33 @@ def compute_rates(
     return rates, energy, capacities
 
 
+def accrue_amount(
+    amount: float,
+    rate_on: float,
+    dt_hours: float,
+    *,
+    t_deplete: float | None = None,
+    rate_off: float | None = None,
+    is_deuterium: bool = False,
+) -> float:
+    """Reine Lazy-Akkumulation einer Ressource ueber ``dt_hours`` (VOR Cap/Floor).
+
+    Ohne ``(t_deplete, rate_off)`` das klassische lineare ADR-002-Modell:
+    ``amount + rate_on * dt_hours``.
+
+    Mit gesetztem ``t_deplete`` (Deut-Erschoepfungszeit) UND ``rate_off`` (Fusion-AUS-Rate)
+    und ``t_deplete < dt_hours`` -> stueckweise Integration (Befund #6): bis ``t_deplete``
+    die volle ``rate_on``, danach die gedrosselte ``rate_off``. Deuterium faellt bei
+    ``t_deplete`` per Definition auf 0 und waechst danach nur noch mit ``rate_off`` (>=0)."""
+    if t_deplete is not None and rate_off is not None and t_deplete < dt_hours:
+        t_on = max(0.0, t_deplete)
+        t_off = dt_hours - t_on
+        if is_deuterium:
+            return rate_off * t_off
+        return amount + rate_on * t_on + rate_off * t_off
+    return amount + rate_on * dt_hours
+
+
 async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     """Lazy-Update (ADR-002): wendet die ALTE Rate ueber die verstrichene Zeit an,
     deckelt auf die Kapazitaet, berechnet dann die NEUE Rate und persistiert beides.
@@ -189,13 +216,14 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     )
 
     # Gouverneur-Bonus (Kommandeur auf dem Planeten) auf die Produktionsrate.
+    gov_mult = 1.0
     if getattr(planet, "governor_commander_id", None):
         from app.commander.service import governor_production_mult
         from app.platform.models import Commander as _Commander
         gov = await session.get(_Commander, planet.governor_commander_id)
-        mult = governor_production_mult(gov, get_balance())
-        if mult != 1.0:
-            new_rates = {k: v * mult for k, v in new_rates.items()}
+        gov_mult = governor_production_mult(gov, get_balance())
+        if gov_mult != 1.0:
+            new_rates = {k: v * gov_mult for k, v in new_rates.items()}
 
     rows = (await session.execute(
         select(Resource).where(
@@ -204,6 +232,31 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
         )
     )).scalars().all()
     by_type = {r.type: r for r in rows}
+
+    # --- Befund #6: Deuterium-bewusste stueckweise Integration (ADR-002-Verfeinerung) -------
+    # Ein fusion-abhaengiger Planet kann mehr Deut verbrennen, als er synthetisiert -> die
+    # Deut-"Rate of record" ist negativ. Geht der Spieler offline, bis das Deut leer ist,
+    # schaltet der Fusionsreaktor real ab -> Energie sinkt -> Minen drosseln. Das rein lineare
+    # Lazy-Modell wuerde Metall/Kristall die ganze Zeit mit der vollen (fusion-gestuetzten) Rate
+    # gutschreiben und so nie produziertes Material verschenken (Exploit: Deut-Tank leerlaufen
+    # lassen). Daher: laeuft das Deut im Intervall aus, splitten wir am Erschoepfungszeitpunkt
+    # und rechnen den Rest mit dem Fusion-AUS-Regime (gleiche Pipeline, fusion_reactor=0 ->
+    # keine Fusionsenergie UND kein Deut-Burn).
+    deut_row = by_type.get("deuterium")
+    deut_start = deut_row.amount if deut_row is not None else 0.0
+    deut_rate_rec = deut_row.rate if deut_row is not None else 0.0  # bisherige (Fusion-AN-)Rate
+    off_rates: dict[str, float] | None = None
+    t_deplete = 0.0
+    if deut_rate_rec < 0:
+        # Stunden bis das Deut bei der bisherigen Rate auf 0 faellt (>=0).
+        t_deplete = deut_start / (-deut_rate_rec)
+        buildings_off = {**buildings, "fusion_reactor": 0}
+        off_rates, _e_off, _c_off = compute_rates(
+            buildings_off, planet.temp_max, energy_tech,
+            research.get("mining_efficiency", 0), research.get("storage_tech", 0), solar_sats,
+        )
+        if gov_mult != 1.0:
+            off_rates = {k: v * gov_mult for k, v in off_rates.items()}
 
     result: dict[str, dict] = {}
     for key in RESOURCE_KEYS:
@@ -219,8 +272,14 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
         if last.tzinfo is None:
             last = last.replace(tzinfo=dt.timezone.utc)
         dt_hours = max(0.0, (now - last).total_seconds() / 3600.0)
-        # ALTE Rate ueber das Intervall anwenden, auf Kapazitaet deckeln.
-        grown = row.amount + row.rate * dt_hours
+        # ALTE Rate ueber das Intervall anwenden (deut-bewusst stueckweise, Befund #6),
+        # dann auf Kapazitaet deckeln.
+        grown = accrue_amount(
+            row.amount, row.rate, dt_hours,
+            t_deplete=(t_deplete if off_rates is not None else None),
+            rate_off=(off_rates[key] if off_rates is not None else None),
+            is_deuterium=(key == "deuterium"),
+        )
         row.amount = min(cap, grown)
         if row.amount < 0:
             row.amount = 0.0

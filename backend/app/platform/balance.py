@@ -18,6 +18,16 @@ def load_balance() -> dict[str, Any]:
         return json.load(fh)
 
 
+def catalog_items(catalog: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    """Kanonischer Iterator ueber einen Daten-Katalog (ships/defenses/techs ...).
+
+    Filtert ``_``-praefixierte Meta-/Kommentar-Keys (z. B. ``_note``, ``_note_roles``,
+    ``_formula_cost``) UND Nicht-Dict-Werte heraus -> jede Aufrufstelle bekommt nur echte
+    Eintraege mit ``cfg``-Dict. Vermeidet, dass jede Iteration den Filter neu (und ggf.
+    lueckenhaft) baut (Befund #7)."""
+    return [(k, v) for k, v in catalog.items() if not k.startswith("_") and isinstance(v, dict)]
+
+
 class Balance:
     """Bequeme, lesende Sicht auf balance.json. Reine Helfer, keine Mutation."""
 

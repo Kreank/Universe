@@ -1,0 +1,12 @@
+# Ruff-Konfiguration fuer Universe.
+#
+# Fokus: die pyflakes-"F"-Klasse. Sie faengt in <1 s genau die Fehlerklasse, die zwei
+# Loop-Breaker unbemerkt live brachte (Audit #1 UnboundLocalError / F823, #12 NameError / F821) —
+# plus ungenutzte Imports/Locals (F401/F841). Die Pytest-Suite deckt nur die reine Engine ab,
+# nicht die DB-gebundenen Pfade, daher faengt sie diese Klasse NICHT.
+target-version = "py312"
+line-length = 120
+
+[lint]
+# Bewusst nur "F" (kein Style-Rauschen E/W) -> harter, schneller Gate ohne Altlast-Flut.
+select = ["F"]
