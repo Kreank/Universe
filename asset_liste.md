@@ -63,7 +63,11 @@ Es gibt **zwei** Asset-Wurzeln:
 > KEIN Text, KEINE UI-Elemente, kein harter Fokuspunkt im Zentrum. Ablage in `assets/backgrounds/`
 > UND `frontend/src/assets/img/backgrounds/`; Referenz als `assets/img/backgrounds/<name>.jpg`.
 
-### 🎬 Bewegte Hintergründe (Loop-Videos) — heben die Szene auf „cinematic"
+### 🎬 Bewegte Hintergründe (Loop-Videos) — ❌ VERWORFEN
+
+> **NICHT mehr bauen / nicht weiter verfolgen.** Vollbild-Loop-Video als Hintergrund ruckelte hinter
+> der Glas-UI (`backdrop-filter`-Leisten zeichnen das bewegte Bild jeden Frame neu). **Hintergründe
+> bleiben statische Bilder.** Die bereits gelieferten Dateien bleiben ungenutzt liegen (kein Problem).
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
@@ -80,7 +84,7 @@ Es gibt **zwei** Asset-Wurzeln:
 > Text/UI.** Optisch = das Standbild, nur „lebendig". Ablage wie die bg_*: `assets/backgrounds/` UND
 > `frontend/src/assets/img/backgrounds/`.
 
-### ✨ FX-Overlay-Loops (transparent) — optionaler Flair auf aktiven Kacheln/Zeilen
+### ✨ FX-Overlay-Loops (transparent) — ❌ ZURÜCKGESTELLT (nicht bauen)
 
 > Kleine, TRANSPARENTE Loops, die als halbtransparentes Overlay NUR auf aktiven Elementen liegen
 > (Bau läuft / Mine fördert / Forschung läuft). Die strukturellen „lebt-wenn-aktiv"-Effekte
@@ -97,7 +101,12 @@ Es gibt **zwei** Asset-Wurzeln:
 > als Haupt­format + **APNG-Fallback** (Safari kann webm-Alpha schlecht). Ablage `assets/fx/` UND
 > `frontend/src/assets/img/fx/`. Werden später per CSS/Overlay nur auf aktive Elemente gelegt.
 
-### 🟢 ANIMIERTE ARTWORKS — die Icons selbst leben (Hauptwunsch!)
+### 🟢 ANIMIERTE ARTWORKS — ❌ VERWORFEN (nicht bauen)
+
+> **NICHT bauen.** Gebäude/Forschung/Schiffe bleiben **statische Bilder** (kein APNG/Video auf den
+> Icon-Artworks). Video kommt stattdessen in die Berichte (siehe unten).
+
+<details><summary>Ursprünglicher (verworfener) Wunsch — nur zur Historie</summary>
 
 > **Animierte Version des JEWEILIGEN bestehenden Icons** (Mine raucht, Schiff verlässt Hangar,
 > Energie fließt, Triebwerk zündet …). **WICHTIG — Format & Ablage so, dass NULL Code-Änderung nötig
@@ -129,7 +138,9 @@ Es gibt **zwei** Asset-Wurzeln:
 > Falls APNG technisch nicht geht: gleichwertig **animiertes GIF gleichen Namens** (ohne weiche Alpha-
 > Kanten) — aber APNG ist klar bevorzugt (Alpha + Qualität).
 
-### 🎞️ KAMPF-KINO — Highlight-Clips im Kampfbericht (event-gekoppelt)
+</details>
+
+### 🎞️ KAMPF-KINO — Highlight-Clips im Kampfbericht (event-gekoppelt) ✅ AKTIV
 
 > Generische, wiederverwendbare Kino-Clips. Der Kampfbericht erkennt aus den Schlacht-Daten das
 > markanteste Ereignis und spielt den passenden Clip oben im Bericht ab (Priorität ungefähr:
@@ -160,6 +171,21 @@ Es gibt **zwei** Asset-Wurzeln:
 > UND `frontend/src/assets/img/cinematics/`; Referenz `assets/img/cinematics/<name>.webm|.mp4|.jpg`.
 > Reihenfolge der Wichtigkeit für dich: **cine_moon_destroy** (Showpiece) zuerst, dann cine_ambush,
 > cine_victory, cine_defeat — der Rest nach Lust.
+
+### 📡 BERICHT-VIDEOS — Spionage & NPC-Drohungen ✅ AKTIV
+
+> Wie das Kampf-Kino: kurze Clips, die **im jeweiligen Funkspruch/Bericht auf Klick (Replay)**
+> abgespielt werden — kein Hintergrund, kein Blur drüber → flüssig. Generisch & wiederverwendbar.
+> Format wie Kampf-Kino: **`.webm` (VP9) + `.mp4` (H.264) + `.jpg`-Poster**, dunkler Weltraum,
+> kein Text/HUD, dunkler Ein-/Ausstieg. Ablage `assets/cinematics/` + `frontend/src/assets/img/cinematics/`.
+
+| Status | Name | Pfad (`cinematics/`) | Format | Clip-Idee · spielt bei … |
+|:---:|---|---|---|---|
+| ⬜ | cine_spy | `cinematics/cine_spy.*` | webm+mp4+jpg, ~8 s, 1280×720 | **Spionage-Sweep:** Spähsonden gleiten ans Ziel, Scanner-Strahl tastet ab, ein Hologramm der gegnerischen Flotte/Verteidigung baut sich auf. · *Spionagebericht (spy_report).* |
+| ⬜ | cine_npc_threat | `cinematics/cine_npc_threat.*` | webm+mp4+jpg, ~7 s, 1280×720 | **Drohung:** ein finsteres NPC-Kriegsschiff dreht bei / eine Kommandeurs-Silhouette auf dunkler Brücke „hailt" bedrohlich (Statik/Funk-Flackern, rote `#ff4d7d` Akzente). · *NPC-Droh-/Spott-Funkspruch.* |
+
+> Optional später: `cine_spy_fail` (Sonden entdeckt/abgeschossen — keine Daten), `cine_npc_taunt`
+> (höhnisch nach gewonnener Verteidigung) — erst die zwei oben.
 | ✅ | advisor | `icons/ui/` → wird als `assets/img/ui/advisor.png` ausgeliefert | PNG transparent, 256×256 | Button-Icon „KI-Berater fragen" (Postfach). Stilisiertes Gehirn / KI-Knoten-Netz / Berater-Hologrammkopf, dezenter Cyan-Akzent `#2fe3d2`, Sci-Fi-UI-Linienstil, ohne Text. ~16px-tauglich. |
 | ✅ | broom | `icons/ui/` → wird als `assets/img/ui/broom.png` ausgeliefert | PNG transparent, 256×256 | Button-Icon „Leeren/Zurücksetzen" (Kampf-Simulator). Besen oder „Clear/Wisch"-Symbol, monochrom-hell, Sci-Fi-UI-Linienstil, ohne Text. ~16px-tauglich. |
 
