@@ -24,6 +24,23 @@
 
 ---
 
+## 🗓️ Session 2026-06-13 (C) — Audit Runde 3 behoben (ranking/messaging/moon/commander)
+
+> Commits `265e933`, getestet **187/187** (+2 D-1-Tests), deployt & live. Kein Crash-Bug, nur
+> Medium/Low. Detail-Memory: `project_universe_audit_tooling`. Strukturelle Folgen (wichtig!):
+> - **Trait-Kampfboni NUR noch in `commander.combat_bonuses.trait_mods`** (pro-Stat). `combat_attack_mod`
+>   aus `personality_traits` entfernt (hatte dual auf Schild gewirkt + sich gedoppelt; D-2).
+> - **Gouverneur-Bonus = `production_mult` in `compute_rates`** (nur Minen-Anteil, nicht Grundeinkommen/
+>   Deut-Burn; D-1) — verzahnt mit der #6-Accrual.
+> - **`GET /ranking` ist READ-ONLY** (R-1); `Player.score` schreibt allein `score_tick`. Ranking-Punkte:
+>   Komponenten summieren zum Total (R-2), Gleichstand deterministisch (R-3).
+> - **`/transmissions` paginiert** (`limit` + `before`-Cursor; M-2) — **Frontend muss/sollte nachziehen**.
+> - News-Broadcast idempotent (M-1); Reaktions-Banken ORDER BY + skip_locked (M-3); KI-Bootstrap nur bei
+>   leeren Banken (#10, live bestätigt: "AI-Bootstrap uebersprungen"); Mond-Chance auf 1.0 geklemmt (Mo-2).
+> - Bewusst NICHT geändert: fragile frische Monde (Mo-1, „brutal lassen").
+
+---
+
 ## 🗓️ Session 2026-06-13 (B) — Audit Runde 1/2 behoben (15 Befunde) + Lint-Guard
 
 > Commit `6eca7b7`, getestet **185/185** (178 + 7 neue Regressionstests), deployt & live.
