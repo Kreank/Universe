@@ -50,6 +50,15 @@ def schedule_at(
     )
 
 
+def cancel_job(job_id: str) -> None:
+    """Entfernt einen geplanten Job (z. B. beim Abbruch eines Bauauftrags).
+    Idempotent: existiert der Job nicht (mehr), passiert nichts."""
+    try:
+        scheduler.remove_job(job_id)
+    except Exception:  # noqa: BLE001 — Job schon gelaufen/entfernt -> egal
+        pass
+
+
 def schedule_interval(
     func: Callable[..., Awaitable[Any]],
     *,

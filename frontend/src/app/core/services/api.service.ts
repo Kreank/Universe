@@ -73,6 +73,14 @@ export class ApiService {
     );
   }
 
+  /** Bricht den laufenden Ausbau dieses Gebaeudes ab (voller Ressourcen-Refund). */
+  cancelBuilding(planetId: string, type: string): Observable<UpgradeResponse> {
+    return this.http.post<UpgradeResponse>(
+      `/api/planets/${planetId}/buildings/${type}/cancel`,
+      {},
+    );
+  }
+
   // --- Forschung ---
   getResearch(): Observable<ResearchResponse> {
     return this.http.get<ResearchResponse>('/api/research');
@@ -84,6 +92,11 @@ export class ApiService {
     });
   }
 
+  /** Bricht die laufende Forschung ab (voller Ressourcen-Refund auf die Heimatwelt). */
+  cancelResearch(): Observable<ResearchStartResponse> {
+    return this.http.post<ResearchStartResponse>('/api/research/cancel', {});
+  }
+
   // --- Werft ---
   getShipyard(planetId: string): Observable<ShipyardResponse> {
     return this.http.get<ShipyardResponse>(`/api/planets/${planetId}/shipyard`);
@@ -91,6 +104,14 @@ export class ApiService {
 
   buildShips(planetId: string, body: ShipyardBuildRequest): Observable<ShipyardBuildResponse> {
     return this.http.post<ShipyardBuildResponse>(`/api/planets/${planetId}/shipyard/build`, body);
+  }
+
+  /** Bricht einen Werft-Auftrag ab (Refund + Nachruecken der Schlange). */
+  cancelShipyardItem(planetId: string, itemId: string): Observable<ShipyardBuildResponse> {
+    return this.http.post<ShipyardBuildResponse>(
+      `/api/planets/${planetId}/shipyard/${itemId}/cancel`,
+      {},
+    );
   }
 
   // --- Flotte ---

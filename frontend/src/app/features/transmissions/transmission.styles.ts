@@ -85,7 +85,7 @@ export const transmissionStyles = `
     font-variant-numeric: tabular-nums;
   }
   .unit.res { font-family: var(--mono); }
-  .u-glyph { font-size: var(--fs-md); }
+  .u-ico { flex: 0 0 auto; }
 
   .intel-hint { color: var(--text-dim); margin: var(--sp-1) 0 0; }
   .intel-time { margin: 0; }

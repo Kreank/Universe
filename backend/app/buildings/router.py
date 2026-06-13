@@ -21,8 +21,8 @@ from app.buildings.schemas import (
     ShipyardResponse,
     UpgradeResponse,
 )
-from app.buildings.service import building_options, demolish_building, start_upgrade
-from app.buildings.shipyard import queue_build, shipyard_view
+from app.buildings.service import building_options, cancel_upgrade, demolish_building, start_upgrade
+from app.buildings.shipyard import cancel_queue_item, queue_build, shipyard_view
 from app.platform.db import get_session
 from app.platform.models import Building, Planet, Player
 from app.platform.security import get_current_player
@@ -92,6 +92,23 @@ async def upgrade_building(
     )
 
 
+@router.post("/planets/{planet_id}/buildings/{type}/cancel", response_model=UpgradeResponse)
+async def cancel_building_route(
+    planet_id: uuid.UUID,
+    type: str,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> UpgradeResponse:
+    planet = await _owned_planet(session, player, planet_id)
+    try:
+        row = await cancel_upgrade(session, planet, type)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return UpgradeResponse(type=row.type, level=row.level, upgrade_finishes_at=None)
+
+
 @router.post("/planets/{planet_id}/buildings/{type}/demolish", response_model=DemolishResponse)
 async def demolish_building_route(
     planet_id: uuid.UUID,
@@ -153,6 +170,21 @@ async def build_shipyard(
         queue = await queue_build(session, planet, body.type, body.count, body.category)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ShipyardBuildResponse(queue=[BuildQueueItemOut(**q) for q in queue])
+
+
+@router.post("/planets/{planet_id}/shipyard/{item_id}/cancel", response_model=ShipyardBuildResponse)
+async def cancel_shipyard_route(
+    planet_id: uuid.UUID,
+    item_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> ShipyardBuildResponse:
+    planet = await _owned_planet(session, player, planet_id)
+    try:
+        queue = await cancel_queue_item(session, planet, item_id)
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return ShipyardBuildResponse(queue=[BuildQueueItemOut(**q) for q in queue])

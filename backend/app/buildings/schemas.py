@@ -69,6 +69,7 @@ class ShipOptionOut(BaseModel):
 
 
 class BuildQueueItemOut(BaseModel):
+    id: str
     type: str
     count: int
     category: str

@@ -10,10 +10,11 @@ import datetime as dt
 import logging
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy.service import (
+    add_resources,
     get_building_levels,
     get_research_levels,
     spend_resources,
@@ -21,13 +22,24 @@ from app.economy.service import (
 from app.platform.balance import catalog_items, get_balance
 from app.platform.db import session_scope
 from app.platform.models import Defense, Planet, Ship, ShipyardQueueItem
-from app.platform.scheduler import schedule_at
+from app.platform.scheduler import cancel_job, schedule_at
 
 log = logging.getLogger("universe.shipyard")
 
 
 def _now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
+
+
+def _aware(d: dt.datetime) -> dt.datetime:
+    return d.replace(tzinfo=dt.timezone.utc) if d.tzinfo is None else d
+
+
+def _item_total_end(item: ShipyardQueueItem) -> dt.datetime:
+    """Zeitpunkt, zu dem die LETZTE noch offene Einheit dieses Auftrags fertig ist
+    (stueckweise: naechste Einheit + (count-1) weitere je seconds_each)."""
+    per = item.seconds_each or 0
+    return _aware(item.finishes_at) + dt.timedelta(seconds=per * max(0, item.count - 1))
 
 
 def _catalog(category: str) -> dict:
@@ -118,6 +130,7 @@ async def _queue_items(session: AsyncSession, planet_id: uuid.UUID) -> list[dict
     )).scalars().all()
     return [
         {
+            "id": str(q.id),
             "type": q.type,
             "count": q.count,
             "category": q.category,
@@ -164,26 +177,24 @@ async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: in
         raise RuntimeError("Nicht genug Ressourcen")
 
     secs_each = max(1, int(round(build_seconds_each(unit_cost, blevels.get("shipyard", 0)) * time_mult)))
-    # Serielle Werft-Schlange (OGame): EINE Werft pro Planet baut nacheinander in Auftrags-
-    # reihenfolge. Der neue Auftrag startet erst, wenn der letzte in der Schlange fertig ist
-    # (Schiffe UND Verteidigung teilen dieselbe Schlange) -> sonst liefen Auftraege parallel.
-    last_finish = (await session.execute(
-        select(func.max(ShipyardQueueItem.finishes_at)).where(
-            ShipyardQueueItem.planet_id == planet.id
-        )
-    )).scalar()
+    # Serielle Werft-Schlange (OGame): EINE Werft pro Planet baut nacheinander. Der neue Auftrag
+    # startet erst, wenn der letzte VOLLSTAENDIG fertig ist (= sein GESAMT-Ende, nicht nur die
+    # naechste Einheit). Innerhalb eines Auftrags entsteht je ``secs_each`` EINE Einheit
+    # (stueckweise) -> ``finishes_at`` markiert die naechste Einheit dieses Auftrags.
+    existing = (await session.execute(
+        select(ShipyardQueueItem).where(ShipyardQueueItem.planet_id == planet.id)
+    )).scalars().all()
     start = _now()
-    if last_finish is not None:
-        if last_finish.tzinfo is None:
-            last_finish = last_finish.replace(tzinfo=dt.timezone.utc)
-        start = max(start, last_finish)
-    finish = start + dt.timedelta(seconds=secs_each * count)
+    for it in existing:
+        start = max(start, _item_total_end(it))
+    finish = start + dt.timedelta(seconds=secs_each)  # Fertigstellung der ERSTEN Einheit
     item = ShipyardQueueItem(
         planet_id=planet.id,
         type=typ,
         count=count,
         category=category,
         finishes_at=finish,
+        seconds_each=secs_each,
     )
     session.add(item)
     await session.flush()  # item.id verfuegbar machen
@@ -197,8 +208,69 @@ async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: in
     return await _queue_items(session, planet.id)
 
 
+async def cancel_queue_item(session: AsyncSession, planet: Planet, item_id: uuid.UUID) -> list[dict]:
+    """Bricht einen Werft-Auftrag ab: voller Ressourcen-Refund, Scheduler-Job entfernt, und die
+    NACHFOLGENDEN Auftraege der seriellen Schlange ruecken um die freigewordene Zeit auf."""
+    target = (await session.execute(
+        select(ShipyardQueueItem).where(
+            ShipyardQueueItem.id == item_id,
+            ShipyardQueueItem.planet_id == planet.id,
+        )
+    )).scalar_one_or_none()
+    if target is None:
+        raise RuntimeError("Auftrag nicht gefunden")
+
+    items = list((await session.execute(
+        select(ShipyardQueueItem)
+        .where(ShipyardQueueItem.planet_id == planet.id)
+        .order_by(ShipyardQueueItem.finishes_at)
+    )).scalars().all())
+
+    now = _now()
+    k = next(i for i, it in enumerate(items) if it.id == target.id)
+    # Zeit-Span, den der Auftrag ab JETZT in der Schlange belegt (bis seine letzte Einheit faellt).
+    prev_end = _item_total_end(items[k - 1]) if k > 0 else now
+    start_k = max(now, prev_end)
+    delta = _item_total_end(target) - start_k
+    if delta.total_seconds() < 0:
+        delta = dt.timedelta(0)
+
+    # Refund: Stueckkosten * Anzahl * (Doktrin-)Kostenmultiplikator wie beim Einreihen.
+    catalog = _catalog(target.category)
+    unit_cost = catalog.get(target.type, {}).get("cost", {})
+    cost_mult = 1.0
+    if target.category == "ship":
+        from app.platform.doctrine import signature_mult
+        from app.platform.models import Player
+        player = await session.get(Player, planet.player_id)
+        cost_mult, _ = signature_mult(player.doctrine if player else None, target.type)
+    refund = {
+        "metal": round(unit_cost.get("metal", 0) * target.count * cost_mult),
+        "crystal": round(unit_cost.get("crystal", 0) * target.count * cost_mult),
+        "deuterium": round(unit_cost.get("deuterium", 0) * target.count * cost_mult),
+    }
+    await add_resources(session, planet, refund)
+
+    cancel_job(f"shipyard:{target.id}")
+    await session.delete(target)
+
+    # Nachfolger der seriellen Schlange aufruecken (Luecke schliessen) + neu planen.
+    if delta.total_seconds() > 0:
+        for it in items[k + 1:]:
+            it.finishes_at = _aware(it.finishes_at) - delta
+            schedule_at(it.finishes_at, complete_shipyard_build, str(it.id), job_id=f"shipyard:{it.id}")
+    await session.flush()
+    return await _queue_items(session, planet.id)
+
+
 async def complete_shipyard_build(queue_item_id: str) -> None:
-    """Scheduler-Callback: ueberfuehrt einen abgeschlossenen Auftrag in ships/defenses."""
+    """Scheduler-Callback: schliesst EINE Einheit des Auftrags ab (stueckweise, OGame). Sind
+    noch Einheiten offen, wird der naechste Einzel-Tick eingeplant; sonst Auftrag entfernen.
+    Legacy-Auftraege (seconds_each=0) werden in einem Schritt vollstaendig abgeschlossen."""
+    next_finish: dt.datetime | None = None
+    produced = 0
+    typ = category = ""
+    pid = None
     async with session_scope() as session:
         item = (await session.execute(
             select(ShipyardQueueItem).where(ShipyardQueueItem.id == uuid.UUID(queue_item_id))
@@ -206,7 +278,11 @@ async def complete_shipyard_build(queue_item_id: str) -> None:
         if item is None:
             return  # bereits abgeschlossen (z. B. doppelter Misfire)
 
-        pid, typ, count, category = item.planet_id, item.type, item.count, item.category
+        pid, typ, category = item.planet_id, item.type, item.category
+        per = item.seconds_each or 0
+        # Stueckweise: genau 1 Einheit pro Tick. Legacy/atomar (per<=0): ganzen Rest.
+        produced = item.count if per <= 0 else 1
+
         if category == "ship":
             row = (await session.execute(
                 select(Ship).where(
@@ -216,7 +292,7 @@ async def complete_shipyard_build(queue_item_id: str) -> None:
             if row is None:
                 row = Ship(planet_id=pid, fleet_id=None, type=typ, count=0)
                 session.add(row)
-            row.count += count
+            row.count += produced
         else:
             row = (await session.execute(
                 select(Defense).where(Defense.planet_id == pid, Defense.type == typ)
@@ -224,9 +300,15 @@ async def complete_shipyard_build(queue_item_id: str) -> None:
             if row is None:
                 row = Defense(planet_id=pid, type=typ, count=0)
                 session.add(row)
-            row.count += count
+            row.count += produced
 
-        await session.delete(item)
+        item.count -= produced
+        if item.count <= 0:
+            await session.delete(item)
+        else:
+            # Naechste Einheit dieses Auftrags einplanen (Kette innerhalb des Auftrags).
+            item.finishes_at = _aware(item.finishes_at) + dt.timedelta(seconds=per)
+            next_finish = item.finishes_at
 
         # WS: Werft-Fertigstellung -> Frontend laedt Werft + Planet automatisch neu.
         from app.platform.eventbus import event_bus
@@ -236,8 +318,12 @@ async def complete_shipyard_build(queue_item_id: str) -> None:
                 "type": "shipyard_complete",
                 "planet_id": str(pid),
                 "ship_type": typ,
-                "count": count,
+                "count": produced,
                 "category": category,
             })
 
-    log.info("Werft fertig: %sx %s (%s) auf %s", count, typ, category, pid)
+    # Naechsten Einzel-Tick NACH dem Commit einplanen (persistiertes finishes_at).
+    if next_finish is not None:
+        schedule_at(next_finish, complete_shipyard_build, queue_item_id, job_id=f"shipyard:{queue_item_id}")
+
+    log.info("Werft: %sx %s (%s) fertig auf %s", produced, typ, category, pid)

@@ -19,6 +19,18 @@ export function techIcon(key: string): string {
   return `assets/img/tech/${key}.png`;
 }
 
+export function resourceIcon(key: string): string {
+  return `assets/img/resources/${key}.png`;
+}
+
+export function shipIcon(key: string): string {
+  return `assets/img/ships/${key}.png`;
+}
+
+export function defenseIcon(key: string): string {
+  return `assets/img/defenses/${key}.png`;
+}
+
 export function traitIcon(key: string): string {
   return `assets/img/traits/${key}.png`;
 }

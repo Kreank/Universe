@@ -19,7 +19,7 @@ from app.research.schemas import (
     StartResearchRequest,
     StartResearchResponse,
 )
-from app.research.service import research_options, start_research
+from app.research.service import cancel_research, research_options, start_research
 
 router = APIRouter(tags=["research"])
 
@@ -83,3 +83,19 @@ async def start_research_endpoint(
         level=row.level + 1,
         finishes_at=row.finishes_at,
     )
+
+
+@router.post("/research/cancel", response_model=StartResearchResponse)
+async def cancel_research_endpoint(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> StartResearchResponse:
+    # Refund auf die Heimatwelt (Labor-Standardstandort).
+    home = await _homeworld(session, player)
+    if home is None:
+        raise HTTPException(status_code=404, detail="Keine Heimatwelt gefunden")
+    try:
+        row = await cancel_research(session, home)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return StartResearchResponse(type=row.type, level=row.level, finishes_at=None)

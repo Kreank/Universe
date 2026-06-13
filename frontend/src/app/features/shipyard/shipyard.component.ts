@@ -4,10 +4,11 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { PlanetUnit, Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
 import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_META, metaFor } from '../../core/models/display';
-import { rangeIcon, weaponIcon } from '../../core/models/icon-assets';
+import { defenseIcon, rangeIcon, shipIcon, weaponIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { DetailPopupComponent, DetailTag } from '../../shared/components/detail-popup.component';
 import { BuildTileComponent } from '../../shared/components/build-tile.component';
+import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { TabBarComponent } from '../../shared/components/tab-bar.component';
 import { NotificationService } from '../../core/services/notification.service';
 
@@ -77,7 +78,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
 @Component({
   selector: 'app-shipyard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent],
+  imports: [FormsModule, CountdownComponent, DetailPopupComponent, BuildTileComponent, IconTileComponent, TabBarComponent],
   template: `
     <h1>Werft & Verteidigung</h1>
     <p class="muted sub">Baue Schiffe und Verteidigungsanlagen auf {{ state.activePlanet()?.name ?? '—' }}.</p>
@@ -89,10 +90,21 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       <section class="card queue">
         <div class="panel-title">🛠️ Bauschleife</div>
         @if (d.queue.length) {
-          @for (q of d.queue; track $index) {
+          @for (q of d.queue; track q.id) {
             <div class="queue-row">
-              <span>{{ unitMeta(q.type, q.category).glyph }} {{ q.count }}× {{ unitMeta(q.type, q.category).label }}</span>
-              <app-countdown [target]="q.finishes_at" />
+              <span class="q-unit"><app-icon-tile class="q-ico" [glyph]="unitMeta(q.type, q.category).glyph" [src]="unitIcon(q.type, q.category)" [size]="22" variant="muted" />{{ q.count }}× {{ unitMeta(q.type, q.category).label }}</span>
+              <div class="q-right">
+                <app-countdown [target]="q.finishes_at" />
+                <button
+                  class="btn btn-ghost btn-sm q-cancel"
+                  type="button"
+                  [disabled]="cancelling() === q.id"
+                  (click)="cancelQueue(q.id)"
+                  title="Auftrag abbrechen — Ressourcen zurueck"
+                >
+                  {{ cancelling() === q.id ? '…' : '✕' }}
+                </button>
+              </div>
             </div>
           }
         } @else {
@@ -184,6 +196,8 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
         border-bottom: 1px solid var(--border);
       }
       .queue-row:last-child { border-bottom: none; }
+      .q-unit { display: inline-flex; align-items: center; gap: var(--sp-2); }
+      .q-ico { flex: 0 0 auto; }
 
       .small { font-size: var(--fs-xs); }
 
@@ -195,6 +209,11 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       /* Hinweistexte unter der Aktion. */
       .hint { color: var(--text-faint); text-align: right; }
       .hint.warn { color: var(--warn); }
+
+      /* Bauschleifen-Zeile: Countdown + Abbrechen-Button rechts. */
+      .q-right { display: flex; align-items: center; gap: var(--sp-2); flex: 0 0 auto; }
+      .q-cancel { color: var(--text-faint); min-width: 30px; }
+      .q-cancel:hover:not(:disabled) { color: var(--danger); border-color: var(--danger-dim); }
     `,
   ],
 })
@@ -206,6 +225,7 @@ export class ShipyardComponent {
   protected readonly data = signal<ShipyardResponse | null>(null);
   protected readonly loading = signal(true);
   protected readonly pending = signal<string | null>(null);
+  protected readonly cancelling = signal<string | null>(null);
   protected readonly counts = signal<Record<string, number>>({});
   protected readonly selected = signal<SelectedUnit | null>(null);
 
@@ -406,8 +426,34 @@ export class ShipyardComponent {
     });
   }
 
+  /** Bricht einen Werft-Auftrag ab (Refund + Schlange rueckt nach). */
+  cancelQueue(itemId: string): void {
+    const planetId = this.state.activePlanetId();
+    if (!planetId) {
+      return;
+    }
+    this.cancelling.set(itemId);
+    this.api.cancelShipyardItem(planetId, itemId).subscribe({
+      next: (res) => {
+        this.cancelling.set(null);
+        this.data.update((d) => (d ? { ...d, queue: res.queue } : d));
+        this.notify.info('Abgebrochen', 'Auftrag abgebrochen — Ressourcen zurueckerstattet.');
+        void this.state.reloadActivePlanet();
+      },
+      error: (err) => {
+        this.cancelling.set(null);
+        this.notify.warning('Abbruch fehlgeschlagen', err?.error?.detail ?? 'Fehler.');
+      },
+    });
+  }
+
   unitMeta(type: string, category: ShipyardCategory) {
     return metaFor(category === 'defense' ? DEFENSE_META : SHIP_META, type);
+  }
+
+  /** Asset-Pfad fuer eine Bauschleifen-Einheit (Schiff oder Verteidigung). */
+  unitIcon(type: string, category: ShipyardCategory): string {
+    return category === 'defense' ? defenseIcon(type) : shipIcon(type);
   }
 
   protected weaponMeta(t?: string | null) { return t ? (WEAPON_META[t] ?? { label: t, glyph: '•', vs: '' }) : { label: 'Unbewaffnet', glyph: '🛡', vs: '' }; }

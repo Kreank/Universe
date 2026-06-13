@@ -227,7 +227,10 @@ class ShipyardQueueItem(Base):
     type: Mapped[str] = mapped_column(Text, nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False)
     category: Mapped[str] = mapped_column(Text, nullable=False)  # 'ship' | 'defense'
+    # ``finishes_at`` = Fertigstellung der NAECHSTEN Einheit; ``seconds_each`` = Dauer je Einheit
+    # (stueckweise Fertigstellung). Legacy-Zeilen: seconds_each=0 -> atomar wie frueher.
     finishes_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    seconds_each: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     __table_args__ = (

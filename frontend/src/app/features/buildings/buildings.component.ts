@@ -79,6 +79,14 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
                 @if (b.finishesAt) {
                   <span class="building-badge">⏳ Im Bau</span>
                   <app-countdown [target]="b.finishesAt" />
+                  <button
+                    class="btn btn-ghost btn-sm full cancel-build"
+                    type="button"
+                    [disabled]="pending() === b.type"
+                    (click)="cancelBuild(b.type)"
+                  >
+                    {{ pending() === b.type ? '…' : '✕ Abbrechen' }}
+                  </button>
                 } @else {
                   @if (b.option) {
                     <button
@@ -316,6 +324,26 @@ export class BuildingsComponent {
       error: (err) => {
         this.pending.set(null);
         this.notify.warning('Bau nicht moeglich', err?.error?.detail ?? 'Fehler beim Ausbau.');
+      },
+    });
+  }
+
+  cancelBuild(type: string): void {
+    const planetId = this.state.activePlanetId();
+    if (!planetId) {
+      return;
+    }
+    this.pending.set(type);
+    this.api.cancelBuilding(planetId, type).subscribe({
+      next: () => {
+        this.pending.set(null);
+        this.notify.info('Bau abgebrochen', `${this.meta(type).label}: Ressourcen zurueckerstattet.`);
+        this.load(planetId);
+        void this.state.reloadActivePlanet();
+      },
+      error: (err) => {
+        this.pending.set(null);
+        this.notify.warning('Abbruch fehlgeschlagen', err?.error?.detail ?? 'Fehler.');
       },
     });
   }

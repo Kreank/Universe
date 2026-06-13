@@ -16,6 +16,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { Coordinate, EscortOffer, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit, TradeIndex } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
+import { missionIcon, resourceIcon } from '../../core/models/icon-assets';
 import { IconTileComponent } from './icon-tile.component';
 
 /**
@@ -50,7 +51,7 @@ import { IconTileComponent } from './icon-tile.component';
               class="mtab"
               [class.active]="mission() === m"
               (click)="mission.set(m)"
-            >{{ missionMeta(m).glyph }} {{ missionMeta(m).label }}</button>
+            >@if (missionIcon(m); as mi) {<img class="mtab-ico" [src]="mi" alt="" (error)="hideImg($event)" />} @else {{{ missionMeta(m).glyph }} }{{ missionMeta(m).label }}</button>
           }
         </div>
 
@@ -85,7 +86,7 @@ import { IconTileComponent } from './icon-tile.component';
             <div class="cargo-row">
               @for (r of cargoFields; track r.key) {
                 <div class="cargo-field">
-                  <label>{{ r.glyph }} {{ r.label }}</label>
+                  <label><img class="cargo-ico" [src]="resourceIcon(r.key)" alt="" (error)="hideImg($event)" />{{ r.label }}</label>
                   <input type="number" min="0" [max]="planetRes()?.[r.key]?.amount ?? 0"
                     [ngModel]="cargo()[r.key]" (ngModelChange)="setCargo(r.key, $event)" />
                   <button class="btn btn-ghost btn-sm" type="button"
@@ -247,6 +248,8 @@ import { IconTileComponent } from './icon-tile.component';
       }
       .mtab:hover { color: var(--text); border-color: var(--border-strong); }
       .mtab.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-dim); }
+      .mtab-ico { width: 16px; height: 16px; object-fit: contain; vertical-align: -3px; margin-right: 4px; }
+      .cargo-ico { width: 15px; height: 15px; object-fit: contain; vertical-align: -2px; margin-right: 4px; }
 
       .ships {
         display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -662,4 +665,13 @@ export class FleetDispatchComponent {
   shipMeta = (t: string) => metaFor(SHIP_META, t);
   missionMeta = (m: string) => metaFor(MISSION_META, m);
   rankMeta = (r: string) => metaFor(RANK_META, r);
+
+  /** Asset-Pfad-Helfer fuer das Template (Glyph-Fallback via (error)="hideImg"). */
+  protected readonly missionIcon = missionIcon;
+  protected readonly resourceIcon = resourceIcon;
+
+  /** Verbirgt ein kaputtes/fehlendes Icon-Bild, sodass der Text-/Glyph-Fallback greift. */
+  hideImg(event: Event): void {
+    (event.target as HTMLImageElement).style.display = 'none';
+  }
 }

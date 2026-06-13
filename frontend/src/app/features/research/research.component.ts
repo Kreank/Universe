@@ -92,6 +92,14 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       <div class="card active-banner">
         <span>🔬 In Forschung: {{ meta(ar.type).label }} → Stufe {{ ar.level + 1 }}</span>
         <app-countdown [target]="ar.finishesAt" />
+        <button
+          class="btn btn-ghost btn-sm cancel-research"
+          type="button"
+          [disabled]="cancelling()"
+          (click)="cancelResearch()"
+        >
+          {{ cancelling() ? '…' : '✕ Abbrechen' }}
+        </button>
       </div>
     }
 
@@ -193,6 +201,7 @@ export class ResearchComponent {
   private readonly data = signal<ResearchResponse | null>(null);
   protected readonly loading = signal(true);
   protected readonly pending = signal<string | null>(null);
+  protected readonly cancelling = signal(false);
   protected readonly selected = signal<ResearchRow | null>(null);
 
   protected readonly rows = computed<ResearchRow[]>(() => {
@@ -325,6 +334,22 @@ export class ResearchComponent {
       error: (err) => {
         this.pending.set(null);
         this.notify.warning('Forschung nicht moeglich', err?.error?.detail ?? 'Fehler.');
+      },
+    });
+  }
+
+  cancelResearch(): void {
+    this.cancelling.set(true);
+    this.api.cancelResearch().subscribe({
+      next: () => {
+        this.cancelling.set(false);
+        this.notify.info('Forschung abgebrochen', 'Ressourcen zurueckerstattet.');
+        this.load();
+        void this.state.reloadActivePlanet();
+      },
+      error: (err) => {
+        this.cancelling.set(false);
+        this.notify.warning('Abbruch fehlgeschlagen', err?.error?.detail ?? 'Fehler.');
       },
     });
   }

@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy.service import (
+    add_resources,
     get_building_levels,
     get_research_levels,
     refresh_resources,
@@ -21,7 +22,7 @@ from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
 from app.platform.models import Building, Planet
-from app.platform.scheduler import schedule_at
+from app.platform.scheduler import cancel_job, schedule_at
 
 log = logging.getLogger("universe.buildings")
 
@@ -184,6 +185,25 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
         building_type,
         job_id=f"build:{planet.id}:{building_type}",
     )
+    return row
+
+
+async def cancel_upgrade(session: AsyncSession, planet: Planet, building_type: str) -> Building:
+    """Bricht den laufenden Ausbau dieses Gebaeudes ab: voller Ressourcen-Refund (die Stufe
+    wurde noch nicht erhoeht), Timer + Scheduler-Job entfernt. Wirft RuntimeError ohne Ausbau."""
+    bal = get_balance()
+    if building_type not in bal.buildings:
+        raise ValueError("Unbekannter Gebaeudetyp")
+    row = (await session.execute(
+        select(Building).where(Building.planet_id == planet.id, Building.type == building_type)
+    )).scalar_one_or_none()
+    if row is None or row.upgrade_finishes_at is None:
+        raise RuntimeError("Kein laufender Ausbau dieses Gebaeudes")
+    # Voller Refund der investierten Kosten (cost_for_level der NOCH aktuellen Stufe).
+    await add_resources(session, planet, cost_for_level(building_type, row.level))
+    row.upgrade_finishes_at = None
+    await session.flush()
+    cancel_job(f"build:{planet.id}:{building_type}")
     return row
 
 

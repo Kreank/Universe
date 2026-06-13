@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy.service import (
+    add_resources,
     get_building_levels,
     get_research_levels,
     refresh_resources,
@@ -20,7 +21,7 @@ from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
 from app.platform.models import Planet, Research
-from app.platform.scheduler import schedule_at
+from app.platform.scheduler import cancel_job, schedule_at
 
 log = logging.getLogger("universe.research")
 
@@ -155,6 +156,19 @@ async def start_research(session: AsyncSession, planet: Planet, tech_type: str) 
         tech_type,
         job_id=f"research:{planet.player_id}",
     )
+    return row
+
+
+async def cancel_research(session: AsyncSession, planet: Planet) -> Research | None:
+    """Bricht die laufende Forschung des Spielers ab: voller Ressourcen-Refund auf den
+    uebergebenen (Labor-)Planeten, Timer + Scheduler-Job entfernt. None ohne laufende Forschung."""
+    row = await active_research(session, planet.player_id)
+    if row is None:
+        raise RuntimeError("Es laeuft keine Forschung")
+    await add_resources(session, planet, cost_for_level(row.type, row.level))
+    row.finishes_at = None
+    await session.flush()
+    cancel_job(f"research:{planet.player_id}")
     return row
 
 

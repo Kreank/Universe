@@ -210,6 +210,7 @@ export interface ShipOption {
 }
 
 export interface BuildQueueItem {
+  id: string;
   type: string;
   count: number;
   category: ShipyardCategory;

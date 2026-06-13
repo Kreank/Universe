@@ -5,15 +5,19 @@ import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Commander, DecisionChoice, Transmission } from '../../core/models/api.models';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
+import { defenseIcon, resourceIcon, shipIcon } from '../../core/models/icon-assets';
 import { transmissionStyles } from './transmission.styles';
 import { CombatReportComponent } from './combat-report.component';
+import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 import { TabBarComponent } from '../../shared/components/tab-bar.component';
 
-/** Eine Einheit-Zeile im Spionagebericht (Glyph + deutscher Name + Anzahl). */
+/** Eine Einheit-Zeile im Spionagebericht (Bild/Glyph + deutscher Name + Anzahl). */
 interface IntelUnit {
   label: string;
   glyph: string;
+  /** Echtes Asset-Bild; faellt via icon-tile auf den Glyph zurueck. */
+  icon: string | null;
   count: number;
 }
 
@@ -40,7 +44,7 @@ interface SpyIntelView {
 @Component({
   selector: 'app-transmissions',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, CombatReportComponent, MessageComposeComponent, TabBarComponent],
+  imports: [DatePipe, CombatReportComponent, IconTileComponent, MessageComposeComponent, TabBarComponent],
   template: `
     <h1>Postfach · Funksprüche</h1>
     <p class="sub">Eingehende Transmissionen und Crew-Forderungen.</p>
@@ -98,7 +102,7 @@ interface SpyIntelView {
                     <div class="intel-label">🚀 Flotte</div>
                     <div class="intel-rows">
                       @for (u of intel.fleet; track u.label) {
-                        <span class="unit"><span class="u-glyph">{{ u.glyph }}</span>{{ u.count }}× {{ u.label }}</span>
+                        <span class="unit"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ u.count }}× {{ u.label }}</span>
                       }
                     </div>
                   </div>
@@ -108,7 +112,7 @@ interface SpyIntelView {
                     <div class="intel-label">🛡 Verteidigung</div>
                     <div class="intel-rows">
                       @for (u of intel.defenses; track u.label) {
-                        <span class="unit"><span class="u-glyph">{{ u.glyph }}</span>{{ u.count }}× {{ u.label }}</span>
+                        <span class="unit"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ u.count }}× {{ u.label }}</span>
                       } @empty {
                         <span class="faint small">keine</span>
                       }
@@ -120,7 +124,7 @@ interface SpyIntelView {
                     <div class="intel-label">💰 Ressourcen</div>
                     <div class="intel-rows">
                       @for (u of intel.resources; track u.label) {
-                        <span class="unit res"><span class="u-glyph">{{ u.glyph }}</span>{{ fmt(u.count) }} {{ u.label }}</span>
+                        <span class="unit res"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ fmt(u.count) }} {{ u.label }}</span>
                       }
                     </div>
                   </div>
@@ -342,14 +346,18 @@ export class TransmissionsComponent {
     if (!p || typeof p !== 'object') {
       return null;
     }
-    const units = (map: unknown, metaMap: Record<string, { label: string; glyph: string }>): IntelUnit[] | null => {
+    const units = (
+      map: unknown,
+      metaMap: Record<string, { label: string; glyph: string }>,
+      iconFor: (key: string) => string,
+    ): IntelUnit[] | null => {
       if (!map || typeof map !== 'object') {
         return null;
       }
       const rows: IntelUnit[] = [];
       for (const [key, value] of Object.entries(map as Record<string, number>)) {
         const meta = metaFor(metaMap, key);
-        rows.push({ label: meta.label, glyph: meta.glyph, count: Number(value) || 0 });
+        rows.push({ label: meta.label, glyph: meta.glyph, icon: iconFor(key), count: Number(value) || 0 });
       }
       return rows.length ? rows : null;
     };
@@ -359,7 +367,7 @@ export class TransmissionsComponent {
           .filter((k) => res[k])
           .map((k) => {
             const meta = metaFor(RESOURCE_META, k);
-            return { label: meta.label, glyph: meta.glyph, count: Number(res[k]) || 0 };
+            return { label: meta.label, glyph: meta.glyph, icon: resourceIcon(k), count: Number(res[k]) || 0 };
           })
       : null;
 
@@ -369,8 +377,8 @@ export class TransmissionsComponent {
       level: Number(p['level'] ?? 1),
       shipsTotal: Number(p['ships_total'] ?? 0),
       defensesTotal: Number(p['defenses_total'] ?? 0),
-      fleet: units(p['fleet'], SHIP_META),
-      defenses: units(p['defenses'], DEFENSE_META),
+      fleet: units(p['fleet'], SHIP_META, shipIcon),
+      defenses: units(p['defenses'], DEFENSE_META, defenseIcon),
       resources: resources && resources.length ? resources : null,
       scannedAt: typeof p['scanned_at'] === 'string' ? (p['scanned_at'] as string) : null,
     };

@@ -12,6 +12,7 @@ import { DatePipe } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { CombatReport, CombatRound } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
+import { resourceIcon } from '../../core/models/icon-assets';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 
 /** Eine Einheit-Zeile (Bild/Glyph + Name + Anzahl) im Kampfbericht. */
@@ -181,7 +182,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
               <div class="spoil-block">
                 <span class="sb-label">💰 Beute</span>
                 @for (x of lootRows(); track x.label) {
-                  <span class="res">{{ x.glyph }} {{ fmt(x.count) }} {{ x.label }}</span>
+                  <span class="res"><app-icon-tile class="res-ico" [glyph]="x.glyph" [src]="x.icon" [size]="18" variant="muted" /> {{ fmt(x.count) }} {{ x.label }}</span>
                 }
               </div>
             }
@@ -189,7 +190,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
               <div class="spoil-block">
                 <span class="sb-label">🛰 Trümmerfeld</span>
                 @for (x of debrisRows(); track x.label) {
-                  <span class="res">{{ x.glyph }} {{ fmt(x.count) }} {{ x.label }}</span>
+                  <span class="res"><app-icon-tile class="res-ico" [glyph]="x.glyph" [src]="x.icon" [size]="18" variant="muted" /> {{ fmt(x.count) }} {{ x.label }}</span>
                 }
               </div>
             }
@@ -271,7 +272,9 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
     .spoils { display: flex; flex-wrap: wrap; gap: var(--sp-5); border-top: 1px solid var(--border); padding-top: var(--sp-3); }
     .spoil-block { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
     .spoil-block .sb-label { width: auto; }
-    .res { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: var(--fs-sm); color: var(--text); }
+    .res { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: var(--fs-sm); color: var(--text);
+      display: inline-flex; align-items: center; gap: var(--sp-1); }
+    .res-ico { flex: 0 0 auto; }
 
     @media (max-width: 600px) { .sides { grid-template-columns: 1fr; } }
   `],
@@ -475,7 +478,7 @@ function resRows(map: Record<string, number> | undefined | null): UnitRow[] {
   for (const k of ['metal', 'crystal', 'deuterium'] as const) {
     const n = Number(map[k]) || 0;
     if (n > 0) {
-      out.push({ label: RES_META[k].label, glyph: RES_META[k].glyph, icon: null, count: n });
+      out.push({ label: RES_META[k].label, glyph: RES_META[k].glyph, icon: resourceIcon(k), count: n });
     }
   }
   return out;
