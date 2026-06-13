@@ -101,44 +101,54 @@ Es gibt **zwei** Asset-Wurzeln:
 > als Haupt­format + **APNG-Fallback** (Safari kann webm-Alpha schlecht). Ablage `assets/fx/` UND
 > `frontend/src/assets/img/fx/`. Werden später per CSS/Overlay nur auf aktive Elemente gelegt.
 
-### 🟢 ANIMIERTE ARTWORKS — ❌ VERWORFEN (nicht bauen)
+### 🟢 ANIMIERTE ARTWORKS — ⚠️ NEU EXPORTIEREN (Encoding-Bug in der 1. Welle)
 
-> **NICHT bauen.** Gebäude/Forschung/Schiffe bleiben **statische Bilder** (kein APNG/Video auf den
-> Icon-Artworks). Video kommt stattdessen in die Berichte (siehe unten).
-
-<details><summary>Ursprünglicher (verworfener) Wunsch — nur zur Historie</summary>
-
-> **Animierte Version des JEWEILIGEN bestehenden Icons** (Mine raucht, Schiff verlässt Hangar,
-> Energie fließt, Triebwerk zündet …). **WICHTIG — Format & Ablage so, dass NULL Code-Änderung nötig
-> ist:** Liefere ein **APNG (animiertes PNG) unter EXAKT demselben Dateinamen `.png`**, das das
-> bestehende statische `.png` **ersetzt** (z.B. `buildings/metal_mine.png`). Das **erste Einzelbild
-> MUSS das aktuelle statische Artwork sein** (so bleibt überall ein sauberer Fallback und es animiert
-> automatisch dort, wo das Icon schon angezeigt wird — Kachel + Detail-Popup). Vorhandenes Artwork als
-> Basis nehmen (gleiche Komposition/Farbe/Perspektive), nur die genannten Teile bewegen — Rest ruhig.
+> **Die gelieferten APNGs sind verdrahtet und werden korrekt geladen — aber falsch enkodiert und
+> sehen dadurch KAPUTT aus** (Basisbild verschwindet, nur zuckende Fragmente bleiben). Bitte mit den
+> unten genannten Einstellungen **neu exportieren** (gleiche Dateinamen, ersetzen). Am Code ist nichts
+> zu ändern.
+>
+> **🔴 GENAUE URSACHE (analysiert):** In den gelieferten Dateien hat **jeder** Frame
+> `dispose_op = 2 (APNG_DISPOSE_OP_PREVIOUS)` und die Frames 2…N sind nur **kleine Teil-Rechtecke**
+> (geänderter Ausschnitt). `PREVIOUS` setzt den Bereich nach jedem Frame auf den Zustand *davor*
+> zurück → die volle Basis (Frame 1) wird sofort wieder geleert, und ab Frame 2 ist nur noch ein
+> winziges Fragment auf transparentem/leerem Grund sichtbar. Das Gebäude „verschwindet".
+>
+> **✅ KORREKTE EXPORT-EINSTELLUNGEN (bitte exakt so):**
+> - **Jeder Frame als VOLLES 256×256-Bild** exportieren (keine Delta-/Crop-Optimierung, kein
+>   `x_offset`/`y_offset` ≠ 0, keine Teil-Rechtecke). Lieber etwas größere Datei als Geister-Frames.
+> - **`dispose_op = 0 (NONE)`** für alle Frames. **NIEMALS `2 (PREVIOUS)`.**
+> - **`blend_op = 0 (SOURCE)`** für alle Frames (jeder Frame ersetzt die Leinwand vollständig).
+> - **`num_plays = 0`** (Endlos-Loop). Loop nahtlos.
+> - **Frame 1 = aktuelles Standbild** (sauberer Fallback). Jeder weitere Frame zeigt das **komplette**
+>   Artwork inkl. unbewegtem Rest, nur die genannten Teile bewegen sich.
+> - Praktisch am sichersten: alle Frames als eigenständige Voll-PNGs rendern und z. B. mit
+>   `ffmpeg -i frame_%03d.png -plays 0 out.apng` oder `apngasm frame_*.png` **ohne** „optimize/crop"
+>   zusammensetzen (Optimierung ist genau das, was den Bug erzeugt hat).
+> - Dateigröße im Rahmen halten (~≤ 800 KB–1 MB je Datei; Frame-Zahl/Auflösung ggf. reduzieren).
 
 | Status | Name | Kategorie / Pfad (ersetzt das .png) | Format | Beschreibung / Referenz (was sich bewegt) |
 |:---:|---|---|---|---|
-| ⬜ | metal_mine | `buildings/metal_mine.png` | APNG, 256×256, alpha | Rauch steigt aus den Schornsteinen; Förderband/Bagger bewegt sich leicht. |
-| ⬜ | crystal_mine | `buildings/crystal_mine.png` | APNG, 256×256, alpha | Kristalle schimmern/pulsieren sanft, leichter Abbau-Funke. |
-| ⬜ | deuterium_synth | `buildings/deuterium_synth.png` | APNG, 256×256, alpha | Tanks blubbern, aufsteigende Gasblasen + leichter Dampf. |
-| ⬜ | solar_plant | `buildings/solar_plant.png` | APNG, 256×256, alpha | Energie fließt/leuchtet über die Solarpaneele (wandernder Lichtpuls). |
-| ⬜ | fusion_reactor | `buildings/fusion_reactor.png` | APNG, 256×256, alpha | Pulsierender Fusionskern, Energie-Glühen. |
-| ⬜ | shipyard | `buildings/shipyard.png` | APNG, 256×256, alpha | Schweißfunken + ein kleines Schiff dockt aus/läuft aus dem Hangar; Kran bewegt sich. |
-| ⬜ | robot_factory | `buildings/robot_factory.png` | APNG, 256×256, alpha | Roboterarme arbeiten in Schleife. |
-| ⬜ | combustion_drive | `tech/combustion_drive.png` | APNG, 256×256, alpha | Triebwerk zündet — Flammenstrahl pulsiert/flackert. |
-| ⬜ | impulse_drive | `tech/impulse_drive.png` | APNG, 256×256, alpha | Impuls-Triebwerk glüht rhythmisch (Plasma-Puls). |
-| ⬜ | hyperspace_drive | `tech/hyperspace_drive.png` | APNG, 256×256, alpha | Hyperraum-Wirbel dreht/leuchtet langsam. |
-| ⬜ | energy_tech | `tech/energy_tech.png` | APNG, 256×256, alpha | Energie-Bögen/Funken zucken zwischen den Knoten. |
+| 🔁 | metal_mine | `buildings/metal_mine.png` | APNG, 256×256, alpha, Voll-Frames | Rauch steigt aus den Schornsteinen; Förderband/Bagger bewegt sich leicht. |
+| 🔁 | crystal_mine | `buildings/crystal_mine.png` | APNG, 256×256, alpha, Voll-Frames | Kristalle schimmern/pulsieren sanft, leichter Abbau-Funke. |
+| 🔁 | deuterium_synth | `buildings/deuterium_synth.png` | APNG, 256×256, alpha, Voll-Frames | Tanks blubbern, aufsteigende Gasblasen + leichter Dampf. |
+| 🔁 | solar_plant | `buildings/solar_plant.png` | APNG, 256×256, alpha, Voll-Frames | Energie fließt/leuchtet über die Solarpaneele (wandernder Lichtpuls). |
+| 🔁 | fusion_reactor | `buildings/fusion_reactor.png` | APNG, 256×256, alpha, Voll-Frames | Pulsierender Fusionskern, Energie-Glühen. |
+| 🔁 | shipyard | `buildings/shipyard.png` | APNG, 256×256, alpha, Voll-Frames | Schweißfunken + ein kleines Schiff dockt aus/läuft aus dem Hangar; Kran bewegt sich. |
+| 🔁 | robot_factory | `buildings/robot_factory.png` | APNG, 256×256, alpha, Voll-Frames | Roboterarme arbeiten in Schleife. |
+| 🔁 | combustion_drive | `tech/combustion_drive.png` | APNG, 256×256, alpha, Voll-Frames | Triebwerk zündet — Flammenstrahl pulsiert/flackert. |
+| 🔁 | impulse_drive | `tech/impulse_drive.png` | APNG, 256×256, alpha, Voll-Frames | Impuls-Triebwerk glüht rhythmisch (Plasma-Puls). |
+| 🔁 | hyperspace_drive | `tech/hyperspace_drive.png` | APNG, 256×256, alpha, Voll-Frames | Hyperraum-Wirbel dreht/leuchtet langsam. |
+| 🔁 | energy_tech | `tech/energy_tech.png` | APNG, 256×256, alpha, Voll-Frames | Energie-Bögen/Funken zucken zwischen den Knoten. |
 
 > **Brief animierte Artworks:** nahtloser Loop ~2–5 s, transparenter Hintergrund (alpha), **dezent**
 > (subtile Bewegung, kein hektisches Flackern), Stil/Komposition exakt wie das vorhandene `.png`,
-> **Frame 1 = aktuelles Standbild**. Ablage in `assets/<cat>/` UND `frontend/src/assets/img/<cat>/`
+> **Frame 1 = aktuelles Standbild**, **Voll-Frames + `dispose_op=0` + `blend_op=0` + `num_plays=0`**
+> (siehe Fix-Block oben). Ablage in `assets/<cat>/` UND `frontend/src/assets/img/<cat>/`
 > (beide ersetzen). APNG ist abwärtskompatibel (zeigt notfalls nur Frame 1). Weitere Artworks (Schiffe
-> mit Triebwerks-Glühen, Waffen-Techs mit Strahl) können nach demselben Schema folgen — erst diese Welle.
-> Falls APNG technisch nicht geht: gleichwertig **animiertes GIF gleichen Namens** (ohne weiche Alpha-
-> Kanten) — aber APNG ist klar bevorzugt (Alpha + Qualität).
-
-</details>
+> mit Triebwerks-Glühen, Waffen-Techs mit Strahl) können nach demselben Schema folgen — erst diese Welle
+> sauber neu exportieren. Falls APNG-Tooling Probleme macht: gleichwertig **animiertes GIF gleichen
+> Namens** (ohne weiche Alpha-Kanten) — aber APNG ist bevorzugt (Alpha + Qualität).
 
 ### 🎞️ KAMPF-KINO — Highlight-Clips im Kampfbericht (event-gekoppelt) ✅ AKTIV
 
