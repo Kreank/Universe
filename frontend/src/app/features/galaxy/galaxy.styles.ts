@@ -135,16 +135,22 @@ export const galaxyStyles = `
   .chip.rock { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); cursor: help; margin-right: var(--sp-1); }
   .chip.moon { color: var(--text-dim); border-color: var(--border-strong); background: rgba(255,255,255,0.04); cursor: help; margin-right: var(--sp-1); }
 
-  /* --- Ziel-Verzeichnis --- */
-  .target-row {
+  /* --- Ziel-Verzeichnis (kompakt, OGame-artig) --- */
+  .tgt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .tgt {
     display: flex; flex-direction: column; gap: var(--sp-1);
     padding: var(--sp-2) 0;
     border-bottom: 1px solid var(--border);
   }
-  .target-main { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
-  .target-name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); }
-  .target-intel { color: var(--text-faint); }
-  .target-act { display: flex; gap: var(--sp-2); margin-top: var(--sp-1); flex-wrap: wrap; }
+  .tgt:last-child { border-bottom: none; }
+  .tgt-top { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+  .tgt-name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); }
+  .tgt-coords { margin-left: auto; color: var(--text-faint); font-size: var(--fs-xs); }
+  .tgt-sub { display: flex; align-items: center; gap: var(--sp-3); color: var(--text-dim); }
+  .tgt-stat { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+  .tgt-stat.tip { cursor: help; }
+  .tgt-acts { justify-content: flex-start; margin-top: 2px; }
+  .ic.trd:hover { border-color: var(--accent); color: var(--accent); }
 
   @media (max-width: 720px) {
     .layout { grid-template-columns: 1fr; }

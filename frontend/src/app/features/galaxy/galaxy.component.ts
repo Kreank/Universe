@@ -145,50 +145,45 @@ interface DispatchCtx {
       <section class="card targets">
         <div class="panel-title">🎯 Aufgeklärte Ziele</div>
         @if (targets().length) {
-          <p class="muted small">Aufklaerung gemeldet — wähle ein Ziel:</p>
-          @for (t of targets(); track t.coords) {
-            <div class="target-row">
-              <div class="target-main">
-                <span class="target-name">🤖 {{ t.name }}</span>
-                <span class="mono small">
+          <ul class="tgt-list">
+            @for (t of targets(); track t.coords) {
+              <li class="tgt">
+                <div class="tgt-top">
+                  <span class="tgt-name">{{ t.name }}</span>
                   <span class="chip lvl">L{{ t.level ?? 1 }}/3</span>
                   @if (t.intel?.trade_center) {
-                    <span class="chip trade tip" data-tip="Neutrales Handelszentrum (unangreifbar) · globaler Handelskurs">💱 Handelszentrum</span>
+                    <span class="chip trade tip" data-tip="Neutrales Handelszentrum (unangreifbar) · globaler Handelskurs">Handelszentrum</span>
                   } @else if (t.intel?.merchant) {
-                    <span class="chip trade tip" [attr.data-tip]="'Händler · Spez.: ' + (t.intel?.spec ?? '?') + ' — handeln statt kämpfen'">💱 Händler</span>
+                    <span class="chip trade tip" [attr.data-tip]="'Händler · Spez.: ' + (t.intel?.spec ?? '?') + ' — handeln statt kämpfen'">Händler</span>
                   }
-                  [{{ t.coords }}]
-                </span>
-              </div>
-              <div class="target-meta small muted">
-                🚀 {{ t.ships_total }} Schiffe · 🛡 {{ t.defenses_total }} Verteidigung
-              </div>
-              @if (fmtUnits(t.intel?.fleet); as f) {
-                <div class="target-intel small">🚀 {{ f }}</div>
-              }
-              @if (fmtUnits(t.intel?.defenses); as d) {
-                <div class="target-intel small">🛡 {{ d }}</div>
-              }
-              @if (fmtRes(t.intel?.resources); as r) {
-                <div class="target-intel small">💰 {{ r }}</div>
-              }
-              @if (t.discovered_at) {
-                <div class="target-meta small muted">zuletzt aufgeklärt: {{ t.discovered_at | date: 'short' }}</div>
-              }
-              <div class="target-act">
-                <button class="btn btn-ghost btn-sm" type="button" (click)="jumpTo(t)">Anfliegen</button>
-                <button class="btn btn-ghost btn-sm" type="button" (click)="quickSpy(targetCoord(t), t.name)"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" /> Spionieren</button>
-                <button class="btn btn-ghost btn-sm" type="button" (click)="phalanxTarget.set(targetCoord(t))"><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" /> Scan</button>
-                <button class="btn btn-ghost btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'transport')"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" /> Transport</button>
-                @if (t.intel?.merchant) {
-                  <button class="btn btn-trade btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'trade')"><app-btn-icon [src]="navIcon('market')" glyph="💱" /> Handeln</button>
-                }
-                @if (t.npc_id && !t.intel?.trade_center) {
-                  <button class="btn btn-danger btn-sm" type="button" (click)="openDispatch(targetCoord(t), t.name, 'attack')"><app-btn-icon [src]="missionIcon('attack')" glyph="⚔" /> Angreifen</button>
-                }
-              </div>
-            </div>
-          }
+                  <span class="tgt-coords mono">[{{ t.coords }}]</span>
+                </div>
+                <div class="tgt-sub small">
+                  <span class="tgt-stat tip" [attr.data-tip]="intelTip(t)">
+                    <app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="14" /> {{ t.ships_total }}
+                  </span>
+                  <span class="tgt-stat">
+                    <app-btn-icon [src]="'assets/img/icons/spec/stat_shield.png'" glyph="🛡" [size]="14" /> {{ t.defenses_total }}
+                  </span>
+                  @if (t.discovered_at) {
+                    <span class="faint">· {{ t.discovered_at | date: 'short' }}</span>
+                  }
+                </div>
+                <div class="acts tgt-acts">
+                  <button class="ic" type="button" (click)="jumpTo(t)" title="Im Scanner zeigen"><app-btn-icon [src]="navIcon('map')" glyph="🌌" [size]="18" /></button>
+                  <button class="ic spy" type="button" (click)="quickSpy(targetCoord(t), t.name)" title="Spionieren"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="18" /></button>
+                  <button class="ic phx" type="button" (click)="phalanxTarget.set(targetCoord(t))" title="Sensorphalanx-Scan"><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" [size]="18" /></button>
+                  <button class="ic trp" type="button" (click)="openDispatch(targetCoord(t), t.name, 'transport')" title="Transport"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" [size]="18" /></button>
+                  @if (t.intel?.merchant) {
+                    <button class="ic trd" type="button" (click)="openDispatch(targetCoord(t), t.name, 'trade')" title="Handeln"><app-btn-icon [src]="navIcon('market')" glyph="💱" [size]="18" /></button>
+                  }
+                  @if (t.npc_id && !t.intel?.trade_center) {
+                    <button class="ic atk" type="button" (click)="openDispatch(targetCoord(t), t.name, 'attack')" title="Angreifen"><app-btn-icon [src]="missionIcon('attack')" glyph="⚔" [size]="18" /></button>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
         } @else {
           <app-empty-state art="empty_search">
             Noch keine Ziele aufgeklärt. Entsende Spionagesonden (🛰) auf belegte Felder im Scanner.
@@ -422,6 +417,20 @@ export class GalaxyComponent {
       }
     }
     return parts.join(' · ');
+  }
+
+  /** Aufklaerungs-Detail als Tooltip (Flotte/Verteidigung/Ressourcen) — entlastet die Liste. */
+  intelTip(t: GalaxyTarget): string {
+    const parts: string[] = [];
+    const f = this.fmtUnits(t.intel?.fleet);
+    if (f) { parts.push('Flotte: ' + f); }
+    const d = this.fmtUnits(t.intel?.defenses);
+    if (d) { parts.push('Verteidigung: ' + d); }
+    const r = this.fmtRes(t.intel?.resources);
+    if (r) { parts.push('Ressourcen: ' + r); }
+    return parts.length
+      ? parts.join('\n')
+      : `${t.ships_total} Schiffe · ${t.defenses_total} Verteidigung — mehr per Spionage`;
   }
 
   isOwn(c: GalaxyCell): boolean {
