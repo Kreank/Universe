@@ -127,15 +127,26 @@ body {
    die Szene dezent durch -> Tiefe statt kahler Flaeche. */
 @media (min-width: 900px) {
   body {
+    --app-bg: url('/assets/img/backgrounds/dashboard.jpg'); /* Standard-Backdrop */
     background-image:
       radial-gradient(1100px 720px at 78% -8%, rgba(47, 227, 210, 0.08), transparent 60%),
       linear-gradient(rgba(5, 7, 14, 0.62), rgba(5, 7, 14, 0.84)),
-      url('/assets/img/backgrounds/dashboard.jpg');
+      var(--app-bg);
     background-size: cover, cover, cover;
     background-position: center, center, center;
     background-repeat: no-repeat, no-repeat, no-repeat;
     background-attachment: fixed, fixed, fixed;
   }
+
+  /* Screen-spezifische Backdrops — die Shell setzt body[data-screen] je Route. Nur die
+     Hintergrund-Variable wechselt (Abdunkelung/Schimmer bleiben identisch -> konsistent). */
+  body[data-screen='buildings']  { --app-bg: url('/assets/img/backgrounds/bg_buildings.jpg'); }
+  body[data-screen='shipyard']   { --app-bg: url('/assets/img/backgrounds/bg_shipyard.jpg'); }
+  body[data-screen='research']   { --app-bg: url('/assets/img/backgrounds/bg_research.jpg'); }
+  body[data-screen='techtree']   { --app-bg: url('/assets/img/backgrounds/bg_research.jpg'); }
+  body[data-screen='commanders'] { --app-bg: url('/assets/img/backgrounds/bg_commanders.jpg'); }
+  body[data-screen='combat-sim'] { --app-bg: url('/assets/img/backgrounds/bg_combat.jpg'); }
+  body[data-screen='trade']      { --app-bg: url('/assets/img/backgrounds/bg_trade.jpg'); }
 }
 
 h1,

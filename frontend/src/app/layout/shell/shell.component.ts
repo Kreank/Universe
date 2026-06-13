@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { DOCUMENT } from '@angular/common';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
@@ -169,6 +170,19 @@ interface NavGroup {
 export class ShellComponent implements OnInit {
   protected readonly state = inject(GameStateService);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly doc = inject(DOCUMENT);
+
+  constructor() {
+    // Screen-spezifischen Hintergrund setzen: body[data-screen] = erstes Routen-Segment
+    // (styles.scss waehlt darüber den Desktop-Backdrop). Shell lebt app-weit -> kein Cleanup noetig.
+    this.router.events.subscribe((e) => {
+      if (e instanceof NavigationEnd) {
+        this.doc.body.dataset['screen'] =
+          this.router.url.split(/[?#]/)[0].split('/').filter(Boolean)[0] ?? 'dashboard';
+      }
+    });
+  }
 
   protected readonly planets = this.state.planets;
   protected readonly player = this.auth.player;
