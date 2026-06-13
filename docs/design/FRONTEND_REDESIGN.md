@@ -223,6 +223,27 @@ Von der Recherche als **nicht belegt** markiert — bei Bedarf gezielt nachreche
 
 ---
 
+## Nachtrag (2026-06-13): Folge-Recherche zu den offenen Fragen §10
+
+Eine fokussierte Folge-Recherche zu Onboarding/FTUE, Typo/Token-Skalen, Fallstudien und
+Zahlen-/Farbcodierung wurde durchgeführt, konnte die **adversariale Verifikation aber nicht
+abschließen** (Session-/Rate-Limit der Verifikations-Agenten). Die gesammelten Quellen-Claims sind
+daher *unverifiziert*, decken sich aber mit etablierter Praxis und stützen die getroffenen
+Entscheidungen (als Designgrundlage, nicht als formal belegter Fakt):
+- **Onboarding:** Learning-by-doing statt Tutorial-Wall; max. ~3 gleichzeitige neue Infos
+  (kognitive Last); progressive Disclosure, eine Mechanik nach der anderen, in-context; Empty
+  States als Handlungsführung; gesperrte Inhalte sichtbar machen, um Freischaltung zu motivieren
+  (Fortnite-HUD); FTUE ist ein direkter Retention-Prädiktor (~20% Drop in der ersten Stunde).
+  → Die gebaute Onboarding-Schicht (`OnboardingService` + `onboarding-panel`) folgt dem: ein
+  hervorgehobener nächster Schritt mit Aktion, gelatchter Fortschritt, ausblendbar.
+- **Typografie:** Space Grotesk (aus Space Mono abgeleitet) als Sci-Fi-taugliche Display-Schrift bestätigt.
+- **Motion/Elevation (Carbon/Atlassian):** Dauern ~70–700ms gestaffelt, „productive/expressive"-Easing;
+  Dark-Elevation = Surface aufhellen + Schatten (deckt sich mit der Surface-Ramp + `--e1/2/3`).
+- **Zahlen:** `Intl.NumberFormat` Compact (`1.2K`/`123M`) + Compound-Units für Raten (locale-korrekt).
+- **Farbenblind-sicher:** Farbe nie allein — Icon/Label/Muster zusätzlich; Paletten IBM-Colorblind-Safe / Okabe-Ito.
+
+> Für formale Belegbarkeit kann die Folge-Recherche nach Reset des Limits erneut laufen.
+
 ## Quellen (verifiziert, 3-0)
 - NN/g: vertical-nav · mobile-navigation-patterns · hamburger-menus · mobile-tables
 - EVE/CCP: neo-neocom-1 · improving-photon-ui · a-new-look-for-eves-ui-feedback-needed

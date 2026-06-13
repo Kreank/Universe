@@ -34,13 +34,16 @@ import {
   ResearchState,
 } from '../../core/models/api.models';
 import { dashboardStyles } from './dashboard.styles';
+import { OnboardingPanelComponent } from '../../shared/components/onboarding-panel.component';
 
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent],
+  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent, OnboardingPanelComponent],
   template: `
     <h1>Dashboard</h1>
+
+    <app-onboarding-panel />
 
     <!-- Imperiums-Punkte (OGame-Score) — prominent, verlinkt zur Rangliste -->
     <a class="score-hero" routerLink="/ranking">
