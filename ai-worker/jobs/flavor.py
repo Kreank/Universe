@@ -2,9 +2,10 @@
 
 Erzeugt EINEN erzaehlerischen Flavor-Text via Erzaehler-Persona (intel_officer / expedition_log / …)
 + Kontext — OHNE Entitaet, OHNE Bank, OHNE Dedup (reiner Live-Verschuss fuer seltene Ereignisse wie
-Spionage-Berichte und Expeditions-Funde). Schreibt eine Transmission (type='big_moment') und pusht
-sie via Redis-PubSub ``ws:player:{id}`` an den Spieler. Faellt Ollama aus -> Job wird requeued
-(der nuechterne Basis-Bericht existiert ohnehin schon; Flavor ist additiv).
+Spionage-Berichte und Expeditions-Funde). Schreibt eine Transmission mit dem vom Backend gewuenschten
+Typ (``context.ttype``, Default ``routine`` — z.B. ``spy_report`` fuer Spionage; NIE ``big_moment``,
+ausser explizit gewollt) und pusht sie via Redis-PubSub ``ws:player:{id}`` an den Spieler. Faellt
+Ollama aus -> Job wird requeued (der nuechterne Basis-Bericht existiert ohnehin schon; Flavor ist additiv).
 """
 from __future__ import annotations
 
@@ -41,9 +42,12 @@ async def run(job: Job, db: Database, ollama: OllamaClient, redis: aioredis.Redi
     system, user = build_flavor_prompt(narrator, job.context)
     body = await ollama.generate(system, user)  # EINMAL generieren (OllamaUnavailable -> requeue)
 
+    # Ziel-Typ kommt vom Backend (z.B. spy_report fuer Spionage). Default routine — Flavor ist KEIN
+    # Großmoment; big_moment nur, wenn das Backend es ausdruecklich setzt (z.B. Galaxie-News).
+    ttype = job.context.ttype or "routine"
     for pid in targets:
         row = await db.insert_transmission(
-            player_id=pid, commander_id=None, ttype="big_moment", subject=subject, body=body,
+            player_id=pid, commander_id=None, ttype=ttype, subject=subject, body=body,
         )
         transmission = _transmission_to_dict(row)
         message = json.dumps({"type": "transmission", "transmission": transmission}, ensure_ascii=False)

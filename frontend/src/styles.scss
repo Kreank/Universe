@@ -390,7 +390,25 @@ input::placeholder { color: var(--text-faint); }
   inset: 0 auto 0 0;
   background: linear-gradient(90deg, var(--accent-dim), var(--accent));
   border-radius: var(--r-pill);
+  overflow: hidden;
   transition: width var(--motion-slow) var(--ease-out);
+}
+/* Dezenter, langsam wandernder Schimmer -> der Balken wirkt „lebendig" (fliessende
+   Produktion/Fortschritt). Nur transform/opacity -> compositor-only. */
+.bar > .fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: translateX(-100%);
+  animation: barSheen 3.4s var(--ease-out) infinite;
+}
+@keyframes barSheen {
+  0% { transform: translateX(-100%); }
+  60%, 100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar > .fill::after { animation: none; opacity: 0; }
 }
 .bar.full > .fill {
   background: linear-gradient(90deg, var(--danger-dim), var(--danger));

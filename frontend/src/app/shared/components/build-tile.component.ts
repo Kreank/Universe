@@ -46,6 +46,7 @@ import { ResourceCost } from '../../core/models/api.models';
   `,
   styles: [`
     .tile {
+      position: relative;
       display: flex; flex-direction: column; align-items: center; gap: var(--sp-2);
       padding: var(--sp-3) var(--sp-2) var(--sp-2);
       border-radius: var(--r-md);
@@ -56,8 +57,17 @@ import { ResourceCost } from '../../core/models/api.models';
       transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
     }
     .tile:hover { border-color: var(--border-strong); }
-    .tile.busy { border-color: var(--accent-dim); box-shadow: inset 0 0 0 1px var(--accent-dim); }
     .tile.locked { opacity: 0.6; }
+
+    /* "In Arbeit": pulsierender Akzent-Ring (nur bei aktivem Bau/Forschung sichtbar). */
+    .tile.busy { border-color: var(--accent); }
+    .tile.busy::after {
+      content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none;
+      box-shadow: 0 0 14px var(--accent-soft), inset 0 0 0 1px var(--accent-dim);
+      animation: tileBusy 1.9s ease-in-out infinite;
+    }
+    @keyframes tileBusy { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.95; } }
+    @media (prefers-reduced-motion: reduce) { .tile.busy::after { animation: none; opacity: 0.6; } }
 
     .art {
       position: relative; padding: 0; border: 0; background: none; cursor: pointer; line-height: 0;

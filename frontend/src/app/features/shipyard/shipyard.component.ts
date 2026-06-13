@@ -90,8 +90,8 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       <section class="card queue">
         <div class="panel-title">🛠️ Bauschleife</div>
         @if (d.queue.length) {
-          @for (q of d.queue; track q.id) {
-            <div class="queue-row">
+          @for (q of d.queue; track q.id; let first = $first) {
+            <div class="queue-row" [class.building]="first">
               <span class="q-unit"><app-icon-tile class="q-ico" [glyph]="unitMeta(q.type, q.category).glyph" [src]="unitIcon(q.type, q.category)" [size]="22" variant="muted" />{{ q.count }}× {{ unitMeta(q.type, q.category).label }}</span>
               <div class="q-right">
                 <app-countdown [target]="q.finishes_at" />
@@ -192,10 +192,20 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       .queue-row {
         display: flex; align-items: center; justify-content: space-between;
         gap: var(--sp-3);
-        padding: var(--sp-2) 0; font-size: var(--fs-sm);
+        padding: var(--sp-2) 0 var(--sp-2) var(--sp-3); font-size: var(--fs-sm);
         border-bottom: 1px solid var(--border);
       }
       .queue-row:last-child { border-bottom: none; }
+
+      /* Aktiv bauender (erster) Auftrag: pulsierender Akzent-Balken links. */
+      .queue-row.building { position: relative; }
+      .queue-row.building::before {
+        content: ''; position: absolute; left: 0; top: 18%; bottom: 18%; width: 3px;
+        border-radius: var(--r-pill); background: var(--accent); box-shadow: var(--glow-soft);
+        animation: qBuild 1.6s ease-in-out infinite;
+      }
+      @keyframes qBuild { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { .queue-row.building::before { animation: none; opacity: 0.7; } }
       .q-unit { display: inline-flex; align-items: center; gap: var(--sp-2); }
       .q-ico { flex: 0 0 auto; }
 

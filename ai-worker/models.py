@@ -24,6 +24,9 @@ class JobContext(BaseModel):
     narrator: Optional[str] = None
     subject: Optional[str] = None
     detail: Optional[dict[str, Any]] = None
+    # Ziel-Transmission-Typ der Flavor-Nachricht (spy_report/system/routine/…). Default routine —
+    # NIE big_moment, ausser explizit gewollt (sonst landet z.B. ein Spio-Text als "Großmoment").
+    ttype: Optional[str] = None
     # Broadcast (Phase 4, Galaxie-News): einmal generieren, an ALLE aktiven Spieler verteilen.
     broadcast: Optional[bool] = None
 

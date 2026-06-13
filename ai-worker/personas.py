@@ -436,6 +436,26 @@ _DEFAULT_INSTRUCTION = (
     "Gib ausschliesslich den Bericht-Text aus."
 )
 _NARRATOR_INSTRUCTION: dict[str, str] = {
+    "intel_officer": (
+        "Werte die Aufklaerung GENAU DIESES Ziels aus — nicht das Universum allgemein. Nenne das Ziel "
+        "beim Namen und charakterisiere KONKRET seine militaerische Bilanz: worauf liegt der Schwerpunkt "
+        "(z.B. schlagkraeftige Jaeger-/Kreuzer-Flotte) und wo ist die Luecke (z.B. duenne Bodenabwehr, "
+        "kaum Verteidigung). Leite GENAU EINE knappe taktische Einschaetzung ab — eine ausnutzbare "
+        "Schwaeche ODER eine ernste Gefahr. 2 bis 3 Saetze, nuechtern wie ein Offizier im Lagebericht, "
+        "kein Pathos, keine Floskeln, keine Zahlentabelle. Gib ausschliesslich den Bericht aus."
+    ),
+    "expedition_log": (
+        "Schildere KONKRET, was die Expedition an DIESEM Ort erlebt/gefunden hat (nutze 'Ausgang' und "
+        "die Detail-Fakten woertlich als Kern). Abenteuerlicher, leicht rauer Logbuch-Ton aus Sicht der "
+        "Crew; mach den konkreten Fund (oder die Leere) greifbar. 2 bis 3 Saetze, kein Pathos-Klischee, "
+        "keine Zahlentabelle, kein Meta-Text. Gib ausschliesslich den Log-Eintrag aus."
+    ),
+    "news_anchor": (
+        "Melde GENAU DIESES Ereignis wie eine kurze Funk-Schlagzeile: nenne die beteiligten Imperien und "
+        "den Ort konkret, dann ein bis zwei Saetze Meldung mit dramatischem, aber sachlichem Unterton. "
+        "Keine erfundenen Fakten ueber die gegebenen hinaus, keine Zahlentabelle, kein Meta-Text. "
+        "Gib ausschliesslich die Meldung aus."
+    ),
     "advisor": (
         "Gib dem Admiral auf Basis dieser Fakten 2 bis 4 KONKRETE, priorisierte Handlungsempfehlungen "
         "(Wichtigstes zuerst) — z.B. welche Mine/Forschung/Werft als naechstes, wo Verteidigung fehlt, "
