@@ -8,6 +8,10 @@ import { CountdownComponent } from '../../shared/components/countdown.component'
 import { DetailPopupComponent } from '../../shared/components/detail-popup.component';
 import { BuildTileComponent } from '../../shared/components/build-tile.component';
 import { TabBarComponent } from '../../shared/components/tab-bar.component';
+import {
+  ConfirmDialogComponent,
+  ConfirmRequest,
+} from '../../shared/components/confirm-dialog.component';
 import { NotificationService } from '../../core/services/notification.service';
 
 interface ResearchRow {
@@ -80,7 +84,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
 @Component({
   selector: 'app-research',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent],
+  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent, ConfirmDialogComponent],
   template: `
     <h1>Forschung</h1>
     <p class="muted sub">
@@ -96,7 +100,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
           class="btn btn-ghost btn-sm cancel-research"
           type="button"
           [disabled]="cancelling()"
-          (click)="cancelResearch()"
+          (click)="askCancelResearch()"
         >
           {{ cancelling() ? '…' : '✕ Abbrechen' }}
         </button>
@@ -168,6 +172,17 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
         (close)="selected.set(null)"
       />
     }
+
+    @if (confirmReq(); as c) {
+      <app-confirm-dialog
+        [title]="c.title"
+        [message]="c.message"
+        [confirmLabel]="c.confirmLabel"
+        [pending]="cancelling()"
+        (confirm)="runConfirm()"
+        (dismiss)="confirmReq.set(null)"
+      />
+    }
   `,
   styles: [
     `
@@ -203,6 +218,8 @@ export class ResearchComponent {
   protected readonly pending = signal<string | null>(null);
   protected readonly cancelling = signal(false);
   protected readonly selected = signal<ResearchRow | null>(null);
+  /** Ausstehende Sicherheitsabfrage (Forschung abbrechen) — null = kein Dialog offen. */
+  protected readonly confirmReq = signal<ConfirmRequest | null>(null);
 
   protected readonly rows = computed<ResearchRow[]>(() => {
     const d = this.data();
@@ -336,6 +353,25 @@ export class ResearchComponent {
         this.notify.warning('Forschung nicht moeglich', err?.error?.detail ?? 'Fehler.');
       },
     });
+  }
+
+  /** Fragt vor dem Forschungs-Abbruch nach (Ressourcen werden erstattet). */
+  askCancelResearch(): void {
+    const ar = this.activeResearch();
+    const label = ar ? this.meta(ar.type).label : 'Die laufende Forschung';
+    this.confirmReq.set({
+      title: 'Forschung abbrechen?',
+      message: `${label} wird abgebrochen, die Ressourcen werden zurückerstattet.`,
+      confirmLabel: '✕ Forschung abbrechen',
+      action: () => this.cancelResearch(),
+    });
+  }
+
+  /** Fuehrt die bestaetigte Aktion aus und schliesst den Dialog. */
+  runConfirm(): void {
+    const c = this.confirmReq();
+    this.confirmReq.set(null);
+    c?.action();
   }
 
   cancelResearch(): void {

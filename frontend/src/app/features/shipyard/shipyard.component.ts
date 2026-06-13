@@ -10,6 +10,10 @@ import { DetailPopupComponent, DetailTag } from '../../shared/components/detail-
 import { BuildTileComponent } from '../../shared/components/build-tile.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { TabBarComponent } from '../../shared/components/tab-bar.component';
+import {
+  ConfirmDialogComponent,
+  ConfirmRequest,
+} from '../../shared/components/confirm-dialog.component';
 import { NotificationService } from '../../core/services/notification.service';
 
 interface SelectedUnit {
@@ -78,7 +82,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
 @Component({
   selector: 'app-shipyard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CountdownComponent, DetailPopupComponent, BuildTileComponent, IconTileComponent, TabBarComponent],
+  imports: [FormsModule, CountdownComponent, DetailPopupComponent, BuildTileComponent, IconTileComponent, TabBarComponent, ConfirmDialogComponent],
   template: `
     <h1>Werft & Verteidigung</h1>
     <p class="muted sub">Baue Schiffe und Verteidigungsanlagen auf {{ state.activePlanet()?.name ?? '—' }}.</p>
@@ -99,7 +103,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
                   class="btn btn-ghost btn-sm q-cancel"
                   type="button"
                   [disabled]="cancelling() === q.id"
-                  (click)="cancelQueue(q.id)"
+                  (click)="askCancelQueue(q.id, q.type, q.category, q.count)"
                   title="Auftrag abbrechen — Ressourcen zurueck"
                 >
                   {{ cancelling() === q.id ? '…' : '✕' }}
@@ -181,6 +185,17 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
         (close)="selected.set(null)"
       />
     }
+
+    @if (confirmReq(); as c) {
+      <app-confirm-dialog
+        [title]="c.title"
+        [message]="c.message"
+        [confirmLabel]="c.confirmLabel"
+        [pending]="cancelling() !== null"
+        (confirm)="runConfirm()"
+        (dismiss)="confirmReq.set(null)"
+      />
+    }
   `,
   styles: [
     `
@@ -238,6 +253,8 @@ export class ShipyardComponent {
   protected readonly cancelling = signal<string | null>(null);
   protected readonly counts = signal<Record<string, number>>({});
   protected readonly selected = signal<SelectedUnit | null>(null);
+  /** Ausstehende Sicherheitsabfrage (Werft-Auftrag abbrechen) — null = kein Dialog offen. */
+  protected readonly confirmReq = signal<ConfirmRequest | null>(null);
 
   protected readonly balances = computed(() => {
     const res = this.state.activePlanet()?.resources;
@@ -437,6 +454,23 @@ export class ShipyardComponent {
   }
 
   /** Bricht einen Werft-Auftrag ab (Refund + Schlange rueckt nach). */
+  /** Fragt vor dem Abbruch eines Werft-Auftrags nach (Ressourcen werden erstattet). */
+  askCancelQueue(itemId: string, type: string, category: ShipyardCategory, count: number): void {
+    this.confirmReq.set({
+      title: 'Auftrag abbrechen?',
+      message: `${count}× ${this.unitMeta(type, category).label}: Der Bauauftrag wird abgebrochen, die Ressourcen werden zurückerstattet.`,
+      confirmLabel: '✕ Auftrag abbrechen',
+      action: () => this.cancelQueue(itemId),
+    });
+  }
+
+  /** Fuehrt die bestaetigte Aktion aus und schliesst den Dialog. */
+  runConfirm(): void {
+    const c = this.confirmReq();
+    this.confirmReq.set(null);
+    c?.action();
+  }
+
   cancelQueue(itemId: string): void {
     const planetId = this.state.activePlanetId();
     if (!planetId) {

@@ -7,6 +7,10 @@ import { CountdownComponent } from '../../shared/components/countdown.component'
 import { DetailPopupComponent } from '../../shared/components/detail-popup.component';
 import { BuildTileComponent } from '../../shared/components/build-tile.component';
 import { TabBarComponent } from '../../shared/components/tab-bar.component';
+import {
+  ConfirmDialogComponent,
+  ConfirmRequest,
+} from '../../shared/components/confirm-dialog.component';
 import { NotificationService } from '../../core/services/notification.service';
 
 interface BuildingRow {
@@ -35,7 +39,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
 @Component({
   selector: 'app-buildings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent],
+  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent, ConfirmDialogComponent],
   template: `
     <h1>Gebaeude</h1>
     <p class="muted sub">
@@ -83,7 +87,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
                     class="btn btn-ghost btn-sm full cancel-build"
                     type="button"
                     [disabled]="pending() === b.type"
-                    (click)="cancelBuild(b.type)"
+                    (click)="askCancelBuild(b.type)"
                   >
                     {{ pending() === b.type ? '…' : '✕ Abbrechen' }}
                   </button>
@@ -110,7 +114,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
                       class="btn btn-ghost btn-sm demolish full"
                       type="button"
                       [disabled]="pending() === b.type || anyBuilding()"
-                      (click)="demolish(b.type)"
+                      (click)="askDemolish(b.type, b.level)"
                     >
                       Abreissen → {{ b.level - 1 }}
                     </button>
@@ -138,6 +142,17 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
         [pending]="pending() === sel.type"
         (confirm)="upgradeFromPopup()"
         (close)="selected.set(null)"
+      />
+    }
+
+    @if (confirmReq(); as c) {
+      <app-confirm-dialog
+        [title]="c.title"
+        [message]="c.message"
+        [confirmLabel]="c.confirmLabel"
+        [pending]="pending() !== null"
+        (confirm)="runConfirm()"
+        (dismiss)="confirmReq.set(null)"
       />
     }
   `,
@@ -187,6 +202,8 @@ export class BuildingsComponent {
   protected readonly loading = signal(true);
   protected readonly pending = signal<string | null>(null);
   protected readonly selected = signal<BuildingRow | null>(null);
+  /** Ausstehende Sicherheitsabfrage (Abbrechen/Abreissen) — null = kein Dialog offen. */
+  protected readonly confirmReq = signal<ConfirmRequest | null>(null);
 
   protected readonly rows = computed<BuildingRow[]>(() => {
     const d = this.data();
@@ -326,6 +343,33 @@ export class BuildingsComponent {
         this.notify.warning('Bau nicht moeglich', err?.error?.detail ?? 'Fehler beim Ausbau.');
       },
     });
+  }
+
+  /** Fragt vor dem Bau-Abbruch nach (Ressourcen werden erstattet). */
+  askCancelBuild(type: string): void {
+    this.confirmReq.set({
+      title: 'Bau abbrechen?',
+      message: `${this.meta(type).label}: Der laufende Ausbau wird abgebrochen, die Ressourcen werden zurückerstattet.`,
+      confirmLabel: '✕ Bau abbrechen',
+      action: () => this.cancelBuild(type),
+    });
+  }
+
+  /** Fragt vor dem Abreissen nach (Stufe sinkt, Feld wird frei). */
+  askDemolish(type: string, level: number): void {
+    this.confirmReq.set({
+      title: 'Gebäude abreißen?',
+      message: `${this.meta(type).label} wird von Stufe ${level} auf ${level - 1} abgerissen. Das gibt ein Feld frei, erstattet aber nur einen Teil der Kosten.`,
+      confirmLabel: 'Abreißen',
+      action: () => this.demolish(type),
+    });
+  }
+
+  /** Fuehrt die bestaetigte Aktion aus und schliesst den Dialog. */
+  runConfirm(): void {
+    const c = this.confirmReq();
+    this.confirmReq.set(null);
+    c?.action();
   }
 
   cancelBuild(type: string): void {
