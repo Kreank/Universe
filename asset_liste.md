@@ -62,6 +62,23 @@ Es gibt **zwei** Asset-Wurzeln:
 > (dort liegen Karten/Text) und **Detail/Interesse eher an Rändern & oben** (analog `dashboard.jpg`),
 > KEIN Text, KEINE UI-Elemente, kein harter Fokuspunkt im Zentrum. Ablage in `assets/backgrounds/`
 > UND `frontend/src/assets/img/backgrounds/`; Referenz als `assets/img/backgrounds/<name>.jpg`.
+
+### 🎬 Bewegte Hintergründe (Loop-Videos) — heben die Szene auf „cinematic"
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | login | `backgrounds/` (.webm **und** .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `login.jpg`** (Poster bleibt login.jpg). Sehr langsamer, edler Loop: driftende Sterne + leicht waberndes Nebel-Leuchten + minimaler Kamera-Push (Parallax). IM CODE BEREITS VERDRAHTET (Login-Screen). |
+| ⬜ | dashboard | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `dashboard.jpg`** (globaler App-Backdrop). Dezente Sternendrift + sanftes Nebel-Pulsieren, ruhige dunkle Mitte. |
+| ⬜ | bg_combat | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `bg_combat.jpg`**: ferne Explosions-Glut flackert leise an den Rändern, Wrackteile driften langsam, Funken. Mitte ruhig/dunkel. |
+| ⬜ | system_view | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `system_view.png`** (Galaxie-Ansicht): langsamer Scanner-/Radar-Sweep + Sternendrift. |
+
+> **Format-/Stil-Brief für ALLE Loop-Videos:** nahtloser Loop ~8–12 s, 1920×1080, **Zielgröße ≤ ~2–3 MB**
+> je Datei (niedrige Bitrate — dunkle Szenen komprimieren gut). IMMER als Paar **`<name>.webm` (VP9)
+> + `<name>.mp4` (H.264)** liefern; das gleichnamige Standbild (`.jpg`/`.png`) bleibt als Poster/Fallback.
+> **Sehr langsame, subtile Bewegung; dunkel; ruhige/dunkle Mitte** (dort liegt der Inhalt) — Bewegung nur
+> an Rändern/oben (driftende Sterne/Nebel/Funken). **KEIN schnelles Flackern, kein harter Schnitt, kein
+> Text/UI.** Optisch = das Standbild, nur „lebendig". Ablage wie die bg_*: `assets/backgrounds/` UND
+> `frontend/src/assets/img/backgrounds/`.
 | ✅ | advisor | `icons/ui/` → wird als `assets/img/ui/advisor.png` ausgeliefert | PNG transparent, 256×256 | Button-Icon „KI-Berater fragen" (Postfach). Stilisiertes Gehirn / KI-Knoten-Netz / Berater-Hologrammkopf, dezenter Cyan-Akzent `#2fe3d2`, Sci-Fi-UI-Linienstil, ohne Text. ~16px-tauglich. |
 | ✅ | broom | `icons/ui/` → wird als `assets/img/ui/broom.png` ausgeliefert | PNG transparent, 256×256 | Button-Icon „Leeren/Zurücksetzen" (Kampf-Simulator). Besen oder „Clear/Wisch"-Symbol, monochrom-hell, Sci-Fi-UI-Linienstil, ohne Text. ~16px-tauglich. |
 
