@@ -14,6 +14,7 @@ import { missionIcon, navIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
+import { CostLineComponent } from '../../shared/components/cost-line.component';
 
 type Res = 'metal' | 'crystal' | 'deuterium';
 
@@ -25,7 +26,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
 @Component({
   selector: 'app-trade',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, BtnIconComponent, MessageComposeComponent, FleetDispatchComponent],
+  imports: [FormsModule, BtnIconComponent, MessageComposeComponent, FleetDispatchComponent, CostLineComponent],
   template: `
     <section class="trade">
       <header class="page-head">
@@ -33,7 +34,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
         <p class="muted">
           Globaler Handelskurs (Handelszentren):
           @if (index(); as ix) {
-            <span class="mono">⛏️ {{ ix.prices.metal }} · 💎 {{ ix.prices.crystal }} · 🛢️ {{ ix.prices.deuterium }}</span>
+            <app-cost-line [cost]="ix.prices" />
           } @else { <span class="muted">…</span> }
         </p>
       </header>

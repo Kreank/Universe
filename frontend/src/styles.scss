@@ -112,41 +112,47 @@ body {
   font-family: var(--font);
   font-size: var(--fs-base);
   color: var(--text);
-  background:
+  /* Szenen-Backdrop auf ALLEN Geraeten (Desktop + Tablet + Handy). Default = Dashboard;
+     die Shell wechselt --app-bg je Route (s. unten). Mobil: background-attachment scroll
+     (iOS rendert 'fixed' fehlerhaft/janky) + kraeftigere Abdunkelung fuer Lesbarkeit,
+     weil auf kleinem Schirm mehr Flaeche durchscheint. */
+  --app-bg: url('/assets/img/backgrounds/dashboard.jpg');
+  background-color: var(--bg-deep);
+  background-image:
     radial-gradient(1100px 720px at 78% -8%, rgba(47, 227, 210, 0.06), transparent 60%),
     radial-gradient(900px 680px at 8% 108%, rgba(90, 120, 255, 0.05), transparent 58%),
-    var(--bg-deep);
-  background-attachment: fixed;
+    linear-gradient(rgba(5, 7, 14, 0.74), rgba(5, 7, 14, 0.9)),
+    var(--app-bg);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   line-height: 1.5;
 }
 
-/* Desktop-Atmosphaere: dunkle Nebel-/Sternen-Szene fix hinter der gesamten App, abgedunkelt
-   fuer Lesbarkeit; der Akzent-Schimmer liegt obenauf. Panels/Rails (teiltransparent) zeigen
-   die Szene dezent durch -> Tiefe statt kahler Flaeche. */
+/* Screen-spezifische Backdrops — die Shell setzt body[data-screen] je Route. Gilt auf ALLEN
+   Geraeten (nur die --app-bg-Variable wechselt; Abdunkelung/Schimmer bleiben konsistent). */
+body[data-screen='buildings']  { --app-bg: url('/assets/img/backgrounds/bg_buildings.jpg'); }
+body[data-screen='shipyard']   { --app-bg: url('/assets/img/backgrounds/bg_shipyard.jpg'); }
+body[data-screen='research']   { --app-bg: url('/assets/img/backgrounds/bg_research.jpg'); }
+body[data-screen='techtree']   { --app-bg: url('/assets/img/backgrounds/bg_research.jpg'); }
+body[data-screen='commanders'] { --app-bg: url('/assets/img/backgrounds/bg_commanders.jpg'); }
+body[data-screen='combat-sim'] { --app-bg: url('/assets/img/backgrounds/bg_combat.jpg'); }
+body[data-screen='trade']      { --app-bg: url('/assets/img/backgrounds/bg_trade.jpg'); }
+
+/* Desktop-Atmosphaere: gleiche Szene, aber fixer Parallax-Backdrop + die bewaehrte (etwas
+   hellere) Abdunkelung. Panels/Rails (teiltransparent) zeigen die Szene dezent durch. */
 @media (min-width: 900px) {
   body {
-    --app-bg: url('/assets/img/backgrounds/dashboard.jpg'); /* Standard-Backdrop */
     background-image:
       radial-gradient(1100px 720px at 78% -8%, rgba(47, 227, 210, 0.08), transparent 60%),
+      radial-gradient(900px 680px at 8% 108%, rgba(90, 120, 255, 0.05), transparent 58%),
       linear-gradient(rgba(5, 7, 14, 0.62), rgba(5, 7, 14, 0.84)),
       var(--app-bg);
-    background-size: cover, cover, cover;
-    background-position: center, center, center;
-    background-repeat: no-repeat, no-repeat, no-repeat;
-    background-attachment: fixed, fixed, fixed;
+    background-attachment: fixed;
   }
-
-  /* Screen-spezifische Backdrops — die Shell setzt body[data-screen] je Route. Nur die
-     Hintergrund-Variable wechselt (Abdunkelung/Schimmer bleiben identisch -> konsistent). */
-  body[data-screen='buildings']  { --app-bg: url('/assets/img/backgrounds/bg_buildings.jpg'); }
-  body[data-screen='shipyard']   { --app-bg: url('/assets/img/backgrounds/bg_shipyard.jpg'); }
-  body[data-screen='research']   { --app-bg: url('/assets/img/backgrounds/bg_research.jpg'); }
-  body[data-screen='techtree']   { --app-bg: url('/assets/img/backgrounds/bg_research.jpg'); }
-  body[data-screen='commanders'] { --app-bg: url('/assets/img/backgrounds/bg_commanders.jpg'); }
-  body[data-screen='combat-sim'] { --app-bg: url('/assets/img/backgrounds/bg_combat.jpg'); }
-  body[data-screen='trade']      { --app-bg: url('/assets/img/backgrounds/bg_trade.jpg'); }
 }
 
 h1,

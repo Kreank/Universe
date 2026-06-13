@@ -19,6 +19,7 @@ import { rankIcon, specIcon, traitIcon } from '../../core/models/icon-assets';
 import { commanderStyles } from './commander.styles';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
+import { CostLineComponent } from '../../shared/components/cost-line.component';
 
 /** Eine waehlbare Investitions-Stufe (aus balance.json abgeleitet). */
 interface TierOption {
@@ -38,7 +39,7 @@ interface GradesConfig {
 @Component({
   selector: 'app-commanders',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormsModule, BtnIconComponent, EmptyStateComponent],
+  imports: [RouterLink, FormsModule, BtnIconComponent, EmptyStateComponent, CostLineComponent],
   template: `
     <div class="head">
       <div>
@@ -94,9 +95,7 @@ interface GradesConfig {
                   (click)="onTierChange(t.key)"
                 >
                   <span class="tier-name">{{ t.label }}</span>
-                  <span class="tier-cost mono">
-                    ⛏️ {{ t.cost.metal }} · 💎 {{ t.cost.crystal }} · 🛢️ {{ t.cost.deuterium }}
-                  </span>
+                  <app-cost-line class="tier-cost" [cost]="t.cost" />
                   <span class="tier-hint faint">{{ t.hint }}</span>
                 </button>
               }

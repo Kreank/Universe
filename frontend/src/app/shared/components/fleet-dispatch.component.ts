@@ -192,7 +192,7 @@ import { IconTileComponent } from './icon-tile.component';
           <div class="range-info small" [class.out]="!r.inRange">
             <span class="tip" data-tip="Distanz zwischen Startplanet und Ziel (OGame-Distanzmodell)">📏 Distanz {{ r.distance.toLocaleString('de-DE') }}</span>
             <span class="tip" [attr.data-tip]="'Reichweite der Flotte (Tank). Limitierendes Schiff: ' + shipLabel(r.limiting)">🛰 Reichweite {{ r.maxRangeText }}</span>
-            <span class="tip" data-tip="Treibstoff (Deuterium) vom Startplaneten">🛢️ {{ r.fuel.toLocaleString('de-DE') }} {{ r.roundTrip ? '(Hin+Rück)' : '(einfach)' }}</span>
+            <span class="tip" data-tip="Treibstoff (Deuterium) vom Startplaneten"><img class="cargo-ico" [src]="resourceIcon('deuterium')" alt="" (error)="hideImg($event)" />{{ r.fuel.toLocaleString('de-DE') }} {{ r.roundTrip ? '(Hin+Rück)' : '(einfach)' }}</span>
           </div>
         }
 
