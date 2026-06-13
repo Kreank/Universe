@@ -10,7 +10,7 @@ import datetime as dt
 import logging
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy.service import (
@@ -164,7 +164,20 @@ async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: in
         raise RuntimeError("Nicht genug Ressourcen")
 
     secs_each = max(1, int(round(build_seconds_each(unit_cost, blevels.get("shipyard", 0)) * time_mult)))
-    finish = _now() + dt.timedelta(seconds=secs_each * count)
+    # Serielle Werft-Schlange (OGame): EINE Werft pro Planet baut nacheinander in Auftrags-
+    # reihenfolge. Der neue Auftrag startet erst, wenn der letzte in der Schlange fertig ist
+    # (Schiffe UND Verteidigung teilen dieselbe Schlange) -> sonst liefen Auftraege parallel.
+    last_finish = (await session.execute(
+        select(func.max(ShipyardQueueItem.finishes_at)).where(
+            ShipyardQueueItem.planet_id == planet.id
+        )
+    )).scalar()
+    start = _now()
+    if last_finish is not None:
+        if last_finish.tzinfo is None:
+            last_finish = last_finish.replace(tzinfo=dt.timezone.utc)
+        start = max(start, last_finish)
+    finish = start + dt.timedelta(seconds=secs_each * count)
     item = ShipyardQueueItem(
         planet_id=planet.id,
         type=typ,
