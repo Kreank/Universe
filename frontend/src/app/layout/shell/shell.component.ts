@@ -14,6 +14,11 @@ interface NavItem {
   icon: string;
 }
 
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,7 +28,6 @@ interface NavItem {
       <!-- Topbar: Ressourcen + Planet + Spieler -->
       <header class="topbar">
         <div class="topbar-left">
-          <button class="burger btn-ghost btn btn-sm" type="button" (click)="toggleNav()">☰</button>
           <a routerLink="/dashboard" class="logo">✦ UNIVERSE</a>
         </div>
 
@@ -81,24 +85,33 @@ interface NavItem {
       }
 
       <div class="body">
-        <!-- Navigation -->
+        <!-- Navigation: nach Domaenen gruppiert (Desktop-Sidebar / Mobile-Drawer via "Mehr") -->
         <nav class="sidenav" [class.open]="navOpen()">
-          @for (item of nav; track item.path) {
-            <a
-              class="nav-link"
-              [routerLink]="item.path"
-              routerLinkActive="active"
-              (click)="closeNav()"
-            >
-              <span class="nav-glyph">
-                <img class="nav-ico" [src]="item.icon" alt="" (error)="onNavIconError($event)" />
-                <span class="nav-glyph-fallback">{{ item.glyph }}</span>
-              </span>
-              <span class="nav-label">{{ item.label }}</span>
-              @if (item.path === '/transmissions' && state.unreadTransmissions() > 0) {
-                <span class="badge">{{ state.unreadTransmissions() }}</span>
+          <div class="drawer-head">
+            <span class="drawer-title">Navigation</span>
+            <button class="btn btn-ghost btn-sm drawer-close" type="button" (click)="closeNav()">✕</button>
+          </div>
+          @for (group of navGroups; track group.label) {
+            <div class="nav-group">
+              <div class="nav-group-label">{{ group.label }}</div>
+              @for (item of group.items; track item.path) {
+                <a
+                  class="nav-link"
+                  [routerLink]="item.path"
+                  routerLinkActive="active"
+                  (click)="closeNav()"
+                >
+                  <span class="nav-glyph">
+                    <img class="nav-ico" [src]="item.icon" alt="" (error)="onNavIconError($event)" />
+                    <span class="nav-glyph-fallback">{{ item.glyph }}</span>
+                  </span>
+                  <span class="nav-label">{{ item.label }}</span>
+                  @if (item.path === '/transmissions' && state.unreadTransmissions() > 0) {
+                    <span class="badge">{{ state.unreadTransmissions() }}</span>
+                  }
+                </a>
               }
-            </a>
+            </div>
           }
         </nav>
         @if (navOpen()) {
@@ -109,7 +122,7 @@ interface NavItem {
           <router-outlet />
         </main>
 
-        <!-- Kolonien-Leiste -->
+        <!-- Kolonien-Leiste (Desktop) -->
         @if (planets().length) {
           <aside class="colony-rail">
             <div class="rail-title">Kolonien</div>
@@ -127,6 +140,28 @@ interface NavItem {
           </aside>
         }
       </div>
+
+      <!-- Mobile: persistente Bottom-Tab-Bar (4 Kern-Screens + "Mehr"-Drawer) -->
+      <nav class="bottomnav">
+        @for (item of bottomNav; track item.path) {
+          <a class="bn-item" [routerLink]="item.path" routerLinkActive="active" (click)="closeNav()">
+            <span class="bn-glyph">
+              <img class="bn-ico" [src]="item.icon" alt="" (error)="onNavIconError($event)" />
+              <span class="nav-glyph-fallback">{{ item.glyph }}</span>
+            </span>
+            <span class="bn-label">{{ item.label }}</span>
+          </a>
+        }
+        <button class="bn-item" type="button" [class.active]="navOpen()" (click)="toggleNav()">
+          <span class="bn-glyph">
+            ☰
+            @if (state.unreadTransmissions() > 0) {
+              <span class="bn-dot"></span>
+            }
+          </span>
+          <span class="bn-label">Mehr</span>
+        </button>
+      </nav>
     </div>
   `,
   styles: [shellStyles],
@@ -139,19 +174,33 @@ export class ShellComponent implements OnInit {
   protected readonly player = this.auth.player;
   protected readonly navOpen = signal(false);
 
-  protected readonly nav: NavItem[] = [
-    { path: '/dashboard', label: 'Dashboard', glyph: '🛰️', icon: 'assets/img/nav/dashboard.png' },
-    { path: '/buildings', label: 'Gebaeude', glyph: '🏗️', icon: 'assets/img/nav/buildings.png' },
-    { path: '/research', label: 'Forschung', glyph: '🔬', icon: 'assets/img/nav/research.png' },
-    { path: '/techtree', label: 'Techbaum', glyph: '🌳', icon: 'assets/img/tech/techtree.png' },
-    { path: '/shipyard', label: 'Werft', glyph: '🛠️', icon: 'assets/img/nav/shipyard.png' },
-    { path: '/fleet', label: 'Flotte', glyph: '🚀', icon: 'assets/img/nav/fleet.png' },
-    { path: '/combat-sim', label: 'Simulator', glyph: '⚔️', icon: 'assets/img/nav/simulator.png' },
-    { path: '/galaxy', label: 'Galaxie', glyph: '🌌', icon: 'assets/img/nav/map.png' },
-    { path: '/trade', label: 'Handel', glyph: '💱', icon: 'assets/img/nav/market.png' },
-    { path: '/commanders', label: 'Kommandozentrale', glyph: '🎖️', icon: 'assets/img/nav/command.png' },
-    { path: '/transmissions', label: 'Postfach', glyph: '📡', icon: 'assets/img/nav/mail.png' },
-    { path: '/ranking', label: 'Rangliste', glyph: '🏆', icon: 'assets/img/nav/ranking.png' },
+  private static readonly ITEMS: Record<string, NavItem> = {
+    dashboard: { path: '/dashboard', label: 'Dashboard', glyph: '🛰️', icon: 'assets/img/nav/dashboard.png' },
+    buildings: { path: '/buildings', label: 'Gebaeude', glyph: '🏗️', icon: 'assets/img/nav/buildings.png' },
+    research: { path: '/research', label: 'Forschung', glyph: '🔬', icon: 'assets/img/nav/research.png' },
+    techtree: { path: '/techtree', label: 'Techbaum', glyph: '🌳', icon: 'assets/img/tech/techtree.png' },
+    shipyard: { path: '/shipyard', label: 'Werft', glyph: '🛠️', icon: 'assets/img/nav/shipyard.png' },
+    fleet: { path: '/fleet', label: 'Flotte', glyph: '🚀', icon: 'assets/img/nav/fleet.png' },
+    combat: { path: '/combat-sim', label: 'Simulator', glyph: '⚔️', icon: 'assets/img/nav/simulator.png' },
+    galaxy: { path: '/galaxy', label: 'Galaxie', glyph: '🌌', icon: 'assets/img/nav/map.png' },
+    trade: { path: '/trade', label: 'Handel', glyph: '💱', icon: 'assets/img/nav/market.png' },
+    commanders: { path: '/commanders', label: 'Kommandozentrale', glyph: '🎖️', icon: 'assets/img/nav/command.png' },
+    transmissions: { path: '/transmissions', label: 'Postfach', glyph: '📡', icon: 'assets/img/nav/mail.png' },
+    ranking: { path: '/ranking', label: 'Rangliste', glyph: '🏆', icon: 'assets/img/nav/ranking.png' },
+  };
+
+  protected readonly navGroups: NavGroup[] = [
+    { label: 'Imperium', items: [ShellComponent.ITEMS['dashboard'], ShellComponent.ITEMS['buildings'], ShellComponent.ITEMS['research'], ShellComponent.ITEMS['techtree'], ShellComponent.ITEMS['shipyard']] },
+    { label: 'Militaer', items: [ShellComponent.ITEMS['fleet'], ShellComponent.ITEMS['combat'], ShellComponent.ITEMS['galaxy']] },
+    { label: 'Reich & Sozial', items: [ShellComponent.ITEMS['trade'], ShellComponent.ITEMS['commanders'], ShellComponent.ITEMS['transmissions'], ShellComponent.ITEMS['ranking']] },
+  ];
+
+  /** Mobile-Bottom-Nav: 4 Kern-Screens; "Mehr" oeffnet den vollen Drawer. */
+  protected readonly bottomNav: NavItem[] = [
+    ShellComponent.ITEMS['dashboard'],
+    ShellComponent.ITEMS['buildings'],
+    ShellComponent.ITEMS['fleet'],
+    ShellComponent.ITEMS['galaxy'],
   ];
 
   protected readonly resourceRows = computed(() => {
