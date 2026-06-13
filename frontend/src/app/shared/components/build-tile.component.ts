@@ -46,13 +46,14 @@ import { ResourceCost } from '../../core/models/api.models';
   `,
   styles: [`
     .tile {
-      display: flex; flex-direction: column; align-items: center; gap: 0.45rem;
-      padding: 0.7rem 0.6rem 0.6rem;
-      border-radius: var(--radius-sm);
+      display: flex; flex-direction: column; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-3) var(--sp-2) var(--sp-2);
+      border-radius: var(--r-md);
       border: 1px solid var(--border);
       background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
       height: 100%;
-      transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+      box-shadow: var(--hairline-top);
+      transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
     }
     .tile:hover { border-color: var(--border-strong); }
     .tile.busy { border-color: var(--accent-dim); box-shadow: inset 0 0 0 1px var(--accent-dim); }
@@ -65,36 +66,37 @@ import { ResourceCost } from '../../core/models/api.models';
     .badge-corner {
       position: absolute; right: -5px; bottom: -5px;
       min-width: 20px; text-align: center;
-      font-size: 0.72rem; font-weight: 700; font-family: var(--mono);
-      padding: 0 5px; border-radius: 6px;
+      font-size: var(--fs-xs); font-weight: 700; font-family: var(--mono); font-variant-numeric: tabular-nums;
+      padding: 0 5px; border-radius: var(--r-sm);
       background: var(--accent); color: #06101e;
-      border: 1px solid var(--bg); box-shadow: 0 0 6px rgba(46,230,214,0.4);
+      border: 1px solid var(--bg); box-shadow: var(--glow-soft);
     }
     .badge-corner.zero { background: var(--surface-3); color: var(--text-dim); box-shadow: none; }
     .info-dot {
-      position: absolute; top: -4px; right: -4px; font-size: 0.78rem; color: var(--text-faint);
-      opacity: 0.55; transition: opacity 0.12s ease;
+      position: absolute; top: -4px; right: -4px; font-size: var(--fs-sm); color: var(--text-faint);
+      opacity: 0.55; transition: opacity var(--motion-fast) var(--ease-out);
     }
 
     .name {
       padding: 0; border: 0; background: none; cursor: pointer;
-      font-weight: 600; font-size: 0.9rem; color: var(--text); text-align: center; line-height: 1.15;
+      font-weight: 600; font-size: var(--fs-base); color: var(--text); text-align: center; line-height: 1.15;
       max-width: 100%;
+      transition: color var(--motion-fast) var(--ease-out);
     }
     .name:hover { color: var(--accent); }
 
     .stats {
-      display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
-      font-size: 0.8rem; min-height: 1.2rem;
+      display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
+      font-size: var(--fs-sm); min-height: 1.2rem;
     }
     .stats .time { white-space: nowrap; }
 
     .action {
-      margin-top: auto; padding-top: 0.35rem; width: 100%;
-      display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem;
+      margin-top: auto; padding-top: var(--sp-1); width: 100%;
+      display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1);
     }
     .muted { color: var(--text-dim); }
-    .small { font-size: 0.78rem; }
+    .small { font-size: var(--fs-sm); }
   `],
 })
 export class BuildTileComponent {

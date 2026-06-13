@@ -49,7 +49,7 @@ interface PickRow {
       } @else {
         <div class="cols">
           <!-- Eigene Flotte: nur Kampf-Schiffe -->
-          <div class="card col">
+          <div class="card col side-own">
             <div class="panel-title">
               🛡 Deine Flotte
               @if (ownTotal()) { <span class="ptotal mono">{{ ownTotal() }}</span> }
@@ -73,7 +73,7 @@ interface PickRow {
           </div>
 
           <!-- Gegner: Schiffe + Verteidigung -->
-          <div class="card col">
+          <div class="card col side-enemy">
             <div class="panel-title">
               ⚔ Gegner
               @if (enemyTotal()) { <span class="ptotal mono">{{ enemyTotal() }}</span> }
@@ -134,47 +134,73 @@ interface PickRow {
     }
   `,
   styles: [`
-    .sim { display: flex; flex-direction: column; gap: 1rem; }
-    .sim-head h1 { margin: 0 0 0.25rem; font-size: 1.25rem; }
-    .faint { color: var(--text-faint); }
-    .small { font-size: 0.82rem; }
-    .state { color: var(--text-dim); padding: 1.5rem 0; }
+    .sim { display: flex; flex-direction: column; gap: var(--sp-4); }
+    .sim-head h1 { font-family: var(--font-display); }
+    .small { font-size: var(--fs-sm); }
+    .state { color: var(--text-dim); padding: var(--sp-5) 0; }
 
-    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .col { display: flex; flex-direction: column; gap: 0.2rem; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); align-items: start; }
+    .col { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
 
-    .sub-head { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--text-dim); margin: 0.7rem 0 0.3rem; }
+    /* Seiten-Semantik: eigene Flotte = Akzent (Cyan), Gegner = Gefahr (Magenta). */
+    .side-own { border-top: 2px solid var(--accent); }
+    .side-enemy { border-top: 2px solid var(--danger-dim); }
+
+    .sub-head {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs); letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-dim); margin: var(--sp-3) 0 var(--sp-2);
+    }
 
     /* Panel-Überschrift mit Summen-Badge + Mini-Aktion rechts. */
     .panel-title { justify-content: flex-start; }
-    .panel-title .ptotal {
-      margin-left: 0.1rem; font-size: 0.72rem; color: var(--accent);
-      background: color-mix(in srgb, var(--accent) 14%, transparent);
-      border: 1px solid var(--accent-dim); border-radius: 99px; padding: 0.05rem 0.5rem;
+    .ptotal {
+      margin-left: var(--sp-1);
+      font-family: var(--mono); font-variant-numeric: tabular-nums;
+      font-size: var(--fs-xs); color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-dim); border-radius: var(--r-pill);
+      padding: 2px var(--sp-2);
     }
-    .panel-title .mini {
-      margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 0.74rem;
-      color: var(--accent); background: rgba(46,230,214,0.08);
-      border: 1px solid var(--accent-dim); border-radius: var(--radius-sm);
-      padding: 0.2rem 0.55rem; cursor: pointer;
+    .side-enemy .ptotal {
+      color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 12%, transparent);
+      border-color: var(--danger-dim);
     }
-    .panel-title .mini:hover:not(:disabled) { background: rgba(46,230,214,0.18); }
-    .panel-title .mini:disabled { opacity: 0.4; cursor: not-allowed; }
+    .mini {
+      margin-left: auto; text-transform: none; letter-spacing: 0;
+      font-family: var(--font); font-size: var(--fs-xs); font-weight: 600;
+      color: var(--accent); background: var(--accent-soft);
+      border: 1px solid var(--accent-dim); border-radius: var(--r-md);
+      min-height: 44px; padding: var(--sp-1) var(--sp-3); cursor: pointer;
+      transition: background var(--motion-fast) var(--ease-out),
+        box-shadow var(--motion-fast) var(--ease-out);
+    }
+    .mini:hover:not(:disabled) { background: rgba(47,227,210,0.18); box-shadow: var(--glow-soft); }
+    .mini:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .row { display: grid; grid-template-columns: 40px 1fr 5rem; align-items: center;
-      gap: 0.6rem; padding: 0.3rem 0.15rem; border-radius: 8px;
-      transition: background 0.12s ease; cursor: pointer; }
+      gap: var(--sp-3); padding: var(--sp-1); border-radius: var(--r-sm);
+      transition: background var(--motion-fast) var(--ease-out); cursor: pointer; }
     .row:hover { background: rgba(255,255,255,0.03); }
     .r-ico { display: inline-flex; justify-self: center; }
-    .r-label { font-size: 0.86rem; color: var(--text); }
-    .r-num { width: 100%; text-align: right; }
+    .r-label { font-size: var(--fs-base); color: var(--text); }
+    .r-num { width: 100%; text-align: right;
+      font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
-    .actions { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
-      position: sticky; bottom: 0; padding-top: 0.5rem; }
-    .err { color: #ff9b9b; font-size: 0.85rem; }
+    .actions { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+      position: sticky; bottom: 0; padding-top: var(--sp-2); margin-top: var(--sp-2); }
+    .err { color: var(--danger); font-size: var(--fs-sm); }
 
-    @media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) {
+      .cols { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 40px 1fr 4.5rem; }
+    }
+
+    /* Desktop-Dichte (OGame-Stil): kompaktere Mini-Aktion ab Maus-Breite. */
+    @media (min-width: 900px) {
+      .mini { min-height: 32px; }
+    }
   `],
 })
 export class CombatSimComponent {

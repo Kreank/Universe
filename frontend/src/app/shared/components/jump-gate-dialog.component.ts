@@ -32,7 +32,7 @@ import { IconTileComponent } from './icon-tile.component';
   host: { '(document:keydown.escape)': 'close.emit()' },
   template: `
     <div class="backdrop" (click)="close.emit()">
-      <div class="popup" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="popup glass" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
         <button class="x" type="button" (click)="close.emit()" aria-label="Schliessen">✕</button>
 
         <header class="head">
@@ -122,58 +122,70 @@ import { IconTileComponent } from './icon-tile.component';
     `
       .backdrop {
         position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
-        padding: 1rem; background: rgba(4, 7, 14, 0.72); backdrop-filter: blur(4px);
+        padding: var(--sp-4); background: rgba(4, 7, 14, 0.72);
+        backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        animation: fade var(--motion-fast) var(--ease-out);
       }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+      /* .glass (global) liefert Background/Blur/Border/Elevation; hier nur Layout + Signatur-Ecke. */
       .popup {
         position: relative; width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto;
-        background: linear-gradient(160deg, var(--surface-2), var(--surface));
-        border: 1px solid var(--border-strong); border-radius: var(--radius);
-        box-shadow: var(--shadow), var(--glow); padding: 1.1rem 1.2rem 1.2rem;
+        border-radius: var(--r-lg); padding: var(--sp-5);
         clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+        animation: pop var(--motion-base) var(--ease-out);
       }
+      @keyframes pop { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
       .x {
-        position: absolute; top: 0.5rem; right: 0.6rem; width: 30px; height: 30px; border-radius: 8px;
+        position: absolute; top: var(--sp-2); right: var(--sp-2); width: 32px; height: 32px; border-radius: var(--r-sm);
         background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-dim);
         cursor: pointer; display: flex; align-items: center; justify-content: center;
+        transition: color var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
       }
       .x:hover { color: var(--text); background: rgba(255,255,255,0.1); }
-      .head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem 0.7rem; padding-right: 2rem; }
-      .head h2 { margin: 0; font-size: 1.15rem; }
-      .coord { color: var(--accent); font-size: 0.9rem; }
+      .head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); padding-right: var(--sp-8); }
+      .head h2 { margin: 0; font-size: var(--fs-lg); }
+      .coord { color: var(--accent); font-size: var(--fs-base); }
 
-      .opts { display: flex; flex-wrap: wrap; gap: 0.9rem; margin: 0.9rem 0 0.2rem; }
-      .opts .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: 0.25rem; }
-      .opts label { font-size: 0.74rem; color: var(--text-dim); }
+      .opts { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin: var(--sp-3) 0 var(--sp-1); }
+      .opts .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: var(--sp-1); }
+      .opts label { font-size: var(--fs-xs); color: var(--text-dim); }
       .opts select { min-height: 30px; }
 
       .ships {
         display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 0.5rem; margin-top: 0.7rem;
+        gap: var(--sp-2); margin-top: var(--sp-2);
       }
       .ship {
-        display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
-        padding: 0.45rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
+        display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
+        padding: var(--sp-2); border: 1px solid var(--border); border-radius: var(--r-md);
         background: rgba(255,255,255,0.02);
+        transition: border-color var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
       }
-      .ship.picked { border-color: var(--accent-dim); background: rgba(46,230,214,0.06); }
+      .ship.picked { border-color: var(--accent-dim); background: var(--accent-soft); }
       .ship-art { position: relative; }
       .ship-art .avail {
         position: absolute; bottom: -4px; right: -6px; min-width: 18px; padding: 0 4px; height: 18px;
-        border-radius: 99px; background: var(--surface-3); border: 1px solid var(--border);
-        font-size: 0.7rem; display: flex; align-items: center; justify-content: center; color: var(--text);
+        border-radius: var(--r-pill); background: var(--surface-3); border: 1px solid var(--border);
+        font-size: var(--fs-xs); display: flex; align-items: center; justify-content: center; color: var(--text);
+        font-family: var(--mono); font-variant-numeric: tabular-nums;
       }
-      .ship-name { font-size: 0.76rem; text-align: center; line-height: 1.1; color: var(--text-dim); }
-      .ship-pick { display: flex; gap: 0.25rem; align-items: center; }
-      .ship-pick input { width: 52px; text-align: center; min-height: 28px; padding: 0.2rem; }
+      .ship-name { font-size: var(--fs-sm); text-align: center; line-height: 1.1; color: var(--text-dim); }
+      .ship-pick { display: flex; gap: var(--sp-1); align-items: center; }
+      .ship-pick input { width: 52px; text-align: center; min-height: 28px; padding: var(--sp-1); }
 
-      .summary { margin-top: 0.9rem; display: flex; flex-direction: column; gap: 0.3rem; }
-      .sum-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+      .summary { margin-top: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-1); }
+      .sum-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
       .sum-row .neg { color: var(--warn); }
       .warn-row { color: var(--warn); }
 
-      .actions { margin-top: 1rem; }
+      .actions { margin-top: var(--sp-4); }
       .actions .btn { width: 100%; }
-      .hint { color: var(--warn); margin: 0.4rem 0 0; }
+      .hint { color: var(--warn); margin: var(--sp-1) 0 0; }
+
+      @media (max-width: 560px) {
+        .backdrop { padding: var(--sp-2); }
+        .popup { max-width: 100%; max-height: 94vh; padding: var(--sp-4); }
+      }
     `,
   ],
 })

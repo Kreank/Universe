@@ -197,36 +197,86 @@ type Res = 'metal' | 'crystal' | 'deuterium';
   `,
   styles: [
     `
-      .trade { max-width: 880px; margin: 0 auto; padding-bottom: 2rem; }
-      .page-head h1 { margin: 0 0 0.2rem; }
-      .page-head .muted { margin: 0 0 1rem; }
-      .card {
-        background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
-        padding: 1rem 1.1rem; margin-bottom: 1rem;
+      /* Layout: Karten via globaler .card; gleichmaessige Abstaende ueber den Flow. */
+      .trade {
+        max-width: 880px;
+        margin: 0 auto;
+        padding-bottom: var(--sp-8);
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-4);
       }
-      .card-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.7rem; }
-      .toggle { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; }
-      .toggle input { width: 18px; height: 18px; }
-      .grid { display: flex; flex-wrap: wrap; gap: 0.8rem; margin: 0.8rem 0; }
-      .field { display: flex; flex-direction: column; gap: 0.25rem; flex: 1 1 200px; }
-      .field label { font-size: 0.74rem; color: var(--text-dim); }
-      .field input, .field select { min-height: 32px; }
-      .link { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.74rem; padding: 0; text-align: left; }
-      .hint { color: var(--warn); font-size: 0.8rem; margin: 0.2rem 0; }
-      .actions { margin-top: 0.6rem; }
+      .page-head h1 { margin: 0 0 var(--sp-1); }
+      .page-head .muted { margin: 0; }
 
-      .partner { border-top: 1px solid var(--border); padding: 0.6rem 0; }
+      /* Eigenes Angebots-Formular: responsives Raster, auf Mobile gestapelt. */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--sp-3);
+        margin: var(--sp-3) 0;
+      }
+
+      /* Toggle-Reihe (Handel an/aus, Eskorte anbieten). */
+      .toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sp-2);
+        cursor: pointer;
+        font-size: var(--fs-base);
+        color: var(--text);
+      }
+      .toggle.small { font-size: var(--fs-sm); }
+      .toggle input {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+        accent-color: var(--accent);
+        cursor: pointer;
+      }
+
+      /* Inline-Textbutton "Globalen Kurs uebernehmen". */
+      .link {
+        background: none;
+        border: none;
+        color: var(--accent);
+        cursor: pointer;
+        font-family: var(--font-display);
+        font-size: var(--fs-xs);
+        letter-spacing: 0.04em;
+        padding: 0;
+        text-align: left;
+        align-self: flex-start;
+      }
+      .link:hover { color: var(--accent-strong); text-decoration: underline; }
+
+      .hint { color: var(--warn); font-size: var(--fs-sm); margin: var(--sp-1) 0; }
+      .actions { margin-top: var(--sp-3); }
+
+      /* Partner-/Listenzeilen mit Hairline-Trennern. */
+      .partner { border-top: 1px solid var(--border); padding: var(--sp-3) 0; }
       .partner:first-of-type { border-top: none; }
-      .partner-main { display: flex; align-items: baseline; gap: 0.5rem; }
-      .pname { font-weight: 600; }
-      .partner-offer { margin: 0.2rem 0; }
-      .partner-note { margin-bottom: 0.3rem; }
-      .partner-act { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-      .small { font-size: 0.8rem; }
-      .escort-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.35rem; }
-      .escort-edit .toggle { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
-      .mini { width: 56px; min-height: 26px; padding: 0.15rem 0.3rem; }
-      .tag-ok { font-size: 0.72rem; color: #06101e; background: var(--accent); padding: 1px 6px; border-radius: 99px; }
+      .partner-main { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-2); }
+      .pname { font-family: var(--font-display); font-weight: 600; color: var(--text); }
+      .partner-offer { margin: var(--sp-1) 0; }
+      .partner-note { margin-bottom: var(--sp-1); }
+      .partner-act { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-1); }
+      .small { font-size: var(--fs-sm); }
+
+      /* Eskort-Einstellungen: dichte Inline-Steuerung, bricht auf Mobile um. */
+      .escort-edit { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-top: var(--sp-2); }
+      .escort-edit .toggle { gap: var(--sp-1); }
+      .mini { width: 56px; }
+
+      /* Status-Pills: gratis (Akzent) / knapper Treibstoff (Warn). */
+      .tag-ok {
+        font-size: var(--fs-xs);
+        font-weight: 600;
+        color: var(--bg-deep);
+        background: var(--accent);
+        padding: 1px var(--sp-2);
+        border-radius: var(--r-pill);
+      }
       .tag-warn { color: var(--warn); font-weight: 600; }
     `,
   ],

@@ -12,6 +12,7 @@
   --surface-2: #111b2c;
   --surface-3: #18243a;
   --surface-4: #20304b;
+  --surface: var(--surface-1); /* Altname-Alias (Kompatibilitaet) */
 
   --border: rgba(150, 172, 214, 0.10);
   --border-strong: rgba(150, 172, 214, 0.22);

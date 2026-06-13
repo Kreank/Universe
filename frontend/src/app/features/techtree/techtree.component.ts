@@ -155,30 +155,33 @@ interface Graph {
   `,
   styles: [
     `
-      .sub { margin-top: -0.3rem; font-size: 0.85rem; max-width: 62ch; }
+      .sub { margin-top: calc(-1 * var(--sp-1)); font-size: var(--fs-sm); max-width: 62ch; }
+      /* Legende: erfuellt = OK-Gruen, offen = gedaempft. */
       .legend { font-weight: 600; }
-      .legend.met { color: var(--accent); }
-      .legend.open { color: var(--text-dim); }
+      .legend.met { color: var(--ok); }
+      .legend.open { color: var(--text-faint); }
 
       .canvas-scroll {
         overflow: auto;
-        padding-bottom: 1rem;
+        padding-bottom: var(--sp-4);
         /* dezentes Raster im Hintergrund fuer "Tech-Konsolen"-Look */
-        background-image: radial-gradient(rgba(120, 150, 200, 0.07) 1px, transparent 1px);
+        background-image: radial-gradient(var(--border) 1px, transparent 1px);
         background-size: 28px 28px;
-        border-radius: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
       }
       .canvas { position: relative; }
 
       .tier-title {
         position: absolute;
         top: 0;
-        font-size: 0.74rem;
+        font-family: var(--font-display);
+        font-size: var(--fs-xs);
         text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: #b9c6de;
+        letter-spacing: 0.12em;
+        color: var(--text-dim);
         text-align: center;
-        padding-bottom: 0.3rem;
+        padding-bottom: var(--sp-1);
         border-bottom: 1px solid var(--border);
         white-space: nowrap;
       }
@@ -190,74 +193,82 @@ interface Graph {
         pointer-events: none;
         overflow: visible;
       }
+      /* Linien dezent; erfuellte Abhaengigkeit = OK-Gruen, aktiv = Cyan-Akzent. */
       .edge {
         fill: none;
         stroke: var(--border-strong);
         stroke-width: 2;
-        opacity: 0.5;
-        transition: opacity 0.15s, stroke 0.15s, stroke-width 0.15s;
+        opacity: 0.55;
+        transition: opacity var(--motion-fast) var(--ease-out),
+          stroke var(--motion-fast) var(--ease-out),
+          stroke-width var(--motion-fast) var(--ease-out);
       }
-      .edge.met { stroke: var(--accent); opacity: 0.6; }
+      .edge.met { stroke: var(--ok); opacity: 0.65; }
       .edge.active {
         stroke: var(--accent);
         stroke-width: 3;
         opacity: 1;
-        filter: drop-shadow(0 0 5px rgba(46, 230, 214, 0.7));
+        filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 70%, transparent));
       }
       .edge.dim { opacity: 0.1; }
 
+      /* Knoten nutzt die globale .card-Optik; nur Layout/Status hier. */
       .node {
         position: absolute;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        gap: 0.4rem;
-        padding: 0.6rem 0.65rem;
+        gap: var(--sp-2);
+        padding: var(--sp-3);
         text-align: left;
         cursor: pointer;
-        background: var(--surface);
         box-sizing: border-box;
         z-index: 2;
-        transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s, transform 0.15s;
+        transition: border-color var(--motion-fast) var(--ease-out),
+          box-shadow var(--motion-fast) var(--ease-out),
+          opacity var(--motion-fast) var(--ease-out),
+          transform var(--motion-fast) var(--ease-out);
       }
       .node:hover,
-      .node.focus { border-color: var(--border-strong); box-shadow: var(--glow); transform: translateY(-1px); }
-      .node.researched { border-color: var(--accent); }
+      .node.focus { border-color: var(--accent); box-shadow: var(--glow-soft); transform: translateY(-1px); }
+      /* erforscht = OK-Gruen, klar getrennt vom Cyan-Interaktions-Highlight. */
+      .node.researched { border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
       .node.dim { opacity: 0.28; }
       .node.pinned {
         border-color: var(--accent);
-        box-shadow: 0 0 0 2px var(--accent), var(--glow);
+        box-shadow: var(--glow);
         animation: pin-pulse 1.4s ease 2;
       }
       @keyframes pin-pulse {
-        0%, 100% { box-shadow: 0 0 0 2px var(--accent), var(--glow); }
-        50% { box-shadow: 0 0 0 3px var(--accent-bright, #5ff6fb), 0 0 22px rgba(46,230,214,0.6); }
+        0%, 100% { box-shadow: var(--glow); }
+        50% { box-shadow: 0 0 0 2px var(--accent-strong), var(--glow-soft); }
       }
 
-      .node-head { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
-      .node-id { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+      .node-head { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+      .node-id { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
       .node-name {
+        font-family: var(--font-display);
         font-weight: 600;
-        font-size: 0.88rem;
-        line-height: 1.1;
+        font-size: var(--fs-base);
+        line-height: 1.15;
         overflow: hidden;
         text-overflow: ellipsis;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
       }
-      .chip.lvl { align-self: flex-start; background: var(--accent); color: #04121a; font-weight: 700; }
+      .chip.lvl { align-self: flex-start; background: var(--ok); color: var(--bg-deep); border-color: transparent; font-weight: 700; }
       .chip.lvl.zero {
         background: var(--surface-2);
         color: var(--text-dim);
         border: 1px solid var(--border);
       }
-      .chip.lab { align-self: flex-start; font-size: 0.72rem; }
-      .chip.lab.ok { color: var(--ok, #2ee6d6); border-color: rgba(46, 230, 214, 0.4); }
-      .chip.lab.warn { color: var(--warn); border-color: rgba(255, 170, 60, 0.4); }
+      .chip.lab { align-self: flex-start; font-size: var(--fs-xs); }
+      .chip.lab.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+      .chip.lab.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
       .chip.base {
         align-self: flex-start;
-        font-size: 0.72rem;
+        font-size: var(--fs-xs);
         color: var(--text-dim);
         border: 1px dashed var(--border);
       }

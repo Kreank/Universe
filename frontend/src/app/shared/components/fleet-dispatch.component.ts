@@ -33,7 +33,7 @@ import { IconTileComponent } from './icon-tile.component';
   host: { '(document:keydown.escape)': 'close.emit()' },
   template: `
     <div class="backdrop" (click)="close.emit()">
-      <div class="popup" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="popup glass" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
         <button class="x" type="button" (click)="close.emit()" aria-label="Schliessen">✕</button>
 
         <header class="head">
@@ -214,77 +214,90 @@ import { IconTileComponent } from './icon-tile.component';
     `
       .backdrop {
         position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
-        padding: 1rem; background: rgba(4, 7, 14, 0.72); backdrop-filter: blur(4px);
+        padding: var(--sp-4); background: rgba(4, 7, 14, 0.72);
+        backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        animation: fade var(--motion-fast) var(--ease-out);
       }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+      /* .glass (global) liefert Background/Blur/Border/Elevation; hier nur Layout + Signatur-Ecke. */
       .popup {
         position: relative; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
-        background: linear-gradient(160deg, var(--surface-2), var(--surface));
-        border: 1px solid var(--border-strong); border-radius: var(--radius);
-        box-shadow: var(--shadow), var(--glow); padding: 1.1rem 1.2rem 1.2rem;
+        border-radius: var(--r-lg); padding: var(--sp-5);
         clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+        animation: pop var(--motion-base) var(--ease-out);
       }
+      @keyframes pop { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
       .x {
-        position: absolute; top: 0.5rem; right: 0.6rem; width: 30px; height: 30px; border-radius: 8px;
+        position: absolute; top: var(--sp-2); right: var(--sp-2); width: 32px; height: 32px; border-radius: var(--r-sm);
         background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-dim);
         cursor: pointer; display: flex; align-items: center; justify-content: center;
+        transition: color var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
       }
       .x:hover { color: var(--text); background: rgba(255,255,255,0.1); }
-      .head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem 0.7rem; padding-right: 2rem; }
-      .head h2 { margin: 0; font-size: 1.15rem; }
-      .coord { color: var(--accent); font-size: 0.9rem; }
-      .tname { color: var(--text-dim); font-size: 0.85rem; }
+      .head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); padding-right: var(--sp-8); }
+      .head h2 { margin: 0; font-size: var(--fs-lg); }
+      .coord { color: var(--accent); font-size: var(--fs-base); }
+      .tname { color: var(--text-dim); font-size: var(--fs-sm); }
 
-      .mission-tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.8rem 0; }
+      .mission-tabs { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: var(--sp-3) 0; }
       .mtab {
-        font-size: 0.8rem; padding: 0.3rem 0.6rem; border-radius: 99px;
+        font-size: var(--fs-sm); padding: var(--sp-1) var(--sp-3); border-radius: var(--r-pill);
         background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
+        transition: color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
       }
-      .mtab:hover { color: var(--text); }
-      .mtab.active { background: rgba(46,230,214,0.14); color: var(--accent); border-color: var(--accent-dim); }
+      .mtab:hover { color: var(--text); border-color: var(--border-strong); }
+      .mtab.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-dim); }
 
       .ships {
         display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 0.5rem; margin-top: 0.4rem;
+        gap: var(--sp-2); margin-top: var(--sp-1);
       }
       .ship {
-        display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
-        padding: 0.45rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
+        display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
+        padding: var(--sp-2); border: 1px solid var(--border); border-radius: var(--r-md);
         background: rgba(255,255,255,0.02);
+        transition: border-color var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
       }
-      .ship.picked { border-color: var(--accent-dim); background: rgba(46,230,214,0.06); }
+      .ship.picked { border-color: var(--accent-dim); background: var(--accent-soft); }
       .ship-art { position: relative; }
       .ship-art .avail {
         position: absolute; bottom: -4px; right: -6px; min-width: 18px; padding: 0 4px; height: 18px;
-        border-radius: 99px; background: var(--surface-3); border: 1px solid var(--border);
-        font-size: 0.7rem; display: flex; align-items: center; justify-content: center; color: var(--text);
+        border-radius: var(--r-pill); background: var(--surface-3); border: 1px solid var(--border);
+        font-size: var(--fs-xs); display: flex; align-items: center; justify-content: center; color: var(--text);
+        font-family: var(--mono); font-variant-numeric: tabular-nums;
       }
-      .ship-name { font-size: 0.76rem; text-align: center; line-height: 1.1; color: var(--text-dim); }
-      .ship-pick { display: flex; gap: 0.25rem; align-items: center; }
-      .ship-pick input { width: 52px; text-align: center; min-height: 28px; padding: 0.2rem; }
+      .ship-name { font-size: var(--fs-sm); text-align: center; line-height: 1.1; color: var(--text-dim); }
+      .ship-pick { display: flex; gap: var(--sp-1); align-items: center; }
+      .ship-pick input { width: 52px; text-align: center; min-height: 28px; padding: var(--sp-1); }
 
-      .cargo { margin-top: 0.9rem; }
-      .cargo-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #b9c6de; margin-bottom: 0.4rem; }
-      .cargo-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-      .cargo-field { display: flex; flex-direction: column; gap: 0.2rem; flex: 1 1 130px; }
-      .cargo-field label { font-size: 0.74rem; color: var(--text-dim); }
+      .cargo { margin-top: var(--sp-3); }
+      .cargo-title { font-family: var(--font-display); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: var(--sp-1); }
+      .cargo-row { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+      .cargo-field { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1 1 130px; }
+      .cargo-field label { font-size: var(--fs-xs); color: var(--text-dim); }
       .cargo-field input { min-height: 30px; }
 
-      .opts { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.9rem; }
-      .opts .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: 0.25rem; }
-      .opts label { font-size: 0.74rem; color: var(--text-dim); }
+      .opts { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-3); }
+      .opts .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: var(--sp-1); }
+      .opts label { font-size: var(--fs-xs); color: var(--text-dim); }
 
-      .trade-grid { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-      .trade-grid .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: 0.25rem; }
+      .trade-grid { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+      .trade-grid .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: var(--sp-1); }
       .trade-grid select, .trade-grid input { min-height: 30px; }
-      .trade-preview { color: var(--accent); margin: 0.5rem 0 0; }
-      .escorts { margin-top: 0.6rem; }
-      .escort-row { display: flex; align-items: center; gap: 0.4rem; padding: 0.15rem 0; cursor: pointer; }
+      .trade-preview { color: var(--accent); margin: var(--sp-2) 0 0; }
+      .escorts { margin-top: var(--sp-2); }
+      .escort-row { display: flex; align-items: center; gap: var(--sp-1); padding: 2px 0; cursor: pointer; }
 
-      .actions { margin-top: 1rem; }
+      .actions { margin-top: var(--sp-4); }
       .actions .btn { width: 100%; }
-      .hint { color: var(--warn); margin: 0.4rem 0 0; }
-      .range-info { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; margin-top: 0.8rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); }
+      .hint { color: var(--warn); margin: var(--sp-1) 0 0; }
+      .range-info { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-3); padding: var(--sp-1) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text-dim); }
       .range-info.out { border-color: var(--warn); color: var(--warn); }
+
+      @media (max-width: 560px) {
+        .backdrop { padding: var(--sp-2); }
+        .popup { max-width: 100%; max-height: 94vh; padding: var(--sp-4); }
+      }
     `,
   ],
 })

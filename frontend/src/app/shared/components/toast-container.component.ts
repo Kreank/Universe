@@ -39,67 +39,72 @@ import { NotificationService } from '../../core/services/notification.service';
     `
       .toast-stack {
         position: fixed;
-        top: 1rem;
-        right: 1rem;
+        top: var(--sp-4);
+        right: var(--sp-4);
         z-index: 1000;
         display: flex;
         flex-direction: column;
-        gap: 0.6rem;
-        width: min(360px, calc(100vw - 2rem));
+        gap: var(--sp-2);
+        width: min(360px, calc(100vw - var(--sp-8)));
       }
       .toast {
-        background: linear-gradient(160deg, var(--surface-2), var(--surface));
+        background: linear-gradient(160deg, var(--surface-2), var(--surface-1));
         border: 1px solid var(--border-strong);
         border-left: 3px solid var(--accent);
-        border-radius: var(--radius-sm);
-        padding: 0.7rem 0.8rem;
-        box-shadow: var(--shadow);
-        animation: slide-in 0.28s ease;
+        border-radius: var(--r-md);
+        padding: var(--sp-3);
+        box-shadow: var(--e2), var(--hairline-top);
+        animation: slide-in var(--motion-slow) var(--ease-out);
       }
       .toast-success {
         border-left-color: var(--ok);
       }
       .toast-warning {
-        border-left-color: var(--magenta);
-        box-shadow: 0 0 22px rgba(255, 64, 160, 0.3);
+        border-left-color: var(--danger);
+        box-shadow: 0 0 22px rgba(255, 77, 125, 0.3);
       }
       .toast-transmission {
         border-left-color: var(--accent);
         animation:
-          slide-in 0.28s ease,
+          slide-in var(--motion-slow) var(--ease-out),
           glow-pulse 1.4s ease infinite;
       }
       .toast-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 0.5rem;
+        gap: var(--sp-2);
       }
       .toast-title {
+        font-family: var(--font-display);
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: var(--fs-base);
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: var(--sp-1);
       }
       .toast-body {
         color: var(--text-dim);
-        font-size: 0.84rem;
-        margin-top: 0.2rem;
+        font-size: var(--fs-sm);
+        margin-top: var(--sp-1);
       }
       .toast-link {
         display: inline-block;
-        margin-top: 0.4rem;
-        font-size: 0.8rem;
+        margin-top: var(--sp-1);
+        font-size: var(--fs-sm);
       }
       .x {
         background: none;
         border: none;
         color: var(--text-faint);
         cursor: pointer;
-        font-size: 0.85rem;
+        font-size: var(--fs-sm);
         min-height: auto;
         padding: 0;
+        transition: color var(--motion-fast) var(--ease-out);
+      }
+      .x:hover {
+        color: var(--text);
       }
       .pulse {
         animation: blink 0.9s ease infinite;
@@ -117,10 +122,10 @@ import { NotificationService } from '../../core/services/notification.service';
       @keyframes glow-pulse {
         0%,
         100% {
-          box-shadow: var(--shadow);
+          box-shadow: var(--e2), var(--hairline-top);
         }
         50% {
-          box-shadow: 0 0 22px rgba(46, 230, 214, 0.45);
+          box-shadow: var(--glow-soft);
         }
       }
       @keyframes blink {

@@ -74,47 +74,61 @@ import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
     </section>
   `,
   styles: [`
-    .rank { display: flex; flex-direction: column; gap: 1rem; }
-    .rank-head { display: flex; align-items: center; gap: 0.8rem; }
+    .rank { display: flex; flex-direction: column; gap: var(--sp-4); }
+    .rank-head { display: flex; align-items: center; gap: var(--sp-3); }
     .head-ico { width: 44px; height: 44px; object-fit: contain; flex: 0 0 auto;
-      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5)); }
-    .rank-head h1 { margin: 0; font-size: 1.25rem; }
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6)); }
+    .rank-head h1 { margin: 0; font-family: var(--font-display); }
     .faint { color: var(--text-faint); }
-    .small { font-size: 0.82rem; }
-    .state { color: var(--text-dim); padding: 1.5rem 0; }
-    .state.err { color: #ff9b9b; }
+    .small { font-size: var(--fs-sm); }
+    .state { color: var(--text-dim); padding: var(--sp-6) 0; }
+    .state.err { color: var(--danger); }
 
-    .table-card { padding: 0.3rem 0.4rem; }
+    /* Datenreiche Tabelle: scanbares Raster, Zahlen tabular + rechtsbuendig. */
+    .table-card { padding: var(--sp-1) var(--sp-2); overflow: hidden; }
     .rrow {
       display: grid;
-      grid-template-columns: 2.6rem 1fr 5rem 4rem 4rem 4rem 4rem;
-      align-items: center; gap: 0.4rem;
-      padding: 0.4rem 0.5rem; border-radius: 6px;
+      grid-template-columns: 2.6rem minmax(0, 1fr) 5.5rem 4rem 4rem 4rem 4rem;
+      align-items: center; gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm);
     }
     .rrow.head {
-      font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase;
-      color: var(--text-dim); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 2;
+      font-family: var(--font-display);
+      font-size: var(--fs-xs); letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
     }
     .rrow:not(.head):nth-child(even) { background: rgba(255,255,255,0.02); }
+    .rrow:not(.head):hover { background: rgba(255,255,255,0.05); }
     .rrow.self {
-      background: rgba(46,230,214,0.12);
+      background: var(--accent-soft);
       box-shadow: inset 2px 0 0 var(--accent);
     }
-    .rrow.footer-me { margin-top: 0.4rem; border-top: 1px dashed var(--border); }
+    .rrow.self:hover { background: rgba(47,227,210,0.18); }
+    .rrow.footer-me { margin-top: var(--sp-2); border-top: 1px dashed var(--border-strong); }
+
     .c-rank { text-align: center; color: var(--text-dim); }
-    .c-name { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
-    .c-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .medal { font-size: 1rem; }
+    .c-name {
+      display: flex; align-items: center; gap: var(--sp-2); min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .rrow.self .c-name { color: var(--text); font-weight: 600; }
+    .medal { font-size: var(--fs-md); flex: 0 0 auto; }
     .you {
-      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em;
-      background: var(--accent); color: #06101e; padding: 1px 5px; border-radius: 99px;
+      font-family: var(--font-display);
+      font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.08em;
+      background: var(--accent); color: #04201d;
+      padding: 1px var(--sp-2); border-radius: var(--r-pill); font-weight: 600;
     }
     .c-pts { text-align: right; font-weight: 700; color: var(--accent); }
-    .c-cat { text-align: right; font-size: 0.82rem; }
+    .c-cat { text-align: right; font-size: var(--fs-sm); }
 
-    /* Mobil: Kategorie-Spalten ausblenden, nur Rang/Name/Punkte. */
+    /* Mobil: nur Rang/Name/Punkte, dafuer komfortable Touch-Hoehe (>=44px). */
     @media (max-width: 640px) {
-      .rrow { grid-template-columns: 2.2rem 1fr 4.5rem; }
+      .rrow { grid-template-columns: 2.2rem minmax(0, 1fr) 5rem; min-height: 44px; }
+      .rrow.head { min-height: 0; }
       .c-cat { display: none; }
     }
     .count { text-align: right; margin: 0; }

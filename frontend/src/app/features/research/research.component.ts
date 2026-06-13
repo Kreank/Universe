@@ -163,64 +163,23 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
   `,
   styles: [
     `
-      .sub { margin-top: -0.3rem; font-size: 0.85rem; }
+      .sub { margin-top: calc(-1 * var(--sp-1)); font-size: var(--fs-sm); }
+
+      /* Aktive Forschung — ruhiger Fokus-Banner (Glow dezent). */
       .active-banner {
         display: flex; align-items: center; justify-content: space-between;
-        gap: 1rem; margin-bottom: 1rem; border-color: var(--border-strong);
-        box-shadow: var(--glow);
+        gap: var(--sp-4); margin-bottom: var(--sp-4);
+        border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+        box-shadow: var(--e1), var(--glow-soft);
       }
-      .cat { margin-bottom: 0.7rem; }
-      .cat-title {
-        font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em;
-        color: #b9c6de; margin: 0 0 0.3rem;
-        padding-bottom: 0.45rem; border-bottom: 1px solid var(--border);
-      }
-      /* Zeilen-Layout: Art links, Infos mittig, Aktion rechts. */
-      .bld-list { display: flex; flex-direction: column; }
-      .bld-row {
-        display: flex; align-items: center; gap: 1rem;
-        padding: 0.75rem 0.25rem;
-        border-bottom: 1px solid rgba(255,255,255,0.06);
-      }
-      .bld-row:last-child { border-bottom: none; }
-      .bld-row.busy { box-shadow: inset 2px 0 0 var(--accent); }
+      .active-banner span { font-family: var(--font-display); font-size: var(--fs-base); }
 
-      /* Desktop: Kacheln statt Vollbreit-Zeilen (wie Gebaeude). */
-      @media (min-width: 900px) {
-        .bld-list {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-          gap: 0.1rem 1.4rem;
-        }
-        .bld-row { gap: 0.7rem; padding: 0.5rem 0.25rem; }
+      .building-badge {
+        font-family: var(--font-display);
+        font-size: var(--fs-xs); color: var(--accent);
+        text-transform: uppercase; letter-spacing: 0.08em;
       }
-      .bld-art { position: relative; flex: 0 0 auto; }
-      .clickable { cursor: pointer; }
-      .bld-art.clickable:hover { filter: brightness(1.15); }
-      .bld-name.clickable:hover { color: var(--accent); }
-      .info-dot { color: var(--text-faint); font-size: 0.8rem; }
-      .bld-name.clickable:hover .info-dot { color: var(--accent); }
-      .bld-art .lvl {
-        position: absolute; bottom: -5px; right: -5px;
-        min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px;
-        background: var(--accent); color: #04121a; font-size: 0.72rem; font-weight: 700;
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 0 8px var(--accent);
-      }
-      .bld-art .lvl.zero {
-        background: var(--surface-2); color: var(--text-dim);
-        box-shadow: none; border: 1px solid var(--border);
-      }
-      .bld-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
-      .bld-name { font-weight: 600; font-size: 0.95rem; }
-      .bld-stats { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
-      .bld-action {
-        flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end;
-        gap: 0.25rem; min-width: 128px; max-width: 190px;
-      }
-      .bld-action .btn { white-space: nowrap; }
-      .building-badge { font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
-      .small { font-size: 0.76rem; }
+      .small { font-size: var(--fs-xs); }
       .hint { color: var(--text-faint); text-align: right; }
       .hint.warn { color: var(--warn); }
     `,

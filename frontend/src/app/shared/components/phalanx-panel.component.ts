@@ -23,7 +23,7 @@ import { Coordinate, PhalanxMovement } from '../../core/models/api.models';
   host: { '(document:keydown.escape)': 'close.emit()' },
   template: `
     <div class="backdrop" (click)="close.emit()">
-      <div class="popup" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="popup glass" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
         <button class="x" type="button" (click)="close.emit()" aria-label="Schliessen">✕</button>
         <header class="head">
           <h2>📡 Sensorphalanx</h2>
@@ -59,22 +59,31 @@ import { Coordinate, PhalanxMovement } from '../../core/models/api.models';
   `,
   styles: [
     `
-      .backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(4,7,14,0.72); backdrop-filter: blur(4px); }
-      .popup { position: relative; width: 100%; max-width: 540px; max-height: 86vh; overflow-y: auto; background: linear-gradient(160deg, var(--surface-2), var(--surface)); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow), var(--glow); padding: 1.1rem 1.2rem 1.2rem; clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%); }
-      .x { position: absolute; top: 0.5rem; right: 0.6rem; width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer; }
-      .head { display: flex; align-items: baseline; gap: 0.6rem; padding-right: 2rem; margin-bottom: 0.6rem; }
-      .head h2 { margin: 0; font-size: 1.1rem; }
-      .coord { color: var(--accent); font-size: 0.9rem; }
+      .backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: var(--sp-4); background: rgba(4,7,14,0.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: fade var(--motion-fast) var(--ease-out); }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+      /* .glass (global) liefert Background/Blur/Border/Elevation; hier nur Layout + Signatur-Ecke. */
+      .popup { position: relative; width: 100%; max-width: 540px; max-height: 86vh; overflow-y: auto; border-radius: var(--r-lg); padding: var(--sp-5); clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%); animation: pop var(--motion-base) var(--ease-out); }
+      @keyframes pop { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+      .x { position: absolute; top: var(--sp-2); right: var(--sp-2); width: 32px; height: 32px; border-radius: var(--r-sm); background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out); }
+      .x:hover { color: var(--text); background: rgba(255,255,255,0.1); }
+      .head { display: flex; align-items: baseline; gap: var(--sp-2); padding-right: var(--sp-8); margin-bottom: var(--sp-2); }
+      .head h2 { margin: 0; font-size: var(--fs-lg); }
+      .coord { color: var(--accent); font-size: var(--fs-base); }
       .err { color: var(--warn); }
-      .mv { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.6rem; margin-top: 0.5rem; background: rgba(255,255,255,0.02); }
-      .mv.inc { border-color: var(--magenta-dim); background: rgba(255,64,160,0.06); }
-      .mv-top { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline; }
-      .dir { font-size: 0.78rem; color: var(--accent); }
-      .mv.inc .dir { color: var(--magenta); }
+      .mv { border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); margin-top: var(--sp-2); background: rgba(255,255,255,0.02); }
+      .mv.inc { border-color: var(--danger-dim); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+      .mv-top { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: baseline; }
+      .dir { font-size: var(--fs-sm); color: var(--accent); }
+      .mv.inc .dir { color: var(--danger); }
       .owner { font-weight: 600; }
-      .mission { color: var(--text-dim); font-size: 0.8rem; }
+      .mission { color: var(--text-dim); font-size: var(--fs-sm); }
       .ships { margin-left: auto; }
-      .mv-bot { color: var(--text-dim); margin-top: 0.25rem; }
+      .mv-bot { color: var(--text-dim); margin-top: var(--sp-1); }
+
+      @media (max-width: 560px) {
+        .backdrop { padding: var(--sp-2); }
+        .popup { max-width: 100%; max-height: 94vh; padding: var(--sp-4); }
+      }
     `,
   ],
 })

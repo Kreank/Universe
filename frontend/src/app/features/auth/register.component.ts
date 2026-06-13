@@ -10,7 +10,7 @@ import { authPanelStyles } from './auth.styles';
   imports: [FormsModule, RouterLink],
   template: `
     <div class="auth-wrap">
-      <div class="auth-card card">
+      <div class="auth-card glass">
         <div class="brand">
           <span class="logo">✦</span>
           <div>

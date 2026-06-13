@@ -172,59 +172,27 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
   `,
   styles: [
     `
-      .sub { margin-top: -0.3rem; font-size: 0.85rem; }
-      .queue { margin-bottom: 1.2rem; }
+      /* Unterzeile unter dem Titel. */
+      .sub { margin-top: calc(-1 * var(--sp-1)); font-size: var(--fs-sm); }
+
+      /* Bauschleifen-Panel (nutzt globale .card / .panel-title). */
+      .queue { margin-bottom: var(--sp-4); }
       .queue-row {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 0.4rem 0; font-size: 0.88rem; border-bottom: 1px solid rgba(255,255,255,0.05);
+        gap: var(--sp-3);
+        padding: var(--sp-2) 0; font-size: var(--fs-sm);
+        border-bottom: 1px solid var(--border);
       }
       .queue-row:last-child { border-bottom: none; }
-      .cat { margin-bottom: 0.7rem; }
-      .cat-title {
-        font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em;
-        color: #b9c6de; margin: 0 0 0.3rem;
-        padding-bottom: 0.45rem; border-bottom: 1px solid var(--border);
-      }
-      /* Zeilen-Layout: Art links, Infos mittig, Aktion rechts. */
-      .bld-list { display: flex; flex-direction: column; }
-      .bld-row {
-        display: flex; align-items: center; gap: 1rem;
-        padding: 0.75rem 0.25rem;
-        border-bottom: 1px solid rgba(255,255,255,0.06);
-      }
-      .bld-row:last-child { border-bottom: none; }
 
-      /* Desktop: Kacheln statt Vollbreit-Zeilen (wie Gebaeude). */
-      @media (min-width: 900px) {
-        .bld-list {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-          gap: 0.1rem 1.4rem;
-        }
-        .bld-row { gap: 0.7rem; padding: 0.5rem 0.25rem; }
-      }
-      .bld-art { position: relative; flex: 0 0 auto; }
-      .clickable { cursor: pointer; }
-      .bld-art.clickable:hover { filter: brightness(1.15); }
-      .bld-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
-      .bld-name { font-weight: 600; font-size: 0.95rem; }
-      .bld-name.clickable:hover { color: var(--accent); }
-      .info-dot { color: var(--text-faint); font-size: 0.8rem; }
-      .bld-name.clickable:hover .info-dot { color: var(--accent); }
-      .bld-stats { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
-      .combat-stats { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-      .cchip {
-        font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 6px;
-        background: rgba(255,255,255,0.05); color: #b9c6de; white-space: nowrap;
-      }
-      .bld-action {
-        flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end;
-        gap: 0.25rem; min-width: 134px; max-width: 200px;
-      }
-      .qty-row { display: flex; gap: 0.4rem; align-items: center; }
+      .small { font-size: var(--fs-xs); }
+
+      /* Mengen-Eingabe + Bauen-Button in der Kachel-Aktion. */
+      .qty-row { display: flex; gap: var(--sp-2); align-items: center; }
       .qty-row input { width: 56px; flex: 0 0 auto; text-align: center; }
       .qty-row .btn { flex: 0 0 auto; white-space: nowrap; }
-      .small { font-size: 0.76rem; }
+
+      /* Hinweistexte unter der Aktion. */
       .hint { color: var(--text-faint); text-align: right; }
       .hint.warn { color: var(--warn); }
     `,
