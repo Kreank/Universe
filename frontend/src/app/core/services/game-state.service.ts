@@ -42,6 +42,10 @@ export class GameStateService {
   readonly planets = signal<Planet[]>([]);
   readonly activePlanetId = signal<string | null>(null);
   readonly activePlanet = signal<PlanetDetail | null>(null);
+  /** Zeitstempel (ms), wann die Ressourcen von activePlanet zuletzt vom Backend kamen.
+   * Basis fuer die sekundengenaue 1:1-Hochrechnung in der Ressourcen-Leiste (gleiche Formel
+   * wie das Backend -> die Anzeige stimmt mit dem echten Bestand ueberein). */
+  readonly resourcesAt = signal(0);
   readonly fleets = signal<Fleet[]>([]);
   readonly commanders = signal<Commander[]>([]);
   readonly span = signal<SpanInfo | null>(null);
@@ -122,6 +126,7 @@ export class GameStateService {
     }
     const detail = await this.firstValue(this.api.getPlanet(id));
     this.activePlanet.set(detail);
+    this.resourcesAt.set(Date.now());
   }
 
   async reloadFleets(): Promise<void> {
@@ -182,6 +187,7 @@ export class GameStateService {
     this.ws.on<WsResourceTick>('resource_tick').subscribe((msg) => {
       if (msg.planet_id === this.activePlanetId()) {
         this.activePlanet.update((p) => (p ? { ...p, resources: msg.resources } : p));
+        this.resourcesAt.set(Date.now());
       }
     });
 

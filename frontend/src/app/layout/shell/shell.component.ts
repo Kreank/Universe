@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -41,7 +41,7 @@ interface NavGroup {
             >
               <img class="res-icon" src="assets/img/resources/{{ r.key }}.png" alt="" />
               <div class="res-meta">
-                <span class="res-amount mono">{{ r.amount | shortNumber }}</span>
+                <span class="res-amount mono">{{ r.display }}</span>
                 <div class="bar" [class.full]="r.pct >= 100">
                   <span class="fill" [style.width.%]="r.pct"></span>
                 </div>
@@ -167,11 +167,15 @@ interface NavGroup {
   `,
   styles: [shellStyles],
 })
-export class ShellComponent implements OnInit {
+export class ShellComponent implements OnInit, OnDestroy {
   protected readonly state = inject(GameStateService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly doc = inject(DOCUMENT);
+
+  /** 1-Sekunden-Takt fuer die sekundengenaue Ressourcen-Hochrechnung. */
+  protected readonly nowMs = signal(Date.now());
+  private resTicker?: ReturnType<typeof setInterval>;
 
   constructor() {
     // Screen-spezifischen (statischen) Hintergrund setzen: body[data-screen] = erstes Routen-Segment
@@ -220,20 +224,30 @@ export class ShellComponent implements OnInit {
 
   protected readonly resourceRows = computed(() => {
     const res = this.state.activePlanet()?.resources;
+    // Sekundengenaue 1:1-Hochrechnung: gleiche Lazy-Formel wie das Backend
+    // (amount + rate/h * verstrichene Stunden, gedeckelt auf Kapazitaet). Die Anzeige stimmt
+    // damit mit dem ECHTEN Backend-Bestand ueberein -> kein "zeigt genug, baut aber nicht" mehr.
+    const elapsedH = Math.max(0, (this.nowMs() - this.state.resourcesAt()) / 3_600_000);
     const keys: ('metal' | 'crystal' | 'deuterium')[] = ['metal', 'crystal', 'deuterium'];
     return keys.map((key) => {
       const pool = res?.[key];
-      const amount = pool?.amount ?? 0;
+      const base = pool?.amount ?? 0;
       const capacity = pool?.capacity ?? 0;
       const rate = pool?.rate ?? 0;
+      let amount = base + rate * elapsedH;
+      if (capacity > 0) {
+        amount = Math.min(capacity, amount);
+      }
+      amount = Math.max(0, amount);
       const pct = capacity > 0 ? Math.min(100, (amount / capacity) * 100) : 0;
       return {
         key,
         glyph: RESOURCE_META[key].glyph,
-        amount,
+        // ABRUNDEN (nie aufrunden) + exakte Zahl mit Tausenderpunkten -> 1:1, nie ueber dem Bestand.
+        display: Math.floor(amount).toLocaleString('de-DE'),
         rate,
         pct,
-        tip: `${RESOURCE_META[key].label}\n${Math.floor(amount)} / ${Math.floor(capacity)}\nRate: ${rate.toFixed(0)}/h`,
+        tip: `${RESOURCE_META[key].label}\n${Math.floor(amount).toLocaleString('de-DE')} / ${Math.floor(capacity).toLocaleString('de-DE')}\nRate: ${rate.toFixed(0)}/h`,
       };
     });
   });
@@ -252,6 +266,14 @@ export class ShellComponent implements OnInit {
 
   ngOnInit(): void {
     void this.state.bootstrap();
+    // Sekundentakt fuer die Live-Hochrechnung der Ressourcen-Leiste.
+    this.resTicker = setInterval(() => this.nowMs.set(Date.now()), 1000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.resTicker) {
+      clearInterval(this.resTicker);
+    }
   }
 
   onPlanetChange(event: Event): void {
