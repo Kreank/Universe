@@ -11,6 +11,7 @@ class MegaCostOut(BaseModel):
     crystal: float = 0
     deuterium: float = 0
     dark_matter: float = 0
+    antimatter: float = 0
 
 
 class MegastructureOptionOut(BaseModel):

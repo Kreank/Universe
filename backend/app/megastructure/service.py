@@ -101,10 +101,10 @@ async def options(session: AsyncSession, player) -> list[dict]:
         level = levels.get(mtype, 0)
         maxed = level >= int(cfg.get("max_level", 99))
         cost = stage_cost(cfg, level)
-        dm_cost = cost.get("dark_matter", 0)
         can_afford = res is not None and not maxed and all(
             res[r]["amount"] + 1e-6 >= cost.get(r, 0) for r in ("metal", "crystal", "deuterium")
-        ) and float(player.dark_matter or 0) + 1e-6 >= dm_cost
+        ) and float(player.dark_matter or 0) + 1e-6 >= cost.get("dark_matter", 0) \
+            and float(player.antimatter or 0) + 1e-6 >= cost.get("antimatter", 0)
         out.append({
             "type": mtype,
             "name": cfg.get("name", mtype),
@@ -145,8 +145,11 @@ async def start_build(session: AsyncSession, player, mtype: str) -> Megastructur
 
     cost = stage_cost(cfg, level)
     dm_cost = float(cost.get("dark_matter", 0))
+    am_cost = float(cost.get("antimatter", 0))
     if float(player.dark_matter or 0) + 1e-6 < dm_cost:
         raise RuntimeError("Nicht genug Dunkle Materie")
+    if float(player.antimatter or 0) + 1e-6 < am_cost:
+        raise RuntimeError("Nicht genug Antimaterie")
     home = await _homeworld(session, player.id)
     if home is None:
         raise RuntimeError("Kein Heimatplanet")
@@ -154,6 +157,7 @@ async def start_build(session: AsyncSession, player, mtype: str) -> Megastructur
     if not await spend_resources(session, home, res_cost):
         raise RuntimeError("Nicht genug Ressourcen")
     player.dark_matter = float(player.dark_matter or 0) - dm_cost
+    player.antimatter = float(player.antimatter or 0) - am_cost
 
     if row is None:
         row = Megastructure(player_id=player.id, type=mtype, level=0)

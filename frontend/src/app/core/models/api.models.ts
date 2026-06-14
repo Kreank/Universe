@@ -680,6 +680,7 @@ export interface MegastructureCost {
   crystal: number;
   deuterium: number;
   dark_matter: number;
+  antimatter: number;
 }
 
 export interface MegastructureOption {

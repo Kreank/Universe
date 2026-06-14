@@ -263,7 +263,8 @@
     "armor_per_level": 0.10,
     "weapons_mastery_per_level": 0.01,
     "shield_mastery_per_level": 0.01,
-    "armor_mastery_per_level": 0.01
+    "armor_mastery_per_level": 0.01,
+    "weapons_forge_per_level": 0.03
   },
 
   "combat": {
@@ -828,6 +829,17 @@
       "effect": "mining_speed",
       "effect_per_level": 0.05,
       "blurb": "Saugt Materie aus dem Orbit: +5% Minen-Foerderung aller Planeten je Stufe."
+    },
+    "antimatter_forge": {
+      "name": "Antimaterie-Schmiede",
+      "max_level": 5,
+      "cost_base": { "metal": 400000, "crystal": 400000, "deuterium": 200000, "antimatter": 1500 },
+      "cost_growth": 2.0,
+      "build_hours_base": 30,
+      "build_hours_growth": 1.8,
+      "effect": "weapons_boost",
+      "effect_per_level": 0.03,
+      "blurb": "Antimaterie-befeuerte Waffenschmiede: +3% Angriff aller Einheiten je Stufe (imperiumsweit, Angriff UND Verteidigung)."
     }
   }
 }

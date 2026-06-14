@@ -164,6 +164,11 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     # Volles Forschungs-Dict an die Engine: deckt Waffen/Schild/Panzerung UND die
     # forschungs-skalierten Kampf-Techs (ion_disruptors, boarding_doctrine, …) ab.
     atk_tech = dict(atk_research)
+    # Megastruktur Antimaterie-Schmiede: imperiumsweiter Angriffsbonus in die Engine.
+    from app.megastructure.service import megastructure_levels
+    atk_tech["antimatter_forge"] = (
+        await megastructure_levels(session, fleet.player_id)
+    ).get("antimatter_forge", 0)
     attack_mult = _commander_mods(commander, len(attacker_ships))
     # Doktrin-Bonus (z. B. Kriegsherr +10 % Waffenschaden) flottenweit.
     from app.platform.doctrine import combat_attack_mult
@@ -292,6 +297,10 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         def_defenses = {r.type: r.count for r in def_rows if r.count > 0}
         d_research = await get_research_levels(session, def_player.id)
         def_tech = dict(d_research)
+        from app.megastructure.service import megastructure_levels
+        def_tech["antimatter_forge"] = (
+            await megastructure_levels(session, def_player.id)
+        ).get("antimatter_forge", 0)
         # Mond-Gebaeude verteidigen mit: beim Mond-Angriff der Mond SELBST (Orbitalbatterie/Schildkuppel),
         # sonst der Mond unterstuetzt seinen Planeten.
         if target_moon:
@@ -327,6 +336,10 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         # npc/attack.py) setzen die Verteidiger-Tech ebenfalls korrekt.
         if defender_player_id is not None:
             def_tech = dict(await get_research_levels(session, defender_player_id))
+            from app.megastructure.service import megastructure_levels
+            def_tech["antimatter_forge"] = (
+                await megastructure_levels(session, defender_player_id)
+            ).get("antimatter_forge", 0)
 
     seed = random.randrange(1, 2 ** 62)
     attacker = {

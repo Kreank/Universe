@@ -198,6 +198,51 @@ Es gibt **zwei** Asset-Wurzeln:
 
 ---
 
+## 🌌 Endgame-Forschung & Megastrukturen (2026-06-14, live)
+
+> Neues Endgame-System (Forschungs-„Endgame"-Tab, Megastruktur-Screen, exotische Ressourcen).
+> Verdrahtung steht & ist live — zeigt bis zu den Assets den Emoji-/Glyph-Fallback.
+> **Gemeinsamer Stil (alle Einträge hier):** modern-cinematic Sci-Fi, EIN klares Zentralmotiv,
+> dunkler Grund (sitzt auf `#080d18`), Akzent **cyan `#2fe3d2`**, Gefahr/Militär darf **magenta
+> `#ff4d7d`** nutzen; KEIN Text, transparenter Hintergrund. Komposition exakt wie die jeweils
+> vorhandenen Nachbar-Assets (`tech/*.png`, `icons/nav/*.png`, `icons/resources/*.png`,
+> `buildings/*.png`).
+
+### Forschungs-Icons (neuer „Endgame"-Tab) — referenziert als `assets/img/tech/<name>.png`
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | research_network | `tech/research_network.png` | PNG transparent, 256×256 | Intergalaktisches Forschungsnetzwerk: mehrere vernetzte Labor-/Planeten-Knoten, durch leuchtende cyan Datenlinien zu einem Netz (Konstellations-Anmutung) verbunden. Stil wie vorhandene `tech/*.png`. |
+| ⬜ | terraforming | `tech/terraforming.png` | PNG transparent, 256×256 | Terraforming: ein Planet halb kahl / halb begrünt, umgebender Atmosphären-Prozessor-Ring, dezente Andeutung neu entstehender Bauplatz-Raster. |
+| ⬜ | extraction_tech | `tech/extraction_tech.png` | PNG transparent, 256×256 | Fördertechnik: stilisierter Bohr-/Förderkopf mit aufsteigendem Erz-/Kristallstrom + kleiner Effizienz-Pfeil nach oben. |
+| ⬜ | extraction_mastery | `tech/extraction_mastery.png` | PNG transparent, 256×256 | Förder-Meisterschaft (wiederholbar): wie `extraction_tech`, aber mit dezenter **Unendlich-/Loop-Ring**-Andeutung (endlose Verfeinerung) + leicht edlerem (goldenem) Akzent. **Gemeinsames „repeatable"-Erkennungsmerkmal: der ∞-Ring.** |
+| ⬜ | weapons_mastery | `tech/weapons_mastery.png` | PNG transparent, 256×256 | Waffen-Meisterschaft (wiederholbar): Zielkreuz/Waffenkern mit aufsteigenden Stufen-Chevrons + **∞-Ring** (repeatable-Merkmal). |
+| ⬜ | shield_mastery | `tech/shield_mastery.png` | PNG transparent, 256×256 | Schild-Meisterschaft (wiederholbar): Schildemblem mit pulsierenden Verstärkungsringen + **∞-Ring** (repeatable-Merkmal). |
+| ⬜ | armor_mastery | `tech/armor_mastery.png` | PNG transparent, 256×256 | Panzerungs-Meisterschaft (wiederholbar): geschichtete Verbundpanzer-Platten + **∞-Ring** (repeatable-Merkmal). |
+
+### Navigations-Icon — referenziert als `assets/img/nav/megastructures.png`
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | megastructures (nav) | `icons/nav/megastructures.png` | PNG transparent, 256×256 (~24px lesbar) | Nav-Icon „Megastrukturen": kolossale Orbitalstruktur als schlichte Silhouette — Ring-/Dyson-Segment um einen kleinen Stern/Planeten, cyan Akzent. Stil wie vorhandene `nav/*.png`. |
+
+### Megastruktur-Artworks — NEUER Ordner `megastructures/` (Master `assets/megastructures/`, Spiegel `frontend/src/assets/img/megastructures/`)
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | research_nexus | `megastructures/research_nexus.png` | PNG transparent, 512×512 | Forschungs-Nexus: gigantische orbitale Forschungsstation, konzentrische Ringe mit cyan Datenströmen, im Zentrum ein leuchtender Wissens-Kern. Cinematic wie `buildings/*`. |
+| ⬜ | matter_decompressor | `megastructures/matter_decompressor.png` | PNG transparent, 512×512 | Materie-Dekompressor: riesige Trichter-/Akkretions-Struktur, die Materie aus einem dunklen Punkt (Andeutung Schwarzes Loch) saugt; Erz-/Materie-Ströme spiralen hinein. |
+| ⬜ | antimatter_forge | `megastructures/antimatter_forge.png` | PNG transparent, 512×512 | Antimaterie-Schmiede (militärisch, bedrohlich): martialische Orbital-Waffenschmiede, eingeschlossener Antimaterie-Kern mit **magenta `#ff4d7d`** Glühen in Magnet-Eindämmungsringen, Energiebögen/Funken. |
+
+### Ressourcen-Icons (exotisch) — referenziert als `assets/img/resources/<name>.png`
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | dark_matter | `icons/resources/dark_matter.png` | PNG transparent, 256×256 | Dunkle Materie (zivil/Forschung): tief-violette, gewundene Void-/Energiekugel mit leichter Gravitations-Verzerrung ringsum; **kühl, ruhig-mysteriös**. Muss klar von Antimaterie unterscheidbar sein. Stil wie `resources/metal|crystal|deuterium`. |
+| ⬜ | antimatter | `icons/resources/antimatter.png` | PNG transparent, 256×256 | Antimaterie (militärisch/Energie): instabil glühender Energiekern in einem Magnet-Eindämmungsfeld (Ringe), **heiß, aggressiv magenta `#ff4d7d`**, „gefährlich/energetisch". Muss klar von Dunkler Materie unterscheidbar sein. |
+
+---
+
 ## 🗒️ Notizen für Codex
 
 - Optional/später (noch NICHT verdrahtet, daher keine aktive Anforderung): Regions-Hintergründe

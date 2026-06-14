@@ -41,7 +41,12 @@ import { NotificationService } from '../../core/services/notification.service';
               <span>🔩 {{ m.cost.metal | number: '1.0-0' }}</span>
               <span>💎 {{ m.cost.crystal | number: '1.0-0' }}</span>
               <span>🛢️ {{ m.cost.deuterium | number: '1.0-0' }}</span>
-              <span class="dm">🌑 {{ m.cost.dark_matter | number: '1.0-0' }}</span>
+              @if (m.cost.dark_matter > 0) {
+                <span class="dm">🌑 {{ m.cost.dark_matter | number: '1.0-0' }}</span>
+              }
+              @if (m.cost.antimatter > 0) {
+                <span class="am">⚛️ {{ m.cost.antimatter | number: '1.0-0' }}</span>
+              }
             </div>
 
             @if (m.building_until) {
@@ -84,6 +89,7 @@ import { NotificationService } from '../../core/services/notification.service';
       .blurb { font-size: var(--fs-sm); color: var(--text-faint); flex: 1; }
       .cost { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); }
       .cost .dm { color: var(--accent); }
+      .cost .am { color: var(--warn); }
       .full { width: 100%; }
       .status { font-family: var(--font-display); font-size: var(--fs-sm); text-align: center; padding: var(--sp-2); }
       .building-status { color: var(--accent); }

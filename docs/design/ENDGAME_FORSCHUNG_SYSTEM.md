@@ -190,9 +190,15 @@ für IGFN/Repeatables/Exotik-Techs, damit der Frühspieler nicht erschlagen wird
   als Anti-Snowball-Bremse** (`fleet/upkeep.py`, stündlicher Job, diskret — kein Eingriff in
   die Lazy-Accrual): über der Versorgungskapazität (`supply_base + supply_per_planet`)
   kosten Schiffe Deuterium; Neulinge zahlen nie, nur Veteranen-Großflotten. 4 Tests.
-  - **Offen (Phase 4b):** Sprung-Erschöpfung, Kolossal-Schicht (Flaggschiff-Aura/mobile
-    Werft/Planetenzerstörer), Schiffs-Module/Subsysteme, Superwaffen-Verwundbarkeitsfenster,
-    **Antimaterie-Sink** (Top-Schiff-Module/Reaktor). Spec in §5/§6.
+  - **Antimaterie-Sink ✅ FERTIG & getestet:** Megastruktur **`antimatter_forge`**
+    (Antimaterie-Schmiede) — kostet Antimaterie, +3 % Angriff/Stufe imperiumsweit
+    (Engine-Term `weapons_forge_per_level`, in `combat/service.py` für Angreifer + beide
+    Verteidiger-Pfade injiziert). 2 Tests (inkl. Sim). Megastruktur-Engine spendet jetzt
+    Dunkle Materie UND Antimaterie.
+  - **Offen (Phase 4c):** Sprung-Erschöpfung, Kolossal-Schicht (Flaggschiff-**Aura**/mobile
+    Werft/Planetenzerstörer — Aura braucht eigenes Engine-Design), Schiffs-Module/Subsysteme,
+    Superwaffen-Verwundbarkeitsfenster. Spec in §5/§6. Bewusst NICHT eilig nachgezogen
+    (PvP-Balance-sensibel).
 
 Jede Phase: balance.json + Backend-Verdrahtung + Frontend-Anzeige + Tests + Deploy,
 nach dem Dev-Loop in `project_universe_devloop`.
