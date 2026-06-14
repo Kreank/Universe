@@ -63,26 +63,14 @@ Es gibt **zwei** Asset-Wurzeln:
 > KEIN Text, KEINE UI-Elemente, kein harter Fokuspunkt im Zentrum. Ablage in `assets/backgrounds/`
 > UND `frontend/src/assets/img/backgrounds/`; Referenz als `assets/img/backgrounds/<name>.jpg`.
 
-### 🎬 Bewegte Hintergründe (Loop-Videos) — ❌ VERWORFEN
+### 🎬 Bewegte Hintergründe (Loop-Videos) — ❌ VERWORFEN, Dateien entfernt
 
-> **NICHT mehr bauen / nicht weiter verfolgen.** Vollbild-Loop-Video als Hintergrund ruckelte hinter
-> der Glas-UI (`backdrop-filter`-Leisten zeichnen das bewegte Bild jeden Frame neu). **Hintergründe
-> bleiben statische Bilder.** Die bereits gelieferten Dateien bleiben ungenutzt liegen (kein Problem).
-
-| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
-|:---:|---|---|---|---|
-| ✅ | login | `backgrounds/` (.webm **und** .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `login.jpg`** (Poster bleibt login.jpg). Sehr langsamer, edler Loop: driftende Sterne + leicht waberndes Nebel-Leuchten + minimaler Kamera-Push (Parallax). IM CODE BEREITS VERDRAHTET (Login-Screen). |
-| ✅ | dashboard | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `dashboard.jpg`** (globaler App-Backdrop). Dezente Sternendrift + sanftes Nebel-Pulsieren, ruhige dunkle Mitte. |
-| ✅ | bg_combat | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `bg_combat.jpg`**: ferne Explosions-Glut flackert leise an den Rändern, Wrackteile driften langsam, Funken. Mitte ruhig/dunkel. |
-| ✅ | system_view | `backgrounds/` (.webm + .mp4) | webm VP9 + mp4 H.264 | **Animierte Version von `system_view.png`** (Galaxie-Ansicht): langsamer Scanner-/Radar-Sweep + Sternendrift. |
-
-> **Format-/Stil-Brief für ALLE Loop-Videos:** nahtloser Loop ~8–12 s, 1920×1080, **Zielgröße ≤ ~2–3 MB**
-> je Datei (niedrige Bitrate — dunkle Szenen komprimieren gut). IMMER als Paar **`<name>.webm` (VP9)
-> + `<name>.mp4` (H.264)** liefern; das gleichnamige Standbild (`.jpg`/`.png`) bleibt als Poster/Fallback.
-> **Sehr langsame, subtile Bewegung; dunkel; ruhige/dunkle Mitte** (dort liegt der Inhalt) — Bewegung nur
-> an Rändern/oben (driftende Sterne/Nebel/Funken). **KEIN schnelles Flackern, kein harter Schnitt, kein
-> Text/UI.** Optisch = das Standbild, nur „lebendig". Ablage wie die bg_*: `assets/backgrounds/` UND
-> `frontend/src/assets/img/backgrounds/`.
+> **NICHT bauen / nicht verdrahten.** Vollbild-Loop-Video als Hintergrund ruckelte hinter der Glas-UI
+> (`backdrop-filter`-Leisten zeichnen das bewegte Bild jeden Frame neu). **Hintergründe bleiben statische
+> Bilder.** Die testweise gelieferten `.webm`/`.mp4`-Dateien (login/dashboard/bg_combat/system_view in
+> `assets/backgrounds/` **und** `frontend/src/assets/img/backgrounds/`) wurden am **2026-06-14 gelöscht**
+> (gefielen dem Nutzer nicht). Der Nutzer erstellt Videos ggf. anderweitig und liefert sie dann separat —
+> bis dahin hier KEINE Loop-Video-Assets anfordern oder einbinden.
 
 ### ✨ FX-Overlay-Loops (transparent) — ❌ ZURÜCKGESTELLT (nicht bauen)
 
