@@ -35,15 +35,13 @@ import { resourceIcon } from '../../core/models/icon-assets';
       <div class="mega-grid">
         @for (m of structures(); track m.type) {
           <div class="card mega" [class.building]="m.building_until">
+            <div class="art-banner">
+              <span class="glyph">🌌</span>
+              <img [src]="megaIcon(m.type)" alt="" class="art" (error)="$any($event.target).remove()" />
+            </div>
             <div class="mega-head">
-              <span class="art-wrap">
-                <span class="glyph">🌌</span>
-                <img [src]="megaIcon(m.type)" alt="" class="art" (error)="$any($event.target).remove()" />
-              </span>
-              <div>
-                <h3>{{ m.name }}</h3>
-                <span class="lvl">Stufe {{ m.level }}<span class="muted"> / {{ m.max_level }}</span></span>
-              </div>
+              <h3>{{ m.name }}</h3>
+              <span class="lvl">Stufe {{ m.level }}<span class="muted"> / {{ m.max_level }}</span></span>
             </div>
             <p class="blurb">{{ m.blurb }}</p>
 
@@ -91,14 +89,19 @@ import { resourceIcon } from '../../core/models/icon-assets';
       .exotic-bar { display: flex; gap: var(--sp-5); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); }
       .exotic-bar span { display: inline-flex; align-items: center; gap: var(--sp-2); }
       .res-ic { width: 22px; height: 22px; object-fit: contain; }
-      .art-wrap { position: relative; width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
-      .art-wrap .glyph { font-size: 2rem; }
-      .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
       .mega-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); }
       .mega { display: flex; flex-direction: column; gap: var(--sp-3); }
       .mega.building { border-color: color-mix(in srgb, var(--accent) 40%, transparent); box-shadow: var(--e1), var(--glow-soft); }
-      .mega-head { display: flex; align-items: center; gap: var(--sp-3); }
-      .mega-head .glyph { font-size: 1.8rem; }
+      .art-banner {
+        position: relative; width: 100%; height: 160px;
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: var(--sp-2);
+        border-radius: var(--radius, 10px);
+        background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
+      }
+      .art-banner .glyph { font-size: 3.2rem; position: absolute; opacity: 0.5; }
+      .art-banner .art { max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 1; filter: drop-shadow(0 4px 14px rgba(0,0,0,0.45)); }
+      .mega-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
       .mega-head h3 { margin: 0; font-family: var(--font-display); }
       .lvl { font-size: var(--fs-sm); }
       .blurb { font-size: var(--fs-sm); color: var(--text-faint); flex: 1; }
