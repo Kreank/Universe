@@ -13,6 +13,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
 from app.platform.models import AsteroidField, Fleet, Ship
 from app.universe.asteroids import mine_from_field, regen_field
@@ -78,6 +79,13 @@ async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
 
     if field is None:
         log.info("Mining @ %s -> kein Asteroidenfeld (%d Bergbauschiffe leer zurueck)", location, miners)
+        await create_system_transmission(
+            session, player_id=fleet.player_id,
+            subject=f"Bergbau: kein Asteroidenfeld ({location})",
+            body=(f"Deine Bergbauflotte erreichte {location}, fand dort aber KEIN Asteroidenfeld. "
+                  f"Es wurde nichts gefoerdert; die Flotte kehrt leer zurueck. Pruefe in der Galaxie-Ansicht, "
+                  f"ob am Ziel wirklich ein Asteroidenfeld liegt."),
+        )
         return {"location": location, "mined": {"metal": 0.0, "crystal": 0.0}, "note": "kein_asteroidenfeld"}
 
     # Lazy-Regeneration vor der Foerderung anwenden.
@@ -97,6 +105,21 @@ async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
 
     log.info("Mining @ %s [%s] -> %s (%d Bergbauschiffe, Rest m=%.0f k=%.0f)",
              location, field.richness, gained, miners, new_metal, new_crystal)
+
+    total = gained["metal"] + gained["crystal"]
+    if total > 0:
+        subject = f"Bergbau erfolgreich ({location})"
+        body = (f"Deine Bergbauschiffe foerderten am Asteroidenfeld {location} ({field.richness}): "
+                f"{int(gained['metal'])} Metall + {int(gained['crystal'])} Kristall. Die Flotte kehrt mit der "
+                f"Fracht zurueck (wird bei Ankunft dem Heimatplaneten gutgeschrieben). "
+                f"Feld-Restvorrat: {int(new_metal)} Metall, {int(new_crystal)} Kristall.")
+    else:
+        subject = f"Bergbau: Feld erschoepft ({location})"
+        body = (f"Das Asteroidenfeld {location} ({field.richness}) ist derzeit erschoepft — es wurde nichts "
+                f"gefoerdert. Asteroidenfelder regenerieren mit der Zeit; spaeter erneut versuchen.")
+    await create_system_transmission(
+        session, player_id=fleet.player_id, subject=subject, body=body,
+    )
     return {
         "location": location,
         "richness": field.richness,
