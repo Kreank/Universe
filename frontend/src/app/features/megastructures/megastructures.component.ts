@@ -5,6 +5,7 @@ import { GameStateService } from '../../core/services/game-state.service';
 import { MegastructureListResponse, MegastructureOption } from '../../core/models/api.models';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { NotificationService } from '../../core/services/notification.service';
+import { resourceIcon } from '../../core/models/icon-assets';
 
 @Component({
   selector: 'app-megastructures',
@@ -18,8 +19,14 @@ import { NotificationService } from '../../core/services/notification.service';
     </p>
 
     <div class="exotic-bar card">
-      <span>🌑 Dunkle Materie: <strong>{{ darkMatter() | number: '1.0-0' }}</strong></span>
-      <span>⚛️ Antimaterie: <strong>{{ antimatter() | number: '1.0-0' }}</strong></span>
+      <span>
+        <img class="res-ic" [src]="resIcon('dark_matter')" alt="" />
+        Dunkle Materie: <strong>{{ darkMatter() | number: '1.0-0' }}</strong>
+      </span>
+      <span>
+        <img class="res-ic" [src]="resIcon('antimatter')" alt="" />
+        Antimaterie: <strong>{{ antimatter() | number: '1.0-0' }}</strong>
+      </span>
     </div>
 
     @if (loading()) {
@@ -29,7 +36,10 @@ import { NotificationService } from '../../core/services/notification.service';
         @for (m of structures(); track m.type) {
           <div class="card mega" [class.building]="m.building_until">
             <div class="mega-head">
-              <span class="glyph">🌌</span>
+              <span class="art-wrap">
+                <span class="glyph">🌌</span>
+                <img [src]="megaIcon(m.type)" alt="" class="art" (error)="$any($event.target).remove()" />
+              </span>
               <div>
                 <h3>{{ m.name }}</h3>
                 <span class="lvl">Stufe {{ m.level }}<span class="muted"> / {{ m.max_level }}</span></span>
@@ -79,6 +89,11 @@ import { NotificationService } from '../../core/services/notification.service';
     `
       .sub { margin-top: calc(-1 * var(--sp-1)); font-size: var(--fs-sm); }
       .exotic-bar { display: flex; gap: var(--sp-5); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); }
+      .exotic-bar span { display: inline-flex; align-items: center; gap: var(--sp-2); }
+      .res-ic { width: 22px; height: 22px; object-fit: contain; }
+      .art-wrap { position: relative; width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+      .art-wrap .glyph { font-size: 2rem; }
+      .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
       .mega-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); }
       .mega { display: flex; flex-direction: column; gap: var(--sp-3); }
       .mega.building { border-color: color-mix(in srgb, var(--accent) 40%, transparent); box-shadow: var(--e1), var(--glow-soft); }
@@ -108,6 +123,9 @@ export class MegastructuresComponent {
   private readonly data = signal<MegastructureListResponse | null>(null);
   protected readonly loading = signal(true);
   protected readonly pending = signal<string | null>(null);
+
+  protected readonly resIcon = resourceIcon;
+  megaIcon = (type: string) => `assets/img/megastructures/${type}.png`;
 
   protected readonly structures = computed(() => this.data()?.structures ?? []);
   protected readonly darkMatter = computed(() => this.data()?.dark_matter ?? 0);
