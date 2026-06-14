@@ -48,6 +48,7 @@ class Unit:
     stealth: bool = False
     carrier: bool = False
     sensor: bool = False
+    stabilizer: bool = False
     launched: bool = False  # vom Traeger gestartete Drohne (ephemer, zaehlt nicht als Schiff)
     hull: float = 0.0
     shield: float = 0.0
@@ -123,7 +124,7 @@ def _build_units(
                 bool(prof.get("interdictor", False)), bool(prof.get("boarder", False)),
                 bool(prof.get("point_defense", False)), bool(prof.get("shield_projector", False)),
                 bool(prof.get("stealth", False)), bool(prof.get("carrier", False)),
-                bool(prof.get("sensor", False)),
+                bool(prof.get("sensor", False)), bool(prof.get("stabilizer", False)),
             ))
     # Option A (2026-06-10): Traeger starten KEINE ephemeren Drohnen mehr. Drohnen sind
     # echte Schiffe, die der Traeger beim Flottenstart aus der Garnison mitlaedt
@@ -230,6 +231,7 @@ def simulate_battle(
     dis_base = dis.get("base_chance", 0.45)
     interdiction_per = dis.get("interdiction_per_unit", 0.2)
     interdiction_cap = dis.get("interdiction_cap", 1.0)
+    stabilization_per = dis.get("stabilization_per_unit", 0.0)
     # Standardmaessig darf der Angreifer fliehen (Rueckzug), der Verteidiger nicht (haelt Stellung).
     atk_can_flee = dis_enabled and attacker.get("allow_disengage", True)
     def_can_flee = dis_enabled and defender.get("allow_disengage", False)
@@ -377,9 +379,12 @@ def simulate_battle(
         return sum(u.attack for u in units)
 
     def disengage_phase(fleeing: list[Unit], enemy: list[Unit], fled: list[Unit]) -> tuple[list[Unit], int]:
-        """Flucht-Wurf pro Schiff (Doku 03b §4). Gegnerische Interdiktoren druecken die Chance.
-        Liefert (verbleibende, Anzahl_geflohen)."""
+        """Flucht-Wurf pro Schiff (Doku 03b §4). Gegnerische Interdiktoren druecken die Chance;
+        eigene Warp-Stabilisatoren (Konter 2026-06-14) heben sie wieder an: jeder Stabilisator der
+        fliehenden Seite negiert einen Interdiktor (stabilization_per). Liefert (verbleibende, geflohen)."""
         interdiction = min(interdiction_cap, sum(1 for u in enemy if u.interdictor) * interdiction_per)
+        relief = sum(1 for u in fleeing if u.stabilizer) * stabilization_per
+        interdiction = max(0.0, interdiction - relief)
         suppress = max(0.0, 1.0 - interdiction)
         if suppress <= 0.0:
             return fleeing, 0

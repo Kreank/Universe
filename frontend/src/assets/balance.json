@@ -59,7 +59,9 @@
     "jump_gate":         { "cost": { "metal": 2000000,"crystal": 4000000,"deuterium": 2000000 }, "factor": 2.0, "moon_only": true, "requires": { "gravity_lab": 1 }, "_note": "Sprungtor: instanter Flottensprung zwischen zwei eigenen Monden." },
     "orbital_battery":   { "cost": { "metal": 30000,"crystal": 15000,"deuterium": 5000 }, "factor": 1.7, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Orbitalbatterie: verteidigt beim Angriff den gebundenen Planeten mit (Mond feuert herab)." },
     "shield_dome_moon":  { "cost": { "metal": 50000,"crystal": 50000,"deuterium": 0 },    "factor": 2.0, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Schildkuppel: legt im Planetenkampf einen Zusatzschild ueber die Verteidiger." },
-    "gravity_lab":       { "cost": { "metal": 100000,"crystal": 80000,"deuterium": 40000 },"factor": 2.2, "moon_only": true, "requires": { "moon_base": 2 }, "_note": "Gravitationslabor: Voraussetzung fuer das Sprungtor (hoehere Kriegsfuehrung)." }
+    "gravity_lab":       { "cost": { "metal": 100000,"crystal": 80000,"deuterium": 40000 },"factor": 2.2, "moon_only": true, "requires": { "moon_base": 2 }, "_note": "Gravitationslabor: Voraussetzung fuer das Sprungtor (hoehere Kriegsfuehrung)." },
+    "antimatter_collector": { "cost": { "metal": 80000, "crystal": 50000, "deuterium": 20000 }, "factor": 2.0, "exotic_prod": "antimatter", "prod_base": 2, "prod_growth": 1.1, "energy_base": 80, "energy_growth": 1.1, "allowed_positions": [1, 2], "position_yield": { "1": 1.0, "2": 0.5 }, "requires": { "solar_plant": 12 }, "_note": "Exo-Mine: erntet Antimaterie aus der Sternenstrahlung. NUR auf heissen inneren Slots (Pos 1 voll, Pos 2 halber Ertrag). Hoher Energiehunger -> an Solar gekoppelt (requires solar_plant 12). Ertrag kontoweit auf player.antimatter (KEIN Cap, nicht als Planeten-Fracht), gedrosselt vom Energie-factor + speed. Erspielt, nicht gekauft. Natuerliche Bremse statt Cap: Energie + Kolonie-Slot-Opportunitaet + Positions-Gradient." },
+    "dark_matter_condenser": { "cost": { "metal": 80000, "crystal": 50000, "deuterium": 20000 }, "factor": 2.0, "exotic_prod": "dark_matter", "prod_base": 2, "prod_growth": 1.1, "energy_base": 80, "energy_growth": 1.1, "allowed_positions": [14, 15], "position_yield": { "15": 1.0, "14": 0.5 }, "requires": { "fusion_reactor": 8 }, "_note": "Exo-Mine: kondensiert Dunkle Materie in der eisigen Aussenzone. NUR auf kalten aeusseren Slots (Pos 15 voll, Pos 14 halber Ertrag). Hoher Energiehunger -> an Fusion gekoppelt (requires fusion_reactor 8). Ertrag kontoweit auf player.dark_matter (KEIN Cap), gedrosselt vom Energie-factor + speed." }
   },
   "moon": {
     "_note": "Monde entstehen aus Truemmerfeldern nach einem Kampf an einem Spieler-Planeten: chance = min(max_chance, debris_total/value_per_chance). Gebunden an den Planeten (gleiche Koordinate), keine Minen, wenige Felder (base_fields + moon_base*moon_fields_per_level). Tragen Kriegsfuehrungs-Gebaeude.",
@@ -179,19 +181,20 @@
     "solar_satellite":  { "cost": { "metal": 0,       "crystal": 2000,    "deuterium": 0 },       "attack": 0,      "shield": 1,     "cargo": 0,       "speed": 0,     "fuel": 0, "fuel_tank": 0,    "rapidfire": {}, "requires": { "shipyard": 1 }, "energy_prod": { "_note": "Solarsatellit: Energie je Sat = floor((temp_max + temp_offset) / divisor) (OGame). Heisse (sonnennahe) Planeten -> mehr Ertrag; aussen ~3x weniger. Auf dem Planeten stationiert (fleet_id NULL), zaehlt zur Energiebilanz.", "temp_offset": 160, "divisor": 6 } },
     "spy_probe":        { "cost": { "metal": 0,       "crystal": 1000,    "deuterium": 0 },       "attack": 0,      "shield": 0,     "cargo": 5,       "speed": 100000000, "fuel": 1, "fuel_tank": 3, "rapidfire": {}, "requires": { "shipyard": 1, "spy_tech": 1, "combustion_drive": 1 } },
     "battleship":       { "cost": { "metal": 45000,   "crystal": 15000,   "deuterium": 0 },       "attack": 1000,   "shield": 200,   "cargo": 1500,    "speed": 10000, "fuel": 500, "fuel_tank": 630,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 4 } },
-    "battlecruiser":    { "cost": { "metal": 30000,   "crystal": 40000,   "deuterium": 15000 },   "attack": 700,    "shield": 400,   "cargo": 750,     "speed": 10000, "fuel": 250, "fuel_tank": 320,  "rapidfire": {}, "requires": { "shipyard": 8, "hyperspace_tech": 5, "laser_tech": 12 } },
+    "battlecruiser":    { "cost": { "metal": 30000,   "crystal": 24000,   "deuterium": 8000 },    "attack": 1000,   "shield": 400,   "cargo": 750,     "speed": 10000, "fuel": 250, "fuel_tank": 320,  "rapidfire": {}, "requires": { "shipyard": 8, "hyperspace_tech": 5, "laser_tech": 12 } },
     "bomber":           { "cost": { "metal": 50000,   "crystal": 25000,   "deuterium": 0 },       "attack": 1000,   "shield": 500,   "cargo": 500,     "speed": 4000,  "fuel": 1000, "fuel_tank": 1260, "rapidfire": { "rocket_launcher": 20, "light_laser": 20, "heavy_laser": 10, "ion_cannon": 10, "gauss_cannon": 5, "plasma_turret": 5, "orbital_gun": 10, "solar_satellite": 5, "spy_probe": 5 }, "requires": { "shipyard": 7, "impulse_drive": 6, "plasma_tech": 5 } },
-    "destroyer":        { "cost": { "metal": 20000,   "crystal": 15000,   "deuterium": 5000 },    "attack": 2200,   "shield": 120,   "cargo": 2000,    "speed": 5000,  "fuel": 1000, "fuel_tank": 1260, "rapidfire": {}, "_note": "Artillerie/Glaskanone (Doku 03c/03d): hoher Fern-Schaden, DUENNE Huelle+Schild -> billig. Konter ist EMERGENT (kein Rapidfire mehr): schnelle Schiffe schliessen ueber die Reichweiten-Baender die Distanz und zerlegen die duenne Huelle; Standoff-Strafe schwaecht sie im Nahkampf.", "requires": { "shipyard": 7, "hyperspace_drive": 6, "plasma_tech": 5 } },
+    "destroyer":        { "cost": { "metal": 20000,   "crystal": 15000,   "deuterium": 5000 },    "attack": 1900,   "shield": 120,   "cargo": 2000,    "speed": 5000,  "fuel": 1000, "fuel_tank": 1260, "rapidfire": {}, "_note": "Artillerie/Glaskanone (Doku 03c/03d): hoher Fern-Schaden, DUENNE Huelle+Schild -> billig. Konter ist EMERGENT (kein Rapidfire mehr): schnelle Schiffe schliessen ueber die Reichweiten-Baender die Distanz und zerlegen die duenne Huelle; Standoff-Strafe schwaecht sie im Nahkampf.", "requires": { "shipyard": 7, "hyperspace_drive": 6, "plasma_tech": 5 } },
     "deathstar":        { "cost": { "metal": 5000000, "crystal": 4000000, "deuterium": 1000000 }, "attack": 200000, "shield": 50000, "cargo": 1000000, "speed": 100,   "fuel": 1, "fuel_tank": 2,    "rapidfire": {}, "requires": { "shipyard": 12, "graviton_tech": 1, "hyperspace_drive": 7, "hyperspace_tech": 6 } },
 
     "_note_roles": "Rollen-Roster (Doku 03c / Phase 4): neue Spezial-Rollen. Universell baubar (Doktrin-Verguenstigung spaeter). Sondermechaniken (Drohnen-Start/Schild-Projektion/Stealth/Mining/Expedition) folgen; Stats + Rolle (combat_roster) wirken bereits.",
     "carrier":          { "cost": { "metal": 45000, "crystal": 20000, "deuterium": 5000 },  "attack": 150,  "shield": 400,  "cargo": 3000,  "speed": 6000,  "fuel": 600, "fuel_tank": 760,  "rapidfire": {}, "requires": { "shipyard": 8, "hyperspace_drive": 5, "plasma_tech": 4 } },
-    "drone":            { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 0 },     "attack": 60,   "shield": 10,   "cargo": 0,     "speed": 13000, "fuel": 10, "fuel_tank": 4,   "rapidfire": {}, "requires": { "computer_tech": 4, "shipyard": 4 } },
+    "drone":            { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 0 },     "attack": 45,   "shield": 10,   "cargo": 0,     "speed": 13000, "fuel": 10, "fuel_tank": 4,   "rapidfire": {}, "requires": { "computer_tech": 4, "shipyard": 4 } },
     "interdictor":      { "cost": { "metal": 18000, "crystal": 12000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 500,   "speed": 9000,  "fuel": 300, "fuel_tank": 210,  "rapidfire": {}, "requires": { "shipyard": 7, "hyperspace_drive": 4, "ion_tech": 4 } },
     "ewar_frigate":     { "cost": { "metal": 9000,  "crystal": 9000,  "deuterium": 3000 },  "attack": 400,  "shield": 50,   "cargo": 100,   "speed": 11000, "fuel": 200, "fuel_tank": 140,  "rapidfire": {}, "requires": { "shipyard": 5, "ion_tech": 5, "impulse_drive": 4 } },
     "boarder":          { "cost": { "metal": 30000, "crystal": 12000, "deuterium": 4000 },  "attack": 60,   "shield": 50,   "cargo": 5000,  "speed": 7000,  "fuel": 400, "fuel_tank": 280,  "rapidfire": {}, "requires": { "shipyard": 6, "impulse_drive": 5, "armor_tech": 4 } },
     "stealth_corvette": { "cost": { "metal": 8000,  "crystal": 8000,  "deuterium": 2000 },  "attack": 150,  "shield": 10,   "cargo": 100,   "speed": 16000, "fuel": 150, "fuel_tank": 105,  "rapidfire": {}, "requires": { "shipyard": 5, "laser_tech": 6, "combustion_drive": 6 } },
     "escort_frigate":   { "cost": { "metal": 18000, "crystal": 12000, "deuterium": 2000 },  "attack": 150,  "shield": 150,  "cargo": 300,   "speed": 10000, "fuel": 250, "fuel_tank": 175,  "rapidfire": {}, "requires": { "shipyard": 4, "armor_tech": 3, "laser_tech": 4 } },
+    "warp_stabilizer":  { "cost": { "metal": 14000, "crystal": 10000, "deuterium": 6000 },  "attack": 100,  "shield": 120,  "cargo": 200,   "speed": 12000, "fuel": 300, "fuel_tank": 210,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 5, "impulse_drive": 5 } },
     "shield_tender":    { "cost": { "metal": 20000, "crystal": 25000, "deuterium": 5000 },  "attack": 0,    "shield": 1000, "cargo": 200,   "speed": 6000,  "fuel": 400, "fuel_tank": 280,  "rapidfire": {}, "requires": { "shipyard": 6, "shield_tech": 6, "impulse_drive": 4 } },
     "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 8000 },  "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100, "fuel_tank": 35,  "rapidfire": {}, "requires": { "shipyard": 4, "laser_tech": 5, "impulse_drive": 3 } },
     "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 15000, "speed": 3000,  "fuel": 300, "fuel_tank": 780,  "rapidfire": {}, "requires": { "combustion_drive": 4, "shipyard": 4 } },
@@ -238,6 +241,7 @@
     "boarder":          { "weapon_type": "kinetic", "drive": 3, "range": "near", "boarder": true },
     "stealth_corvette": { "weapon_type": "energy",  "drive": 5, "range": "near", "stealth": true },
     "escort_frigate":   { "weapon_type": "kinetic", "drive": 3, "range": "medium", "point_defense": true },
+    "warp_stabilizer":  { "weapon_type": "kinetic", "drive": 4, "range": "near", "stabilizer": true },
     "shield_tender":    { "weapon_type": null,      "drive": 2, "range": "medium", "shield_projector": true },
     "interceptor":      { "weapon_type": "energy",  "drive": 5, "range": "near" },
     "miner":            { "weapon_type": null,      "drive": 1, "range": "near" },
@@ -307,12 +311,13 @@
       "stranded": { "min_ratio": -1.0, "speed_factor": 0.0, "can_flee": false, "flee_factor": 0.0 }
     },
     "disengage": {
-      "_note": "Doku 03b §4: Flucht-Wurf pro Runde fuer die unterlegene Seite (Power >= loser_power_ratio). Pro Schiff: base_chance * Antriebs-flee_factor * (1 - Interdiktion). Interdiktion = Anzahl gegnerischer Interdiktor-Einheiten (combat_roster.interdictor=true) * interdiction_per_unit (Phase 4). Angreifer darf standardmaessig fliehen (Rueckzug), Verteidiger nicht (haelt Stellung).",
+      "_note": "Doku 03b §4: Flucht-Wurf pro Runde fuer die unterlegene Seite (Power >= loser_power_ratio). Pro Schiff: base_chance * Antriebs-flee_factor * (1 - Interdiktion). Interdiktion = Anzahl gegnerischer Interdiktor-Einheiten (combat_roster.interdictor=true) * interdiction_per_unit (Phase 4). KONTER (2026-06-14): Warp-Stabilisatoren (combat_roster.stabilizer=true) der FLIEHENDEN Seite senken die Interdiktion um stabilization_per_unit je Stueck -> ein Stabilisator hebt einen Interdiktor auf. Angreifer darf standardmaessig fliehen (Rueckzug), Verteidiger nicht (haelt Stellung).",
       "enabled": true,
       "loser_power_ratio": 1.8,
       "base_chance": 0.45,
       "interdiction_per_unit": 0.2,
-      "interdiction_cap": 1.0
+      "interdiction_cap": 1.0,
+      "stabilization_per_unit": 0.2
     },
     "boarding": {
       "_note": "Doku 03b §4/§7: Enterschiffe (combat_roster.boarder=true) kapern am Ende des Kampfes GESTRANDETE Gegner (Antrieb 0). capture_per_boarder = gekaperte Schiffe je ueberlebendem Enterschiff. capture_per_doctrine_level erhoeht das je Stufe der Forschung 'boarding_doctrine' der Enter-Seite. Kaperung = nur SCHIFFE (Commander nie).",
@@ -357,6 +362,9 @@
       "chance_per_interdiction_level": 0.005,
       "interdiction_chance_cap": 0.05,
       "chance_cap": 0.95,
+      "_stabilizer_note": "KONTER (2026-06-14): Warp-Stabilisatoren (combat_roster.stabilizer=true) in der DURCHREISENDEN Flotte senken die Fang-Chance um stabilizer_relief_per_unit je Stueck, gedeckelt auf stabilizer_relief_cap. So kann eine ausreichend ausgestattete Flotte nicht mehr aus dem Warp gerissen werden.",
+      "stabilizer_relief_per_unit": 0.05,
+      "stabilizer_relief_cap": 0.80,
       "base_radius": 1,
       "max_radius": 6,
       "radius_per_interdiction_level": 1,

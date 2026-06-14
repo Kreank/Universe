@@ -72,6 +72,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
       'carrier',
       'drone',
       'interdictor',
+      'warp_stabilizer',
       'ewar_frigate',
       'boarder',
       'stealth_corvette',

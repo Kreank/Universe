@@ -144,6 +144,27 @@ def test_interdictor_suppresses_disengage():
     assert result["attacker_fled"] == {}                       # Fang-Feld: niemand entkommt
 
 
+def test_warp_stabilizer_counters_interdictor():
+    """Warp-Stabilisator (combat_roster.stabilizer) hebt das Interdiktor-Fangfeld auf:
+    dieselbe vom Interdiktor festgenagelte Flotte kann mit genug Stabilisatoren wieder fliehen."""
+    bal = copy.deepcopy(BALANCE)
+    bal["combat_roster"]["battleship"]["interdictor"] = True    # Verteidiger = Fang-Schiffe
+    # Ohne Stabilisator: das Fangfeld haelt die unterlegene Flotte fest (Referenz).
+    held = simulate_battle(
+        {"ships": {"light_fighter": 6}, "tech": {}, "attack_mult": 1.0},
+        {"ships": {"battleship": 50}, "defenses": {}, "tech": {}, "attack_mult": 1.0},
+        3, bal,
+    )
+    assert held["attacker_fled"] == {}
+    # Mit Stabilisatoren: Interdiktion negiert -> Flucht wieder moeglich.
+    relieved = simulate_battle(
+        {"ships": {"light_fighter": 6, "warp_stabilizer": 80}, "tech": {}, "attack_mult": 1.0},
+        {"ships": {"battleship": 50}, "defenses": {}, "tech": {}, "attack_mult": 1.0},
+        3, bal,
+    )
+    assert relieved["attacker_fled"].get("light_fighter", 0) > 0
+
+
 # ---- Rollen-Kampf Phase 3 (Doku 03b §4/§7): Entern / Capture ----
 
 def test_boarder_captures_stranded_ships():

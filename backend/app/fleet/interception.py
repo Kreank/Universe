@@ -44,7 +44,8 @@ def _aware(t: dt.datetime | None) -> dt.datetime | None:
     return t.replace(tzinfo=UTC) if t.tzinfo is None else t
 
 
-def catch_chance(station_ships: dict, icfg: dict, interdiction_lvl: int = 0) -> float:
+def catch_chance(station_ships: dict, icfg: dict, interdiction_lvl: int = 0,
+                 fleet_stabilizers: int = 0) -> float:
     """Fang-Chance einer Patrouille — WEICHES Modell, getrennte Achsen (2026-06-12).
 
     Das FANGEN haengt NUR an Abfangjaeger-Masse + Hyperraum-Interdiktion-Forschung und ist
@@ -66,7 +67,13 @@ def catch_chance(station_ships: dict, icfg: dict, interdiction_lvl: int = 0) -> 
     res_cap = float(icfg.get("interdiction_chance_cap", 0.05))
     res_part = min(res_cap, res_per * max(0, int(interdiction_lvl)))
     cap = float(icfg.get("chance_cap", 0.95))
-    return max(0.0, min(cap, ship_part + res_part))
+    raw = ship_part + res_part
+    # Konter (2026-06-14): Warp-Stabilisatoren in der durchreisenden Flotte druecken die
+    # Fang-Chance (multiplikativ, gedeckelt) -> ausreichend Stabilisatoren = kaum noch fangbar.
+    relief_per = float(icfg.get("stabilizer_relief_per_unit", 0.0))
+    relief_cap = float(icfg.get("stabilizer_relief_cap", 0.0))
+    relief = min(relief_cap, relief_per * max(0, int(fleet_stabilizers)))
+    return max(0.0, min(cap, raw * (1.0 - relief)))
 
 
 def _frac_time(depart: dt.datetime, arrive: dt.datetime, origin_sys: int, target_sys: int,
@@ -240,7 +247,12 @@ async def resolve_interception(fleet_id: str, station_id: str) -> None:
         # (engine.disengage_phase) das Fliehen der bereits gestellten Flotte.
         owner_research = await get_research_levels(session, station.owner_id)
         interdiction_lvl = int(owner_research.get("hyperspace_interdiction", 0))
-        chance = catch_chance(station_ships, icfg, interdiction_lvl)
+        roster = bal.data.get("combat_roster", {})
+        fleet_stabilizers = sum(
+            n for t, n in fleet_ships.items()
+            if isinstance(roster.get(t), dict) and roster[t].get("stabilizer")
+        )
+        chance = catch_chance(station_ships, icfg, interdiction_lvl, fleet_stabilizers)
         if random.random() >= chance:
             # Durchgerutscht: beide Seiten informieren, Flotte fliegt weiter.
             await create_system_transmission(

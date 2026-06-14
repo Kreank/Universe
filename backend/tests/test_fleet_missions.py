@@ -127,3 +127,17 @@ def test_catch_chance_soft_model_axis_split():
     assert catch_chance({"interceptor": 90}, _ICFG, 0) == 0.90  # ohne Forschung nie ueber 90%
     # Achsentrennung: ein Interdiktor im Mix gibt KEIN Auto-100% mehr (nur Abfangjaeger zaehlen fuers Fangen).
     assert catch_chance({"interceptor": 10, "interdictor": 5}, _ICFG) == 0.10
+
+
+def test_catch_chance_warp_stabilizer_relief():
+    """Warp-Stabilisatoren in der durchreisenden Flotte druecken die Fang-Chance multiplikativ
+    (gedeckelt), sodass eine gut ausgestattete Flotte kaum noch aus dem Warp gerissen wird."""
+    from app.fleet.interception import catch_chance
+
+    icfg = dict(_ICFG, stabilizer_relief_per_unit=0.05, stabilizer_relief_cap=0.80)
+    base = catch_chance({"interceptor": 90}, icfg)           # 0.90, keine Stabilisatoren
+    assert base == 0.90
+    # 10 Stabilisatoren = 50% Relief -> 0.90 * 0.5 = 0.45.
+    assert round(catch_chance({"interceptor": 90}, icfg, 0, 10), 4) == 0.45
+    # Relief deckelt bei 80% (auch mit 100 Stabilisatoren) -> 0.90 * 0.2 = 0.18.
+    assert round(catch_chance({"interceptor": 90}, icfg, 0, 100), 4) == 0.18
