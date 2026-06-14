@@ -28,6 +28,9 @@ export interface ResourceCost {
   metal: number;
   crystal: number;
   deuterium: number;
+  /** Exotische Endgame-Kosten (Capstone-Schiffe), kontoweit. 0/undefiniert = nicht relevant. */
+  antimatter?: number;
+  dark_matter?: number;
 }
 
 // --- Auth ---------------------------------------------------------------
@@ -211,6 +214,8 @@ export interface ShipOption {
   weapon_type?: string | null;
   drive?: number | null;
   range?: string | null;
+  /** Endgame-Capstone-Schiff: Besitz-Status (owned/cap). null = kein Capstone. */
+  capstone?: { owned: number; cap: number } | null;
 }
 
 export interface BuildQueueItem {

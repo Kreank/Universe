@@ -15,6 +15,7 @@ from app.buildings.schemas import (
     CostOut,
     DemolishResponse,
     RequirementOut,
+    CapstoneInfoOut,
     ShipOptionOut,
     ShipyardBuildRequest,
     ShipyardBuildResponse,
@@ -140,6 +141,7 @@ def _to_ship_options(items: list[dict]) -> list[ShipOptionOut]:
             weapon_type=o.get("weapon_type"),
             drive=o.get("drive"),
             range=o.get("range"),
+            capstone=CapstoneInfoOut(**o["capstone"]) if o.get("capstone") else None,
         )
         for o in items
     ]

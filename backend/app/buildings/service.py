@@ -65,15 +65,18 @@ def energy_for_level(building_type: str, level: int, energy_tech: int = 0) -> fl
 
 
 def build_seconds(cost: dict[str, float], robot_factory_lvl: int, nanite_lvl: int = 0) -> int:
-    """Bauzeit (Sekunden): (M+K) / (2500*(1+robot)*2^nanite*speed) Stunden."""
+    """Bauzeit (Sekunden): (M+K) / (2500*(1+robot)*speed) Std * nanite_building_factor^nanite_lvl.
+    Nanitenfabrik senkt die Gebaeude-Bauzeit je Stufe multiplikativ (Default 0.75 = -25%/Stufe)."""
     bal = get_balance()
-    divisor = bal.data["build_time"]["divisor"]
+    bt = bal.data["build_time"]
+    divisor = bt["divisor"]
     speed = bal.speed
+    nanite_factor = float(bt.get("nanite_building_factor", 0.75)) ** max(0, int(nanite_lvl))
     hours = (cost["metal"] + cost["crystal"]) / (
-        divisor * (1 + robot_factory_lvl) * (2 ** nanite_lvl) * speed
-    )
+        divisor * (1 + robot_factory_lvl) * speed
+    ) * nanite_factor
     seconds = int(round(hours * 3600))
-    return max(bal.data["build_time"]["min_seconds"], seconds)
+    return max(bt["min_seconds"], seconds)
 
 
 def effective_fields_max(
@@ -107,7 +110,7 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
         # Gravitationslabor: Mondbasis Voraussetzung (sonst sinnlos)
         level = levels.get(btype, 0)
         cost = cost_for_level(btype, level)
-        secs = build_seconds(cost, robot)
+        secs = build_seconds(cost, robot, levels.get("nanite_factory", 0))
         can_afford = all(
             resources[r]["amount"] + 1e-6 >= cost[r] for r in ("metal", "crystal", "deuterium")
         )
@@ -190,7 +193,7 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
     if not await spend_resources(session, planet, cost):
         raise RuntimeError("Nicht genug Ressourcen")
 
-    secs = build_seconds(cost, levels.get("robot_factory", 0))
+    secs = build_seconds(cost, levels.get("robot_factory", 0), levels.get("nanite_factory", 0))
     finish = _now() + dt.timedelta(seconds=secs)
     row.upgrade_finishes_at = finish
     await session.flush()

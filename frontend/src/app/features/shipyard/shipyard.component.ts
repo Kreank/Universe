@@ -154,8 +154,17 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
                     {{ pending() === s.type ? '…' : 'Bauen' }}
                   </button>
                 </div>
+                @if (s.capstone) {
+                  <span class="hint small cap-line">
+                    Besitz {{ s.capstone.owned }}/{{ s.capstone.cap }}
+                    @if (s.cost.antimatter) { · ⚛️ {{ s.cost.antimatter }} }
+                    @if (s.cost.dark_matter) { · 🌑 {{ s.cost.dark_matter }} }
+                  </span>
+                }
                 @if (!s.requirements_met) {
                   <span class="hint warn small">{{ missingReqText(s) }}</span>
+                } @else if (s.capstone && s.capstone.owned >= s.capstone.cap) {
+                  <span class="hint warn small">Besitz-Limit erreicht — Kommando-Forschung für +1</span>
                 } @else if (!s.can_build) {
                   <span class="hint warn small">Zu wenig Ressourcen</span>
                 }

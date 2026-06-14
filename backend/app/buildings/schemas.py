@@ -10,6 +10,9 @@ class CostOut(BaseModel):
     metal: float
     crystal: float
     deuterium: float
+    # Exotische Endgame-Kosten (Capstone-Schiffe), kontoweit. 0 = nicht relevant.
+    antimatter: float = 0
+    dark_matter: float = 0
 
 
 class RequirementOut(BaseModel):
@@ -59,6 +62,12 @@ class DemolishResponse(BaseModel):
 
 
 # -- Werft (api-contract §5) ---------------------------------------------------
+class CapstoneInfoOut(BaseModel):
+    """Besitz-Status eines Capstone-Schiffs (Endgame): wie viele besessen / erlaubt."""
+    owned: int
+    cap: int
+
+
 class ShipOptionOut(BaseModel):
     type: str
     cost: CostOut
@@ -69,6 +78,7 @@ class ShipOptionOut(BaseModel):
     weapon_type: str | None = None
     drive: int | None = None
     range: str | None = None
+    capstone: CapstoneInfoOut | None = None
 
 
 class BuildQueueItemOut(BaseModel):

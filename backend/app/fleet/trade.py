@@ -325,6 +325,11 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         _eff = bal.data["research"]["effects"]
         _convoy = int((await get_research_levels(session, fleet.player_id)).get("convoy_tactics", 0))
         chance *= max(0.0, 1.0 - _convoy * float(_eff.get("convoy_route_risk_reduction_per_level", 0.0)))
+        # Handels-Leviathan Konvoi-Schutz-Aura (praesenz-basiert, kein Stapeln).
+        _lev_ships = await _fleet_ships(session, fleet.id)
+        _roster = bal.combat_roster
+        if any((_roster.get(t) or {}).get("aura") == "convoy" and n > 0 for t, n in _lev_ships.items()):
+            chance *= max(0.0, 1.0 - float(bal.data.get("capstone", {}).get("convoy_aura", {}).get("risk_reduction", 0.0)))
         if random.random() < chance:
             raided = True
             # Jede Cargo-Position um loss_fraction kuerzen (gerundet), neues dict setzen.

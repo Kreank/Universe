@@ -49,6 +49,7 @@
     "robot_factory":     { "cost": { "metal": 400, "crystal": 120, "deuterium": 200 }, "factor": 2.0 },
     "shipyard":          { "cost": { "metal": 400, "crystal": 200, "deuterium": 100 }, "factor": 2.0 },
     "research_lab":      { "cost": { "metal": 200, "crystal": 400, "deuterium": 200 }, "factor": 2.0 },
+    "nanite_factory":    { "cost": { "metal": 1000000, "crystal": 500000, "deuterium": 100000 }, "factor": 2.0, "requires": { "robot_factory": 12 }, "_note": "Nanitenfabrik (Endgame, baubar ab Roboterfabrik 12). Senkt die Bauzeit ALLER Gebaeude um build_time.nanite_building_factor je Stufe (x0.75^Stufe, multiplikativ) und die Schiff-Bauzeit um (1 - nanite_ship_factor) je Stufe (x0.95^Stufe). Keine Energie/Produktion." },
     "metal_storage":     { "cost": { "metal": 1000,"crystal": 0,   "deuterium": 0 },   "factor": 2.0 },
     "crystal_storage":   { "cost": { "metal": 1000,"crystal": 500, "deuterium": 0 },   "factor": 2.0 },
     "deuterium_tank":    { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 0 },   "factor": 2.0 },
@@ -91,10 +92,13 @@
   },
 
   "build_time": {
-    "_formula_buildings": "hours = (metal + crystal) / (2500 * (1 + robot_factory_lvl) * 2^nanite_lvl * speed)",
-    "_formula_ships": "hours = (metal + crystal) / (2500 * (1 + shipyard_lvl) * speed)",
+    "_formula_buildings": "hours = (metal + crystal) / (2500 * (1 + robot_factory_lvl) * speed) * nanite_building_factor^nanite_lvl",
+    "_formula_ships": "hours = (metal + crystal) / (2500 * (1 + shipyard_lvl) * speed) * nanite_ship_factor^nanite_lvl",
     "divisor": 2500,
-    "min_seconds": 1
+    "min_seconds": 1,
+    "nanite_building_factor": 0.75,
+    "nanite_ship_factor": 0.95,
+    "_nanite_note": "Nanitenfabrik (nanite_factory): je Stufe x0.75 Gebaeude-Bauzeit (-25%) bzw. x0.95 Schiff-Bauzeit (-5%), multiplikativ. nanite_lvl = Stufe der Nanitenfabrik auf dem Planeten."
   },
 
   "research": {
@@ -165,7 +169,11 @@
       "armor_mastery":      { "cost": { "metal": 9000, "crystal": 0, "deuterium": 1000 }, "repeatable": true, "requires": { "research_lab": 8, "armor_tech": 10 }, "effect": "Panzerungs-Meisterschaft (wiederholbar): +1% Huelle aller Einheiten je Stufe. Linear-additiv." },
       "extraction_tech":    { "cost": { "metal": 1000, "crystal": 1500, "deuterium": 0 }, "requires": { "research_lab": 3, "energy_tech": 3 }, "effect": "Foerdertechnik: +1% Minen-Foerderung (Metall/Kristall/Deuterium) je Stufe. Ergaenzt Bergbau-Effizienz." },
       "extraction_mastery": { "cost": { "metal": 8000, "crystal": 6000, "deuterium": 2000 }, "repeatable": true, "requires": { "research_lab": 8, "extraction_tech": 10 }, "effect": "Foerder-Meisterschaft (wiederholbar): +0,5% Minen-Foerderung je Stufe. Linear-additiv, kein Maximum - ewiger Wirtschafts-Motor." },
-      "terraforming":       { "cost": { "metal": 50000, "crystal": 80000, "deuterium": 20000 }, "requires": { "research_lab": 10, "energy_tech": 12, "computer_tech": 6 }, "effect": "Terraforming: +5 Bauplaetze auf JEDEM Planeten je Stufe. Mehr Felder = mehr Gebaeudestufen = ewiger Bau-Sink." }
+      "terraforming":       { "cost": { "metal": 50000, "crystal": 80000, "deuterium": 20000 }, "requires": { "research_lab": 10, "energy_tech": 12, "computer_tech": 6 }, "effect": "Terraforming: +5 Bauplaetze auf JEDEM Planeten je Stufe. Mehr Felder = mehr Gebaeudestufen = ewiger Bau-Sink." },
+      "flagship_command":   { "cost": { "metal": 200000, "crystal": 150000, "deuterium": 80000 }, "repeatable": true, "requires": { "research_lab": 10, "computer_tech": 10 }, "effect": "Flaggschiff-Doktrin (wiederholbar): +1 erlaubtes Flaggschiff je Stufe (Default 1)." },
+      "corsair_command":    { "cost": { "metal": 120000, "crystal": 90000, "deuterium": 50000 }, "repeatable": true, "requires": { "research_lab": 8, "ion_tech": 8 }, "effect": "Korsaren-Verband (wiederholbar): +1 erlaubter Korsar je Stufe (Default 1)." },
+      "leviathan_command":  { "cost": { "metal": 150000, "crystal": 100000, "deuterium": 40000 }, "repeatable": true, "requires": { "research_lab": 8, "computer_tech": 8 }, "effect": "Grosshandels-Lizenz (wiederholbar): +1 erlaubter Handels-Leviathan je Stufe (Default 1)." },
+      "harvest_command":    { "cost": { "metal": 180000, "crystal": 120000, "deuterium": 40000 }, "repeatable": true, "requires": { "research_lab": 8, "mining_efficiency": 8 }, "effect": "Schuerf-Kommando (wiederholbar): +1 erlaubter Ernte-Titan je Stufe (Default 1)." }
     }
   },
 
@@ -199,7 +207,12 @@
     "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 8000 },  "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100, "fuel_tank": 35,  "rapidfire": {}, "requires": { "shipyard": 4, "laser_tech": 5, "impulse_drive": 3 } },
     "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 15000, "speed": 3000,  "fuel": 300, "fuel_tank": 780,  "rapidfire": {}, "requires": { "combustion_drive": 4, "shipyard": 4 } },
     "deep_scout":       { "cost": { "metal": 8000,  "crystal": 12000, "deuterium": 1000 },  "attack": 0,    "shield": 50,   "cargo": 100,   "speed": 14000, "fuel": 80, "fuel_tank": 230,   "rapidfire": {}, "requires": { "shipyard": 5, "spy_tech": 3, "impulse_drive": 4 } },
-    "expedition_ship":  { "cost": { "metal": 30000, "crystal": 20000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 10000, "speed": 6000,  "fuel": 800, "fuel_tank": 2100,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 4, "computer_tech": 6 } }
+    "expedition_ship":  { "cost": { "metal": 30000, "crystal": 20000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 10000, "speed": 6000,  "fuel": 800, "fuel_tank": 2100,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 4, "computer_tech": 6 } },
+    "_note_capstones": "Endgame-Capstone-Schiffe (je Spielstil). Default-Besitz 1, je +1 ueber Kommando-Forschung (capstone_command_tech). exotische Kosten (antimatter/dark_matter) = kontoweite Senke. Auren (aura) stapeln NICHT (combat/service dedupliziert je Auratyp).",
+    "flagship":         { "cost": { "metal": 800000, "crystal": 600000, "deuterium": 200000, "antimatter": 500 }, "attack": 12000, "shield": 5000, "cargo": 5000,   "speed": 8000,  "fuel": 2000, "fuel_tank": 3000, "rapidfire": {}, "requires": { "shipyard": 12, "hyperspace_drive": 8, "computer_tech": 10 }, "capstone": "flagship_command" },
+    "corsair":          { "cost": { "metal": 400000, "crystal": 300000, "deuterium": 150000, "antimatter": 300 }, "attack": 9000,  "shield": 1800, "cargo": 12000,  "speed": 17000, "fuel": 1500, "fuel_tank": 2400, "rapidfire": {}, "requires": { "shipyard": 10, "hyperspace_drive": 6, "ion_tech": 8 }, "capstone": "corsair_command" },
+    "trade_leviathan":  { "cost": { "metal": 500000, "crystal": 300000, "deuterium": 100000, "dark_matter": 400 }, "attack": 2500,  "shield": 3500, "cargo": 600000, "speed": 6000,  "fuel": 4000, "fuel_tank": 8000, "rapidfire": {}, "requires": { "shipyard": 10, "hyperspace_drive": 5, "computer_tech": 8 }, "capstone": "leviathan_command" },
+    "harvest_titan":    { "cost": { "metal": 600000, "crystal": 400000, "deuterium": 150000, "dark_matter": 400 }, "attack": 2000,  "shield": 2500, "cargo": 250000, "speed": 5000,  "fuel": 3000, "fuel_tank": 6000, "rapidfire": {}, "requires": { "shipyard": 10, "hyperspace_drive": 5, "mining_efficiency": 8 }, "capstone": "harvest_command" }
   },
 
   "defenses": {
@@ -247,6 +260,10 @@
     "miner":            { "weapon_type": null,      "drive": 1, "range": "near" },
     "deep_scout":       { "weapon_type": null,      "drive": 4, "range": "far", "sensor": true },
     "expedition_ship":  { "weapon_type": "kinetic", "drive": 3, "range": "medium" },
+    "flagship":         { "weapon_type": "energy",  "drive": 2, "range": "medium", "aura": "combat" },
+    "corsair":          { "weapon_type": "energy",  "drive": 5, "range": "near", "stealth": true, "boarder": true, "raider": true },
+    "trade_leviathan":  { "weapon_type": "kinetic", "drive": 2, "range": "medium", "aura": "convoy" },
+    "harvest_titan":    { "weapon_type": "kinetic", "drive": 2, "range": "medium", "harvester": true },
 
     "rocket_launcher":        { "weapon_type": "kinetic", "drive": 0, "range": "far" },
     "light_laser":            { "weapon_type": "energy",  "drive": 0, "range": "far" },
@@ -849,5 +866,14 @@
       "effect_per_level": 0.03,
       "blurb": "Antimaterie-befeuerte Waffenschmiede: +3% Angriff aller Einheiten je Stufe (imperiumsweit, Angriff UND Verteidigung)."
     }
+  },
+
+  "capstone": {
+    "_note": "Endgame-Capstone-Schiffe: default_cap besitzbar, je +1 ueber die capstone-Forschung (ships[*].capstone). Auren (roster.aura) stapeln NICHT (combat/service dedupliziert je Auratyp -> nur die staerkste/eine je Flotte). raider_loot_bonus = +Beute-Anteil wenn ein Korsar in der Angriffsflotte ist. harvester_yield_mult = Multiplikator je Ernte-Titan auf den Mining-Mission-Ertrag.",
+    "default_cap": 1,
+    "combat_aura": { "attack_mult": 1.15, "shield_mult": 1.15 },
+    "convoy_aura": { "risk_reduction": 0.5 },
+    "raider_loot_bonus": 0.25,
+    "harvester_yield_mult": 8.0
   }
 }

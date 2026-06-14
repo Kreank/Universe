@@ -90,6 +90,10 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
       'shield_mastery',
       'armor_mastery',
       'extraction_mastery',
+      'flagship_command',
+      'corsair_command',
+      'leviathan_command',
+      'harvest_command',
     ],
   },
 ];

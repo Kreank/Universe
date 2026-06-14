@@ -10,7 +10,7 @@ import datetime as dt
 import logging
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy.service import (
@@ -21,7 +21,10 @@ from app.economy.service import (
 )
 from app.platform.balance import catalog_items, get_balance
 from app.platform.db import session_scope
-from app.platform.models import Defense, Planet, Ship, ShipyardQueueItem
+from app.platform.models import Defense, Fleet, Planet, Player, Ship, ShipyardQueueItem
+
+# Exotische, kontoweite Ressourcen (Player-Spalten) — moegliche Capstone-Schiff-Kosten.
+EXOTIC_KEYS = ("antimatter", "dark_matter")
 from app.platform.scheduler import cancel_job, schedule_at
 
 log = logging.getLogger("universe.shipyard")
@@ -47,15 +50,18 @@ def _catalog(category: str) -> dict:
     return bal.ships if category == "ship" else bal.defenses
 
 
-def build_seconds_each(cost: dict[str, float], shipyard_lvl: int) -> int:
-    """Bauzeit je Einheit (Sekunden): (M+K)/(2500*(1+werft)*speed) Stunden."""
+def build_seconds_each(cost: dict[str, float], shipyard_lvl: int, nanite_lvl: int = 0) -> int:
+    """Bauzeit je Einheit (Sekunden): (M+K)/(2500*(1+werft)*speed) Std * nanite_ship_factor^nanite_lvl.
+    Nanitenfabrik senkt die Schiff-Bauzeit je Stufe multiplikativ (Default 0.95 = -5%/Stufe)."""
     bal = get_balance()
-    divisor = bal.data["build_time"]["divisor"]
+    bt = bal.data["build_time"]
+    divisor = bt["divisor"]
     speed = bal.speed
+    nanite_factor = float(bt.get("nanite_ship_factor", 0.95)) ** max(0, int(nanite_lvl))
     hours = (cost.get("metal", 0) + cost.get("crystal", 0)) / (
         divisor * (1 + shipyard_lvl) * speed
-    )
-    return max(bal.data["build_time"]["min_seconds"], int(round(hours * 3600)))
+    ) * nanite_factor
+    return max(bt["min_seconds"], int(round(hours * 3600)))
 
 
 def _requirements_met(requires: dict, rlevels: dict[str, int], blevels: dict[str, int]) -> bool:
@@ -78,14 +84,51 @@ def _requirement_list(requires: dict, rlevels: dict[str, int], blevels: dict[str
     ]
 
 
+def capstone_cap(cfg: dict, rlevels: dict[str, int]) -> int:
+    """Erlaubte Besitzmenge eines Capstone-Schiffs: default_cap + Stufe der Kommando-Forschung."""
+    bal = get_balance()
+    default_cap = int(bal.data.get("capstone", {}).get("default_cap", 1))
+    return default_cap + int(rlevels.get(cfg.get("capstone"), 0))
+
+
+async def capstone_owned(session: AsyncSession, player_id: uuid.UUID, typ: str) -> int:
+    """Besessene Capstone-Schiffe eines Typs: auf Planeten + in Flotten + in der Bau-Queue."""
+    on_planets = int((await session.execute(
+        select(func.coalesce(func.sum(Ship.count), 0))
+        .join(Planet, Ship.planet_id == Planet.id)
+        .where(Planet.player_id == player_id, Ship.type == typ)
+    )).scalar() or 0)
+    in_fleets = int((await session.execute(
+        select(func.coalesce(func.sum(Ship.count), 0))
+        .join(Fleet, Ship.fleet_id == Fleet.id)
+        .where(Fleet.player_id == player_id, Ship.type == typ)
+    )).scalar() or 0)
+    in_queue = int((await session.execute(
+        select(func.coalesce(func.sum(ShipyardQueueItem.count), 0))
+        .join(Planet, ShipyardQueueItem.planet_id == Planet.id)
+        .where(Planet.player_id == player_id, ShipyardQueueItem.type == typ)
+    )).scalar() or 0)
+    return on_planets + in_fleets + in_queue
+
+
 async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
     """Liefert Schiff-/Verteidigungs-Optionen + aktuelle Queue."""
     bal = get_balance()
     blevels = await get_building_levels(session, planet.id)
     rlevels = await get_research_levels(session, planet.player_id)
     shipyard_lvl = blevels.get("shipyard", 0)
+    nanite_lvl = blevels.get("nanite_factory", 0)
 
     roster = bal.combat_roster
+
+    # Capstone-Schiffe: Besitz-Status (owned/cap) vorab (async) — fuers Frontend + can_build.
+    capstone_status: dict[str, dict] = {}
+    for typ, cfg in catalog_items(bal.ships):
+        if cfg.get("capstone"):
+            capstone_status[typ] = {
+                "owned": await capstone_owned(session, planet.player_id, typ),
+                "cap": capstone_cap(cfg, rlevels),
+            }
 
     def build_options(catalog: dict) -> list[dict]:
         out = []
@@ -97,20 +140,25 @@ async def shipyard_view(session: AsyncSession, planet: Planet) -> dict:
             cost = cfg["cost"]
             req = cfg.get("requires", {})
             req_met = _requirements_met(req, rlevels, blevels)
+            cap_info = capstone_status.get(typ)
+            cap_ok = cap_info is None or cap_info["owned"] < cap_info["cap"]
             out.append({
                 "type": typ,
                 "cost": {
                     "metal": cost.get("metal", 0),
                     "crystal": cost.get("crystal", 0),
                     "deuterium": cost.get("deuterium", 0),
+                    "antimatter": cost.get("antimatter", 0),
+                    "dark_matter": cost.get("dark_matter", 0),
                 },
-                "build_seconds_each": build_seconds_each(cost, shipyard_lvl),
-                "can_build": shipyard_lvl >= 1 and req_met,
+                "build_seconds_each": build_seconds_each(cost, shipyard_lvl, nanite_lvl),
+                "can_build": shipyard_lvl >= 1 and req_met and cap_ok,
                 "requirements_met": req_met,
                 "requirements": _requirement_list(req, rlevels, blevels),
                 "weapon_type": (roster.get(typ) or {}).get("weapon_type"),
                 "drive": (roster.get(typ) or {}).get("drive"),
                 "range": (roster.get(typ) or {}).get("range"),
+                "capstone": cap_info,
             })
         return out
 
@@ -159,24 +207,45 @@ async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: in
     if not _requirements_met(req, rlevels, blevels):
         raise RuntimeError("Vorbedingungen nicht erfuellt")
 
+    cfg = catalog[typ]
+    player = await session.get(Player, planet.player_id) if category == "ship" else None
+
+    # Capstone-Schiffe: Besitz-Limit (default_cap + Kommando-Forschung), keine Stapelung ueber das Limit.
+    if cfg.get("capstone"):
+        cap = capstone_cap(cfg, rlevels)
+        owned = await capstone_owned(session, planet.player_id, typ)
+        if owned + count > cap:
+            raise RuntimeError(
+                f"Besitz-Limit erreicht ({owned}/{cap}). Forsche {cfg['capstone']} fuer +1."
+            )
+
     # Doktrin-Rabatt fuer Signatur-Schiffe (Kosten + Bauzeit).
     cost_mult, time_mult = 1.0, 1.0
     if category == "ship":
         from app.platform.doctrine import signature_mult
-        from app.platform.models import Player
-        player = await session.get(Player, planet.player_id)
         cost_mult, time_mult = signature_mult(player.doctrine if player else None, typ)
 
-    unit_cost = catalog[typ]["cost"]
+    unit_cost = cfg["cost"]
     total_cost = {
         "metal": round(unit_cost.get("metal", 0) * count * cost_mult),
         "crystal": round(unit_cost.get("crystal", 0) * count * cost_mult),
         "deuterium": round(unit_cost.get("deuterium", 0) * count * cost_mult),
     }
+    # Exotische Kosten (kontoweit auf dem Spieler): Affordability VOR dem Abbuchen normaler Ressourcen.
+    exotic_cost = {k: float(unit_cost.get(k, 0)) * count for k in EXOTIC_KEYS if unit_cost.get(k, 0)}
+    if exotic_cost:
+        if player is None:
+            raise RuntimeError("Exotische Kosten nur fuer Schiffe")
+        for res, amt in exotic_cost.items():
+            if float(getattr(player, res, 0) or 0) + 1e-6 < amt:
+                raise RuntimeError(f"Nicht genug {res}")
+
     if not await spend_resources(session, planet, total_cost):
         raise RuntimeError("Nicht genug Ressourcen")
+    for res, amt in exotic_cost.items():
+        setattr(player, res, float(getattr(player, res, 0) or 0) - amt)
 
-    secs_each = max(1, int(round(build_seconds_each(unit_cost, blevels.get("shipyard", 0)) * time_mult)))
+    secs_each = max(1, int(round(build_seconds_each(unit_cost, blevels.get("shipyard", 0), blevels.get("nanite_factory", 0)) * time_mult)))
     # Serielle Werft-Schlange (OGame): EINE Werft pro Planet baut nacheinander. Der neue Auftrag
     # startet erst, wenn der letzte VOLLSTAENDIG fertig ist (= sein GESAMT-Ende, nicht nur die
     # naechste Einheit). Innerhalb eines Auftrags entsteht je ``secs_each`` EINE Einheit

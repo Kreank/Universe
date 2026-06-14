@@ -266,12 +266,56 @@ Es gibt **zwei** Asset-Wurzeln:
 | ✅ | antimatter_collector | `buildings/antimatter_collector.png` | PNG transparent, 512×512 (wie `buildings/*`) | Antimaterie-Kollektor: ein **hitzefestes Kollektor-Bauwerk** auf einem glühend heißen, sonnennahen Planeten — strahlungsabschirmende Paneele/Kollektor-Schalen zur Sonne ausgerichtet, Magnet-Eindämmungstanks, im Kern ein instabil **magenta `#ff4d7d`** glühender Antimaterie-Speicher. Heiß/aggressiv. Gerendert wie ein Gebäude (3/4-Aufsicht), NICHT als Weltraumszene. |
 | ✅ | dark_matter_condenser | `buildings/dark_matter_condenser.png` | PNG transparent, 512×512 (wie `buildings/*`) | Dunkle-Materie-Kondensator: ein **vereistes Kondensator-Bauwerk** auf einem eisig kalten, sternfernen Planeten — Kryo-Kühltürme/Kondensator-Spulen, Raureif auf den Strukturen, im Kern eine tief-violette, ruhig-mysteriöse Dunkle-Materie-Kugel mit leichter Gravitations-Verzerrung. Kühl/mysteriös. Gerendert wie ein Gebäude (3/4-Aufsicht). |
 
+### Nanitenfabrik — GEBÄUDE (Master `assets/buildings/`, Spiegel `frontend/src/assets/img/buildings/`)
+
+> ⬜ **NEU ERSTELLEN (2026-06-14).** Reguläres High-Tech-Gebäude (Endgame-Anlage, baubar ab
+> Roboterfabrik 12; senkt Bauzeit aller Gebäude/Schiffe). **EXAKT wie die vorhandenen `buildings/*.png`**
+> — gleiche 3/4-Aufsicht, gleiches Rendering/Licht/Palette. **Stil-Anker (genau anschauen!):**
+> `buildings/robot_factory.png`, `buildings/shipyard.png`. Format wie die anderen Gebäude
+> (PNG RGBA, transparent, **512×512**, EIN plastisches Bauwerk mittig, cyan `#2fe3d2` Akzentlicht, KEIN Text).
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | nanite_factory | `buildings/nanite_factory.png` | PNG transparent, 512×512 (wie `buildings/*`) | Nanitenfabrik: eine **hochmoderne, sterile Hightech-Fertigungshalle als Bauwerk** — Reinraum-Module, Roboterarme/Montage-Gantries, schwebende Nanit-Schwärme als feine cyan Partikelwolken/Glitzern um die Anlage, leuchtende cyan `#2fe3d2` Daten-/Steuerleitungen. Wirkt wie eine aufgewertete, glänzendere Variante der `robot_factory`. Gerendert wie ein Gebäude (3/4-Aufsicht), NICHT als Weltraumszene. |
+
 ### Ressourcen-Icons (exotisch) — referenziert als `assets/img/resources/<name>.png`
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
 | ✅ | dark_matter | `icons/resources/dark_matter.png` | PNG transparent, 256×256 | Dunkle Materie (zivil/Forschung): tief-violette, gewundene Void-/Energiekugel mit leichter Gravitations-Verzerrung ringsum; **kühl, ruhig-mysteriös**. Muss klar von Antimaterie unterscheidbar sein. Stil wie `resources/metal|crystal|deuterium`. |
 | ✅ | antimatter | `icons/resources/antimatter.png` | PNG transparent, 256×256 | Antimaterie (militärisch/Energie): instabil glühender Energiekern in einem Magnet-Eindämmungsfeld (Ringe), **heiß, aggressiv magenta `#ff4d7d`**, „gefährlich/energetisch". Muss klar von Dunkler Materie unterscheidbar sein. |
+
+---
+
+## 🚀 Endgame-Capstone-Schiffe (4 Archetypen — je Spielstil) — referenziert als `assets/img/ships/<name>.png`
+
+> Vier „ultimative" Schiffe, je eines pro Spielstil (Kämpfer/Pirat/Händler/Miner). Verdrahtung folgt.
+> **Stil-Anker (genau anschauen!):** `ships/battleship.png`, `ships/deathstar.png` — detailliert
+> gerendertes **3/4-Seiten-Capital**, dunkler Metall-Rumpf, **cyan `#2fe3d2` Triebwerks-/Akzent-Glow**,
+> transparenter Hintergrund, 512×512 RGBA, KEIN Text. **Wuchtiger/imposanter als das Schlachtschiff**
+> (Capstone-Tier). Jedes mit eigener, klar erkennbarer Silhouette gemäß Rolle. Militär-Schiffe dürfen
+> einen **magenta `#ff4d7d`** (Antimaterie-)Akzent tragen, zivile einen **violetten** (Dunkle-Materie-)Akzent.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | flagship | `ships/flagship.png` | PNG transparent, 512×512 (Stil = `ships/battleship.png`) | **Flaggschiff** (ehrenvoller Kämpfer): majestätisches Kommando-Capital, markanter Kommandoturm/Brücke, würdevoll-imposant, Insignien-Anmutung, kräftiger cyan Aura-Glow (es verstärkt die Flotte). Leicht magenta Antimaterie-Akzent erlaubt. |
+| ✅ | corsair | `ships/corsair.png` | PNG transparent, 512×512 (Stil = `ships/battleship.png`) | **Korsar** (Pirat): schlanker, räuberischer Raider — kantig, aggressive/schnelle Silhouette, dunkler Tarn-Rumpf, sichtbare Enterhaken/Greifarme, bedrohlich. Cyan Triebwerk + magenta `#ff4d7d` Piraten-Akzent. |
+| ✅ | trade_leviathan | `ships/trade_leviathan.png` | PNG transparent, 512×512 (Stil = `ships/battleship.png`) | **Handels-Leviathan** (Händler): kolossaler, bulliger Frachter — massive Container-/Laderaum-Sektionen, gepanzert aber zivil, Eskort-/Schutz-Pods. Logistik-Gigant. Cyan + violetter (Dunkle-Materie-)Akzent. |
+| ✅ | harvest_titan | `ships/harvest_titan.png` | PNG transparent, 512×512 (Stil = `ships/battleship.png`) | **Ernte-Titan** (Miner): gewaltiges Bergbau-/Erntschiff — Bohrer/Ernte-Arme, Erz-Einlauf-Trichter, Raffinerie-Module, industriell-wuchtig. Cyan + violetter (Dunkle-Materie-)Akzent. |
+
+### Kommando-Forschungen der Capstone-Schiffe (je +1 Besitz-Limit) — referenziert als `assets/img/tech/<name>.png`
+
+> Vier neue Forschungen, je eine pro Capstone-Schiff: default darf man 1 besitzen, jede Stufe gibt +1.
+> **Stil-Anker:** wie die übrigen `tech/*.png` (plastisches Tech-Emblem, cyan `#2fe3d2`, transparent,
+> 256×256, kein Text). Idealerweise **bildlich auf das jeweilige Schiff bezogen** (kleine Schiffs-
+> Silhouette + Kommando-/Rang-Element), damit die Zugehörigkeit klar ist.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | flagship_command | `tech/flagship_command.png` | PNG transparent, 256×256 | Flaggschiff-Doktrin (+1 Flaggschiff): Kommandostab/Admirals-Insignie mit Capital-Silhouette, cyan. |
+| ⬜ | corsair_command | `tech/corsair_command.png` | PNG transparent, 256×256 | Korsaren-Verband (+1 Korsar): Piraten-/Raider-Emblem (Enterhaken + schlanke Schiffs-Silhouette), cyan + dezent magenta. |
+| ⬜ | leviathan_command | `tech/leviathan_command.png` | PNG transparent, 256×256 | Großhandels-Lizenz (+1 Handels-Leviathan): Fracht-/Konvoi-Emblem mit massiver Frachter-Silhouette, cyan + dezent violett. |
+| ⬜ | harvest_command | `tech/harvest_command.png` | PNG transparent, 256×256 | Schürf-Kommando (+1 Ernte-Titan): Bergbau-/Bohr-Emblem mit Ernteschiff-Silhouette, cyan + dezent violett. |
 
 ---
 

@@ -72,6 +72,32 @@ def _commander_mods(commander: Commander | None, fleet_ship_types: int) -> float
     return attack_mult * overstretch_mult
 
 
+def _combat_aura_mult(ships: dict[str, int]) -> float:
+    """Flaggschiff-Kampf-Aura: ist EIN Schiff mit ``roster.aura == 'combat'`` in der Flotte, wird
+    die GANZE Flotte verstaerkt (Angriff + Schild via attack_mult). Praesenz-basiert → Auren
+    STAPELN NICHT (egal wie viele Flaggschiffe → eine Aura). Siehe project_universe_alliances_planned."""
+    bal = get_balance()
+    roster = bal.combat_roster
+    present = any(
+        (roster.get(t) or {}).get("aura") == "combat" and n > 0 for t, n in (ships or {}).items()
+    )
+    if not present:
+        return 1.0
+    return float(bal.data.get("capstone", {}).get("combat_aura", {}).get("attack_mult", 1.0))
+
+
+def _raider_loot_mult(ships: dict[str, int]) -> float:
+    """Korsar-Raider-Bonus: ueberlebt ein Schiff mit ``roster.raider`` die Schlacht, traegt die
+    Flotte mehr Beute (effektiv groesserer Frachtraum). Praesenz-basiert (kein Stapeln)."""
+    bal = get_balance()
+    roster = bal.combat_roster
+    present = any(
+        (roster.get(t) or {}).get("raider") and n > 0 for t, n in (ships or {}).items()
+    )
+    bonus = float(bal.data.get("capstone", {}).get("raider_loot_bonus", 0.0)) if present else 0.0
+    return 1.0 + bonus
+
+
 def _debris(losses: dict[str, int]) -> dict[str, float]:
     """Truemmer = 30 % (M+K) der zerstoerten SCHIFFE (Verteidigung erzeugt keine)."""
     bal = get_balance()
@@ -341,6 +367,9 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
                 await megastructure_levels(session, defender_player_id)
             ).get("antimatter_forge", 0)
 
+    # Flaggschiff-Kampf-Aura (flottenweit, praesenz-basiert, kein Stapeln) — beide Seiten.
+    attack_mult *= _combat_aura_mult(attacker_ships)
+
     seed = random.randrange(1, 2 ** 62)
     attacker = {
         "ships": attacker_ships,
@@ -348,7 +377,10 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         "attack_mult": attack_mult,
         "ship_bonuses": ship_bonuses,
     }
-    defender = {"ships": def_ships, "defenses": def_defenses, "tech": def_tech, "attack_mult": 1.0}
+    defender = {
+        "ships": def_ships, "defenses": def_defenses, "tech": def_tech,
+        "attack_mult": _combat_aura_mult(def_ships),
+    }
 
     result = simulate_battle(attacker, defender, seed, bal.data)
 
@@ -460,7 +492,7 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     # Beute (nur bei Sieg des Angreifers).
     loot = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}
     if winner == "attacker":
-        capacity = _cargo_capacity(atk_survivors)
+        capacity = _cargo_capacity(atk_survivors) * _raider_loot_mult(atk_survivors)
         if npc is not None:
             loot = _compute_loot(npc_resources, capacity)
             cargo = dict(fleet.cargo or {})

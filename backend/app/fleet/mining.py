@@ -57,9 +57,16 @@ async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
         for r in (await session.execute(select(Ship).where(Ship.fleet_id == fleet.id))).scalars().all()
         if r.count > 0
     }
-    miners = ships.get(ship_type, 0)
-    if miners <= 0:
+    # Bergbauschiffe + Ernte-Titan (roster.harvester zaehlt als harvester_yield_mult Bergbauschiffe).
+    roster = bal.combat_roster
+    harvester_mult = float(bal.data.get("capstone", {}).get("harvester_yield_mult", 1.0))
+    effective_miners = float(ships.get(ship_type, 0))
+    for typ, cnt in ships.items():
+        if (roster.get(typ) or {}).get("harvester"):
+            effective_miners += cnt * harvester_mult
+    if effective_miners <= 0:
         return None
+    miners = effective_miners
 
     field = (await session.execute(
         select(AsteroidField).where(

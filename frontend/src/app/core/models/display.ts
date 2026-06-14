@@ -56,6 +56,10 @@ export const BUILDING_META: Record<string, DisplayMeta> = {
     label: 'Forschungslabor', glyph: '🔬', blurb: 'Schaltet Technologien frei.',
     desc: 'Reinraumlabore und Testkammern, in denen neue Technik aus der Theorie in den Einsatz wandert. Jede Stufe beschleunigt die Forschung — ohne Labor steht der gesamte Techbaum still.',
   },
+  nanite_factory: {
+    label: 'Nanitenfabrik', glyph: '🧬', blurb: '−25 % Gebäude- / −5 % Schiff-Bauzeit je Stufe.',
+    desc: 'Selbstreplizierende Nanit-Schwärme übernehmen den Bau: jede Stufe senkt die Bauzeit ALLER Gebäude um 25 % und die Bauzeit von Schiffen um 5 % (multiplikativ, stapelt sich). Erfordert eine Roboterfabrik der Stufe 12 — die Krönung der Bau-Infrastruktur im Endgame.',
+  },
   metal_storage: {
     label: 'Metallspeicher', glyph: '🏗️', blurb: 'Erhoeht Metall-Kapazitaet.',
     desc: 'Massive Bunker fassen die Metallförderung. Ist der Speicher voll, geht jede weitere Förderung verloren — und volle Lager sind ein verlockendes Ziel für Angreifer.',
@@ -260,6 +264,22 @@ export const TECH_META: Record<string, DisplayMeta> = {
     label: 'Terraforming', glyph: '🌍', blurb: '+5 Bauplätze/Stufe auf allen Planeten.',
     desc: 'Atmosphären-Prozessoren, Krustenstabilisatoren, künstliche Magnetfelder. Jede Stufe schafft +5 Bauplätze auf JEDEM deiner Planeten — mehr Platz für höhere Gebäudestufen. Ein gewaltiger, ewig skalierender Bau-Sink für angehäuften Reichtum.',
   },
+  flagship_command: {
+    label: 'Flaggschiff-Doktrin', glyph: '🚩', blurb: '+1 erlaubtes Flaggschiff/Stufe.',
+    desc: 'Befehlsstrukturen, um mehr als ein Flaggschiff zu führen. Jede Stufe erlaubt dir ein weiteres Flaggschiff (Standard: 1). Mehr Flaggschiffe = mehr getrennte, Aura-verstärkte Flotten (Auren stapeln nicht).',
+  },
+  corsair_command: {
+    label: 'Korsaren-Verband', glyph: '🏴‍☠️', blurb: '+1 erlaubter Korsar/Stufe.',
+    desc: 'Eine Piraten-Flottille statt eines einzelnen Räubers. Jede Stufe erlaubt dir einen weiteren Korsar (Standard: 1) — für alle, die Hit-and-run zum Beruf machen.',
+  },
+  leviathan_command: {
+    label: 'Großhandels-Lizenz', glyph: '🐋', blurb: '+1 erlaubter Handels-Leviathan/Stufe.',
+    desc: 'Behördliche Freigabe für eine ganze Leviathan-Flotte. Jede Stufe erlaubt dir einen weiteren Handels-Leviathan (Standard: 1) — Großhandel im industriellen Maßstab.',
+  },
+  harvest_command: {
+    label: 'Schürf-Kommando', glyph: '⛏️', blurb: '+1 erlaubter Ernte-Titan/Stufe.',
+    desc: 'Koordination einer ganzen Ernte-Flotte. Jede Stufe erlaubt dir einen weiteren Ernte-Titan (Standard: 1) — industrieller Bergbau auf Imperiumsmaßstab.',
+  },
 };
 
 /**
@@ -460,6 +480,26 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
     summary: '+5 Bauplätze auf jedem Planeten je Stufe. Mehr Felder → mehr Gebäudestufen → ewiger Bau-Sink.',
     levelEffect: { label: 'Bauplätze/Planet', perLevel: 5, unit: '' },
   },
+  flagship_command: {
+    branch: 'Endgame',
+    summary: 'Wiederholbar: +1 erlaubtes Flaggschiff je Stufe (Default 1). Kostet je Stufe linear mehr.',
+    levelEffect: { label: 'Flaggschiff-Limit', perLevel: 1, unit: '', base: 1 },
+  },
+  corsair_command: {
+    branch: 'Endgame',
+    summary: 'Wiederholbar: +1 erlaubter Korsar je Stufe (Default 1).',
+    levelEffect: { label: 'Korsar-Limit', perLevel: 1, unit: '', base: 1 },
+  },
+  leviathan_command: {
+    branch: 'Endgame',
+    summary: 'Wiederholbar: +1 erlaubter Handels-Leviathan je Stufe (Default 1).',
+    levelEffect: { label: 'Leviathan-Limit', perLevel: 1, unit: '', base: 1 },
+  },
+  harvest_command: {
+    branch: 'Endgame',
+    summary: 'Wiederholbar: +1 erlaubter Ernte-Titan je Stufe (Default 1).',
+    levelEffect: { label: 'Ernte-Titan-Limit', perLevel: 1, unit: '', base: 1 },
+  },
 };
 
 export const SHIP_META: Record<string, DisplayMeta> = {
@@ -570,6 +610,23 @@ export const SHIP_META: Record<string, DisplayMeta> = {
   expedition_ship: {
     label: 'Expeditions-Schiff', glyph: '🧭', blurb: 'Erkundung und Langstrecke.',
     desc: 'Gebaut für die Reise ins Ungewisse: lange Reichweite, robuste Systeme, Platz für Funde. Schickt es in die Leere zwischen den Sternen — was es zurückbringt, ist nie vorhersehbar.',
+  },
+  // -- Endgame-Capstone-Schiffe (eines je Spielstil; Default-Besitz 1, +1 je Kommando-Forschung) --
+  flagship: {
+    label: 'Flaggschiff', glyph: '🚩', blurb: 'Kampf-Aura: verstärkt die ganze Flotte.',
+    desc: 'Das Kronjuwel des ehrenvollen Kämpfers. Solange ein Flaggschiff in der Flotte fliegt, kämpft die GESAMTE Begleitflotte stärker (Aura: +Angriff & +Schild) — die Bühne für deine Kommandeure. Auren stapeln NICHT: zwei Flaggschiffe geben keine doppelte Aura, sondern erlauben zwei getrennte verstärkte Flotten. Antimaterie-gegatet; standardmäßig nur eins erlaubt, die Flaggschiff-Doktrin hebt das Limit.',
+  },
+  corsair: {
+    label: 'Korsar', glyph: '🏴‍☠️', blurb: 'Tarnung, Entern, mehr Beute.',
+    desc: 'Das Schiff des Piraten: getarnt (umgeht Phalanx & Abfangen), mit Enterhaken (kapert gegnerische Schiffe, statt sie nur zu zerstören) und vergrößertem Beuteraum. Eine Glaskanone für den Hinterhalt — stark im Überfall, verwundbar im offenen Schlagabtausch. Anders als die anderen Capstones in Stückzahl baubar (Piraten verlieren Schiffe), gebremst durch hohe Antimaterie-Kosten.',
+  },
+  trade_leviathan: {
+    label: 'Handels-Leviathan', glyph: '🐋', blurb: 'Gigantischer Frachter + Konvoi-Schutz.',
+    desc: 'Der Stolz des Händlers: ein kolossaler Frachter mit gewaltigem Laderaum. Fliegt er in einer Handelsflotte mit, legt er eine Konvoi-Schutz-Aura über die Route und halbiert das Überfallrisiko. Kein Markt-Eingriff — reine Logistik & Sicherheit. Dunkle-Materie-gegatet.',
+  },
+  harvest_titan: {
+    label: 'Ernte-Titan', glyph: '⛏️', blurb: 'Mobile Mega-Raffinerie (Abbau ×8).',
+    desc: 'Der Traum des Miners: ein gewaltiges Erntschiff, das an Asteroidenfeldern ein Vielfaches eines normalen Bergbauschiffs fördert (zählt wie viele Bergbauschiffe zugleich) und riesige Mengen heimbringt. Dunkle-Materie-gegatet; verwandelt Schürfen in Industrie.',
   },
 };
 
