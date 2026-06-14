@@ -14,6 +14,9 @@ from app.platform.balance import get_balance
 from app.platform.models import Building, Planet, Research, Resource, Ship
 
 RESOURCE_KEYS = ("metal", "crystal", "deuterium")
+# Exotische, KONTOWEITE Ressourcen (auf dem Player, kein Lager/Cap). Pro Planet wird je Exo-Mine
+# eine Resource-Zeile als Lazy-Akkumulator gefuehrt und bei jedem Refresh aufs Konto ausgekehrt.
+EXOTIC_KEYS = ("antimatter", "dark_matter")
 STORAGE_BUILDING = {
     "metal": "metal_storage",
     "crystal": "crystal_storage",
@@ -53,6 +56,49 @@ def solar_satellite_energy(temp_max: int, count: int) -> float:
     return float(per_sat * int(count))
 
 
+def exotic_production_raw(buildings: dict[str, int], position: int | None) -> dict[str, float]:
+    """Roh-Produktion exotischer Materie (pro Stunde, speed=1, VOR Energie-Drossel) der Exo-Minen
+    auf diesem Planeten. Reine Funktion -> testbar. Positions-gebunden: nur baubar/ertragreich auf
+    den ``allowed_positions`` des Gebaeudes, der Ertrag wird mit ``position_yield`` (Pos-Gradient)
+    multipliziert. Liefert {exotic_prod-Ressource: rate}, z.B. {"antimatter": 12.3}."""
+    if position is None:
+        return {}
+    b = get_balance().buildings
+    out: dict[str, float] = {}
+    for name, cfg in b.items():
+        if not isinstance(cfg, dict) or "exotic_prod" not in cfg:
+            continue
+        level = int(buildings.get(name, 0))
+        if level <= 0:
+            continue
+        if int(position) not in [int(p) for p in cfg.get("allowed_positions", [])]:
+            continue
+        pmult = float(cfg.get("position_yield", {}).get(str(int(position)), 0.0))
+        if pmult <= 0:
+            continue
+        raw = float(cfg["prod_base"]) * level * (float(cfg["prod_growth"]) ** level) * pmult
+        res = cfg["exotic_prod"]
+        out[res] = out.get(res, 0.0) + raw
+    return out
+
+
+def exotic_energy_use(buildings: dict[str, int], position: int | None) -> float:
+    """Energieverbrauch der Exo-Minen (zaehlt in die Energiebilanz -> drosselt bei Defizit ALLE
+    Produktion). Nur Minen auf einer erlaubten Position zaehlen (anderswo nicht baubar)."""
+    if position is None:
+        return 0.0
+    b = get_balance().buildings
+    total = 0.0
+    for name, cfg in b.items():
+        if not isinstance(cfg, dict) or "exotic_prod" not in cfg:
+            continue
+        level = int(buildings.get(name, 0))
+        if level <= 0 or int(position) not in [int(p) for p in cfg.get("allowed_positions", [])]:
+            continue
+        total += float(cfg["energy_base"]) * level * (float(cfg["energy_growth"]) ** level)
+    return total
+
+
 def compute_production_and_energy(
     buildings: dict[str, int],
     temp_max: int,
@@ -62,12 +108,15 @@ def compute_production_and_energy(
     extraction_level: int = 0,
     extraction_mastery_level: int = 0,
     megastructure_mining_mult: float = 1.0,
+    position: int | None = None,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """Berechnet (Minen-Roh-Produktion pro Stunde bei speed=1) und die Energie-Bilanz.
 
     Rueckgabe:
-      rates_raw: {metal, crystal, deuterium} = Minen-Produktion OHNE Grundeinkommen,
-                 OHNE Drossel, OHNE Speed (das addiert/skaliert der Aufrufer).
+      rates_raw: {metal, crystal, deuterium [, antimatter/dark_matter]} = Produktion OHNE
+                 Grundeinkommen, OHNE Drossel, OHNE Speed (das addiert/skaliert der Aufrufer).
+                 Exotische Schluessel (nur bei ``position`` mit Exo-Mine) sind kontoweit, NICHT
+                 in RESOURCE_KEYS -> der Cap-/Speicher-Loop ignoriert sie.
       energy:    {produced, consumed, balance, factor}
     """
     bal = get_balance()
@@ -111,6 +160,9 @@ def compute_production_and_energy(
 
     # -- Energie: Verbrauch der Minen ----------------------------------------
     consumed = energy_use("metal_mine") + energy_use("crystal_mine") + energy_use("deuterium_synth")
+    # Exo-Minen sind energiehungrig: ihr Verbrauch zaehlt mit -> ein Defizit drosselt (factor)
+    # auch ihre eigene Foerderung. Das ist die gewollte natuerliche Bremse (Energie statt Cap).
+    consumed += exotic_energy_use(buildings, position)
 
     # -- Energie: Erzeugung (Solarkraftwerk + Solarsatelliten + Fusion) ------
     solar = b["solar_plant"]
@@ -132,6 +184,8 @@ def compute_production_and_energy(
     factor = 1.0 if consumed <= 0 else min(1.0, produced / consumed)
 
     rates_raw = {"metal": metal_raw, "crystal": crystal_raw, "deuterium": deut_raw}
+    # Exotische Roh-Produktion (kontoweit, positions-gebunden) als Zusatz-Keys anhaengen.
+    rates_raw.update(exotic_production_raw(buildings, position))
     energy = {
         "produced": round(produced, 2),
         "consumed": round(consumed, 2),
@@ -153,6 +207,7 @@ def compute_rates(
     extraction_level: int = 0,
     extraction_mastery_level: int = 0,
     megastructure_mining_mult: float = 1.0,
+    position: int | None = None,
 ) -> tuple[dict[str, float], dict[str, float], dict[str, float]]:
     """Liefert (effektive Stundenraten inkl. Grundeinkommen & Speed, energy, capacities).
 
@@ -164,7 +219,7 @@ def compute_rates(
     speed = bal.speed
     rates_raw, energy = compute_production_and_energy(
         buildings, temp_max, energy_tech, mining_level, solar_satellites,
-        extraction_level, extraction_mastery_level, megastructure_mining_mult,
+        extraction_level, extraction_mastery_level, megastructure_mining_mult, position,
     )
     factor = energy["factor"]
     base = bal.base_income
@@ -177,6 +232,12 @@ def compute_rates(
         if key == "deuterium":
             effective -= energy.get("deuterium_burn", 0.0)
         rates[key] = round(effective * speed, 4)
+
+    # Exotische Materie (kontoweit): effektive Rate = Roh * Energie-factor * Speed. KEIN
+    # production_mult (Gouverneur/Dekompressor wirken nur auf Minen), KEIN Grundeinkommen, KEIN Cap.
+    for key, raw in rates_raw.items():
+        if key not in RESOURCE_KEYS:
+            rates[key] = round(raw * factor * speed, 6)
 
     # Speichertechnik (Forschung): +X% Lagerkapazitaet je Stufe.
     store_mult = 1.0 + float(bal.data["research"].get("effects", {}).get("storage_per_level", 0)) * int(storage_level)
@@ -250,6 +311,7 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
         extraction_level=research.get("extraction_tech", 0),
         extraction_mastery_level=research.get("extraction_mastery", 0),
         megastructure_mining_mult=mega_mining_mult,
+        position=planet.position,
     )
 
     rows = (await session.execute(
@@ -285,6 +347,7 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
             extraction_level=research.get("extraction_tech", 0),
             extraction_mastery_level=research.get("extraction_mastery", 0),
             megastructure_mining_mult=mega_mining_mult,
+            position=planet.position,
         )
 
     result: dict[str, dict] = {}
@@ -321,6 +384,47 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
             "rate": round(row.rate, 2),
             "capacity": round(cap, 2),
         }
+
+    # --- Exotische Materie (kontoweit): Lazy-Akkumulator je Planet -> aufs Konto auskehren -------
+    # Pro Exo-Mine fuehrt der Planet eine Resource-Zeile (rate + last_updated). Bei jedem Refresh:
+    # ueber das Intervall mit der ALTEN Rate akkumulieren, dem Player gutschreiben, Zeile auf 0
+    # zuruecksetzen und die NEUE Rate setzen. KEIN Cap (exotisch ist kontoweit, kein Lager).
+    exotic_rows = (await session.execute(
+        select(Resource).where(
+            Resource.planet_id == planet.id,
+            Resource.type.in_(EXOTIC_KEYS),
+        )
+    )).scalars().all()
+    exotic_by_type = {r.type: r for r in exotic_rows}
+    exotic_out: dict[str, dict] = {}
+    player = None
+    for key in EXOTIC_KEYS:
+        new_rate = float(new_rates.get(key, 0.0))
+        row = exotic_by_type.get(key)
+        if row is None:
+            if new_rate <= 0:
+                continue  # nie produziert -> keine Zeile noetig
+            # Erstkontakt: keine Vergangenheits-Produktion gutschreiben, nur Rate verankern.
+            session.add(Resource(planet_id=planet.id, type=key, amount=0.0, rate=new_rate, last_updated=now))
+            exotic_out[key] = {"rate": round(new_rate, 4)}
+            continue
+        last = row.last_updated or now
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=dt.timezone.utc)
+        dt_hours = max(0.0, (now - last).total_seconds() / 3600.0)
+        earned = max(0.0, float(row.amount or 0.0) + float(row.rate or 0.0) * dt_hours)
+        if earned > 0:
+            if player is None:
+                from app.platform.models import Player
+                player = await session.get(Player, planet.player_id)
+            if player is not None:
+                setattr(player, key, float(getattr(player, key, 0) or 0) + earned)
+        row.amount = 0.0
+        row.rate = new_rate
+        row.last_updated = now
+        exotic_out[key] = {"rate": round(new_rate, 4)}
+    if exotic_out:
+        result["exotic"] = exotic_out
 
     result["energy"] = energy
     return result

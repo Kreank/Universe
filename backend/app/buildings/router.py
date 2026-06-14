@@ -65,6 +65,8 @@ async def get_buildings(
                 energy_now=o["energy_now"],
                 energy_next=o["energy_next"],
                 energy_delta=o["energy_delta"],
+                position_ok=o.get("position_ok", True),
+                allowed_positions=o.get("allowed_positions", []),
             )
             for o in options
         ],

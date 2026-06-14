@@ -118,6 +118,10 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
         req_met = all(item["met"] for item in req_list)
         energy_now = energy_for_level(btype, level, energy_tech)
         energy_next = energy_for_level(btype, level + 1, energy_tech)
+        # Positions-gebundene Gebaeude (Exo-Minen): nur auf den erlaubten Slots baubar. Wird gelistet,
+        # aber auf falscher Position als nicht-baubar markiert (Discoverability statt Verstecken).
+        allowed_pos = bcfg.get("allowed_positions")
+        position_ok = True if not allowed_pos else (planet.position in [int(p) for p in allowed_pos])
         options.append({
             "type": btype,
             "next_level": level + 1,
@@ -129,6 +133,8 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
             "energy_now": energy_now,
             "energy_next": energy_next,
             "energy_delta": round(energy_next - energy_now, 1),
+            "position_ok": position_ok,
+            "allowed_positions": [int(p) for p in allowed_pos] if allowed_pos else [],
         })
     return options
 
@@ -153,6 +159,12 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
     is_moon = planet.planet_type == "moon"
     if bool(bal.buildings[building_type].get("moon_only", False)) != is_moon:
         raise ValueError("Dieses Gebaeude ist hier nicht baubar")
+    # Positions-Gate (Exo-Minen): nur auf den erlaubten System-Slots baubar.
+    allowed_pos = bal.buildings[building_type].get("allowed_positions")
+    if allowed_pos and planet.position not in [int(p) for p in allowed_pos]:
+        raise ValueError(
+            f"Dieses Gebaeude ist nur auf Position {', '.join(str(int(p)) for p in allowed_pos)} baubar"
+        )
     if await is_building_in_progress(session, planet.id):
         raise RuntimeError("Es laeuft bereits ein Gebaeudeausbau auf diesem Planeten")
     # Feld-Budget erzwingen: jede Gebaeudestufe kostet ein Feld (Modell A, Doku 06a).

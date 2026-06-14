@@ -34,6 +34,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
   { key: 'facility', label: 'Anlagen', glyph: '🏭', types: ['robot_factory', 'shipyard', 'research_lab'] },
   { key: 'storage', label: 'Lager', glyph: '📦', types: ['metal_storage', 'crystal_storage', 'deuterium_tank'] },
   { key: 'command', label: 'Kommando', glyph: '🎖️', types: ['command_academy', 'command_center'] },
+  { key: 'exotic', label: 'Exotisch', glyph: '🌌', types: ['antimatter_collector', 'dark_matter_condenser'] },
 ];
 
 @Component({
@@ -101,7 +102,9 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
                     >
                       {{ pending() === b.type ? '…' : 'Ausbauen → ' + b.option.next_level }}
                     </button>
-                    @if (!b.option.requirements_met) {
+                    @if (b.option.position_ok === false) {
+                      <span class="hint warn small">Nur auf Position {{ (b.option.allowed_positions ?? []).join(', ') }}</span>
+                    } @else if (!b.option.requirements_met) {
                       <span class="hint warn small">Voraussetzung fehlt</span>
                     } @else if (!b.option.can_afford) {
                       <span class="hint warn small">Zu teuer</span>
@@ -293,7 +296,13 @@ export class BuildingsComponent {
   }
 
   canUpgrade(b: BuildingRow): boolean {
-    return !!b.option && b.option.can_afford && b.option.requirements_met && !b.finishesAt;
+    return (
+      !!b.option &&
+      b.option.can_afford &&
+      b.option.requirements_met &&
+      b.option.position_ok !== false &&
+      !b.finishesAt
+    );
   }
 
   openDetail(row: BuildingRow): void {

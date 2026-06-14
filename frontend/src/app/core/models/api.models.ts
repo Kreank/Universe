@@ -146,6 +146,10 @@ export interface BuildingOption {
   energy_now: number;
   energy_next: number;
   energy_delta: number;
+  /** Positions-Gate (Exo-Minen): auf diesem Planeten-Slot baubar? */
+  position_ok?: boolean;
+  /** Erlaubte System-Positionen (leer = ueberall baubar). */
+  allowed_positions?: number[];
 }
 
 export interface BuildingsResponse {

@@ -37,6 +37,9 @@ class BuildingOptionOut(BaseModel):
     energy_now: float = 0.0      # bei aktueller Stufe
     energy_next: float = 0.0     # bei naechster Stufe
     energy_delta: float = 0.0    # Veraenderung durch den Ausbau
+    # Positions-Gate (Exo-Minen): auf diesem Planeten-Slot baubar? + erlaubte Positionen.
+    position_ok: bool = True
+    allowed_positions: list[int] = []
 
 
 class BuildingsResponse(BaseModel):

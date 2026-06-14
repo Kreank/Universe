@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS vector;        -- pgvector (Embeddings)
 -- ---------------------------------------------------------------------
 --  ENUM-Typen
 -- ---------------------------------------------------------------------
-CREATE TYPE resource_type   AS ENUM ('metal', 'crystal', 'deuterium', 'energy');
+CREATE TYPE resource_type   AS ENUM ('metal', 'crystal', 'deuterium', 'energy', 'antimatter', 'dark_matter');
 CREATE TYPE commander_status AS ENUM ('active', 'training', 'wounded', 'captured', 'dead');
 CREATE TYPE commander_rank  AS ENUM ('cadet', 'officer', 'veteran', 'elite', 'legend');
 CREATE TYPE specialization  AS ENUM ('combat', 'logistics', 'spy', 'research', 'trade');

@@ -101,6 +101,14 @@ export const BUILDING_META: Record<string, DisplayMeta> = {
     label: 'Sprungtor', glyph: '🌀', blurb: 'Sofort-Sprung zwischen eigenen Monden.',
     desc: 'Ein massives Hyperraum-Portal. Versetzt Flotten ohne Flugzeit zwischen zwei deiner Monde — strategische Logistik in Sekunden statt Stunden. Teuerstes Mondbauwerk, mit Abklingzeit zwischen den Sprüngen.',
   },
+  antimatter_collector: {
+    label: 'Antimaterie-Kollektor', glyph: '⚛️', blurb: 'Antimaterie — nur auf heißen Slots (Pos 1–2).',
+    desc: 'Erntet Antimaterie aus der Sternenstrahlung — baubar nur auf den heißen, sonnennahen Slots eines Systems (Position 1 voller Ertrag, Position 2 halber). Sehr energiehungrig (braucht ein starkes Solarkraftwerk, ab Stufe 12). Der Ertrag fließt kontoweit auf deine Antimaterie-Reserve (kein Lagerlimit) und treibt die Antimaterie-Schmiede. Bei Energiedefizit drosselt sich die Förderung selbst.',
+  },
+  dark_matter_condenser: {
+    label: 'Dunkle-Materie-Kondensator', glyph: '🌑', blurb: 'Dunkle Materie — nur auf kalten Slots (Pos 14–15).',
+    desc: 'Kondensiert Dunkle Materie in der eisigen Außenzone — baubar nur auf den kalten, sternfernen Slots eines Systems (Position 15 voller Ertrag, Position 14 halber). Sehr energiehungrig (braucht einen starken Fusionsreaktor, ab Stufe 8). Der Ertrag fließt kontoweit auf deine Dunkle-Materie-Reserve (kein Lagerlimit) und treibt Forschungs-Nexus & Materie-Dekompressor.',
+  },
 };
 
 export const TECH_META: Record<string, DisplayMeta> = {
@@ -538,6 +546,10 @@ export const SHIP_META: Record<string, DisplayMeta> = {
   escort_frigate: {
     label: 'Eskort-Fregatte', glyph: '🛡️', blurb: 'Punktverteidigung, schirmt Fracht.',
     desc: 'Die Leibwache des Konvois: ihre Punktverteidigung fängt Raketen und Drohnen ab, bevor sie die Fracht erreichen. Defensiv, geduldig, unverzichtbar für sichere Transporte.',
+  },
+  warp_stabilizer: {
+    label: 'Warp-Stabilisator', glyph: '🌀', blurb: 'Konter zum Interdiktor: hält den Warp offen.',
+    desc: 'Das Gegenstück zum Interdiktor. Jeder Warp-Stabilisator in deiner Flotte stabilisiert den Sprungkanal: Er senkt die Chance, aus dem Warp gerissen (abgefangen) zu werden, und neutralisiert im Gefecht je ein gegnerisches Interdiktor-Feld — pro Stabilisator ein Interdiktor. Mit genug Stabilisatoren bleibt der Fleetsave deine Versicherung, egal wie viele Fang-Schiffe der Feind auffährt. Selbst kein Schläger; sein Wert ist die garantierte Flucht.',
   },
   shield_tender: {
     label: 'Schild-Tender', glyph: '🔆', blurb: 'Projiziert Schilde im Gefecht.',

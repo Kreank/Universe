@@ -215,6 +215,12 @@ _STATEMENTS: list[str] = [
         PRIMARY KEY (player_id, type)
     )
     """,
+    # -- Feature: Exo-Minen (positions-gebundene Quelle exotischer Materie) ---
+    # Exotischer Ertrag wird pro Planet als resources-Zeile lazy akkumuliert und aufs Konto
+    # ausgekehrt -> der resource_type-ENUM braucht die zwei Werte (Wert vor Nutzung committet,
+    # AUTOCOMMIT je Statement).
+    "ALTER TYPE resource_type ADD VALUE IF NOT EXISTS 'antimatter'",
+    "ALTER TYPE resource_type ADD VALUE IF NOT EXISTS 'dark_matter'",
 ]
 
 
