@@ -99,5 +99,6 @@ async def request_advisor(session: AsyncSession, player: Player) -> None:
         situation="Lagebericht und Empfehlung",
         subject="🧠 Berater: Lagebericht",
         detail=detail,
+        ttype="routine",
     )
     log.info("Berater angefordert: player=%s planeten=%s", player.id, detail.get("Planeten (Anzahl)"))

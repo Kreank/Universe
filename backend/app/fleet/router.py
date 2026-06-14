@@ -63,6 +63,11 @@ async def send(
         mission_data["expedition_hours"] = body.expedition_hours
     if body.mission == "intercept" and body.radius is not None:
         mission_data["radius"] = body.radius
+    if body.mission == "escort":
+        if body.escort_radius is not None:
+            mission_data["escort_radius"] = body.escort_radius
+        if body.escort_fee_pct is not None:
+            mission_data["escort_fee_pct"] = body.escort_fee_pct
     if body.target_type == "moon":
         mission_data["target_type"] = "moon"
     try:

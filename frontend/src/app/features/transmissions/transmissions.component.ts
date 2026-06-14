@@ -33,6 +33,8 @@ interface SpyIntelView {
   fleet: IntelUnit[] | null;
   defenses: IntelUnit[] | null;
   resources: IntelUnit[] | null;
+  /** NPC-Wirtschaft (abgeleitete Ausbau-/Forschungsstufe), sonst null. */
+  economy: { development: number; research: number } | null;
   scannedAt: string | null;
 }
 
@@ -128,6 +130,15 @@ interface SpyIntelView {
                       @for (u of intel.resources; track u.label) {
                         <span class="unit res"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ fmt(u.count) }} {{ u.label }}</span>
                       }
+                    </div>
+                  </div>
+                }
+                @if (intel.economy; as eco) {
+                  <div class="intel-section">
+                    <div class="intel-label">🏭 Wirtschaft</div>
+                    <div class="intel-rows">
+                      <span class="unit" title="Wirtschaftlicher Ausbaustand — waechst mit Region, Spielerstaerke und Alter">🏗️ Ausbaustufe {{ eco.development }}</span>
+                      <span class="unit" title="Forschungsstand des Imperiums">🔬 Forschung {{ eco.research }}</span>
                     </div>
                   </div>
                 }
@@ -387,6 +398,12 @@ export class TransmissionsComponent {
       fleet: units(p['fleet'], SHIP_META, shipIcon),
       defenses: units(p['defenses'], DEFENSE_META, defenseIcon),
       resources: resources && resources.length ? resources : null,
+      economy: (() => {
+        const e = p['economy'] as Record<string, number> | undefined;
+        return e && typeof e === 'object'
+          ? { development: Number(e['development'] ?? 0), research: Number(e['research'] ?? 0) }
+          : null;
+      })(),
       scannedAt: typeof p['scanned_at'] === 'string' ? (p['scanned_at'] as string) : null,
     };
   }

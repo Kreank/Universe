@@ -70,5 +70,6 @@ async def news_tick() -> None:
             "Schauplatz": location,
             "zurueckgelassenes Truemmerfeld (Metall+Kristall)": scale_val,
         },
+        ttype="system",
     )
     log.info("News-Tick: Schlacht bei %s gemeldet (Truemmer=%d)", location, scale_val)

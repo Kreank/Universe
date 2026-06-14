@@ -236,7 +236,7 @@ export interface ShipyardBuildResponse {
 // --- Flotte -------------------------------------------------------------
 
 export type FleetMission =
-  | 'attack' | 'transport' | 'spy' | 'deploy' | 'recycle' | 'colonize' | 'mine' | 'expedition' | 'trade' | 'intercept';
+  | 'attack' | 'transport' | 'spy' | 'deploy' | 'recycle' | 'colonize' | 'mine' | 'expedition' | 'trade' | 'intercept' | 'escort';
 export type FleetStatus = 'flying' | 'arrived' | 'returning' | 'returned';
 
 export interface Coordinate {
@@ -290,6 +290,9 @@ export interface FleetSendRequest {
   target_type?: 'moon';
   /** Abfangen (mission == 'intercept'): Patrouillen-Radius in Systemen (Default 0 = nur Zielsystem). */
   radius?: number;
+  /** Eskorte (mission == 'escort'): Deckungs-Radius in Systemen + Gebuehr (Anteil 0..max_fee_pct). */
+  escort_radius?: number;
+  escort_fee_pct?: number;
 }
 
 /** Ein Eintrag im Faehigkeiten-Katalog (RPG-Entwicklung). */
@@ -509,7 +512,10 @@ export interface PhalanxScanResult {
   movements: PhalanxMovement[];
 }
 
-/** Eine eigene stationierte Patrouille (deploy) inkl. Eskort-Angebot. */
+/** Modus einer stationierten Flotte (genau einer, exklusiv). */
+export type StationMode = 'park' | 'intercept' | 'escort';
+
+/** Eine eigene stationierte Flotte (Stationieren/Abfangen/Eskorte). */
 export interface StationedFleet {
   id: string;
   coords: string;
@@ -518,6 +524,8 @@ export interface StationedFleet {
   position: number;
   ships: Record<string, number>;
   ships_total: number;
+  /** Exklusiver Modus: 'park' (geparkt), 'intercept' (Abfangen) oder 'escort' (Eskorte). */
+  mode: StationMode;
   escort_enabled: boolean;
   escort_radius: number;
   escort_fee_pct: number;

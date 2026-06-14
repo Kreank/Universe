@@ -69,12 +69,12 @@ export const BUILDING_META: Record<string, DisplayMeta> = {
     desc: 'Druckisolierte Tanks halten den flüchtigen Treibstoff. Großoffensiven verschlingen Unmengen Deuterium — ohne Reserven bleibt die Flotte im Hangar.',
   },
   command_academy: {
-    label: 'Kommando-Akademie', glyph: '🎖️', blurb: 'Bildet Commander aus.',
-    desc: 'Hier werden aus Rekruten Commander geformt — Menschen, die deine Flotten führen und ihre Moral tragen. Das Fundament der Doktrin „Befehlige nicht nur Flotten, führe Menschen."',
+    label: 'Kommando-Akademie', glyph: '🎖️', blurb: '+1 Ausbildungsplatz je Stufe.',
+    desc: 'Hier werden aus Rekruten Commander geformt — Menschen, die deine Flotten führen und ihre Moral tragen. Ohne Akademie (mindestens Stufe 1) lässt sich kein Commander ausbilden. Jede weitere Stufe öffnet einen zusätzlichen Ausbildungsplatz, sodass du mehrere Commander gleichzeitig trainieren kannst — Stufe 3 = 3 parallele Ausbildungen. Das Fundament der Doktrin „Befehlige nicht nur Flotten, führe Menschen."',
   },
   command_center: {
-    label: 'Kommandozentrale', glyph: '📡', blurb: 'Erhoeht Span of Control.',
-    desc: 'Das Nervenzentrum deines Imperiums. Jede Stufe erweitert deine Befehlsreichweite (Span of Control) — also wie viele Commander du gleichzeitig im Einsatz halten kannst.',
+    label: 'Kommandozentrale', glyph: '📡', blurb: '+1 Span of Control je Stufe.',
+    desc: 'Das Nervenzentrum deines Imperiums. Ohne Kommandozentrale kannst du genau 1 Commander gleichzeitig im Feld führen. Jede Stufe hebt deine Befehlsreichweite (Span of Control) um +1 — es gibt kein Maximum, nur die Baukosten setzen die Grenze. Zählt wird die höchste Stufe über alle deine Planeten. Wer mehr Geschwader losschickt, als die Span erlaubt, kassiert pro überzähligem Geschwader −8 % Kampfkraft (Koordinationsstrafe). Hinzu kommt noch die Kommando-Doktrin (+1 Span je Forschungsstufe).',
   },
   // -- Mond-Gebäude (nur auf Monden baubar) --
   moon_base: {
@@ -202,7 +202,7 @@ export const TECH_META: Record<string, DisplayMeta> = {
   },
   astrophysics: {
     label: 'Astrophysik', glyph: '🔭', blurb: '+1 Kolonie je Stufe.',
-    desc: 'Sternkartierung, Gravitationsanalyse, Habitabilitäts-Modelle. Jede Stufe erlaubt dir, eine weitere Kolonie zu gründen — die Grundlage echter Expansion.',
+    desc: 'Sternkartierung, Gravitationsanalyse, Habitabilitäts-Modelle. Schon ohne Astrophysik darfst du 3 Kolonien gründen; jede Stufe hebt dieses Limit um +1 (zusätzlich zu deinem Heimatplaneten). Stufe 1 schaltet außerdem Expeditionen in die galaktischen Weiten frei, und jede weitere Stufe verlängert die maximale Verweildauer einer Expedition um +1 Std (bis 24 Std). Die Grundlage echter Expansion.',
   },
   expedition_tech: {
     label: 'Expeditionstechnik', glyph: '🧭', blurb: '+Expeditions-Ertrag je Stufe.',
@@ -357,7 +357,7 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
   astrophysics: {
     branch: 'Expansion',
     summary: 'Erlaubt +1 Kolonie je Stufe.',
-    levelEffect: { label: 'Max. Kolonien', perLevel: 1, unit: '', base: 9 },
+    levelEffect: { label: 'Max. Kolonien', perLevel: 1, unit: '', base: 3 },
   },
   expedition_tech: {
     branch: 'Expansion',
@@ -576,6 +576,7 @@ export const MISSION_META: Record<string, DisplayMeta> = {
   expedition: { label: 'Expedition', glyph: '🧭' },
   trade: { label: 'Handel', glyph: '💱' },
   intercept: { label: 'Abfangen', glyph: '📡' },
+  escort: { label: 'Eskorte', glyph: '🛡️' },
 };
 
 export const SPECIALIZATION_META: Record<string, DisplayMeta> = {

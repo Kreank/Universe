@@ -257,7 +257,7 @@ async def send_fleet(
     {offer_res, offer_amount, want_res}) und wird auf ``fleet.mission_data`` gesetzt."""
     bal = get_balance()
     mission_data = mission_data or {}
-    valid_missions = {"attack", "transport", "spy", "deploy", "recycle", "colonize", "mine", "expedition", "trade", "intercept"}
+    valid_missions = {"attack", "transport", "spy", "deploy", "recycle", "colonize", "mine", "expedition", "trade", "intercept", "escort"}
     if mission not in valid_missions:
         raise ValueError(f"Mission muss eine von {sorted(valid_missions)} sein")
 
@@ -351,6 +351,14 @@ async def send_fleet(
         cap = intercept_radius_cap(research)
         radius = max(0, min(cap, int(mission_data.get("radius", 0) or 0)))
         mission_data = {**mission_data, "radius": radius}
+
+    # Eskorte: die Flotte stationiert am Ziel als Geleitschutz-Angebot (Radius + Gebuehr).
+    if mission == "escort":
+        ecfg = bal.data.get("escort", {})
+        cap_fee = float(ecfg.get("max_fee_pct", 0.10))
+        e_radius = max(0, int(mission_data.get("escort_radius", ecfg.get("region_radius", 5)) or 0))
+        e_fee = max(0.0, min(cap_fee, float(mission_data.get("escort_fee_pct", 0.0) or 0.0)))
+        mission_data = {**mission_data, "escort_radius": e_radius, "escort_fee_pct": e_fee}
 
     # Expedition erfordert Expeditions-Schiffe in der Flotte.
     if mission == "expedition":
@@ -466,7 +474,7 @@ async def send_fleet(
     # zurueck -> Sprit + Reichweite muessen Hin + Rueck decken.
     origin = (planet.galaxy, planet.system, planet.position)
     distance = compute_distance(origin, target)
-    round_trip = mission != "deploy"
+    round_trip = mission not in ("deploy", "escort")
     # Reichweiten-Grenze (Treibstoff-Tank pro Schiff): das schwaechste Schiff begrenzt die Flotte.
     max_range, limiting = fleet_max_range(ships, round_trip=round_trip)
     if distance > max_range:
@@ -799,9 +807,11 @@ async def fleet_arrive(fleet_id: str) -> None:
         elif mission == "trade":
             await resolve_trade(session, fleet)
         elif mission == "deploy":
-            stationed = await resolve_deploy(session, fleet)
+            stationed = await resolve_deploy(session, fleet, mode="park")
         elif mission == "intercept":
-            stationed = await resolve_deploy(session, fleet, intercept=True)
+            stationed = await resolve_deploy(session, fleet, mode="intercept")
+        elif mission == "escort":
+            stationed = await resolve_deploy(session, fleet, mode="escort")
 
         wiped = bool(exp_result and exp_result.get("wiped"))
         if wiped:

@@ -463,9 +463,9 @@
     ],
     "xp": { "mission_success": 25, "victory": 40, "expedition_find": 30 },
     "span": {
-      "player_base": 3,
-      "command_center_bonus": [1, 1, 1, 1, 1, 0, 1, 0, 1, 0],
-      "_command_center_note": "Pro Kommandozentralen-Stufe (Index = lvl-1), abnehmender Ertrag.",
+      "player_base": 1,
+      "command_center_bonus_per_level": 1,
+      "_command_center_note": "Span-of-Control = player_base + command_center_bonus_per_level * Kommandozentralen-Stufe (hoechste Stufe ueber alle Planeten) + Doktrin. Linear, kein theoretisches Maximum.",
       "command_doctrine_bonus_per_level": 1,
       "overstretch_penalty_per_excess": 0.08,
       "_overstretch_note": "Pro Geschwader ueber Span: -8% effektive Kampfkraft (Koordinationsstrafe)."
@@ -639,7 +639,12 @@
       "min_tier": 1.0,
       "max_tier": 12.0,
       "per_tier_strength": 0.5,
-      "tech_per_tier": 0.5
+      "tech_per_tier": 0.5,
+      "development": {
+        "_note": "Alters-Entwicklung (2026-06-13): NPCs bauen ihre Wirtschaft ueber die ZEIT aus — auch fern jeder Spielerpraesenz, sonst sind isolierte NPCs ewige Leichen. Addiert sich aufs Region/Spieler-Tier (effective_tier), treibt also Garnison, Einkommen, Loot-Cap UND Tech gemeinsam. +1 Tier je seconds_per_tier NPC-Alter, gedeckelt auf max_tier_bonus. Reine Balance-Aenderung -> nur 'up -d game-server' noetig.",
+        "seconds_per_tier": 43200,
+        "max_tier_bonus": 4.0
+      }
     },
     "income_per_tick": { "metal": 800, "crystal": 500, "deuterium": 150 },
     "resource_cap": { "metal": 60000, "crystal": 40000, "deuterium": 15000 },

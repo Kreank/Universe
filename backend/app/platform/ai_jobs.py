@@ -24,11 +24,13 @@ async def enqueue_npc_persona_init(npc_id) -> None:
 
 async def enqueue_flavor(
     player_id=None, *, narrator: str, situation=None, planet=None, outcome=None,
-    detail: dict | None = None, subject=None, broadcast: bool = False,
+    detail: dict | None = None, subject=None, broadcast: bool = False, ttype: str = "routine",
 ) -> None:
     """Erzaehlerischen Flavor-Text einreihen — Live-Generierung ohne Entitaet/Bank.
     Phase 2: an EINEN Spieler (Spionage/Expedition). Phase 4: ``broadcast=True`` -> einmal generieren,
-    an ALLE Spieler verteilen (Galaxie-News). Additiv: ein Basis-Bericht existiert ohnehin."""
+    an ALLE Spieler verteilen (Galaxie-News). Additiv: ein Basis-Bericht existiert ohnehin.
+    ``ttype`` = Ziel-Transmission-Typ (z.B. ``spy_report`` fuer Spionage). Default ``routine`` —
+    NIE ``big_moment``, ausser der Aufrufer will es ausdruecklich (sonst falsches "Großmoment")."""
     job: dict = {
         "job_type": "flavor",
         "context": {
@@ -39,6 +41,7 @@ async def enqueue_flavor(
             "detail": detail or {},
             "subject": subject,
             "broadcast": broadcast,
+            "ttype": ttype,
         },
     }
     if player_id is not None:

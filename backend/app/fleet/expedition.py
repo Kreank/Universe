@@ -199,6 +199,7 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
         await enqueue_flavor(
             fleet.player_id, narrator="expedition_log", situation="Expedition in den galaktischen Weiten",
             planet=result["location"], outcome=_otype_de.get(otype, otype), detail=_detail,
+            ttype="routine",
         )
     except Exception:  # noqa: BLE001 — Flavor darf die Expedition nie stoeren
         pass

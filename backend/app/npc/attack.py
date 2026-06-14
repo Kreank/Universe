@@ -276,10 +276,12 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
 
         seed = random.randrange(1, 2 ** 62)
         # NPC-Tier (hergeleitet, konsistent zur Verteidigung) skaliert auch die ANGRIFFS-Tech.
-        from app.npc.scaling import nearest_player_score, npc_tier, tier_tech
+        from app.npc.scaling import effective_tier, nearest_player_score, tier_tech
         _tier_cfg = bal.npc.get("tier", {})
-        _ntier = npc_tier(npc.galaxy, npc.system, npc.position,
-                          await nearest_player_score(session, npc.galaxy, npc.system, npc.position), _tier_cfg)
+        _age = (dt.datetime.now(dt.timezone.utc) - npc.created_at).total_seconds() if npc.created_at else 0.0
+        _ntier = effective_tier(npc.galaxy, npc.system, npc.position,
+                                await nearest_player_score(session, npc.galaxy, npc.system, npc.position),
+                                _age, _tier_cfg)
         attacker = {"ships": commit, "tech": tier_tech(bal.npc["attack"].get("npc_tech", {}), _ntier, _tier_cfg), "attack_mult": 1.0}
         defender = {"ships": def_ships, "defenses": def_defenses, "tech": def_tech, "attack_mult": 1.0}
         result = simulate_battle(attacker, defender, seed, bal.data)

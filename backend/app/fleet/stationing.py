@@ -99,13 +99,19 @@ def starter_reserve(ships: dict, bal) -> float:
 
 # -- deploy: Stationierung ----------------------------------------------------
 
-async def resolve_deploy(session: AsyncSession, fleet: Fleet, intercept: bool = False) -> bool:
+async def resolve_deploy(session: AsyncSession, fleet: Fleet, mode: str = "park") -> bool:
     """Stationiert die Flotten-Schiffe am Ziel als StationedFleet. True = stationiert
     (Flotte ``done``, kehrt nicht zurueck).
 
-    ``intercept=True`` (Mission 'Abfangen'): die stationierte Flotte wird sofort zur aktiven
-    Abfang-Patrouille (intercept_enabled, Radius aus mission_data, auf den Forschungs-Cap geklemmt)
-    und erfasst bereits fliegende Feindflotten, deren Route sie kreuzt."""
+    Genau EIN exklusiver Modus je Station (2026-06-13):
+    - ``park``      (Mission 'Stationierung'): rein passiv geparkt. Faengt NICHT ab, bietet
+      keine Eskorte. Auf eigenem Gebiet kein Unterhalt.
+    - ``intercept`` (Mission 'Abfangen'): aktive Abfang-Patrouille (intercept_enabled, Radius
+      aus mission_data, auf Forschungs-Cap geklemmt). Erfasst bereits fliegende Feindflotten.
+    - ``escort``    (Mission 'Eskorte'): bietet Geleitschutz fuer Trader an (escort_enabled,
+      Radius + Gebuehr aus mission_data). Faengt NICHT ab."""
+    intercept = mode == "intercept"
+    escort = mode == "escort"
     rows = (await session.execute(
         select(Ship).where(Ship.fleet_id == fleet.id)
     )).scalars().all()
@@ -127,14 +133,25 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet, intercept: bool = 
     cargo = fleet.cargo or {}
     fuel_reserve = float(cargo.get("deuterium", 0) or 0)
 
+    md = fleet.mission_data or {}
     radius = 0
+    esc_radius = 0
+    esc_fee = 0.0
     if intercept:
         from app.economy.service import get_research_levels
         research = await get_research_levels(session, fleet.player_id)
         cap = intercept_radius_cap(research)
-        radius = max(0, min(cap, int((fleet.mission_data or {}).get("radius", 0) or 0)))
+        radius = max(0, min(cap, int(md.get("radius", 0) or 0)))
         # Patrouille ohne mitgefuehrtes Deuterium bekommt einen Starter-Tank, sonst Sofort-Rueckkehr.
         if fuel_reserve <= 0:
+            fuel_reserve = starter_reserve(ships, get_balance())
+    elif escort:
+        ecfg = get_balance().data.get("escort", {})
+        cap_fee = float(ecfg.get("max_fee_pct", 0.10))
+        esc_radius = max(0, int(md.get("escort_radius", ecfg.get("region_radius", 5)) or 0))
+        esc_fee = max(0.0, min(cap_fee, float(md.get("escort_fee_pct", 0.0) or 0.0)))
+        # Vorgeschobene Eskorte ohne Deuterium bekommt einen Starter-Tank (sonst Sofort-Rueckkehr).
+        if own_here is None and fuel_reserve <= 0:
             fuel_reserve = starter_reserve(ships, get_balance())
 
     st = StationedFleet(
@@ -147,6 +164,9 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet, intercept: bool = 
         fuel=fuel_reserve,
         intercept_enabled=intercept,
         intercept_radius=radius,
+        escort_enabled=escort,
+        escort_radius=esc_radius,
+        escort_fee_pct=esc_fee,
     )
     session.add(st)
     for r in rows:
@@ -166,20 +186,24 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet, intercept: bool = 
                 f"Deuterium-Vorrat. Sie stellt feindliche Flotten, deren Route sie kreuzt; der Vorrat "
                 f"zehrt mit der Zeit (leer -> Rueckkehr). Fuer Ausdauer mehr Deuterium mitladen.")
         subject = f"Abfang-Patrouille aktiv ({coords})"
+    elif escort:
+        body = (f"Deine Eskorte ist bei {coords} stationiert ({int(esc_fee * 100)} % Gebuehr, "
+                f"Radius +/- {esc_radius} Systeme) mit {int(fuel_reserve)} Deuterium-Vorrat. Sie bietet "
+                f"Tradern auf gedeckten Routen Geleitschutz; sie faengt selbst keine Flotten ab.")
+        subject = f"Eskorte stationiert ({coords})"
     elif own_here is not None:
-        body = (f"Deine Flotte ist bei {coords} (eigenes Gebiet) stationiert mit {int(fuel_reserve)} "
-                f"Deuterium-Vorrat. Geparkt/als Eskorte kein Unterhalt; als Patrouille zehrt der "
-                f"Vorrat langsam (leer -> Rueckkehr). Fuer Ausdauer mehr Deuterium mitladen.")
+        body = (f"Deine Flotte ist bei {coords} (eigenes Gebiet) geparkt mit {int(fuel_reserve)} "
+                f"Deuterium-Vorrat. Rein passiv: kein Unterhalt, faengt nicht ab, bietet keine Eskorte.")
         subject = f"Flotte stationiert ({coords})"
     else:
-        body = (f"Deine Flotte ist VORGESCHOBEN bei {coords} stationiert mit {int(fuel_reserve)} "
-                f"Deuterium-Vorrat. Der Vorrat zehrt mit der Zeit; ist er leer, kehrt die Flotte "
-                f"automatisch heim. Lade beim Stationieren genug Deuterium als Fracht.")
+        body = (f"Deine Flotte ist VORGESCHOBEN bei {coords} geparkt mit {int(fuel_reserve)} "
+                f"Deuterium-Vorrat. Rein passiv (kein Abfangen). Der Vorrat zehrt mit der Zeit; ist er "
+                f"leer, kehrt die Flotte automatisch heim. Lade beim Stationieren genug Deuterium als Fracht.")
         subject = f"Flotte stationiert ({coords})"
     await create_system_transmission(
         session, player_id=fleet.player_id, subject=subject, body=body, ttype="system",
     )
-    log.info("Deploy(intercept=%s): player=%s stationiert %s @ %s", intercept, fleet.player_id, ships, coords)
+    log.info("Deploy(mode=%s): player=%s stationiert %s @ %s", mode, fleet.player_id, ships, coords)
     return True
 
 
@@ -232,6 +256,16 @@ async def gather_interception_defenders(
 
 # -- Rueckruf + Eskort-Angebot ------------------------------------------------
 
+def station_mode(st: StationedFleet) -> str:
+    """Exklusiver Anzeige-Modus einer Station: 'intercept' | 'escort' | 'park'.
+    Bei Altbestand mit beiden Flags gewinnt das aktive Abfangen (Kampf vor Handel)."""
+    if getattr(st, "intercept_enabled", False):
+        return "intercept"
+    if getattr(st, "escort_enabled", False):
+        return "escort"
+    return "park"
+
+
 def station_out(st: StationedFleet) -> dict:
     roster = get_balance().data.get("combat_roster", {})
     ships = st.ships or {}
@@ -242,6 +276,7 @@ def station_out(st: StationedFleet) -> dict:
         "galaxy": st.galaxy, "system": st.system, "position": st.position,
         "ships": ships,
         "ships_total": sum(ships.values()),
+        "mode": station_mode(st),
         "escort_enabled": st.escort_enabled,
         "escort_radius": st.escort_radius,
         "escort_fee_pct": st.escort_fee_pct,
@@ -267,13 +302,17 @@ def intercept_radius_cap(research: dict | None = None) -> int:
 
 def set_intercept_mode(st: StationedFleet, enabled: bool, radius: int, max_radius: int | None = None) -> None:
     """Setzt/aktualisiert den Abfang-Modus einer Patrouille (Radius-Cap aus balance + Forschung).
+    Exklusiv: Abfangen scharf -> Eskort-Angebot wird abgeschaltet (genau ein Modus je Station).
     Schaltet man eine Patrouille OHNE Treibstoff-Tank scharf (fuel None, z.B. Alt-Stationierung
     auf eigenem Gebiet), bekommt sie einen Starter-Tank, damit der Unterhalt greift."""
     cap = max_radius if max_radius is not None else intercept_radius_cap()
     st.intercept_enabled = bool(enabled)
     st.intercept_radius = max(0, min(int(cap), int(radius or 0)))
-    if st.intercept_enabled and getattr(st, "fuel", None) is None:
-        st.fuel = starter_reserve(st.ships or {}, get_balance())
+    if st.intercept_enabled:
+        # Exklusiv zur Eskorte.
+        st.escort_enabled = False
+        if getattr(st, "fuel", None) is None:
+            st.fuel = starter_reserve(st.ships or {}, get_balance())
 
 
 async def create_home_patrol(
@@ -449,11 +488,15 @@ async def station_fuel_tick() -> None:
 
 
 def set_escort_offer(st: StationedFleet, enabled: bool, radius: int, fee_pct: float) -> None:
-    """Setzt/aktualisiert das Eskort-Angebot einer Patrouille (mit Validierung gegen Cap)."""
+    """Setzt/aktualisiert das Eskort-Angebot einer Patrouille (mit Validierung gegen Cap).
+    Exklusiv: Eskorte an -> Abfangen wird abgeschaltet (genau ein Modus je Station)."""
     cap = float(get_balance().data.get("escort", {}).get("max_fee_pct", 0.10))
     st.escort_enabled = bool(enabled)
     st.escort_radius = max(0, int(radius or 0))
     st.escort_fee_pct = max(0.0, min(cap, float(fee_pct or 0.0)))
+    if st.escort_enabled:
+        # Exklusiv zum Abfangen.
+        st.intercept_enabled = False
 
 
 async def charge_trade_escorts(

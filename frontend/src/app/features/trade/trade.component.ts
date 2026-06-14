@@ -120,11 +120,11 @@ type Res = 'metal' | 'crystal' | 'deuterium';
         }
       </div>
 
-      <!-- Meine Patrouillen (Stationierung + Eskort-Angebot) -->
+      <!-- Meine stationierten Flotten — Eskorte hier verwalten (exklusiv zum Abfangen) -->
       <div class="card">
-        <div class="panel-title">🛡 Meine Patrouillen ({{ stationed().length }})</div>
+        <div class="panel-title">🛡 Meine stationierten Flotten ({{ stationed().length }})</div>
         @if (stationed().length === 0) {
-          <p class="muted small">Keine stationierten Flotten. Schicke in der Galaxie eine Flotte mit Mission „Stationierung" (🚚 → Versand → Stationierung) in eine Region, die du schützen willst.</p>
+          <p class="muted small">Keine stationierten Flotten. Schicke in der Galaxie eine Flotte mit Mission „🛡 Eskorte" (🚚 → Versand → Eskorte) in eine Region, deren Handelsrouten du decken willst. Eine schon geparkte Flotte (Mission „Stationierung") kannst du hier per „Eskorte anbieten" umschalten.</p>
         }
         @for (s of stationed(); track s.id) {
           <div class="partner">
@@ -138,23 +138,27 @@ type Res = 'metal' | 'crystal' | 'deuterium';
               }
             </div>
             <div class="escort-edit">
-              <label class="toggle small">
-                <input type="checkbox" [ngModel]="s.escort_enabled" (ngModelChange)="updateEscort(s, { escort_enabled: $event })" />
-                Eskorte anbieten
-              </label>
-              @if (s.escort_enabled) {
-                <span class="small">Radius
-                  <input class="mini" type="number" min="0" max="50" [ngModel]="s.escort_radius" (ngModelChange)="updateEscort(s, { escort_radius: +$event || 0 })" />
-                  Sys · Gebühr
-                  <input class="mini" type="number" min="0" max="10" step="0.5" [ngModel]="s.escort_fee_pct * 100" (ngModelChange)="updateEscort(s, { escort_fee_pct: (+$event || 0) / 100 })" />%
-                </span>
-              }
-              @if (s.intercept_enabled) {
-                <span class="small tag-ok" title="Aktive Abfang-Patrouille — gestartet über die Flotten-Mission „Abfangen“. Zum Beenden zurückrufen.">
-                  📡 Abfang-Patrouille · Radius {{ s.intercept_radius }} Sys
+              @if (s.mode === 'intercept') {
+                <span class="small tag-ok" title="Aktive Abfang-Patrouille — auf der Flotten-Seite verwaltet.">
+                  📡 Abfangen · Radius {{ s.intercept_radius }} Sys
                   @if (s.has_interdictor) { · Interdiktor (Pin) }
                   @else if (s.interceptors > 0) { · {{ s.interceptors }}× Abfangjäger }
                 </span>
+                <span class="small muted">Eskorte deaktiviert — exklusiv zum Abfangen.</span>
+              } @else {
+                <label class="toggle small">
+                  <input type="checkbox" [ngModel]="s.escort_enabled" (ngModelChange)="updateEscort(s, { escort_enabled: $event })" />
+                  Eskorte anbieten
+                </label>
+                @if (s.escort_enabled) {
+                  <span class="small">Radius
+                    <input class="mini" type="number" min="0" max="50" [ngModel]="s.escort_radius" (ngModelChange)="updateEscort(s, { escort_radius: +$event || 0 })" />
+                    Sys · Gebühr
+                    <input class="mini" type="number" min="0" max="10" step="0.5" [ngModel]="s.escort_fee_pct * 100" (ngModelChange)="updateEscort(s, { escort_fee_pct: (+$event || 0) / 100 })" />%
+                  </span>
+                } @else {
+                  <span class="small muted">🚚 Geparkt — rein passiv.</span>
+                }
               }
               <button class="btn btn-ghost btn-sm" type="button" (click)="recall(s)"><app-btn-icon [src]="missionIcon('return')" glyph="↩" /> Zurückrufen</button>
             </div>

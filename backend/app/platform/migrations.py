@@ -196,6 +196,12 @@ _STATEMENTS: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_reaction_npc ON reaction_banks(npc_id, situation)",
     # NPC-Persona (background/voice), vom ai-worker per persona_init angereichert.
     "ALTER TABLE npc_empires ADD COLUMN IF NOT EXISTS persona JSONB NOT NULL DEFAULT '{}'::jsonb",
+    # -- Feature: Stationierungs-Modi auseinandergezogen (park/intercept/escort) ---
+    # Flug-Missionen 'intercept' (Abfangen) und 'escort' (Eskorte) als eigene fleet_mission-
+    # Werte. ENUM-Wert MUSS vor seiner Nutzung committet sein (AUTOCOMMIT je Statement) —
+    # identisch zu 'mine'/'trade' oben.
+    "ALTER TYPE fleet_mission ADD VALUE IF NOT EXISTS 'intercept'",
+    "ALTER TYPE fleet_mission ADD VALUE IF NOT EXISTS 'escort'",
 ]
 
 

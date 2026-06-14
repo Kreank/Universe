@@ -1,7 +1,14 @@
 """Reine Helfer der Stationierung/Eskorte (``app.fleet.stationing``)."""
 from types import SimpleNamespace
 
-from app.fleet.stationing import distribute_losses, escort_covers, escort_fee
+from app.fleet.stationing import (
+    distribute_losses,
+    escort_covers,
+    escort_fee,
+    set_escort_offer,
+    set_intercept_mode,
+    station_mode,
+)
 
 
 def test_distribute_losses_greedy_fills_in_order():
@@ -55,3 +62,39 @@ def test_station_upkeep_sums_ship_fuel():
     assert station_upkeep({"light_fighter": 3, "battleship": 2}, bal) == 3 * 20 + 2 * 500
     assert station_upkeep({}, bal) == 0.0
     assert station_upkeep({"unknown_ship": 5}, bal) == 0.0   # unbekannt -> 0
+
+
+def _stmode(intercept=False, escort=False):
+    return SimpleNamespace(intercept_enabled=intercept, escort_enabled=escort)
+
+
+def test_station_mode_exclusive_display():
+    assert station_mode(_stmode()) == "park"
+    assert station_mode(_stmode(escort=True)) == "escort"
+    assert station_mode(_stmode(intercept=True)) == "intercept"
+    # Altbestand mit BEIDEN Flags: Abfangen (Kampf) gewinnt vor Eskorte (Handel).
+    assert station_mode(_stmode(intercept=True, escort=True)) == "intercept"
+
+
+def test_set_intercept_mode_disables_escort():
+    """Abfangen scharfschalten schaltet ein Eskort-Angebot ab (genau ein Modus)."""
+    st = SimpleNamespace(intercept_enabled=False, intercept_radius=0,
+                         escort_enabled=True, escort_radius=5, escort_fee_pct=0.05, fuel=100.0)
+    set_intercept_mode(st, enabled=True, radius=3, max_radius=10)
+    assert st.intercept_enabled is True
+    assert st.intercept_radius == 3
+    assert st.escort_enabled is False        # exklusiv
+    # Radius wird auf den Cap geklemmt.
+    set_intercept_mode(st, enabled=True, radius=99, max_radius=10)
+    assert st.intercept_radius == 10
+
+
+def test_set_escort_offer_disables_intercept():
+    """Eskorte anbieten schaltet eine aktive Abfang-Patrouille ab (genau ein Modus)."""
+    st = SimpleNamespace(intercept_enabled=True, intercept_radius=4,
+                         escort_enabled=False, escort_radius=0, escort_fee_pct=0.0, fuel=100.0)
+    set_escort_offer(st, enabled=True, radius=6, fee_pct=0.05)
+    assert st.escort_enabled is True
+    assert st.escort_radius == 6
+    assert st.escort_fee_pct == 0.05
+    assert st.intercept_enabled is False     # exklusiv

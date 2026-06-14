@@ -60,3 +60,6 @@ class SendFleetRequest(BaseModel):
     target_type: str | None = None
     # Abfangen (mission == 'intercept'): Patrouillen-Radius in Systemen (Default 0 = nur Zielsystem).
     radius: int | None = None
+    # Eskorte (mission == 'escort'): Deckungs-Radius in Systemen + Gebuehr (Anteil 0..max_fee_pct).
+    escort_radius: int | None = None
+    escort_fee_pct: float | None = None

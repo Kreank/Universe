@@ -21,8 +21,8 @@ from app.npc.behavior import NpcContext
 from app.npc.expansion import first_free_position, should_expand
 from app.npc.profiles import build_tree
 from app.npc.scaling import (
+    effective_tier,
     nearest_score_from_rows,
-    npc_tier,
     scale_garrison,
     scale_resources,
     tier_strength_mult,
@@ -155,7 +155,9 @@ async def npc_behavior_tick() -> None:
             # NPC-Tier (hergeleitet): Region + naechster Spieler. Skaliert Garnison-Soll, Einkommen UND
             # Loot-Cap gemeinsam -> NPCs wachsen mit der Spielerstaerke/Region mit (PvE-Relevanz).
             score = nearest_score_from_rows(score_rows, npc.galaxy, npc.system, npc.position)
-            tier = npc_tier(npc.galaxy, npc.system, npc.position, score, tier_cfg)
+            # Alters-Entwicklung: NPCs bauen ueber Zeit aus -> wirksames Tier waechst auch isoliert.
+            age_s = (_now() - npc.created_at).total_seconds() if npc.created_at else 0.0
+            tier = effective_tier(npc.galaxy, npc.system, npc.position, score, age_s, tier_cfg)
             mult = tier_strength_mult(tier, tier_cfg)
             scaled_baseline = scale_garrison(baseline, mult)
 

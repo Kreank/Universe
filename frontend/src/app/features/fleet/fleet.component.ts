@@ -122,6 +122,17 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
             </div>
           }
 
+          @if (missionSig() === 'escort') {
+            <div class="field">
+              <label class="tip" data-tip="Wie viele Systeme um das Stationssystem dein Geleitschutz-Angebot Handelsrouten deckt.">Eskort-Radius {{ escortRadius() }} Sys</label>
+              <input type="number" min="0" max="50" [ngModel]="escortRadius()" (ngModelChange)="escortRadius.set(+$event || 0)" />
+            </div>
+            <div class="field">
+              <label class="tip" data-tip="Dein Anteil am Frachtwert, den der Trader als Deuterium zahlt (max. 10 %).">Gebühr {{ escortFeePct() }} %</label>
+              <input type="number" min="0" max="10" step="0.5" [ngModel]="escortFeePct()" (ngModelChange)="escortFeePct.set(+$event || 0)" />
+            </div>
+          }
+
           <div class="field">
             <label class="tip" data-tip="Langsamer = weniger Sprit">Tempo {{ speed() }}%</label>
             <input type="range" min="10" max="100" step="10" [ngModel]="speed()" (ngModelChange)="speed.set($event)" />
@@ -178,19 +189,25 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
         }
       </section>
 
-      <!-- Patrouillen (stationiert) -->
+      <!-- Stationierte Flotten (genau ein Modus je Flotte: Geparkt / Abfangen / Eskorte) -->
       <section class="card running">
-        <div class="panel-title">🛡 Meine Patrouillen</div>
+        <div class="panel-title">🛡 Stationierte Flotten</div>
         @if (stationed().length) {
           @for (s of stationed(); track s.id) {
             <div class="fleet-row">
               <div class="fleet-info">
                 <span class="mono small">[{{ s.coords }}]</span>
                 <span class="chip">{{ s.ships_total }} Schiffe</span>
-                @if (s.intercept_enabled) {
-                  <span class="chip">⚔ Abfangen · Radius {{ s.intercept_radius }}</span>
-                } @else {
-                  <span class="chip muted">Abfangen aus</span>
+                @switch (s.mode) {
+                  @case ('intercept') {
+                    <span class="chip">⚔ Abfangen · Radius {{ s.intercept_radius }}</span>
+                  }
+                  @case ('escort') {
+                    <span class="chip">🛡 Eskorte · Radius {{ s.escort_radius }} · {{ (s.escort_fee_pct * 100).toFixed(1) }} %</span>
+                  }
+                  @default {
+                    <span class="chip muted">🚚 Geparkt</span>
+                  }
                 }
               </div>
               <div class="fleet-act">
@@ -199,7 +216,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
             </div>
           }
         } @else {
-          <p class="muted small">Keine stationierten Patrouillen. Schiffe auswaehlen → „⚔ Eigenes System patrouillieren".</p>
+          <p class="muted small">Keine stationierten Flotten. Mission „🚚 Stationierung", „📡 Abfangen" oder „🛡 Eskorte" wählen — oder Schiffe auswählen → „⚔ Eigenes System patrouillieren".</p>
         }
       </section>
 
@@ -220,7 +237,7 @@ export class FleetComponent {
   private readonly balance = inject(BalanceService);
 
   protected readonly missions: FleetMission[] = [
-    'attack', 'transport', 'spy', 'deploy', 'intercept', 'recycle', 'colonize', 'mine', 'expedition',
+    'attack', 'transport', 'spy', 'deploy', 'intercept', 'escort', 'recycle', 'colonize', 'mine', 'expedition',
   ];
 
   // Pflicht-Schiff je Spezial-Mission (Backend erzwingt es; hier als Hinweis).
@@ -243,6 +260,8 @@ export class FleetComponent {
   commanderId: string | null = null;
   protected readonly speed = signal(100);
   protected readonly interceptRadius = signal(0);
+  protected readonly escortRadius = signal(5);
+  protected readonly escortFeePct = signal(2); // Prozent (0..10), Backend deckelt
   protected readonly sending = signal(false);
 
   // Nur entsendbare Schiffe: count > 0 UND mit Antrieb (stationaere Einheiten wie der
@@ -272,7 +291,17 @@ export class FleetComponent {
 
   // Hinweis auf das Pflicht-Schiff der gewaehlten Mission, falls noch nicht ausgewaehlt.
   protected readonly missionHint = computed<string | null>(() => {
-    const req = this.missionRequires[this.missionSig()];
+    const m = this.missionSig();
+    if (m === 'deploy') {
+      return 'Parkt die Flotte passiv am Ziel — fängt nichts ab, bietet keine Eskorte.';
+    }
+    if (m === 'intercept') {
+      return 'Stationiert als aktive Patrouille, die durchreisende Feindflotten abfängt.';
+    }
+    if (m === 'escort') {
+      return 'Stationiert als Geleitschutz-Angebot für Trader (fängt selbst nicht ab).';
+    }
+    const req = this.missionRequires[m];
     if (!req) {
       return null;
     }
@@ -364,6 +393,8 @@ export class FleetComponent {
         commander_id: this.commanderId,
         speed_pct: this.speed(),
         radius: this.missionSig() === 'intercept' ? this.interceptRadius() : undefined,
+        escort_radius: this.missionSig() === 'escort' ? this.escortRadius() : undefined,
+        escort_fee_pct: this.missionSig() === 'escort' ? this.escortFeePct() / 100 : undefined,
       })
       .subscribe({
         next: () => {

@@ -36,6 +36,26 @@ def tier_strength_mult(tier: float, cfg: dict) -> float:
     return 1.0 + (max(1.0, float(tier)) - 1.0) * float(cfg.get("per_tier_strength", 0.5))
 
 
+def npc_dev_bonus(age_seconds: float, cfg: dict) -> float:
+    """Entwicklungs-Tier-Bonus aus dem NPC-ALTER: ein NPC baut seine Wirtschaft ueber Zeit aus —
+    auch fern jeder Spielerpraesenz (sonst sind isolierte NPCs ewige Leichen). +1 Tier je
+    ``development.seconds_per_tier`` Alter, gedeckelt auf ``development.max_tier_bonus``. Pure -> testbar."""
+    dev = (cfg or {}).get("development", {}) or {}
+    per = max(1.0, float(dev.get("seconds_per_tier", 43200)))
+    maxb = max(0.0, float(dev.get("max_tier_bonus", 4.0)))
+    return min(maxb, max(0.0, float(age_seconds or 0.0) / per))
+
+
+def effective_tier(galaxy: int, system: int, position: int, nearest_player_score: float,
+                   age_seconds: float, cfg: dict) -> float:
+    """Wirksames NPC-Tier = Region+Spieler (``npc_tier``) PLUS Alters-Entwicklung (``npc_dev_bonus``),
+    erneut auf [min_tier, max_tier] geklemmt. EIN Hebel, der Garnison, Einkommen, Loot-Cap UND Tech
+    gemeinsam treibt -> NPCs wachsen mit Region, Spielerstaerke UND ueber die Zeit (Wirtschaft)."""
+    base = npc_tier(galaxy, system, position, nearest_player_score, cfg)
+    t = base + npc_dev_bonus(age_seconds, cfg)
+    return max(float(cfg.get("min_tier", 1.0)), min(float(cfg.get("max_tier", 12.0)), t))
+
+
 def scale_counts(group: dict, mult: float) -> dict[str, int]:
     """Skaliert ein {typ: anzahl}-Dict um mult (mind. 1 je vorhandenem Typ, ganze Stueck)."""
     return {t: max(1, int(round(int(c) * mult))) for t, c in (group or {}).items() if int(c) > 0}

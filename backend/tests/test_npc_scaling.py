@@ -1,6 +1,8 @@
 """Tests fuer die reine NPC-Tier-Skalierung (npc/scaling.py)."""
 from app.npc.scaling import (
+    effective_tier,
     nearest_score_from_rows,
+    npc_dev_bonus,
     npc_tier,
     scale_garrison,
     scale_resources,
@@ -20,6 +22,7 @@ _CFG = {
     "max_tier": 12.0,
     "per_tier_strength": 0.5,
     "tech_per_tier": 0.5,
+    "development": {"seconds_per_tier": 43200, "max_tier_bonus": 4.0},
 }
 
 
@@ -61,6 +64,43 @@ def test_tier_tech_scales_quality():
     base = {"weapons_tech": 4, "shield_tech": 4, "armor_tech": 4}
     assert tier_tech(base, 1.0, _CFG) == base                      # Tier 1 = Basis-Tech
     assert tier_tech(base, 5.0, _CFG) == {"weapons_tech": 6, "shield_tech": 6, "armor_tech": 6}  # +0.5*4=2
+
+
+def test_npc_dev_bonus_grows_with_age_and_caps():
+    # Frisch -> kein Bonus.
+    assert npc_dev_bonus(0, _CFG) == 0.0
+    # Genau seconds_per_tier Alter -> +1 Tier.
+    assert npc_dev_bonus(43200, _CFG) == 1.0
+    # Halbe Periode -> +0.5 Tier (linear).
+    assert npc_dev_bonus(21600, _CFG) == 0.5
+    # Gedeckelt auf max_tier_bonus, egal wie alt.
+    assert npc_dev_bonus(43200 * 100, _CFG) == 4.0
+    # Negatives/None-Alter -> 0 (kein Absturz).
+    assert npc_dev_bonus(-5, _CFG) == 0.0
+    assert npc_dev_bonus(None, _CFG) == 0.0
+
+
+def test_npc_dev_bonus_missing_config_is_zero():
+    # Ohne development-Block kein Bonus (Default max_tier_bonus 4, aber 0 Alter -> 0).
+    assert npc_dev_bonus(0, {}) == 0.0
+    # Mit Alter, aber ohne Config: Default seconds_per_tier 43200, max 4.0.
+    assert npc_dev_bonus(43200, {}) == 1.0
+
+
+def test_effective_tier_adds_age_to_region_player():
+    # Am Kern, kein Spieler, frisch -> Basis-Tier 1 (wie npc_tier).
+    assert effective_tier(1, 1, 1, 0, 0, _CFG) == 1.0
+    # Selber Ort, aber 1 Periode alt -> +1 Tier durch Entwicklung.
+    assert round(effective_tier(1, 1, 1, 0, 43200, _CFG), 4) == 2.0
+    # Region + Spieler + Alter addieren sich: 1 (basis) +1 (region 50 sys) +2 (score) +1 (alter) = 5.
+    assert round(effective_tier(1, 51, 1, 100000, 43200, _CFG), 4) == 5.0
+
+
+def test_effective_tier_clamped_to_max():
+    # Hohes Tier + voller Alters-Bonus bleibt auf max_tier gedeckelt.
+    assert effective_tier(1, 9999, 1, 9_000_000, 43200 * 100, _CFG) == 12.0
+    # Nie unter min_tier.
+    assert effective_tier(1, 1, 1, 0, 0, _CFG) >= 1.0
 
 
 def test_nearest_score_from_rows():

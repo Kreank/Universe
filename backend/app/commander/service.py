@@ -180,12 +180,12 @@ async def commander_to_dict(session: AsyncSession, c: Commander) -> dict:
 
 
 async def compute_span(session: AsyncSession, player_id: uuid.UUID) -> dict:
-    """Span-of-Control: Basis + Kommandozentrale (abnehmend) + Kommandodoktrin."""
+    """Span-of-Control: Basis + Kommandozentrale (linear je Stufe) + Kommandodoktrin."""
     bal = get_balance()
     span_cfg = bal.commander["span"]
     base = span_cfg["player_base"]
 
-    # Kommandozentrale: Bonus-Array ueber alle Planeten (hoechste Stufe zaehlt).
+    # Kommandozentrale: hoechste Stufe ueber alle Planeten, +N Span je Stufe (unbegrenzt).
     cc_level = 0
     planets = (await session.execute(
         select(Planet).where(Planet.player_id == player_id)
@@ -193,8 +193,8 @@ async def compute_span(session: AsyncSession, player_id: uuid.UUID) -> dict:
     for p in planets:
         levels = await get_building_levels(session, p.id)
         cc_level = max(cc_level, levels.get("command_center", 0))
-    cc_bonus_arr = span_cfg["command_center_bonus"]
-    from_cc = sum(cc_bonus_arr[:cc_level]) if cc_level > 0 else 0
+    cc_per_level = span_cfg["command_center_bonus_per_level"]
+    from_cc = cc_per_level * cc_level
 
     # Kommandodoktrin (Tech).
     research = await get_research_levels(session, player_id)

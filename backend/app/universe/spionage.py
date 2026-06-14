@@ -156,6 +156,10 @@ def _build_report_body(coords: str, intel: dict) -> str:
         lines.append(f"Ressourcen: {_fmt_resources(intel.get('resources', {}))}")
     else:
         lines.append("Ressourcen: nicht aufgeklaert (Stufe 3 noetig).")
+    eco = intel.get("economy")
+    if eco:
+        lines.append(f"Wirtschaft: Ausbaustufe {eco.get('development', '?')}, "
+                     f"Forschung Stufe {eco.get('research', '?')}.")
     return "\n".join(lines)
 
 
@@ -215,6 +219,27 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
         ensure_market(spy_npc, bal.trade)
         intel.update(merchant_intel(spy_npc, bal.trade, _now().isoformat()))
 
+    # NPC-Wirtschaft sichtbar machen (ab Stufe 2): Ausbau- + Forschungsstufe aus dem WIRKSAMEN Tier
+    # (Region + naechster Spieler + Alters-Entwicklung) herleiten. Zeigt, dass NPCs wirtschaftlich
+    # ueber die Zeit wachsen — nicht bloss Schiffe horten.
+    if spy_npc is not None and level >= 2 and getattr(spy_npc, "behavior_profile", None) != "trade_center":
+        try:
+            from app.npc.scaling import effective_tier, nearest_player_score
+            _tcfg = bal.npc.get("tier", {})
+            _age = (_now() - spy_npc.created_at).total_seconds() if spy_npc.created_at else 0.0
+            _eff = effective_tier(
+                spy_npc.galaxy, spy_npc.system, spy_npc.position,
+                await nearest_player_score(session, spy_npc.galaxy, spy_npc.system, spy_npc.position),
+                _age, _tcfg,
+            )
+            _tpt = float(_tcfg.get("tech_per_tier", 0.0))
+            intel["economy"] = {
+                "development": int(round(_eff)),
+                "research": 1 + int(round((max(1.0, _eff) - 1.0) * _tpt)),
+            }
+        except Exception:  # noqa: BLE001 — Wirtschafts-Intel darf den Bericht nie stoeren
+            pass
+
     # Discovery-Upsert (Ziel wird im Galaxie-Verzeichnis sichtbar).
     disc = (await session.execute(
         select(PlayerDiscovery).where(
@@ -271,11 +296,32 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
             _strength = ships_total + defenses_total
             _verdict = ("stark verteidigt" if _strength > 50
                         else "maessig verteidigt" if _strength > 10 else "schwach verteidigt")
+            _kind = "feindliches NPC-Imperium" if spy_npc is not None else "Spieler-Imperium"
+            # Bilanz-Hinweis fuer einen zielspezifischen Text: wie steht Flotte zu Verteidigung?
+            if defenses_total == 0 and ships_total > 0:
+                _balance = "Flotte vorhanden, praktisch KEINE Bodenverteidigung"
+            elif ships_total >= max(1, defenses_total) * 4:
+                _balance = "stark flottenlastig, duenne Verteidigung"
+            elif defenses_total >= max(1, ships_total) * 2:
+                _balance = "schwerpunktmaessig Verteidigung, wenig Flotte"
+            else:
+                _balance = "ausgewogen aus Flotte und Verteidigung"
+            _detail = {
+                "Ziel-Typ": _kind,
+                "Flotte (Schiffe)": ships_total,
+                "Verteidigung": defenses_total,
+                "Bilanz": _balance,
+            }
+            _eco = intel.get("economy")
+            if _eco:
+                _detail["Wirtschaft (Ausbaustufe)"] = _eco.get("development")
+                _detail["Forschungsstufe"] = _eco.get("research")
             await enqueue_flavor(
-                fleet.player_id, narrator="intel_officer", situation="Spionage-Aufklaerung",
-                planet=coords, outcome=_verdict,
-                detail={"Ziel": target["name"], "Flotte (Schiffe)": ships_total, "Verteidigung": defenses_total},
+                fleet.player_id, narrator="intel_officer",
+                situation=f"Spionage-Aufklaerung gegen {_kind}",
+                planet=coords, outcome=_verdict, detail=_detail,
                 subject=f"Aufklaerung: {target['name']} ({coords})",
+                ttype="spy_report",
             )
         except Exception:  # noqa: BLE001 — Flavor darf die Spionage nie stoeren
             pass
