@@ -45,6 +45,13 @@ export const routes: Routes = [
           import('./features/shipyard/shipyard.component').then((m) => m.ShipyardComponent),
       },
       {
+        path: 'megastructures',
+        loadComponent: () =>
+          import('./features/megastructures/megastructures.component').then(
+            (m) => m.MegastructuresComponent,
+          ),
+      },
+      {
         path: 'fleet',
         loadComponent: () =>
           import('./features/fleet/fleet.component').then((m) => m.FleetComponent),

@@ -31,9 +31,16 @@ def _now() -> dt.datetime:
 
 
 def cost_for_level(tech_type: str, current_level: int) -> dict[str, float]:
-    """Forschungskosten current_level -> current_level+1 = base * 2^current_level."""
-    base = get_balance().techs[tech_type]["cost"]
-    mult = 2 ** current_level
+    """Forschungskosten current_level -> current_level+1.
+
+    Normale Techs: ``base * 2^current_level`` (exponentiell, weicher Soft-Cap).
+    Repeatable-Techs (``repeatable: true``): ``base * (current_level + 1)`` — linear-
+    additiv. Zusammen mit dem additiven Pro-Stufe-Effekt sinkt der Grenznutzen je
+    Forschungspunkt stetig (Stellaris-Modell): nie ``fertig``, aber kein Power-Creep,
+    und ein Neuling holt fuer dieselbe Stunde mehr Prozent heraus als ein Veteran."""
+    cfg = get_balance().techs[tech_type]
+    base = cfg["cost"]
+    mult = (current_level + 1) if cfg.get("repeatable") else (2 ** current_level)
     return {
         "metal": round(base.get("metal", 0) * mult, 2),
         "crystal": round(base.get("crystal", 0) * mult, 2),
@@ -77,6 +84,34 @@ def requirement_list(
     ]
 
 
+def sum_top_labs(lab_levels: list[int], network_level: int) -> int:
+    """IGFN-Kernformel (pure): summiert die ``network_level + 1`` hoechsten Laborstufen.
+
+    Ohne Netzwerk (Stufe 0) zaehlt allein das staerkste Labor (top 1). Jede IGFN-Stufe
+    koppelt ein weiteres Labor dazu (OGame-Modell)."""
+    take = max(1, network_level + 1)
+    return sum(sorted(lab_levels, reverse=True)[:take])
+
+
+async def effective_lab_level(
+    session: AsyncSession, player_id: uuid.UUID, network_level: int
+) -> int:
+    """Effektive Laborstufe fuer die Forschungszeit.
+
+    Mit dem Intergalaktischen Forschungsnetzwerk (IGFN, ``research_network``) summieren
+    sich die Forschungslabore der besten ``network_level + 1`` Planeten. Ohne IGFN
+    (Stufe 0) zaehlt allein das staerkste Labor. Belohnt breite Expansion, ohne reine
+    Ein-Planet-Turtles zu bevorzugen."""
+    planets = (await session.execute(
+        select(Planet.id).where(Planet.player_id == player_id)
+    )).scalars().all()
+    labs: list[int] = []
+    for pid in planets:
+        blevels = await get_building_levels(session, pid)
+        labs.append(blevels.get("research_lab", 0))
+    return sum_top_labs(labs, network_level)
+
+
 async def active_research(session: AsyncSession, player_id: uuid.UUID) -> Research | None:
     return (await session.execute(
         select(Research).where(
@@ -89,14 +124,21 @@ async def research_options(session: AsyncSession, player_id: uuid.UUID, lab_plan
     bal = get_balance()
     rlevels = await get_research_levels(session, player_id)
     blevels = await get_building_levels(session, lab_planet.id) if lab_planet else {}
-    lab_lvl = blevels.get("research_lab", 0)
+    # IGFN: effektive Laborstufe summiert die besten Labore (research_network+1 Planeten).
+    network_level = rlevels.get("research_network", 0)
+    lab_lvl = (
+        await effective_lab_level(session, player_id, network_level) if lab_planet else 0
+    )
+    # Megastruktur Forschungs-Nexus: imperiumsweiter Forschungs-Tempo-Bonus.
+    from app.megastructure.service import effect_mult
+    nexus = await effect_mult(session, player_id, "research_speed")
     resources = await refresh_resources(session, lab_planet) if lab_planet else None
 
     options: list[dict] = []
     for tech in bal.techs.keys():
         level = rlevels.get(tech, 0)
         cost = cost_for_level(tech, level)
-        secs = research_seconds(cost, lab_lvl)
+        secs = max(1, int(round(research_seconds(cost, lab_lvl) / nexus)))
         if resources is not None:
             can_afford = all(
                 resources[r]["amount"] + 1e-6 >= cost[r] for r in ("metal", "crystal", "deuterium")
@@ -144,7 +186,12 @@ async def start_research(session: AsyncSession, planet: Planet, tech_type: str) 
     if not await spend_resources(session, planet, cost):
         raise RuntimeError("Nicht genug Ressourcen")
 
-    secs = research_seconds(cost, blevels.get("research_lab", 0))
+    # IGFN: Forschungszeit nutzt die summierte Laborstufe (effective_lab_level).
+    network_level = rlevels.get("research_network", 0)
+    lab_lvl = await effective_lab_level(session, planet.player_id, network_level)
+    from app.megastructure.service import effect_mult
+    nexus = await effect_mult(session, planet.player_id, "research_speed")
+    secs = max(1, int(round(research_seconds(cost, lab_lvl) / nexus)))
     finish = _now() + dt.timedelta(seconds=secs)
     row.finishes_at = finish
     await session.flush()

@@ -34,12 +34,22 @@ CREATE TABLE players (
     is_protected  BOOLEAN NOT NULL DEFAULT TRUE,
     vacation_until TIMESTAMPTZ,
     doctrine      TEXT,                                 -- Imperiums-Doktrin (Doku 03b §9)
-    doctrine_changed_at TIMESTAMPTZ
+    doctrine_changed_at TIMESTAMPTZ,
+    dark_matter   DOUBLE PRECISION NOT NULL DEFAULT 0,  -- exotisch, kontoweit, erspielt (kein P2W)
+    antimatter    DOUBLE PRECISION NOT NULL DEFAULT 0
 );
 
 -- ---------------------------------------------------------------------
 --  Planeten & Wirtschaft
 -- ---------------------------------------------------------------------
+CREATE TABLE megastructures (
+    player_id      UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    type           TEXT NOT NULL,
+    level          INT NOT NULL DEFAULT 0,
+    building_until TIMESTAMPTZ,
+    PRIMARY KEY (player_id, type)
+);
+
 CREATE TABLE planets (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     player_id    UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,

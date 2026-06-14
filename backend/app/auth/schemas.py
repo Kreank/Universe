@@ -26,6 +26,8 @@ class PlayerOut(BaseModel):
     is_protected: bool
     created_at: dt.datetime
     last_active: dt.datetime
+    dark_matter: float = 0.0
+    antimatter: float = 0.0
 
 
 class AuthResponse(BaseModel):

@@ -56,6 +56,19 @@ async def recover_pending_jobs() -> None:
             )
             recovered += 1
 
+        # -- Megastrukturen (stufenweiser Bau) ------------------------------
+        from app.megastructure.service import complete_megastructure
+        from app.platform.models import Megastructure
+        rows = (await session.execute(
+            select(Megastructure).where(Megastructure.building_until.is_not(None))
+        )).scalars().all()
+        for m in rows:
+            schedule_at(
+                m.building_until, complete_megastructure, str(m.player_id), m.type,
+                job_id=f"megastructure:{m.player_id}",
+            )
+            recovered += 1
+
         # -- Flotten (Ankunft + Rueckkehr) ----------------------------------
         rows = (await session.execute(
             select(Fleet).where(Fleet.status.in_(("flying", "returning")))

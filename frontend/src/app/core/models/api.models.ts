@@ -673,3 +673,34 @@ export interface WsClientSubscribe {
 export interface WsClientPing {
   type: 'ping';
 }
+
+// --- Megastrukturen ---
+export interface MegastructureCost {
+  metal: number;
+  crystal: number;
+  deuterium: number;
+  dark_matter: number;
+}
+
+export interface MegastructureOption {
+  type: string;
+  name: string;
+  level: number;
+  max_level: number;
+  next_level: number;
+  cost: MegastructureCost;
+  build_seconds: number;
+  effect: string | null;
+  effect_per_level: number;
+  blurb: string;
+  building_until: string | null;
+  busy: boolean;
+  maxed: boolean;
+  can_afford: boolean;
+}
+
+export interface MegastructureListResponse {
+  dark_matter: number;
+  antimatter: number;
+  structures: MegastructureOption[];
+}

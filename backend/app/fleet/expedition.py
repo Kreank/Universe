@@ -167,6 +167,16 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
     elif otype in ("pirates", "aliens"):
         await _resolve_encounter(session, fleet, otype, research, result)
 
+    elif otype in ("dark_matter", "antimatter"):
+        # Exotische Endgame-Ressource (kontoweit auf dem Spieler, nicht als Fracht).
+        amount = float(_rand_range(rng, outcome.get("amount", 0)))
+        if amount > 0:
+            from app.platform.models import Player
+            player = await session.get(Player, fleet.player_id)
+            if player is not None:
+                setattr(player, otype, float(getattr(player, otype, 0) or 0) + amount)
+                result["found_exotic"] = {otype: amount}
+
     elif otype == "delay":
         result["extra_hours"] = _rand_range(rng, outcome.get("extra_hours", 0))
 

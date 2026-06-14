@@ -35,6 +35,7 @@ import {
   Transmission,
   UpgradeResponse,
   DemolishResponse,
+  MegastructureListResponse,
 } from '../models/api.models';
 
 /**
@@ -95,6 +96,15 @@ export class ApiService {
   /** Bricht die laufende Forschung ab (voller Ressourcen-Refund auf die Heimatwelt). */
   cancelResearch(): Observable<ResearchStartResponse> {
     return this.http.post<ResearchStartResponse>('/api/research/cancel', {});
+  }
+
+  // --- Megastrukturen ---
+  getMegastructures(): Observable<MegastructureListResponse> {
+    return this.http.get<MegastructureListResponse>('/api/megastructures');
+  }
+
+  buildMegastructure(type: string): Observable<unknown> {
+    return this.http.post(`/api/megastructures/${type}/build`, {});
   }
 
   // --- Werft ---

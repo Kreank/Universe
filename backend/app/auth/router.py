@@ -22,6 +22,8 @@ def _player_out(player: Player) -> PlayerOut:
         is_protected=player.is_protected,
         created_at=player.created_at,
         last_active=player.last_active,
+        dark_matter=float(player.dark_matter or 0),
+        antimatter=float(player.antimatter or 0),
     )
 
 

@@ -108,6 +108,9 @@
       "leadership_unrest_reduction_per_level": 0.10,
       "academy_xp_per_level": 0.10,
       "mining_per_level": 0.02,
+      "extraction_per_level": 0.01,
+      "extraction_mastery_per_level": 0.005,
+      "terraforming_fields_per_level": 5,
       "storage_per_level": 0.05,
       "astrophysics_colonies_per_level": 1,
       "expedition_per_level": 0.10,
@@ -153,7 +156,14 @@
       "jump_gate_tech":     { "cost": { "metal": 0, "crystal": 60000, "deuterium": 30000 }, "requires": { "research_lab": 10, "hyperspace_tech": 6 }, "effect": "Sprungtor-Kalibrierung: -6% Abklingzeit und -8% Sprungkosten je Stufe." },
       "phalanx_tech":       { "cost": { "metal": 20000, "crystal": 40000, "deuterium": 10000 }, "requires": { "research_lab": 6, "spy_tech": 6, "computer_tech": 4 }, "effect": "Phalanx-Sensorik: +1 Scan-Reichweite (Systeme) und -8% Scankosten je Stufe." },
       "gravitics":          { "cost": { "metal": 0, "crystal": 50000, "deuterium": 80000 }, "requires": { "research_lab": 12, "graviton_tech": 1 }, "effect": "Gravitationsforschung: +2%-Punkte Mond-Entstehungschance-Obergrenze und +1 Orbitalbatterie-Geschuetz je Stufe." },
-      "convoy_tactics":     { "cost": { "metal": 4000, "crystal": 2000, "deuterium": 4000 }, "requires": { "research_lab": 4, "combustion_drive": 4 }, "effect": "Konvoi-Taktik: -6% NPC-Piraten-Ueberfallrisiko auf Handelsrouten je Stufe. Schuetzt NICHT vor Spieler-Abfangen." }
+      "convoy_tactics":     { "cost": { "metal": 4000, "crystal": 2000, "deuterium": 4000 }, "requires": { "research_lab": 4, "combustion_drive": 4 }, "effect": "Konvoi-Taktik: -6% NPC-Piraten-Ueberfallrisiko auf Handelsrouten je Stufe. Schuetzt NICHT vor Spieler-Abfangen." },
+      "research_network":   { "cost": { "metal": 0, "crystal": 8000, "deuterium": 2000 }, "requires": { "research_lab": 5, "computer_tech": 8 }, "effect": "Intergalaktisches Forschungsnetzwerk: summiert die Forschungslabore der besten (Stufe+1) Planeten in die Forschungszeit. Stufe 1 koppelt 2 Labore, Stufe 2 drei usw. Belohnt breite Expansion." },
+      "weapons_mastery":    { "cost": { "metal": 6000, "crystal": 3000, "deuterium": 1000 }, "repeatable": true, "requires": { "research_lab": 8, "weapons_tech": 10 }, "effect": "Waffen-Meisterschaft (wiederholbar): +1% Angriff aller Einheiten je Stufe. Lineare Kosten, additiver Effekt - nie fertig, sinkender Grenznutzen." },
+      "shield_mastery":     { "cost": { "metal": 3000, "crystal": 6000, "deuterium": 1000 }, "repeatable": true, "requires": { "research_lab": 8, "shield_tech": 10 }, "effect": "Schild-Meisterschaft (wiederholbar): +1% Schildkraft aller Einheiten je Stufe. Linear-additiv." },
+      "armor_mastery":      { "cost": { "metal": 9000, "crystal": 0, "deuterium": 1000 }, "repeatable": true, "requires": { "research_lab": 8, "armor_tech": 10 }, "effect": "Panzerungs-Meisterschaft (wiederholbar): +1% Huelle aller Einheiten je Stufe. Linear-additiv." },
+      "extraction_tech":    { "cost": { "metal": 1000, "crystal": 1500, "deuterium": 0 }, "requires": { "research_lab": 3, "energy_tech": 3 }, "effect": "Foerdertechnik: +1% Minen-Foerderung (Metall/Kristall/Deuterium) je Stufe. Ergaenzt Bergbau-Effizienz." },
+      "extraction_mastery": { "cost": { "metal": 8000, "crystal": 6000, "deuterium": 2000 }, "repeatable": true, "requires": { "research_lab": 8, "extraction_tech": 10 }, "effect": "Foerder-Meisterschaft (wiederholbar): +0,5% Minen-Foerderung je Stufe. Linear-additiv, kein Maximum - ewiger Wirtschafts-Motor." },
+      "terraforming":       { "cost": { "metal": 50000, "crystal": 80000, "deuterium": 20000 }, "requires": { "research_lab": 10, "energy_tech": 12, "computer_tech": 6 }, "effect": "Terraforming: +5 Bauplaetze auf JEDEM Planeten je Stufe. Mehr Felder = mehr Gebaeudestufen = ewiger Bau-Sink." }
     }
   },
 
@@ -250,7 +260,10 @@
   "tech_bonus": {
     "weapons_per_level": 0.10,
     "shield_per_level": 0.10,
-    "armor_per_level": 0.10
+    "armor_per_level": 0.10,
+    "weapons_mastery_per_level": 0.01,
+    "shield_mastery_per_level": 0.01,
+    "armor_mastery_per_level": 0.01
   },
 
   "combat": {
@@ -407,7 +420,9 @@
       { "weight": 12, "type": "pirates", "risky": true },
       { "weight": 8,  "type": "aliens", "risky": true },
       { "weight": 4,  "type": "delay", "risky": true, "extra_hours": [1, 6] },
-      { "weight": 2,  "type": "blackhole", "risky": true }
+      { "weight": 2,  "type": "blackhole", "risky": true },
+      { "weight": 3,  "type": "dark_matter", "amount": [50, 400] },
+      { "weight": 2,  "type": "antimatter", "amount": [30, 250] }
     ],
     "encounters": {
       "_note": "Piraten/Aliens = generierte Gegnerflotte, durch die echte Kampf-Engine. power_ratio x Expeditions-Kampfwert (Summe Schiff-attack) = Gegner-Budget, verteilt ueber roster (guenstigstes zuerst, zyklisch). tech = Waffen-/Schild-/Panzer-Stufe der Gegner. Bei Sieg: loot_ratio x (Metall+Kristall der zerstoerten Gegner, via Schiffskosten) als Beute in die Fracht.",
@@ -604,6 +619,13 @@
     "base_slots": 1,
     "slots_per_computer_tech": 1,
     "fuel_per_distance_unit": 1.0,
+    "upkeep": {
+      "_note": "Anti-Snowball-Bremse (ewiges Universum): ueber der Versorgungskapazitaet (supply_base + supply_per_planet * Planeten) kosten Schiffe pro Stunde Deuterium vom Heimatplaneten. Neulinge (1-2 Planeten) liegen praktisch immer drunter -> kein Upkeep. Kapazitaet NICHT kaufbar (P2W-frei). Stuendlicher Job fleet_upkeep_tick.",
+      "enabled": true,
+      "supply_base": 1000,
+      "supply_per_planet": 400,
+      "deut_per_excess_unit_per_hour": 0.4
+    },
     "station_fuel": {
       "_note": "Treibstoff-Unterhalt. Vorrat (fuel) = mitgefuehrtes Deuterium (Fracht der Deploy-Flotte) -> laenger patrouillieren = Transporter mit Deuterium mitladen. Pro Tick zehrt Ratio * Summe(Schiff-fuel). Leer -> Zwangs-Rueckkehr. VORGESCHOBEN (fremdes Gebiet): zehrt IMMER mit upkeep_ratio_per_tick (Modell C, auch geparkt). EIGENES Gebiet: geparkt/Eskorte gratis; NUR als Patrouille (intercept_enabled) zehrt es, und langsamer (own_upkeep_ratio_per_tick). Sofort-Heim-Patrouille aus Garnison (ohne Fracht) bekommt einen Starter-Tank = starter_reserve_factor * Summe(Schiff-fuel).",
       "upkeep_ratio_per_tick": 0.05,
@@ -781,5 +803,31 @@
     "resources": { "metal": 1000, "crystal": 500, "deuterium": 200 },
     "buildings": { "metal_mine": 1, "crystal_mine": 1, "solar_plant": 1 },
     "commander": { "give_starter": true, "rank": "officer", "specialization": "combat" }
+  },
+
+  "megastructures": {
+    "_note": "Endgame-Megastrukturen (kontoweit, stufenweiser Bau). Kosten/Stufe = cost_base * cost_growth^level; Bauzeit/Stufe = build_hours_base * build_hours_growth^level (durch speed geteilt). Nur EIN Projekt gleichzeitig je Spieler (Anti-Snowball). Dunkle Materie = Haupt-Sink. effect/effect_per_level werden serverseitig gelesen.",
+    "research_nexus": {
+      "name": "Forschungs-Nexus",
+      "max_level": 5,
+      "cost_base": { "metal": 500000, "crystal": 800000, "deuterium": 200000, "dark_matter": 1500 },
+      "cost_growth": 2.0,
+      "build_hours_base": 24,
+      "build_hours_growth": 1.8,
+      "effect": "research_speed",
+      "effect_per_level": 0.08,
+      "blurb": "Beschleunigt alle Forschung imperiumsweit (+8% Tempo je Stufe)."
+    },
+    "matter_decompressor": {
+      "name": "Materie-Dekompressor",
+      "max_level": 5,
+      "cost_base": { "metal": 200000, "crystal": 300000, "deuterium": 100000, "dark_matter": 1200 },
+      "cost_growth": 2.0,
+      "build_hours_base": 30,
+      "build_hours_growth": 1.8,
+      "effect": "mining_speed",
+      "effect_per_level": 0.05,
+      "blurb": "Saugt Materie aus dem Orbit: +5% Minen-Foerderung aller Planeten je Stufe."
+    }
   }
 }

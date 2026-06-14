@@ -77,7 +77,20 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
     key: 'economy',
     label: 'Wirtschaft & Expansion',
     glyph: '⛏️',
-    types: ['mining_efficiency', 'storage_tech', 'astrophysics', 'expedition_tech'],
+    types: ['mining_efficiency', 'extraction_tech', 'storage_tech', 'astrophysics', 'expedition_tech'],
+  },
+  {
+    key: 'endgame',
+    label: 'Endgame',
+    glyph: '🌌',
+    types: [
+      'research_network',
+      'terraforming',
+      'weapons_mastery',
+      'shield_mastery',
+      'armor_mastery',
+      'extraction_mastery',
+    ],
   },
 ];
 

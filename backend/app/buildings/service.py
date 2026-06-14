@@ -76,11 +76,15 @@ def build_seconds(cost: dict[str, float], robot_factory_lvl: int, nanite_lvl: in
     return max(bal.data["build_time"]["min_seconds"], seconds)
 
 
-def effective_fields_max(planet: Planet, levels: dict[str, int]) -> int:
-    """Bauplaetze: Planet = gespeichert; Mond = base_fields + moon_base-Level * pro Stufe."""
-    if planet.planet_type != "moon":
-        return planet.fields_max
+def effective_fields_max(
+    planet: Planet, levels: dict[str, int], terraforming_level: int = 0
+) -> int:
+    """Bauplaetze: Planet = gespeichert + Terraforming-Bonus; Mond = base_fields +
+    moon_base-Level * pro Stufe (Monde profitieren NICHT von Terraforming)."""
     bal = get_balance()
+    if planet.planet_type != "moon":
+        per_tf = int(bal.data["research"].get("effects", {}).get("terraforming_fields_per_level", 0))
+        return planet.fields_max + terraforming_level * per_tf
     base = int(bal.data["moon"]["base_fields"])
     per = int(bal.buildings["moon_base"].get("moon_fields_per_level", 3))
     return base + levels.get("moon_base", 0) * per
@@ -156,7 +160,8 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
     req = bal.buildings[building_type].get("requires", {})
     if not all(levels0.get(rt, 0) >= rl for rt, rl in req.items()):
         raise RuntimeError("Voraussetzung nicht erfuellt")
-    if planet.fields_used >= effective_fields_max(planet, levels0):
+    rlevels0 = await get_research_levels(session, planet.player_id)
+    if planet.fields_used >= effective_fields_max(planet, levels0, rlevels0.get("terraforming", 0)):
         raise RuntimeError("Kein Bauplatz frei")
 
     # Gebaeude-Zeile holen oder anlegen.

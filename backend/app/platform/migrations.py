@@ -202,6 +202,19 @@ _STATEMENTS: list[str] = [
     # identisch zu 'mine'/'trade' oben.
     "ALTER TYPE fleet_mission ADD VALUE IF NOT EXISTS 'intercept'",
     "ALTER TYPE fleet_mission ADD VALUE IF NOT EXISTS 'escort'",
+    # -- Feature: exotische Endgame-Ressourcen (kontoweit, erspielt) ---------
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS dark_matter DOUBLE PRECISION NOT NULL DEFAULT 0",
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS antimatter DOUBLE PRECISION NOT NULL DEFAULT 0",
+    # -- Feature: Endgame-Megastrukturen (kontoweit, stufenweiser Bau) -------
+    """
+    CREATE TABLE IF NOT EXISTS megastructures (
+        player_id      UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        type           TEXT NOT NULL,
+        level          INT NOT NULL DEFAULT 0,
+        building_until TIMESTAMPTZ,
+        PRIMARY KEY (player_id, type)
+    )
+    """,
 ]
 
 

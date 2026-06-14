@@ -80,6 +80,10 @@ class Player(Base):
     vacation_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     doctrine: Mapped[str | None] = mapped_column(Text, nullable=True)  # Imperiums-Doktrin (Doku 03b §9)
     doctrine_changed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Exotische Endgame-Ressourcen (kontoweit, erspielt — NIE kaufbar, kein P2W). Dunkle
+    # Materie = zivil/Forschung, Antimaterie = militaerisch/Energie. Erbeutet auf Expeditionen.
+    dark_matter: Mapped[float] = mapped_column(Float, default=0, server_default="0")
+    antimatter: Mapped[float] = mapped_column(Float, default=0, server_default="0")
     # P2P-Handelsprofil (klassisch, unverbindlich): Spieler wirbt offen ein Tausch-Angebot,
     # ausgehandelt wird per Nachricht/Chat, abgewickelt mit normalen transport-Flotten.
     trade_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -137,6 +141,19 @@ class Research(Base):
     type: Mapped[str] = mapped_column(Text, primary_key=True)
     level: Mapped[int] = mapped_column(Integer, default=0)
     finishes_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Megastructure(Base):
+    """Endgame-Megastruktur (kontoweit, stufenweiser Bau). Eine Zeile je (Spieler, Typ).
+
+    ``building_until`` != NULL => die naechste Stufe ist gerade im Bau (Echtzeit-Timer).
+    Es darf nur EIN Megastruktur-Projekt je Spieler gleichzeitig laufen (Anti-Snowball)."""
+    __tablename__ = "megastructures"
+
+    player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), primary_key=True)
+    type: Mapped[str] = mapped_column(Text, primary_key=True)
+    level: Mapped[int] = mapped_column(Integer, default=0)
+    building_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Commander(Base):

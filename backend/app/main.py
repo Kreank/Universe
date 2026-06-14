@@ -36,6 +36,7 @@ from app.platform.recovery import recover_pending_jobs
 from app.platform.scheduler import schedule_interval, shutdown_scheduler, start_scheduler
 from app.ranking.router import router as ranking_router
 from app.ranking.service import score_tick
+from app.megastructure.router import router as megastructure_router
 from app.research.router import router as research_router
 from app.universe.router import router as universe_router
 from app.ws import websocket_endpoint
@@ -58,6 +59,9 @@ async def lifespan(app: FastAPI):
     await recover_pending_jobs()
     # Stuendlicher Moral-Drift / Neglect-Decay (balance.commander.morale).
     schedule_interval(morale_drift_tick, hours=1, job_id="morale-drift")
+    # Stuendlicher Flotten-Upkeep (Anti-Snowball, balance.fleet.upkeep).
+    from app.fleet.upkeep import fleet_upkeep_tick
+    schedule_interval(fleet_upkeep_tick, hours=1, job_id="fleet-upkeep")
     # NPC-Behavior-Tick: Garnison-Wiederaufbau/Wachstum je Profil (balance.npc).
     schedule_interval(
         npc_behavior_tick,
@@ -141,6 +145,7 @@ for r in (
     messaging_router,
     universe_router,
     ranking_router,
+    megastructure_router,
 ):
     app.include_router(r, prefix="/api")
 

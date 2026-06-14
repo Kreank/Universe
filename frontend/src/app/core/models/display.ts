@@ -224,6 +224,34 @@ export const TECH_META: Record<string, DisplayMeta> = {
     label: 'Konvoi-Taktik', glyph: '🛡️', blurb: '−NPC-Piraten-Risiko auf Handelsrouten.',
     desc: 'Geleitformationen, Ausweichkurse, Funkdisziplin. Jede Stufe senkt das Risiko, dass deine Handelsflotten von NPC-Piraten überfallen werden. Hilft NICHT gegen Spieler-Abfangen (das ist getimter Flotten-Fang und eine andere Mechanik).',
   },
+  research_network: {
+    label: 'Forschungsnetzwerk', glyph: '🌐', blurb: 'Koppelt Labore mehrerer Planeten.',
+    desc: 'Ein intergalaktisches Datennetz verbindet die Forschungslabore deiner Kolonien zu einem Verbund. Statt nur am stärksten Labor zu rechnen, summieren sich die Labore deiner besten Planeten — jede Stufe hängt einen weiteren Planeten ins Netz. Je breiter dein Imperium, desto schneller forschst du.',
+  },
+  weapons_mastery: {
+    label: 'Waffen-Meisterschaft', glyph: '🎯', blurb: '+1 % Angriff/Stufe · wiederholbar.',
+    desc: 'Endlose Verfeinerung deiner Waffensysteme. Jede Stufe gibt +1 % Angriff — die Kosten steigen linear, der Effekt addiert sich. Diese Forschung wird nie „fertig": ein Dauerziel fürs ewige Universum, bei dem frühe Stufen am meisten pro Forschungspunkt bringen.',
+  },
+  shield_mastery: {
+    label: 'Schild-Meisterschaft', glyph: '🔰', blurb: '+1 % Schild/Stufe · wiederholbar.',
+    desc: 'Stetige Optimierung der Schildgeneratoren. +1 % Schildkraft je Stufe, linear-additiv und unbegrenzt wiederholbar — ein ewiger Forschungs-Sink, der nie an eine Decke stößt.',
+  },
+  armor_mastery: {
+    label: 'Panzerungs-Meisterschaft', glyph: '🛠️', blurb: '+1 % Hülle/Stufe · wiederholbar.',
+    desc: 'Immer dichtere Verbundpanzerung. +1 % Hüllenintegrität je Stufe, linear-additiv und unbegrenzt — Endgame-Forschung, die mit deinem Imperium ewig mitwächst.',
+  },
+  extraction_tech: {
+    label: 'Fördertechnik', glyph: '⛏️', blurb: '+1 % Minen-Förderung/Stufe.',
+    desc: 'Bessere Bohrköpfe, effizientere Schmelzöfen, optimierte Förderbänder. Jede Stufe steigert die Förderung aller Minen (Metall, Kristall, Deuterium) um 1 % — ergänzt die Bergbau-Effizienz und zahlt sich über das ganze Imperium aus.',
+  },
+  extraction_mastery: {
+    label: 'Förder-Meisterschaft', glyph: '⚒️', blurb: '+0,5 % Förderung/Stufe · wiederholbar.',
+    desc: 'Die endlose Verfeinerung der Rohstoffgewinnung. +0,5 % Minen-Förderung je Stufe, linear-additiv und unbegrenzt — der ewige Wirtschafts-Motor fürs persistente Universum.',
+  },
+  terraforming: {
+    label: 'Terraforming', glyph: '🌍', blurb: '+5 Bauplätze/Stufe auf allen Planeten.',
+    desc: 'Atmosphären-Prozessoren, Krustenstabilisatoren, künstliche Magnetfelder. Jede Stufe schafft +5 Bauplätze auf JEDEM deiner Planeten — mehr Platz für höhere Gebäudestufen. Ein gewaltiger, ewig skalierender Bau-Sink für angehäuften Reichtum.',
+  },
 };
 
 /**
@@ -247,19 +275,26 @@ export interface TechEffectMeta {
 export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
   energy_tech: {
     branch: 'Grundlagen',
-    summary: 'Schlüssel-Technologie: Voraussetzung für Laser, Fusion, Schilde und höhere Antriebe.',
+    summary:
+      'Steigert die Energieausbeute von Solarkraftwerk & Fusionsreaktor: +1 %-Punkt auf den Ausbeute-Faktor je Stufe (multiplikativ pro Kraftwerksstufe — wirkt umso stärker, je höher das Kraftwerk ausgebaut ist). Zugleich Schlüssel-Tech: Voraussetzung für Laser, Fusion, Schilde und höhere Antriebe.',
   },
   combustion_drive: {
     branch: 'Antrieb',
-    summary: 'Schaltet leichte Schiffe und Transporter frei (Antriebsstufe = Voraussetzung).',
+    summary:
+      '+10 % Reisetempo je Stufe für Schiffe mit Verbrennungstriebwerk (Jäger, Transporter, Recycler, Sonden). Antriebsstufe = Bau-Voraussetzung dieser Schiffe.',
+    levelEffect: { label: 'Reisetempo', perLevel: 10, unit: '%' },
   },
   impulse_drive: {
     branch: 'Antrieb',
-    summary: 'Antrieb der mittleren Schiffsklasse — Voraussetzung für Kreuzer, Kolonie- und Spezialschiffe.',
+    summary:
+      '+20 % Reisetempo je Stufe für Schiffe mit Impulstriebwerk (mittlere Klasse: Kreuzer, Kolonie- und Spezialschiffe). Antriebsstufe = Bau-Voraussetzung.',
+    levelEffect: { label: 'Reisetempo', perLevel: 20, unit: '%' },
   },
   hyperspace_drive: {
     branch: 'Antrieb',
-    summary: 'Antrieb der Großkampfschiffe — Voraussetzung für Schlachtschiffe, Zerstörer, Träger, Todesstern.',
+    summary:
+      '+30 % Reisetempo je Stufe für Großkampfschiffe (Schlachtschiff, Zerstörer, Träger, Todesstern). Antriebsstufe = Bau-Voraussetzung.',
+    levelEffect: { label: 'Reisetempo', perLevel: 30, unit: '%' },
   },
   spy_tech: {
     branch: 'Aufklärung',
@@ -287,7 +322,8 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
   },
   command_doctrine: {
     branch: 'Kommando',
-    summary: 'Erweitert die Befehlsreichweite (Span of Control) — mehr Commander gleichzeitig im Einsatz.',
+    summary: '+1 Befehlsreichweite (Span of Control) je Stufe — ein Geschwader mehr ohne Koordinationsstrafe (−8 % Kampfkraft je Geschwader über dem Span). Linear, kein Maximum.',
+    levelEffect: { label: 'Befehlsreichweite', perLevel: 1, unit: '' },
   },
   logistics_tech: {
     branch: 'Kommando',
@@ -301,7 +337,7 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
   },
   laser_tech: {
     branch: 'Waffen',
-    summary: 'Lasergeschütze & schlagkräftigere Kriegsschiffe; Grundlage für Ionen- und Plasmatechnik.',
+    summary: 'Schaltet frei: Schlachtkreuzer, Stealth-Korvette, Eskort-Fregatte, Abfangjäger sowie leichtes & schweres Lasergeschütz. Grundlage für Ionen- und Plasmatechnik.',
   },
   ion_tech: {
     branch: 'Waffen',
@@ -381,6 +417,40 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
   convoy_tactics: {
     branch: 'Wirtschaft',
     summary: '−6 % NPC-Piraten-Überfallrisiko auf Handelsrouten je Stufe (hilft NICHT gegen Spieler-Abfangen).',
+  },
+  research_network: {
+    branch: 'Endgame',
+    summary: 'Summiert die Labore deiner besten (Stufe+1) Planeten in die Forschungszeit. Stufe 1 = 2 Labore gekoppelt, Stufe 2 = drei usw. Belohnt breite Expansion.',
+  },
+  weapons_mastery: {
+    branch: 'Endgame',
+    summary: 'Wiederholbar, kein Maximum: +1 % Angriff aller Einheiten je Stufe. Lineare Kosten + additiver Effekt → sinkender Grenznutzen, kein Power-Creep.',
+    levelEffect: { label: 'Angriff (Meisterschaft)', perLevel: 1, unit: '%' },
+  },
+  shield_mastery: {
+    branch: 'Endgame',
+    summary: 'Wiederholbar, kein Maximum: +1 % Schildkraft aller Einheiten je Stufe. Linear-additiv.',
+    levelEffect: { label: 'Schild (Meisterschaft)', perLevel: 1, unit: '%' },
+  },
+  armor_mastery: {
+    branch: 'Endgame',
+    summary: 'Wiederholbar, kein Maximum: +1 % Hülle aller Einheiten je Stufe. Linear-additiv.',
+    levelEffect: { label: 'Hülle (Meisterschaft)', perLevel: 1, unit: '%' },
+  },
+  extraction_tech: {
+    branch: 'Wirtschaft',
+    summary: '+1 % Minen-Förderung (Metall/Kristall/Deuterium) je Stufe. Ergänzt die Bergbau-Effizienz.',
+    levelEffect: { label: 'Förderung', perLevel: 1, unit: '%' },
+  },
+  extraction_mastery: {
+    branch: 'Endgame',
+    summary: 'Wiederholbar, kein Maximum: +0,5 % Minen-Förderung je Stufe. Linear-additiv — ewiger Wirtschafts-Motor.',
+    levelEffect: { label: 'Förderung (Meisterschaft)', perLevel: 0.5, unit: '%' },
+  },
+  terraforming: {
+    branch: 'Endgame',
+    summary: '+5 Bauplätze auf jedem Planeten je Stufe. Mehr Felder → mehr Gebäudestufen → ewiger Bau-Sink.',
+    levelEffect: { label: 'Bauplätze/Planet', perLevel: 5, unit: '' },
   },
 };
 

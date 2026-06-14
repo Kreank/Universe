@@ -86,9 +86,13 @@ def _build_units(
     drive_per_tier = catalogs["drive_per_tier"]
     sb = ship_bonuses or {}
 
-    w = 1.0 + bonus["weapons_per_level"] * tech.get("weapons_tech", 0)
-    s = 1.0 + bonus["shield_per_level"] * tech.get("shield_tech", 0)
-    a = 1.0 + bonus["armor_per_level"] * tech.get("armor_tech", 0)
+    # Basis-Kampftech (+10%/Stufe) + wiederholbare Meisterschaft (+1%/Stufe, additiv, kein Cap).
+    w = 1.0 + bonus["weapons_per_level"] * tech.get("weapons_tech", 0) \
+        + bonus.get("weapons_mastery_per_level", 0.0) * tech.get("weapons_mastery", 0)
+    s = 1.0 + bonus["shield_per_level"] * tech.get("shield_tech", 0) \
+        + bonus.get("shield_mastery_per_level", 0.0) * tech.get("shield_mastery", 0)
+    a = 1.0 + bonus["armor_per_level"] * tech.get("armor_tech", 0) \
+        + bonus.get("armor_mastery_per_level", 0.0) * tech.get("armor_mastery", 0)
 
     def profile(typ: str) -> dict[str, Any]:
         p = roster.get(typ)

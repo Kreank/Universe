@@ -59,6 +59,9 @@ def compute_production_and_energy(
     energy_tech: int,
     mining_level: int = 0,
     solar_satellites: int = 0,
+    extraction_level: int = 0,
+    extraction_mastery_level: int = 0,
+    megastructure_mining_mult: float = 1.0,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """Berechnet (Minen-Roh-Produktion pro Stunde bei speed=1) und die Energie-Bilanz.
 
@@ -87,8 +90,17 @@ def compute_production_and_energy(
             return 0.0
         return cfg["energy_base"] * level * (cfg["energy_growth"] ** level)
 
-    # Bergbau-Effizienz (Forschung): +X% Minen-Foerderung je Stufe.
-    mining_mult = 1.0 + float(bal.data["research"].get("effects", {}).get("mining_per_level", 0)) * int(mining_level)
+    # Minen-Foerderung (Forschung): Bergbau-Effizienz + Foerdertechnik + wiederholbare
+    # Foerder-Meisterschaft, alle additiv je Stufe.
+    eff = bal.data["research"].get("effects", {})
+    mining_mult = (
+        1.0
+        + float(eff.get("mining_per_level", 0)) * int(mining_level)
+        + float(eff.get("extraction_per_level", 0)) * int(extraction_level)
+        + float(eff.get("extraction_mastery_per_level", 0)) * int(extraction_mastery_level)
+    )
+    # Megastruktur Materie-Dekompressor: imperiumsweiter multiplikativer Foerder-Bonus.
+    mining_mult *= float(megastructure_mining_mult)
 
     # -- Roh-Produktion der Minen (pro Stunde, speed=1) ----------------------
     metal_raw = prod("metal_mine") * mining_mult
@@ -138,6 +150,9 @@ def compute_rates(
     storage_level: int = 0,
     solar_satellites: int = 0,
     production_mult: float = 1.0,
+    extraction_level: int = 0,
+    extraction_mastery_level: int = 0,
+    megastructure_mining_mult: float = 1.0,
 ) -> tuple[dict[str, float], dict[str, float], dict[str, float]]:
     """Liefert (effektive Stundenraten inkl. Grundeinkommen & Speed, energy, capacities).
 
@@ -148,7 +163,8 @@ def compute_rates(
     bal = get_balance()
     speed = bal.speed
     rates_raw, energy = compute_production_and_energy(
-        buildings, temp_max, energy_tech, mining_level, solar_satellites
+        buildings, temp_max, energy_tech, mining_level, solar_satellites,
+        extraction_level, extraction_mastery_level, megastructure_mining_mult,
     )
     factor = energy["factor"]
     base = bal.base_income
@@ -207,6 +223,9 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     buildings = await get_building_levels(session, planet.id)
     research = await get_research_levels(session, planet.player_id)
     energy_tech = research.get("energy_tech", 0)
+    # Megastruktur Materie-Dekompressor: imperiumsweiter Foerder-Bonus.
+    from app.megastructure.service import effect_mult
+    mega_mining_mult = await effect_mult(session, planet.player_id, "mining_speed")
     # Auf dem Planeten stationierte Solarsatelliten (fleet_id NULL) -> Energiebeitrag.
     solar_sats = int((await session.execute(
         select(Ship.count).where(
@@ -228,6 +247,9 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
         buildings, planet.temp_max, energy_tech,
         research.get("mining_efficiency", 0), research.get("storage_tech", 0),
         solar_sats, production_mult=gov_mult,
+        extraction_level=research.get("extraction_tech", 0),
+        extraction_mastery_level=research.get("extraction_mastery", 0),
+        megastructure_mining_mult=mega_mining_mult,
     )
 
     rows = (await session.execute(
@@ -260,6 +282,9 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
             buildings_off, planet.temp_max, energy_tech,
             research.get("mining_efficiency", 0), research.get("storage_tech", 0), solar_sats,
             production_mult=gov_mult,
+            extraction_level=research.get("extraction_tech", 0),
+            extraction_mastery_level=research.get("extraction_mastery", 0),
+            megastructure_mining_mult=mega_mining_mult,
         )
 
     result: dict[str, dict] = {}
