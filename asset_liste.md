@@ -276,7 +276,7 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | nanite_factory | `buildings/nanite_factory.png` | PNG transparent, 512×512 (wie `buildings/*`) | Nanitenfabrik: eine **hochmoderne, sterile Hightech-Fertigungshalle als Bauwerk** — Reinraum-Module, Roboterarme/Montage-Gantries, schwebende Nanit-Schwärme als feine cyan Partikelwolken/Glitzern um die Anlage, leuchtende cyan `#2fe3d2` Daten-/Steuerleitungen. Wirkt wie eine aufgewertete, glänzendere Variante der `robot_factory`. Gerendert wie ein Gebäude (3/4-Aufsicht), NICHT als Weltraumszene. |
+| ✅ | nanite_factory | `buildings/nanite_factory.png` | PNG transparent, 512×512 (wie `buildings/*`) | Nanitenfabrik: eine **hochmoderne, sterile Hightech-Fertigungshalle als Bauwerk** — Reinraum-Module, Roboterarme/Montage-Gantries, schwebende Nanit-Schwärme als feine cyan Partikelwolken/Glitzern um die Anlage, leuchtende cyan `#2fe3d2` Daten-/Steuerleitungen. Wirkt wie eine aufgewertete, glänzendere Variante der `robot_factory`. Gerendert wie ein Gebäude (3/4-Aufsicht), NICHT als Weltraumszene. |
 
 ### Ressourcen-Icons (exotisch) — referenziert als `assets/img/resources/<name>.png`
 
@@ -312,10 +312,10 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | flagship_command | `tech/flagship_command.png` | PNG transparent, 256×256 | Flaggschiff-Doktrin (+1 Flaggschiff): Kommandostab/Admirals-Insignie mit Capital-Silhouette, cyan. |
-| ⬜ | corsair_command | `tech/corsair_command.png` | PNG transparent, 256×256 | Korsaren-Verband (+1 Korsar): Piraten-/Raider-Emblem (Enterhaken + schlanke Schiffs-Silhouette), cyan + dezent magenta. |
-| ⬜ | leviathan_command | `tech/leviathan_command.png` | PNG transparent, 256×256 | Großhandels-Lizenz (+1 Handels-Leviathan): Fracht-/Konvoi-Emblem mit massiver Frachter-Silhouette, cyan + dezent violett. |
-| ⬜ | harvest_command | `tech/harvest_command.png` | PNG transparent, 256×256 | Schürf-Kommando (+1 Ernte-Titan): Bergbau-/Bohr-Emblem mit Ernteschiff-Silhouette, cyan + dezent violett. |
+| ✅ | flagship_command | `tech/flagship_command.png` | PNG transparent, 256×256 | Flaggschiff-Doktrin (+1 Flaggschiff): Kommandostab/Admirals-Insignie mit Capital-Silhouette, cyan. |
+| ✅ | corsair_command | `tech/corsair_command.png` | PNG transparent, 256×256 | Korsaren-Verband (+1 Korsar): Piraten-/Raider-Emblem (Enterhaken + schlanke Schiffs-Silhouette), cyan + dezent magenta. |
+| ✅ | leviathan_command | `tech/leviathan_command.png` | PNG transparent, 256×256 | Großhandels-Lizenz (+1 Handels-Leviathan): Fracht-/Konvoi-Emblem mit massiver Frachter-Silhouette, cyan + dezent violett. |
+| ✅ | harvest_command | `tech/harvest_command.png` | PNG transparent, 256×256 | Schürf-Kommando (+1 Ernte-Titan): Bergbau-/Bohr-Emblem mit Ernteschiff-Silhouette, cyan + dezent violett. |
 
 ---
 
