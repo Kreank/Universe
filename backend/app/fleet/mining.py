@@ -98,6 +98,21 @@ async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
     field.metal_remaining = new_metal
     field.crystal_remaining = new_crystal
 
+    # Allianz-Bonus „Foerderquote" (Zone-Kontext): Effizienz-Extra auf den Ertrag, OHNE das Feld
+    # zusaetzlich zu erschoepfen (Doppel-Dip-Schutz: greift nur in der Stations-Einflusszone).
+    from app.alliance.bonus import alliance_bonus
+    from app.platform.models import Player
+    owner = await session.get(Player, fleet.player_id)
+    zone_bonus = await alliance_bonus(
+        session, owner, "mining_yield_zone",
+        galaxy=fleet.target_galaxy, system=fleet.target_system,
+    )
+    if zone_bonus > 0:
+        gained = {
+            "metal": round(gained["metal"] * (1 + zone_bonus), 1),
+            "crystal": round(gained["crystal"] * (1 + zone_bonus), 1),
+        }
+
     cargo = dict(fleet.cargo or {})
     cargo["metal"] = round(cargo.get("metal", 0) + gained["metal"], 1)
     cargo["crystal"] = round(cargo.get("crystal", 0) + gained["crystal"], 1)

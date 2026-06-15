@@ -39,6 +39,9 @@ import {
   Routine,
   RoutineListResponse,
   RoutineWriteRequest,
+  AllianceResponse,
+  AllianceOverview,
+  AllianceStation,
 } from '../models/api.models';
 
 /**
@@ -348,5 +351,80 @@ export class ApiService {
 
   deleteRoutine(id: string): Observable<void> {
     return this.http.delete<void>(`/api/routines/${id}`);
+  }
+
+  // --- Allianz ---
+  getAlliance(): Observable<AllianceResponse> {
+    return this.http.get<AllianceResponse>('/api/alliance');
+  }
+
+  createAlliance(body: { name: string; tag: string }): Observable<AllianceOverview> {
+    return this.http.post<AllianceOverview>('/api/alliance', body);
+  }
+
+  disbandAlliance(): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>('/api/alliance/disband', {});
+  }
+
+  /** Einladung per Anzeigename ODER Spieler-ID (Offizier+). */
+  inviteToAlliance(body: { name?: string; player_id?: string }): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>('/api/alliance/invite', body);
+  }
+
+  acceptInvite(allianceId: string): Observable<AllianceOverview> {
+    return this.http.post<AllianceOverview>(`/api/alliance/invites/${allianceId}/accept`, {});
+  }
+
+  declineInvite(allianceId: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`/api/alliance/invites/${allianceId}/decline`, {});
+  }
+
+  leaveAlliance(): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>('/api/alliance/leave', {});
+  }
+
+  kickMember(playerId: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>('/api/alliance/kick', { player_id: playerId });
+  }
+
+  setMemberRole(playerId: string, role: 'member' | 'officer'): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>('/api/alliance/role', { player_id: playerId, role });
+  }
+
+  transferLeadership(playerId: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>('/api/alliance/transfer', { player_id: playerId });
+  }
+
+  depositToAlliance(body: {
+    planet_id: string;
+    metal: number;
+    crystal: number;
+    deuterium: number;
+  }): Observable<unknown> {
+    return this.http.post('/api/alliance/deposit', body);
+  }
+
+  researchAlliance(tree: string, node: string): Observable<unknown> {
+    return this.http.post('/api/alliance/research', { tree, node });
+  }
+
+  resetAllianceResearch(): Observable<unknown> {
+    return this.http.post('/api/alliance/research/reset', {});
+  }
+
+  buildAllianceStation(body: {
+    galaxy: number;
+    system: number;
+    position: number;
+  }): Observable<AllianceStation> {
+    return this.http.post<AllianceStation>('/api/alliance/station', body);
+  }
+
+  refuelStation(id: string, deuterium: number): Observable<unknown> {
+    return this.http.post(`/api/alliance/station/${id}/refuel`, { deuterium });
+  }
+
+  upgradeStation(id: string): Observable<unknown> {
+    return this.http.post(`/api/alliance/station/${id}/upgrade`, {});
   }
 }

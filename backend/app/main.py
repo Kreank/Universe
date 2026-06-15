@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Query, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.alliance.router import router as alliance_router
 from app.auth.router import router as auth_router
 from app.buildings.router import router as buildings_router
 from app.combat.router import router as combat_router
@@ -146,6 +147,7 @@ for r in (
     universe_router,
     ranking_router,
     megastructure_router,
+    alliance_router,
 ):
     app.include_router(r, prefix="/api")
 

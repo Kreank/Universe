@@ -91,6 +91,11 @@ class Player(Base):
     trade_want: Mapped[str | None] = mapped_column(Text, nullable=True)
     trade_rate: Mapped[float | None] = mapped_column(Float, nullable=True)  # Richtwert: want je 1 offer
     trade_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Allianz-Zugehoerigkeit (denormalisiert, synchron mit alliance_members) — Schnell-Zugriff
+    # fuer den Bonus-Resolver. NULL = solo.
+    alliance_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("alliances.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class Planet(Base):
@@ -356,6 +361,73 @@ class FarmRoute(Base):
     cursor: Mapped[int] = mapped_column(Integer, default=0)
     active_fleet_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("fleets.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Alliance(Base):
+    """Allianz: kooperative Ebene mit gemeinsamem Ressourcen-Pool + Allianz-Forschung
+    (research_levels: {"<tree>.<node>": level}). Mitglieder in ``alliance_members``."""
+    __tablename__ = "alliances"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    tag: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    founder_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="SET NULL"), nullable=True
+    )
+    pool: Mapped[dict] = mapped_column(JSONB, default=dict)                 # {metal, crystal, deuterium}
+    research_levels: Mapped[dict] = mapped_column(JSONB, default=dict)      # {"<tree>.<node>": level}
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class AllianceMember(Base):
+    """Mitgliedschaft (genau eine je Spieler -> player_id ist PK). Rolle: founder|officer|member."""
+    __tablename__ = "alliance_members"
+
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), primary_key=True
+    )
+    alliance_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("alliances.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(Text, default="member")
+    joined_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class AllianceStation(Base):
+    """Allianz-Station: physischer Anker, projiziert die Baum-Spezialisierung in eine
+    Einflusszone (Radius = base + research_radius_level, Cap aus balance). Upkeep zehrt fuel;
+    leer -> status 'inactive'. Zerstoerbar (braucht >=2 Angreifer)."""
+    __tablename__ = "alliance_stations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    alliance_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("alliances.id", ondelete="CASCADE"), nullable=False
+    )
+    galaxy: Mapped[int] = mapped_column(Integer, nullable=False)
+    system: Mapped[int] = mapped_column(Integer, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    research_radius_level: Mapped[int] = mapped_column(Integer, default=0)
+    fuel: Mapped[float] = mapped_column(Float, default=0.0)
+    hp: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(Text, default="active")  # active | inactive | destroyed
+    built_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    last_upkeep_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class AllianceInvite(Base):
+    """Offene Einladung in eine Allianz (officer+ lädt ein, Spieler nimmt an)."""
+    __tablename__ = "alliance_invites"
+
+    alliance_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("alliances.id", ondelete="CASCADE"), primary_key=True
+    )
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), primary_key=True
+    )
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 

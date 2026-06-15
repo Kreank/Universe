@@ -100,6 +100,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/routines/routines.component').then((m) => m.RoutinesComponent),
       },
+      {
+        path: 'alliance',
+        loadComponent: () =>
+          import('./features/alliance/alliance.component').then((m) => m.AllianceComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

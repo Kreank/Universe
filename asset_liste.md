@@ -361,10 +361,34 @@ Es gibt **zwei** Asset-Wurzeln:
 | ⬜ | alliance (nav) | `icons/nav/alliance.png` | PNG transparent, 256×256 (~24px lesbar) | Nav-Icon „Allianz"-Screen: schlichte Wappen-/Bündnis-Silhouette (zwei verschränkte Hände / geteiltes Wappenschild / Sternen-Bund), cyan Akzent. Stil wie vorhandene `nav/*.png`, als kleine klare Silhouette lesbar. |
 | ⬜ | alliance_zone | `icons/status/alliance_zone.png` | PNG transparent, 256×256 | Karten-Marker „Einflusszone" (liegt auf Systemen im Stations-Radius der Galaxie-/System-Karte): weicher, **tintbarer** cyan Aura-/Ring-Glow (heller Rand, transparente Mitte), neutral genug zum Einfärben pro Allianz. Dezent, soll Inhalt nicht überdecken. |
 
-> **⬜ NOCH NICHT BAUEN — Einzel-Knoten-Icons der 4 Bäume:** jeder Forschungs-Knoten (≈5 pro Baum,
-> wiederholbare bekommen den **∞-Ring** wie `tech/*_mastery.png`) bekommt ein eigenes `tech/<knoten>.png`.
-> Die finale Knotenliste wird zu Beginn der Implementierung (morgen) festgelegt — DANN werden die
-> konkreten Icon-Zeilen hier ergänzt. Bis dahin keine Knoten-Icons anfordern.
+### Allianz-Forschungs-Knoten-Icons (Knotenliste FINAL, 2026-06-15) — referenziert als `assets/img/tech/<name>.png`
+
+> Je Knoten ein eigenes `tech/alliance_<knoten>.png` (Stil = `tech/*`, plastisches Emblem, cyan Akzent,
+> Baum-Akzentfarbe wie das jeweilige Baum-Emblem). **🔁 = wiederholbar → dezenter ∞-Ring** (wie
+> `tech/*_mastery.png`). **⭐ = Koop-Schlüsselknoten** → etwas prominenter / Gruppen-Anmutung.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | alliance_raid_loot | `tech/alliance_raid_loot.png` | PNG 256×256 | 🏴‍☠️🔁 Beutezug: Plünderungs-/Beute-Emblem (Schatztruhe/Krallen am Frachtgut) + **∞-Ring**. |
+| ⬜ | alliance_shadow_fleet | `tech/alliance_shadow_fleet.png` | PNG 256×256 | 🏴‍☠️🔁 Schattenflotte: getarnte Raider-Silhouette, halb im Dunkel/Phasen-Effekt + **∞-Ring**. |
+| ⬜ | alliance_boarding_doctrine_ally | `tech/alliance_boarding_doctrine_ally.png` | PNG 256×256 | 🏴‍☠️ Enterhaken (Koop): Enterhaken/Greifarm an gekapertem Schiff. |
+| ⬜ | alliance_gravity_snare | `tech/alliance_gravity_snare.png` | PNG 256×256 | 🏴‍☠️ Fanggriff: Gravitations-/Interdiktionsfeld, das ein Schiff festhält (Räuberhöhle). |
+| ⬜ | alliance_pack_hunt | `tech/alliance_pack_hunt.png` | PNG 256×256 | 🏴‍☠️⭐ Rudeljagd: mehrere Raider im Verband auf ein Ziel, geteilte Sicht (Gruppen-Anmutung). |
+| ⬜ | alliance_extraction_zone | `tech/alliance_extraction_zone.png` | PNG 256×256 | 🏭🔁 Förderquote: Förderkopf/Erzstrom über einem Zonen-Ring + **∞-Ring**. |
+| ⬜ | alliance_deep_drilling | `tech/alliance_deep_drilling.png` | PNG 256×256 | 🏭🔁 Tiefenbohrung: tiefer Bohrer in Asteroid/Trümmer + **∞-Ring**. |
+| ⬜ | alliance_forward_yards | `tech/alliance_forward_yards.png` | PNG 256×256 | 🏭🔁 Vorgeschobene Werften: kompaktes Werft-/Baugerüst mit Tempo-Anmutung + **∞-Ring**. |
+| ⬜ | alliance_depot_storage | `tech/alliance_depot_storage.png` | PNG 256×256 | 🏭 Lagernetz: Depot-/Lagercontainer-Cluster, solide. |
+| ⬜ | alliance_joint_extraction | `tech/alliance_joint_extraction.png` | PNG 256×256 | 🏭⭐ Gemeinschaftsförderung: mehrere Förderschiffe an einem Feld (Gruppen-Anmutung). |
+| ⬜ | alliance_market_access | `tech/alliance_market_access.png` | PNG 256×256 | 💱🔁 Marktzugang: Handels-/Kurs-Emblem (Waage/Kurvenpfeil) + **∞-Ring**. |
+| ⬜ | alliance_cargo_logistics | `tech/alliance_cargo_logistics.png` | PNG 256×256 | 💱🔁 Frachtoptimierung: prall gefüllter Frachter/Container mit Effizienz-Pfeil + **∞-Ring**. |
+| ⬜ | alliance_safe_routes | `tech/alliance_safe_routes.png` | PNG 256×256 | 💱 Sichere Routen: Handelsroute mit Schutzschirm/Konvoi-Linie. |
+| ⬜ | alliance_depot_logistics | `tech/alliance_depot_logistics.png` | PNG 256×256 | 💱 Depot-Logistik: Einzahlung/Pfeil-in-Depot, günstig/effizient. |
+| ⬜ | alliance_escort_convoy | `tech/alliance_escort_convoy.png` | PNG 256×256 | 💱⭐ Geleitzug: eskortierter Konvoi (Frachter + Begleitschiffe). |
+| ⬜ | alliance_escort_doctrine | `tech/alliance_escort_doctrine.png` | PNG 256×256 | 🛡️ Geleitschutz: Schild über Frachter/Verbündetem. |
+| ⬜ | alliance_rapid_response | `tech/alliance_rapid_response.png` | PNG 256×256 | 🛡️🔁 Schnelle Eingreiftruppe: Abfangjäger mit Tempo-/Alarm-Anmutung + **∞-Ring**. |
+| ⬜ | alliance_early_warning | `tech/alliance_early_warning.png` | PNG 256×256 | 🛡️🔁 Frühwarnnetz: Sensor-/Radar-Sweep über der Zone + **∞-Ring**. |
+| ⬜ | alliance_bounty | `tech/alliance_bounty.png` | PNG 256×256 | 🛡️ Kopfgeld: Fahndungs-/Kopfgeld-Marke gegen Pirat. |
+| ⬜ | alliance_shield_wall | `tech/alliance_shield_wall.png` | PNG 256×256 | 🛡️⭐ Schildwall: gestapelte Schilde mehrerer Schiffe (Gruppen-Verteidigung). |
 
 ---
 

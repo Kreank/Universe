@@ -889,5 +889,72 @@
     "convoy_aura": { "risk_reduction": 0.5 },
     "raider_loot_bonus": 0.25,
     "harvester_yield_mult": 8.0
+  },
+
+  "alliance": {
+    "_note": "Allianzen: kooperative Ebene OBEN AUF der individuellen Spieler-Forschung (kein Ersatz, kein Doppel-Dip). Allianz-Forschung wird aus dem gemeinsamen Pool bezahlt. Jeder Knoten kodiert per 'context' den Doppel-Dip-Schutz: 'coop' = nur wenn >=2 Mitglieder gemeinsam handeln, 'zone' = nur in der Einflusszone einer eigenen Station, 'ally' = nur wenn die Aktion ein anderes Mitglied schuetzt/transportiert, 'passive_collective' = immer fuer Mitglieder (rein soziale Hebel). 'lever' = maschinen-Schluessel, den der Bonus-Resolver an den Hook-Punkten nachschlaegt. Wirkung je Stufe = level * per_level (Soft-Cap via max_level).",
+    "max_members": 50,
+    "create_cost": { "metal": 50000, "crystal": 30000, "deuterium": 10000 },
+    "min_role_for_spend": "officer",
+    "research": {
+      "reset_refund_ratio": 0.0,
+      "cost_scales_with_members": true,
+      "member_cost_factor_per_member": 0.05,
+      "trees": {
+        "piracy": {
+          "label": "Piraterie",
+          "nodes": {
+            "raid_loot":             { "context": "coop", "lever": "raid_loot_mult",       "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 4000, "crystal": 2000, "deuterium": 1000 }, "effect": "Beutezug: +5% Pluenderung beim Raid mit Verbuendeten je Stufe." },
+            "shadow_fleet":          { "context": "zone", "lever": "stealth_zone",         "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 3000, "crystal": 3000, "deuterium": 1000 }, "effect": "Schattenflotte: in der eigenen Zone schwerer entdeckbar (+5% Tarnung je Stufe)." },
+            "boarding_doctrine_ally":{ "context": "coop", "lever": "boarding_ally",        "per_level": 1,    "max_level": 5,  "repeatable": false, "cost": { "metal": 6000, "crystal": 3000, "deuterium": 1500 }, "effect": "Enterhaken (Koop): +1 gekapertes Schiff je Stufe bei gemeinsamen Raids." },
+            "gravity_snare":         { "context": "zone", "lever": "interdiction_zone",    "per_level": 0.05, "max_level": 5,  "repeatable": false, "cost": { "metal": 5000, "crystal": 4000, "deuterium": 2000 }, "effect": "Fanggriff: +5% Interdiktion gegen Fremde in der eigenen Zone je Stufe (Raeuberhoehle)." },
+            "pack_hunt":             { "context": "coop", "lever": "pack_hunt",            "per_level": 0.10, "max_level": 5,  "repeatable": false, "cost": { "metal": 8000, "crystal": 5000, "deuterium": 3000 }, "effect": "⭐ Rudeljagd: gemeinsamer Abfang -> +10% Extra-Beute je Stufe + geteilte Phalanx-Sicht." }
+          }
+        },
+        "economy": {
+          "label": "Wirtschaft",
+          "nodes": {
+            "extraction_zone":  { "context": "zone", "lever": "mining_yield_zone",     "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 4000, "crystal": 3000, "deuterium": 500 },  "effect": "Foerderquote: +5% Minen-Foerderung in der Zone je Stufe." },
+            "deep_drilling":    { "context": "zone", "lever": "harvest_yield_zone",    "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 5000, "crystal": 4000, "deuterium": 1000 }, "effect": "Tiefenbohrung: +5% Asteroiden-/Truemmer-/Exotik-Ertrag in der Zone je Stufe." },
+            "forward_yards":    { "context": "zone", "lever": "build_time_zone",       "per_level": 0.03, "max_level": 10, "repeatable": true,  "cost": { "metal": 6000, "crystal": 4000, "deuterium": 1000 }, "effect": "Vorgeschobene Werften: -3% Bauzeit in der Zone je Stufe." },
+            "depot_storage":    { "context": "passive_collective", "lever": "pool_storage", "per_level": 0.10, "max_level": 5, "repeatable": false, "cost": { "metal": 4000, "crystal": 2000, "deuterium": 500 }, "effect": "Lagernetz: +10% Pool-Lagerkapazitaet / -decay je Stufe." },
+            "joint_extraction":{ "context": "coop", "lever": "joint_extraction",       "per_level": 0.10, "max_level": 5,  "repeatable": false, "cost": { "metal": 8000, "crystal": 6000, "deuterium": 2000 }, "effect": "⭐ Gemeinschaftsfoerderung: geteilte Minen-Op mit Verbuendeten -> +10% Ertrag je Stufe." }
+          }
+        },
+        "trade": {
+          "label": "Handel",
+          "nodes": {
+            "market_access":    { "context": "zone", "lever": "market_margin_zone",   "per_level": 0.03, "max_level": 10, "repeatable": true,  "cost": { "metal": 3000, "crystal": 4000, "deuterium": 1000 }, "effect": "Marktzugang: +3% bessere Preise fuer Zonen-/Pool-Trades je Stufe." },
+            "cargo_logistics":  { "context": "ally", "lever": "cargo_fuel_ally",       "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 3000, "crystal": 3000, "deuterium": 1000 }, "effect": "Frachtoptimierung: +5% Fracht / -Sprit bei Transport zu/fuer Verbuendete je Stufe." },
+            "safe_routes":      { "context": "coop", "lever": "route_risk_convoy",     "per_level": 0.06, "max_level": 5,  "repeatable": false, "cost": { "metal": 4000, "crystal": 3000, "deuterium": 2000 }, "effect": "Sichere Routen: -6% Routenrisiko fuer Konvois mit Verbuendeten je Stufe." },
+            "depot_logistics":  { "context": "passive_collective", "lever": "pool_deposit_cost", "per_level": 0.05, "max_level": 5, "repeatable": false, "cost": { "metal": 3000, "crystal": 2000, "deuterium": 500 }, "effect": "Depot-Logistik: -5% Kosten/Verlust bei Pool-Einzahlung je Stufe." },
+            "escort_convoy":    { "context": "coop", "lever": "escort_convoy",         "per_level": 0.10, "max_level": 5,  "repeatable": false, "cost": { "metal": 7000, "crystal": 5000, "deuterium": 2000 }, "effect": "⭐ Geleitzug: eskortierter Konvoi -> +10% sichere Ladung + Profit je Stufe." }
+          }
+        },
+        "protection": {
+          "label": "Schutz",
+          "nodes": {
+            "escort_doctrine":  { "context": "ally", "lever": "escort_uncapturable",   "per_level": 0.20, "max_level": 5,  "repeatable": false, "cost": { "metal": 4000, "crystal": 3000, "deuterium": 1000 }, "effect": "Geleitschutz: Konvois Verbuendeter +20% schwerer kaperbar je Stufe." },
+            "rapid_response":   { "context": "ally", "lever": "interception_defense",  "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 4000, "crystal": 3000, "deuterium": 1500 }, "effect": "Schnelle Eingreiftruppe: +5% Abfang-Chance bei Verteidigung eines Mitglieds je Stufe." },
+            "early_warning":    { "context": "zone", "lever": "phalanx_detect_zone",   "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 3000, "crystal": 4000, "deuterium": 1500 }, "effect": "Fruehwarnnetz: +5% Phalanx-/Hinterhalt-Entdeckung in der Zone je Stufe." },
+            "bounty":           { "context": "passive_collective", "lever": "bounty_pirate", "per_level": 0.10, "max_level": 5, "repeatable": false, "cost": { "metal": 4000, "crystal": 2000, "deuterium": 1000 }, "effect": "Kopfgeld: +10% Bonus-Beute je Stufe beim Vernichten von Piraten." },
+            "shield_wall":      { "context": "coop", "lever": "shield_wall",           "per_level": 0.05, "max_level": 5,  "repeatable": false, "cost": { "metal": 8000, "crystal": 6000, "deuterium": 2000 }, "effect": "⭐ Schildwall: gemeinsame Verteidigung -> +5% gestapelte Aura + Gruppen-Warp-Stabilisator je Stufe." }
+          }
+        }
+      }
+    },
+    "station": {
+      "build_cost": { "metal": 80000, "crystal": 50000, "deuterium": 20000 },
+      "base_radius": 1,
+      "max_radius": 5,
+      "radius_per_research_level": 1,
+      "radius_upgrade_cost": { "metal": 20000, "crystal": 15000, "deuterium": 8000 },
+      "upkeep_deuterium_per_tick": 500,
+      "tick_interval_seconds": 3600,
+      "max_per_alliance": 1,
+      "destroy_min_attackers": 2,
+      "hp": 500000,
+      "zone_bonus_softcap": 0.5
+    }
   }
 }

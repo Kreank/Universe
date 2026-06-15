@@ -766,3 +766,92 @@ export interface RoutineWriteRequest {
   ships?: Record<string, number>;
   waypoints?: RoutineWaypoint[];
 }
+
+// --- Allianz ------------------------------------------------------------
+
+export type AllianceRole = 'founder' | 'officer' | 'member';
+
+/** Offene Einladung in eine Allianz (Spieler ist (noch) in keiner). */
+export interface AllianceInvite {
+  id: string;
+  name: string;
+  tag: string;
+}
+
+/** Gemeinsamer Ressourcen-Pool der Allianz. */
+export interface AlliancePool {
+  metal: number;
+  crystal: number;
+  deuterium: number;
+}
+
+export interface AllianceMember {
+  player_id: string;
+  name: string;
+  role: AllianceRole;
+  joined_at: string;
+}
+
+export interface AllianceStation {
+  id: string;
+  coords: string;
+  galaxy: number;
+  system: number;
+  position: number;
+  radius_level: number;
+  fuel: number;
+  hp: number;
+  status: 'active' | 'inactive' | 'destroyed';
+}
+
+/** Kontext eines Forschungs-Knotens: bestimmt die Wirkungs-Reichweite. */
+export type AllianceResearchContext = 'coop' | 'zone' | 'ally' | 'passive_collective';
+
+export interface AllianceResearchNode {
+  context: AllianceResearchContext;
+  lever: string;
+  effect: string;
+  repeatable: boolean;
+  max_level: number;
+  level: number;
+  per_level: number;
+  next_cost: ResourceCost | null;
+}
+
+export interface AllianceResearchTree {
+  label: string;
+  nodes: Record<string, AllianceResearchNode>;
+}
+
+export interface AllianceStationConfig {
+  build_cost: ResourceCost;
+  base_radius: number;
+  max_radius: number;
+  radius_upgrade_cost: ResourceCost;
+  upkeep_deuterium_per_tick: number;
+  max_per_alliance: number;
+  [key: string]: unknown;
+}
+
+/** Vollstaendige Allianz-Uebersicht (Spieler ist Mitglied). */
+export interface AllianceOverview {
+  id: string;
+  name: string;
+  tag: string;
+  founder_id: string;
+  pool: AlliancePool;
+  research_levels: Record<string, number>;
+  members: AllianceMember[];
+  member_count: number;
+  max_members: number;
+  stations: AllianceStation[];
+  my_role: AllianceRole;
+  research_catalog: Record<string, AllianceResearchTree>;
+  station_config: AllianceStationConfig;
+}
+
+/** Antwort von GET /api/alliance: entweder Mitglied (alliance gesetzt) oder offene Einladungen. */
+export interface AllianceResponse {
+  alliance: AllianceOverview | null;
+  invites: AllianceInvite[];
+}

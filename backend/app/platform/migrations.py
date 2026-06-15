@@ -221,6 +221,75 @@ _STATEMENTS: list[str] = [
     # AUTOCOMMIT je Statement).
     "ALTER TYPE resource_type ADD VALUE IF NOT EXISTS 'antimatter'",
     "ALTER TYPE resource_type ADD VALUE IF NOT EXISTS 'dark_matter'",
+    # -- Feature: Farm-Routinen (automatisiertes Farmen von Asteroiden-/Truemmerfeldern) --
+    """
+    CREATE TABLE IF NOT EXISTS farm_routes (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        player_id       UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        home_planet_id  UUID NOT NULL REFERENCES planets(id) ON DELETE CASCADE,
+        name            TEXT NOT NULL,
+        ships           JSONB NOT NULL DEFAULT '{}'::jsonb,
+        waypoints       JSONB NOT NULL DEFAULT '[]'::jsonb,
+        enabled         BOOLEAN NOT NULL DEFAULT true,
+        status          TEXT NOT NULL DEFAULT 'idle',
+        pause_reason    TEXT,
+        cursor          INT NOT NULL DEFAULT 0,
+        active_fleet_id UUID REFERENCES fleets(id) ON DELETE SET NULL,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_farm_routes_player ON farm_routes(player_id)",
+    # -- Feature: Allianzen (kooperative Ebene: Pool, Forschung, Station/Zone) --
+    """
+    CREATE TABLE IF NOT EXISTS alliances (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name            TEXT NOT NULL UNIQUE,
+        tag             TEXT NOT NULL UNIQUE,
+        founder_id      UUID REFERENCES players(id) ON DELETE SET NULL,
+        pool            JSONB NOT NULL DEFAULT '{}'::jsonb,
+        research_levels JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS alliance_members (
+        player_id    UUID PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+        alliance_id  UUID NOT NULL REFERENCES alliances(id) ON DELETE CASCADE,
+        role         TEXT NOT NULL DEFAULT 'member',
+        joined_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_alliance_members_alliance ON alliance_members(alliance_id)",
+    """
+    CREATE TABLE IF NOT EXISTS alliance_stations (
+        id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        alliance_id            UUID NOT NULL REFERENCES alliances(id) ON DELETE CASCADE,
+        galaxy                 INT NOT NULL,
+        system                 INT NOT NULL,
+        position               INT NOT NULL,
+        research_radius_level  INT NOT NULL DEFAULT 0,
+        fuel                   DOUBLE PRECISION NOT NULL DEFAULT 0,
+        hp                     DOUBLE PRECISION NOT NULL DEFAULT 0,
+        status                 TEXT NOT NULL DEFAULT 'active',
+        built_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_upkeep_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_alliance_stations_alliance ON alliance_stations(alliance_id)",
+    "CREATE INDEX IF NOT EXISTS idx_alliance_stations_coords ON alliance_stations(galaxy, system, position)",
+    """
+    CREATE TABLE IF NOT EXISTS alliance_invites (
+        alliance_id  UUID NOT NULL REFERENCES alliances(id) ON DELETE CASCADE,
+        player_id    UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        invited_by   UUID REFERENCES players(id) ON DELETE SET NULL,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (alliance_id, player_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_alliance_invites_player ON alliance_invites(player_id)",
+    # Spieler -> Allianz (denormalisierter Schnell-Zugriff fuer den Bonus-Resolver; mit
+    # alliance_members synchron gehalten). Einziger Eingriff am Spieler-Modell.
+    "ALTER TABLE players ADD COLUMN IF NOT EXISTS alliance_id UUID REFERENCES alliances(id) ON DELETE SET NULL",
 ]
 
 

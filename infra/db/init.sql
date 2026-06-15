@@ -373,3 +373,55 @@ CREATE TABLE trade_reputation (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (player_id, npc_id)
 );
+
+-- ---------------------------------------------------------------------
+--  Allianzen: kooperative Ebene (Pool, Forschung, Station/Einflusszone)
+-- ---------------------------------------------------------------------
+CREATE TABLE alliances (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name            TEXT NOT NULL UNIQUE,
+    tag             TEXT NOT NULL UNIQUE,
+    founder_id      UUID REFERENCES players(id) ON DELETE SET NULL,
+    pool            JSONB NOT NULL DEFAULT '{}'::jsonb,   -- {metal, crystal, deuterium}
+    research_levels JSONB NOT NULL DEFAULT '{}'::jsonb,   -- {"<tree>.<node>": level}
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Genau eine Mitgliedschaft je Spieler (player_id = PK). role: founder|officer|member.
+CREATE TABLE alliance_members (
+    player_id   UUID PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+    alliance_id UUID NOT NULL REFERENCES alliances(id) ON DELETE CASCADE,
+    role        TEXT NOT NULL DEFAULT 'member',
+    joined_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_alliance_members_alliance ON alliance_members(alliance_id);
+
+-- Allianz-Station: projiziert Baum-Spezialisierung in eine Einflusszone (Radius via Forschung).
+CREATE TABLE alliance_stations (
+    id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    alliance_id            UUID NOT NULL REFERENCES alliances(id) ON DELETE CASCADE,
+    galaxy                 INT NOT NULL,
+    system                 INT NOT NULL,
+    position               INT NOT NULL,
+    research_radius_level  INT NOT NULL DEFAULT 0,
+    fuel                   DOUBLE PRECISION NOT NULL DEFAULT 0,
+    hp                     DOUBLE PRECISION NOT NULL DEFAULT 0,
+    status                 TEXT NOT NULL DEFAULT 'active',  -- active | inactive | destroyed
+    built_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_upkeep_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_alliance_stations_alliance ON alliance_stations(alliance_id);
+CREATE INDEX idx_alliance_stations_coords ON alliance_stations(galaxy, system, position);
+
+-- Offene Einladungen (officer+ lädt ein -> Spieler nimmt an -> wird Mitglied).
+CREATE TABLE alliance_invites (
+    alliance_id UUID NOT NULL REFERENCES alliances(id) ON DELETE CASCADE,
+    player_id   UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    invited_by  UUID REFERENCES players(id) ON DELETE SET NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (alliance_id, player_id)
+);
+CREATE INDEX idx_alliance_invites_player ON alliance_invites(player_id);
+
+-- Spieler -> Allianz (denormalisiert, synchron mit alliance_members; Schnell-Zugriff Resolver).
+ALTER TABLE players ADD COLUMN alliance_id UUID REFERENCES alliances(id) ON DELETE SET NULL;
