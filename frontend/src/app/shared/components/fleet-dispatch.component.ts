@@ -192,7 +192,10 @@ import { IconTileComponent } from './icon-tile.component';
           <div class="range-info small" [class.out]="!r.inRange">
             <span class="tip" data-tip="Distanz zwischen Startplanet und Ziel (OGame-Distanzmodell)">📏 Distanz {{ r.distance.toLocaleString('de-DE') }}</span>
             <span class="tip" [attr.data-tip]="'Reichweite der Flotte (Tank). Limitierendes Schiff: ' + shipLabel(r.limiting)">🛰 Reichweite {{ r.maxRangeText }}</span>
+            <span class="tip cap" [class.over]="cargoInfo().over"
+                  [attr.data-tip]="'Gesamte Frachtkapazität der gewählten Flotte. Beladen: ' + cargoInfo().used.toLocaleString('de-DE') + ' · Frei: ' + cargoInfo().free.toLocaleString('de-DE')">📦 {{ cargoInfo().used.toLocaleString('de-DE') }} / {{ cargoInfo().capacity.toLocaleString('de-DE') }}</span>
             <span class="tip" data-tip="Treibstoff (Deuterium) vom Startplaneten"><img class="cargo-ico" [src]="resourceIcon('deuterium')" alt="" (error)="hideImg($event)" />{{ r.fuel.toLocaleString('de-DE') }} {{ r.roundTrip ? '(Hin+Rück)' : '(einfach)' }}</span>
+            <span class="tip" data-tip="Geschätzte Flugzeit je Strecke (ohne Antriebsforschung — mit Forschung schneller). Tempo-Regler wirkt.">⏱ ca. {{ flightText(flightSecs()) }}{{ r.roundTrip ? ' / Strecke' : '' }}</span>
           </div>
         }
 
@@ -296,6 +299,7 @@ import { IconTileComponent } from './icon-tile.component';
       .hint { color: var(--warn); margin: var(--sp-1) 0 0; }
       .range-info { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-3); padding: var(--sp-1) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text-dim); }
       .range-info.out { border-color: var(--warn); color: var(--warn); }
+      .range-info .cap.over { color: var(--danger); font-weight: 600; }
 
       @media (max-width: 560px) {
         .backdrop { padding: var(--sp-2); }
@@ -313,8 +317,8 @@ export class FleetDispatchComponent {
   readonly target = input.required<Coordinate>();
   readonly targetName = input<string | null>(null);
   readonly initialMission = input<FleetMission>('attack');
-  /** 'moon' -> Angriff/Spionage zielt auf den Mond statt den Planeten an der Koordinate. */
-  readonly targetType = input<'moon' | null>(null);
+  /** 'moon' -> Angriff/Spionage zielt auf den Mond; 'station' -> Belagerung der Allianz-Station. */
+  readonly targetType = input<'moon' | 'station' | null>(null);
 
   readonly close = output<void>();
   readonly sent = output<void>();
@@ -575,6 +579,51 @@ export class FleetDispatchComponent {
     return type ? metaFor(SHIP_META, type).label : '';
   }
 
+  /** Gesamt-Frachtkapazitaet der gewaehlten Flotte + aktuell beladene Menge (OGame-artig). */
+  protected readonly cargoInfo = computed(() => {
+    const bal = this.balanceSvc.value as any;
+    let capacity = 0;
+    for (const [type, n] of Object.entries(this.selection())) {
+      if (n > 0) capacity += this.bnum(bal?.ships?.[type]?.cargo) * n;
+    }
+    let used = 0;
+    if (this.mission() === 'trade') {
+      used = this.bnum(this.offerAmount());
+    } else {
+      const c = this.cargo();
+      used = this.bnum(c.metal) + this.bnum(c.crystal) + this.bnum(c.deuterium);
+    }
+    return { capacity, used, free: Math.max(0, capacity - used), over: used > capacity };
+  });
+
+  /** Geschaetzte Flugzeit (eine Strecke) — gespiegelt aus flight_seconds, OHNE Antriebsforschung
+   * (daher konservativ/Obergrenze). null wenn keine Distanz/Auswahl. */
+  protected readonly flightSecs = computed<number | null>(() => {
+    const bal = this.balanceSvc.value as any;
+    const dist = this.distanceTo();
+    const sel = Object.entries(this.selection()).filter(([, n]) => n > 0);
+    if (dist === null || !sel.length) return null;
+    let slowest = Infinity;
+    for (const [type] of sel) {
+      const sp = this.bnum(bal?.ships?.[type]?.speed);
+      if (sp > 0 && sp < slowest) slowest = sp;
+    }
+    if (!isFinite(slowest) || slowest <= 0) return null;
+    const fleetSpeed = Math.max(0.01, this.bnum(bal?.universe?.fleet_speed, 1));
+    const pct = Math.max(1, this.speed());
+    const raw = 10 + (35000 / pct) * Math.sqrt((dist * 10) / slowest);
+    return raw / fleetSpeed;
+  });
+
+  protected flightText(secs: number | null): string {
+    if (secs === null) return '–';
+    const s = Math.max(0, Math.round(secs));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return (h ? `${h}h ` : '') + (h || m ? `${m}m ` : '') + `${sec}s`;
+  }
+
   // -- Expedition: Verweildauer (1..max, max aus Astrophysik) -------------------
   protected readonly astroLevel = signal(0);
   protected readonly expHours = signal(1);
@@ -636,6 +685,8 @@ export class FleetDispatchComponent {
     }
     if (this.targetType() === 'moon') {
       body.target_type = 'moon';
+    } else if (this.targetType() === 'station') {
+      body.target_type = 'station';
     }
     if (this.mission() === 'trade') {
       // Angebots-Ressource faehrt als Fracht mit; der Server baut Cargo + mission_data.
