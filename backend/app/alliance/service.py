@@ -52,6 +52,17 @@ async def _member_count(session: AsyncSession, alliance_id: uuid.UUID) -> int:
     )).scalar_one())
 
 
+async def notify_alliance(
+    session: AsyncSession, alliance_id: uuid.UUID, subject: str, body: str, ttype: str = "system"
+) -> None:
+    """Sendet eine System-Nachricht an ALLE Mitglieder der Allianz (z. B. Stations-Zerstoerung)."""
+    from app.messaging.service import create_system_transmission
+    for mem in await _members(session, alliance_id):
+        await create_system_transmission(
+            session, player_id=mem.player_id, subject=subject, body=body, ttype=ttype,
+        )
+
+
 async def _require_role(session: AsyncSession, player: Player, min_role: str) -> AllianceMember:
     m = await get_membership(session, player.id)
     if m is None:
@@ -87,7 +98,10 @@ async def create_alliance(session: AsyncSession, player: Player, name: str, tag:
         raise ValueError("Kein Planet gefunden.")
     cost = _acfg().get("create_cost", {})
     if not await spend_resources(session, home, dict(cost)):
-        raise ValueError("Nicht genug Ressourcen fuer die Gruendung.")
+        need = " / ".join(f"{int(cost.get(k, 0)):,}".replace(",", ".") + " " + lbl
+                          for k, lbl in (("metal", "Metall"), ("crystal", "Kristall"),
+                                         ("deuterium", "Deuterium")) if cost.get(k, 0))
+        raise ValueError(f"Nicht genug Ressourcen auf dem Heimatplaneten. Gruendung kostet: {need}.")
     alliance = Alliance(name=name, tag=tag, founder_id=player.id, pool={}, research_levels={})
     session.add(alliance)
     await session.flush()

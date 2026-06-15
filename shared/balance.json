@@ -207,7 +207,7 @@
     "warp_stabilizer":  { "cost": { "metal": 14000, "crystal": 10000, "deuterium": 6000 },  "attack": 100,  "shield": 120,  "cargo": 200,   "speed": 12000, "fuel": 300, "fuel_tank": 210,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 5, "impulse_drive": 5 } },
     "shield_tender":    { "cost": { "metal": 20000, "crystal": 25000, "deuterium": 5000 },  "attack": 0,    "shield": 1000, "cargo": 200,   "speed": 6000,  "fuel": 400, "fuel_tank": 280,  "rapidfire": {}, "requires": { "shipyard": 6, "shield_tech": 6, "impulse_drive": 4 } },
     "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 8000 },  "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100, "fuel_tank": 35,  "rapidfire": {}, "requires": { "shipyard": 4, "laser_tech": 5, "impulse_drive": 3 } },
-    "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 4000, "speed": 3000,  "fuel": 300, "fuel_tank": 780,  "rapidfire": {}, "_cargo_note": "BEWUSST klein (Digger): Schuerfkraft (mining.yield_per_miner) > eigener Laderaum -> Transporter noetig, um die Ausbeute heimzubringen.", "requires": { "combustion_drive": 4, "shipyard": 4 } },
+    "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 15000, "speed": 3000,  "fuel": 300, "fuel_tank": 780,  "rapidfire": {}, "requires": { "combustion_drive": 4, "shipyard": 4 } },
     "deep_scout":       { "cost": { "metal": 8000,  "crystal": 12000, "deuterium": 1000 },  "attack": 0,    "shield": 50,   "cargo": 100,   "speed": 14000, "fuel": 80, "fuel_tank": 230,   "rapidfire": {}, "requires": { "shipyard": 5, "spy_tech": 3, "impulse_drive": 4 } },
     "expedition_ship":  { "cost": { "metal": 30000, "crystal": 20000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 10000, "speed": 6000,  "fuel": 800, "fuel_tank": 2100,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 4, "computer_tech": 6 } },
     "_note_capstones": "Endgame-Capstone-Schiffe (je Spielstil). Default-Besitz 1, je +1 ueber Kommando-Forschung (capstone_command_tech). exotische Kosten (antimatter/dark_matter) = kontoweite Senke. Auren (aura) stapeln NICHT (combat/service dedupliziert je Auratyp).",
@@ -419,10 +419,9 @@
   },
 
   "mining": {
-    "_note": "Doku 03c: Mining-Mission ('mine'). Modell 'Schuerfkraft x Frachtraum': Bergbauschiffe LOESEN Erz (yield_per_miner x Anzahl x Feld-Reichtum), aber das Bergbauschiff hat selbst nur einen KLEINEN Laderaum (ships.miner.cargo) -> Transporter/Recycler in der Flotte bringen die Ausbeute heim. Geloestes Erz wird durch Restvorrat des Feldes UND die GESAMT-Frachtkapazitaet der Flotte gedeckelt; reicht die Fracht nicht, kommt Metall/Kristall ANTEILIG heim (kein Metall-zuerst). Nicht abtransportiertes Erz bleibt im Feld. min_ships = benoetigte Bergbauschiffe.",
+    "_note": "Doku 03c: Mining-Mission ('mine'). Modell 'fuelle deinen Frachtraum': Eine Bergbauflotte baut so viel ab, wie ihr GESAMTER Frachtraum (Summe aller Schiffe) fasst — gedeckelt nur durch den Restvorrat des Feldes. Metall/Kristall kommen ANTEILIG zur Zusammensetzung des Feld-Vorrats heim, der Rest bleibt im Feld. Mehr Schiffe (Bergbauschiffe ODER Transporter/Recycler) = mehr Frachtraum = mehr Ausbeute pro Flug. Feld-Reichtum bestimmt die Vorratsmenge (capacity x mult) und damit, wie oft man fuellen kann, bevor das Feld erschoepft. min_ships = mind. so viele Bergbauschiffe (oder ein Ernte-Titan) muessen dabei sein, damit ueberhaupt abgebaut wird.",
     "ship_type": "miner",
-    "min_ships": 1,
-    "yield_per_miner": { "metal": 6000, "crystal": 3000 }
+    "min_ships": 1
   },
 
   "asteroids": {
@@ -883,12 +882,11 @@
   },
 
   "capstone": {
-    "_note": "Endgame-Capstone-Schiffe: default_cap besitzbar, je +1 ueber die capstone-Forschung (ships[*].capstone). Auren (roster.aura) stapeln NICHT (combat/service dedupliziert je Auratyp -> nur die staerkste/eine je Flotte). raider_loot_bonus = +Beute-Anteil wenn ein Korsar in der Angriffsflotte ist. harvester_yield_mult = Multiplikator je Ernte-Titan auf den Mining-Mission-Ertrag.",
+    "_note": "Endgame-Capstone-Schiffe: default_cap besitzbar, je +1 ueber die capstone-Forschung (ships[*].capstone). Auren (roster.aura) stapeln NICHT (combat/service dedupliziert je Auratyp -> nur die staerkste/eine je Flotte). raider_loot_bonus = +Beute-Anteil wenn ein Korsar in der Angriffsflotte ist. Der Ernte-Titan (roster.harvester) zieht seine Staerke aus seinem riesigen eigenen Laderaum (ships.harvest_titan.cargo) — Mining fuellt den Frachtraum (kein Schiffszahl-Multiplikator mehr).",
     "default_cap": 1,
     "combat_aura": { "attack_mult": 1.15, "shield_mult": 1.15 },
     "convoy_aura": { "risk_reduction": 0.5 },
-    "raider_loot_bonus": 0.25,
-    "harvester_yield_mult": 8.0
+    "raider_loot_bonus": 0.25
   },
 
   "alliance": {
@@ -943,6 +941,11 @@
         }
       }
     },
+    "coop": {
+      "_note": "ACS-lite: verbuendete 'attack'-Flotten auf DIESELBE Koordinate, deren Ankuenfte hoechstens stage_window_seconds auseinanderliegen, verschmelzen zu EINER Schlacht (Kontext 'coop'). Die zuerst eintreffende Flotte 'staged' (wartet) bis die spaeteste verbuendete Ankunft im Fenster; loest dann gemeinsam aus. Solo-Angriffe stagen NIE. Verluste/Ueberlebende werden je Flotte zurueckverteilt (greedy), Beute nach ueberlebendem Frachtanteil. Der primaere (ausloesende) Kommandeur traegt seine Boni; verbuendete Flotten steuern Rohschiffe bei.",
+      "stage_window_seconds": 600,
+      "max_allied_fleets": 8
+    },
     "station": {
       "build_cost": { "metal": 80000, "crystal": 50000, "deuterium": 20000 },
       "base_radius": 1,
@@ -954,7 +957,15 @@
       "max_per_alliance": 1,
       "destroy_min_attackers": 2,
       "hp": 500000,
-      "zone_bonus_softcap": 0.5
+      "zone_bonus_softcap": 0.5,
+      "_siege_note": "Belagerung: jeder Angriff knabbert hp ab (= durchgebrachte Angreifer-Feuerkraft * siege_damage_factor) und feuert ueber feste Abwehrbatterien zurueck (echte Verluste). hp persistiert. Zerstoerung erst wenn hp<=0 UND >=destroy_min_attackers VERSCHIEDENE Spieler innerhalb siege_window_seconds beigetragen haben. Zwischen Wellen regeneriert hp je Upkeep-Tick (hp_regen_per_tick), aber nur wenn seit dem letzten Treffer >= regen_quiet_seconds vergangen sind. Die Abwehrbatterien skalieren mit dem Ausbau-Radius (defense_per_radius je Stufe addiert).",
+      "siege_damage_factor": 1.0,
+      "siege_window_seconds": 86400,
+      "hp_regen_per_tick": 25000,
+      "regen_quiet_seconds": 7200,
+      "defense_tech": { "weapons_tech": 12, "shield_tech": 12, "armor_tech": 12 },
+      "defense_base": { "plasma_turret": 60, "gauss_cannon": 80, "heavy_laser": 200, "large_shield_dome": 1 },
+      "defense_per_radius": { "plasma_turret": 20, "gauss_cannon": 25, "heavy_laser": 60 }
     }
   }
 }

@@ -108,3 +108,96 @@ def test_alliance_balance_block():
     assert set(a["research"]["trees"]) == {"piracy", "economy", "trade", "protection"}
     assert a["station"]["base_radius"] == 1 and a["station"]["max_radius"] == 5
     assert a["station"]["destroy_min_attackers"] == 2
+
+
+# -- Phase 2: Koop-Kampf + Stations-Belagerung ----------------------------------
+
+import datetime as dt  # noqa: E402
+
+from app.alliance import coop as C  # noqa: E402
+
+
+def test_phase2_balance_block():
+    a = get_balance().data["alliance"]
+    assert a["coop"]["stage_window_seconds"] > 0
+    st = a["station"]
+    assert st["hp_regen_per_tick"] > 0
+    assert st["siege_window_seconds"] > 0
+    assert st["siege_damage_factor"] > 0
+    assert "plasma_turret" in st["defense_base"]
+    assert "weapons_tech" in st["defense_tech"]
+
+
+def test_split_loot_by_capacity_proportional():
+    parts = C.split_loot_by_capacity([100.0, 300.0], {"metal": 400.0, "crystal": 0.0, "deuterium": 0.0})
+    assert parts[0]["metal"] == 100.0
+    assert parts[1]["metal"] == 300.0
+
+
+def test_split_loot_zero_capacity_drops_loot():
+    parts = C.split_loot_by_capacity([0.0, 0.0], {"metal": 50.0})
+    assert parts == [{"metal": 0.0}, {"metal": 0.0}]
+
+
+def test_merge_ships_sums_across_sources():
+    src = [{"ships": {"cruiser": 3}}, {"ships": {"cruiser": 2, "drone": 5}}]
+    assert C.merge_ships(src) == {"cruiser": 5, "drone": 5}
+
+
+class _Obj:
+    def __init__(self, pid):
+        self.player_id = pid
+
+
+def test_distinct_players_dedups():
+    src = [{"obj": _Obj("a")}, {"obj": _Obj("a")}, {"obj": _Obj("b")}]
+    assert len(C.distinct_players(src)) == 2
+
+
+def test_station_defenses_scale_with_radius():
+    cfg = get_balance().data["alliance"]["station"]
+    base = S.station_defenses(_station(research_radius_level=0))
+    up = S.station_defenses(_station(research_radius_level=3))
+    assert base["plasma_turret"] == cfg["defense_base"]["plasma_turret"]
+    assert up["plasma_turret"] > base["plasma_turret"]
+
+
+def test_station_defender_shape():
+    d = S.station_defender(_station())
+    assert d["ships"] == {}
+    assert d["defenses"]
+    assert d["tech"]["weapons_tech"] > 0
+    assert d["attack_mult"] == 1.0
+
+
+def test_siege_requires_min_distinct_attackers():
+    now = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+    st = _station(hp=1000.0, position=8, siege={})
+    r1 = S.record_siege_hit(st, "p1", 5000.0, now)  # bringt hp auf 0
+    assert st.hp == 0
+    assert r1["destroyed"] is False and r1["distinct_attackers"] == 1
+    assert st.status != "destroyed"
+    r2 = S.record_siege_hit(st, "p2", 100.0, now)   # zweiter Spieler -> Zerstoerung
+    assert r2["destroyed"] is True and r2["distinct_attackers"] == 2
+    assert st.status == "destroyed"
+
+
+def test_siege_window_prunes_old_attacker():
+    cfg = get_balance().data["alliance"]["station"]
+    window = float(cfg["siege_window_seconds"])
+    t0 = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+    st = _station(hp=100000.0, siege={})
+    S.record_siege_hit(st, "p1", 10.0, t0)
+    later = t0 + dt.timedelta(seconds=window + 10)
+    r = S.record_siege_hit(st, "p2", 10.0, later)  # p1 ist aus dem Fenster gefallen
+    assert r["distinct_attackers"] == 1
+
+
+def test_siege_same_attacker_accumulates_damage():
+    now = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+    st = _station(hp=1000.0, siege={})
+    S.record_siege_hit(st, "p1", 300.0, now)
+    S.record_siege_hit(st, "p1", 200.0, now)
+    assert st.siege["attackers"]["p1"]["damage"] == 500.0
+    assert st.hp == 500.0
+    assert len(st.siege["attackers"]) == 1

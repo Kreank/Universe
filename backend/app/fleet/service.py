@@ -791,9 +791,11 @@ async def fleet_arrive(fleet_id: str) -> None:
         mission = fleet.mission
 
         stationed = False
+        staged = False
         exp_result: dict | None = None
         if mission == "attack":
-            await resolve_attack(session, fleet)
+            _ar = await resolve_attack(session, fleet)
+            staged = bool(_ar and _ar.get("staged"))
         elif mission == "spy":
             await resolve_spy(session, fleet)
         elif mission == "recycle":
@@ -818,6 +820,10 @@ async def fleet_arrive(fleet_id: str) -> None:
             # Totalverlust (Schwarzes Loch / vernichtende Begegnung): keine Rueckkehr.
             # Der bereits geplante fleet_return-Job laeuft ins Leere (Guard: status == 'done').
             fleet.status = "done"
+        elif staged:
+            # Koop-Angriff: Flotte wartet am Ziel auf verbuendete Flotten -> Status bleibt 'arrived'
+            # (kein Rueckflug). Ein Selbstheilungs-Job (resolve_staged_attack) loest spaeter aus.
+            pass
         elif not stationed:
             # Expeditions-Ereignis kann die Rueckkehr verlaengern (return_at + extra_hours).
             extra_h = int(exp_result.get("extra_hours", 0)) if exp_result else 0
@@ -834,6 +840,28 @@ async def fleet_arrive(fleet_id: str) -> None:
         "type": "fleet_arrived",
         "fleet_id": fleet_id,
         "mission": mission,
+    })
+
+
+async def resolve_staged_attack(fleet_id: str) -> None:
+    """Selbstheilung fuer eine gestagte Koop-Angriffsflotte: loest die Schlacht aus, falls der
+    erwartete spaetere Aufloeser ausfiel (Rueckruf/Vernichtung). No-op, wenn die Flotte schon in
+    eine fremde Schlacht verschmolzen (coop_consumed) oder heimgekehrt ist."""
+    from app.combat.service import resolve_attack
+    async with session_scope() as session:
+        fleet = await session.get(Fleet, uuid.UUID(fleet_id))
+        if fleet is None:
+            return
+        md = fleet.mission_data or {}
+        if fleet.status != "arrived" or not md.get("coop_staged") or md.get("coop_consumed"):
+            return
+        player_id = fleet.player_id
+        await resolve_attack(session, fleet, force_resolve=True)
+        if fleet.status == "arrived":
+            fleet.status = "returning"
+        await session.commit()
+    await event_bus.publish_ws(player_id, {
+        "type": "fleet_arrived", "fleet_id": fleet_id, "mission": "attack",
     })
 
 

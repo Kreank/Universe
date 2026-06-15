@@ -28,7 +28,7 @@ interface DispatchCtx {
   target: Coordinate;
   name: string | null;
   mission: FleetMission;
-  targetType?: 'moon';
+  targetType?: 'moon' | 'station';
 }
 
 /**
@@ -111,6 +111,9 @@ interface DispatchCtx {
                   @if (c.moon; as m) {
                     <span class="chip moon tip" [attr.data-tip]="m.own ? 'Dein Mond' : ('Mond von ' + (m.player_name ?? 'Spieler') + ' — angreifbar/spionierbar')">🌙 {{ m.name }}</span>
                   }
+                  @if (c.station; as st) {
+                    <span class="chip station tip" [class.mine]="st.mine" [attr.data-tip]="st.mine ? ('Allianz-Station deiner Allianz [' + st.tag + '] · Hülle ' + st.hp_pct + '%') : ('Fremde Allianz-Station [' + st.tag + '] — belagerbar (≥2 Angreifer) · Resthülle ' + st.hp_pct + '%')">🛰 [{{ st.tag }}] {{ st.hp_pct }}%</span>
+                  }
                 </div>
                 @if (c.asteroid) {
                   <div class="acts">
@@ -122,6 +125,13 @@ interface DispatchCtx {
                     <div class="acts">
                       <button class="ic spy" type="button" (click)="openDispatch(cellCoord(c), m.name, 'spy', 'moon')" title="Mond spionieren">🌙🛰</button>
                       <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), m.name, 'attack', 'moon')" title="Mond angreifen">🌙⚔</button>
+                    </div>
+                  }
+                }
+                @if (c.station; as st) {
+                  @if (!st.mine && st.status !== 'destroyed') {
+                    <div class="acts">
+                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), 'Allianz-Station [' + st.tag + ']', 'attack', 'station')" title="Allianz-Station belagern — chippt die Hülle; zur Zerstörung ≥2 verschiedene Angreifer nötig">🛰⚔</button>
                     </div>
                   }
                 }
@@ -144,7 +154,7 @@ interface DispatchCtx {
                   <div class="acts">
                     <button class="ic exp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'expedition')" title="Expedition in die galaktischen Weiten (Expeditionsschiff + Astrophysik nötig)"><app-btn-icon [src]="missionIcon('expedition')" glyph="🌌" [size]="18" /></button>
                   </div>
-                } @else if (c.occupant_type === 'empty') {
+                } @else if (c.occupant_type === 'empty' && !c.station) {
                   <div class="acts">
                     <button class="ic col" type="button" (click)="openDispatch(cellCoord(c), null, 'colonize')" title="Hier kolonisieren (Kolonieschiff nötig)"><app-btn-icon [src]="missionIcon('colonize')" glyph="🌱" [size]="18" /></button>
                   </div>
@@ -368,7 +378,7 @@ export class GalaxyComponent {
 
   // --- Schnellaktionen ---------------------------------------------------
   /** Versand-Overlay fuer Angriff/Transport am Ziel oeffnen. */
-  openDispatch(target: Coordinate, name: string | null, mission: FleetMission, targetType?: 'moon'): void {
+  openDispatch(target: Coordinate, name: string | null, mission: FleetMission, targetType?: 'moon' | 'station'): void {
     this.dispatch.set({ target, name, mission, targetType });
   }
 

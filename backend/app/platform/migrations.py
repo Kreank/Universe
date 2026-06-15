@@ -277,6 +277,9 @@ _STATEMENTS: list[str] = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_alliance_stations_alliance ON alliance_stations(alliance_id)",
     "CREATE INDEX IF NOT EXISTS idx_alliance_stations_coords ON alliance_stations(galaxy, system, position)",
+    # Belagerungs-Status (Phase 2): {"attackers": {player_id: {"damage": float, "at": iso}}, "last_attack_at": iso}.
+    # Speichert je Spieler den im siege_window beigetragenen Schaden -> Gate destroy_min_attackers.
+    "ALTER TABLE alliance_stations ADD COLUMN IF NOT EXISTS siege JSONB NOT NULL DEFAULT '{}'::jsonb",
     """
     CREATE TABLE IF NOT EXISTS alliance_invites (
         alliance_id  UUID NOT NULL REFERENCES alliances(id) ON DELETE CASCADE,

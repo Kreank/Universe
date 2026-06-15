@@ -62,6 +62,100 @@ async def active_station_in_zone(
     return None
 
 
+async def station_at(
+    session: AsyncSession, galaxy: int, system: int, position: int
+) -> AllianceStation | None:
+    """Nicht-zerstoerte Station an exakt dieser Koordinate (Angriffsziel-Lookup)."""
+    return (await session.execute(
+        select(AllianceStation).where(
+            AllianceStation.galaxy == int(galaxy),
+            AllianceStation.system == int(system),
+            AllianceStation.position == int(position),
+            AllianceStation.status != "destroyed",
+        )
+    )).scalars().first()
+
+
+# -- Belagerung (Phase 2): Abwehrbatterien + hp-Chip + >=2-Angreifer-Gate -------
+
+def station_defenses(station: AllianceStation, cfg: dict | None = None) -> dict[str, int]:
+    """Feste Abwehrbatterien der Station (skalieren mit dem Ausbau-Radius). Regenerieren je
+    Schlacht (Festungs-Selbstreparatur) -> nur die hp sind der dauerhafte Zerstoerungs-Zaehler."""
+    cfg = cfg or _scfg()
+    base = dict(cfg.get("defense_base", {}))
+    per = cfg.get("defense_per_radius", {})
+    lvl = int(station.research_radius_level or 0)
+    out: dict[str, int] = {}
+    for t, n in base.items():
+        v = int(n) + int(per.get(t, 0)) * lvl
+        if v > 0:
+            out[t] = v
+    return out
+
+
+def station_defender(station: AllianceStation) -> dict:
+    """Verteidiger-Dict fuer die Kampf-Engine: nur Abwehrbatterien + feste Tech, keine Schiffe."""
+    cfg = _scfg()
+    return {
+        "ships": {},
+        "defenses": station_defenses(station, cfg),
+        "tech": dict(cfg.get("defense_tech", {})),
+        "attack_mult": 1.0,
+    }
+
+
+def _parse_iso(s) -> dt.datetime | None:
+    if not s:
+        return None
+    try:
+        t = dt.datetime.fromisoformat(s)
+    except (ValueError, TypeError):
+        return None
+    return t.replace(tzinfo=dt.timezone.utc) if t.tzinfo is None else t
+
+
+def _prune_attackers(siege: dict, now: dt.datetime, window: float) -> dict:
+    cutoff = now - dt.timedelta(seconds=window)
+    kept: dict = {}
+    for pid, info in (siege.get("attackers", {}) or {}).items():
+        at = _parse_iso((info or {}).get("at"))
+        if at is not None and at >= cutoff:
+            kept[pid] = info
+    return kept
+
+
+def record_siege_hit(
+    station: AllianceStation, attacker_player_id, damage: float, now: dt.datetime
+) -> dict:
+    """Verbucht einen Belagerungs-Treffer: chippt hp, merkt den Angreifer (im siege_window).
+    Zerstoerung erst wenn hp<=0 UND >=destroy_min_attackers VERSCHIEDENE Spieler beigetragen haben.
+
+    Liefert {destroyed, hp, distinct_attackers, min_attackers, damage}."""
+    cfg = _scfg()
+    window = float(cfg.get("siege_window_seconds", 86400))
+    damage = max(0.0, float(damage or 0))
+    siege = dict(station.siege or {})
+    attackers = _prune_attackers(siege, now, window)
+    pid = str(attacker_player_id)
+    prev_dmg = float((attackers.get(pid) or {}).get("damage", 0))
+    attackers[pid] = {"damage": round(prev_dmg + damage, 1), "at": now.isoformat()}
+    siege["attackers"] = attackers
+    siege["last_attack_at"] = now.isoformat()
+    station.siege = siege
+    station.hp = round(max(0.0, float(station.hp or 0) - damage), 1)
+    min_attackers = int(cfg.get("destroy_min_attackers", 2))
+    destroyed = station.hp <= 0 and len(attackers) >= min_attackers
+    if destroyed:
+        station.status = "destroyed"
+    return {
+        "destroyed": destroyed,
+        "hp": station.hp,
+        "distinct_attackers": len(attackers),
+        "min_attackers": min_attackers,
+        "damage": round(damage, 1),
+    }
+
+
 # -- Bau / Tank / Ausbau --------------------------------------------------------
 
 async def build_station(
@@ -170,6 +264,14 @@ async def station_upkeep_tick(station_id: str) -> None:
         else:
             station.fuel = round(new_fuel, 2)
             station.status = "active"
+        # hp-Regen zwischen Belagerungswellen: nur wenn seit dem letzten Treffer Ruhe herrscht.
+        max_hp = float(cfg.get("hp", 0))
+        regen = float(cfg.get("hp_regen_per_tick", 0))
+        if regen > 0 and float(station.hp or 0) < max_hp:
+            quiet = float(cfg.get("regen_quiet_seconds", 7200))
+            last_hit = _parse_iso((station.siege or {}).get("last_attack_at"))
+            if last_hit is None or (_now() - last_hit).total_seconds() >= quiet:
+                station.hp = round(min(max_hp, float(station.hp or 0) + regen), 1)
         station.last_upkeep_at = _now()
         alive = True
         await session.commit()

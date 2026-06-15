@@ -38,6 +38,8 @@ async def my_alliance(
         return {
             "alliance": None,
             "invites": [{"id": str(a.id), "name": a.name, "tag": a.tag} for a in invites],
+            "create_cost": svc._acfg().get("create_cost", {}),
+            "max_members": int(svc._acfg().get("max_members", 50)),
         }
     alliance = await session.get(Alliance, m.alliance_id)
     ov = await svc.overview(session, alliance)

@@ -134,6 +134,8 @@ export const galaxyStyles = `
   .chip.trade { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); cursor: help; margin-right: var(--sp-1); }
   .chip.rock { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); cursor: help; margin-right: var(--sp-1); }
   .chip.moon { color: var(--text-dim); border-color: var(--border-strong); background: rgba(255,255,255,0.04); cursor: help; margin-right: var(--sp-1); }
+  .chip.station { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); cursor: help; margin-right: var(--sp-1); }
+  .chip.station.mine { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); }
 
   /* --- Ziel-Verzeichnis (kompakt, OGame-artig) --- */
   .tgt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

@@ -25,6 +25,7 @@ class CellOut(BaseModel):
     trade: dict | None = None  # P2P-Handelsanzeige des Spielers (falls aktiviert)
     asteroid: dict | None = None  # Asteroidenfeld am Ort {richness, mult, metal, crystal} (Restvorrat)
     moon: dict | None = None  # Mond am Ort {name, player_id, player_name, own} — eigenes Angriffs-/Spionageziel
+    station: dict | None = None  # Allianz-Station am Ort {alliance_id, tag, mine, status, hp, max_hp, hp_pct}
 
 
 class ZoneOut(BaseModel):
@@ -152,10 +153,34 @@ async def galaxy_view(
     )).scalars().all()
     moon_by_pos = {m.position: m for m in moon_rows}
 
+    # Allianz-Stationen in diesem System (nicht-zerstoert): als angreifbare Zellen-Overlays.
+    from app.platform.models import Alliance as _Alliance
+    from app.platform.models import AllianceStation as _AllStation
+    _st_rows = (await session.execute(
+        select(_AllStation).where(
+            _AllStation.galaxy == galaxy, _AllStation.system == system,
+            _AllStation.status != "destroyed",
+        )
+    )).scalars().all()
+    station_by_pos: dict[int, dict] = {}
+    _max_hp = float(bal.data.get("alliance", {}).get("station", {}).get("hp", 1)) or 1.0
+    for _st in _st_rows:
+        _al = await session.get(_Alliance, _st.alliance_id)
+        station_by_pos[_st.position] = {
+            "alliance_id": str(_st.alliance_id),
+            "tag": _al.tag if _al else "?",
+            "mine": player.alliance_id is not None and _st.alliance_id == player.alliance_id,
+            "status": _st.status,
+            "hp": round(float(_st.hp or 0), 1),
+            "max_hp": _max_hp,
+            "hp_pct": max(0.0, round(100.0 * float(_st.hp or 0) / _max_hp, 1)),
+        }
+
     cells: list[CellOut] = []
     for pos in range(1, bal.positions_per_system + 1):
         cell = by_pos.get(pos)
         asteroid = _asteroid_overlay(pos)
+        station_info = station_by_pos.get(pos)
         moon_obj = moon_by_pos.get(pos)
         moon = None
         if moon_obj is not None:
@@ -167,7 +192,8 @@ async def galaxy_view(
                 "own": moon_obj.player_id == player.id,
             }
         if cell is None or cell.occupant_type == "empty":
-            cells.append(CellOut(position=pos, occupant_type="empty", asteroid=asteroid, moon=moon))
+            cells.append(CellOut(position=pos, occupant_type="empty", asteroid=asteroid,
+                                 moon=moon, station=station_info))
             continue
         name = None
         player_id = None
@@ -205,6 +231,7 @@ async def galaxy_view(
             trade=trade,
             asteroid=asteroid,
             moon=moon,
+            station=station_info,
         ))
 
     # Galaktische Weiten: synthetischer Deep-Space-Slot (nur per Expedition erreichbar).

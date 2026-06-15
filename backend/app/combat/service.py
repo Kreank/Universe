@@ -142,6 +142,20 @@ def _compute_loot(npc_resources: dict, capacity: float) -> dict[str, float]:
     return loot
 
 
+def _distribute_attacker_loot(sources: list[dict], loot: dict[str, float]) -> None:
+    """Verteilt die Gesamtbeute auf die Angreifer-Flotten nach ueberlebender Frachtkapazitaet.
+    Solo (eine Quelle) -> alles in die eigene Flotte (identisch zum Einzelfall)."""
+    from app.alliance.coop import split_loot_by_capacity
+    caps = [_cargo_capacity(s.get("survivors", {})) for s in sources]
+    parts = split_loot_by_capacity(caps, loot)
+    for src, part in zip(sources, parts):
+        f = src["obj"]
+        cargo = dict(f.cargo or {})
+        for k, v in part.items():
+            cargo[k] = cargo.get(k, 0) + v
+        f.cargo = cargo
+
+
 def _situation(winner: str, atk_initial: int, atk_lost: int) -> str:
     if winner == "attacker":
         if atk_lost == 0:
@@ -152,7 +166,7 @@ def _situation(winner: str, atk_initial: int, atk_lost: int) -> str:
     return "defeat"
 
 
-async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
+async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: bool = False) -> dict | None:
     """Berechnet den Kampf einer eintreffenden Angriffsflotte. Liefert eine kurze
     Zusammenfassung (oder None, wenn kein gueltiges Ziel)."""
     bal = get_balance()
@@ -201,6 +215,56 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     attacker_player = await session.get(Player, fleet.player_id)
     attack_mult *= combat_attack_mult(attacker_player.doctrine if attacker_player else None)
 
+    # -- Allianz-Koordination (ACS-lite): verbuendete attack-Flotten am selben Ziel verschmelzen --
+    # Die zuerst eintreffende Flotte 'staged' (wartet) auf spaeter eintreffende Verbuendete im Fenster;
+    # die letzte loest gemeinsam aus. Solo-Angriffe stagen nie (attacker_sources = nur die eigene Flotte).
+    from app.alliance import coop as coop_mod
+    now_combat = _now_utc()
+    allies: list = []
+    if attacker_player is not None and attacker_player.alliance_id is not None:
+        if force_resolve:
+            allies = await coop_mod.gather_staged_allies(session, fleet, attacker_player.alliance_id)
+        else:
+            decision, payload = await coop_mod.coop_attack_decision(
+                session, fleet, attacker_player.alliance_id, now_combat
+            )
+            if decision == "stage":
+                fleet.mission_data = {**(fleet.mission_data or {}), "coop_staged": now_combat.isoformat()}
+                from app.fleet.service import resolve_staged_attack
+                from app.platform.scheduler import schedule_at
+                schedule_at(payload, resolve_staged_attack, str(fleet.id),
+                            job_id=f"coop-resolve:{fleet.id}")
+                loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+                await create_system_transmission(
+                    session, player_id=fleet.player_id,
+                    subject=f"Angriff koordiniert ({loc})",
+                    body=("Deine Flotte hat das Ziel erreicht und koordiniert den Schlag mit verbuendeten "
+                          "Flotten. Sie greift gemeinsam an, sobald die Verbuendeten eintreffen."),
+                    ttype="system",
+                )
+                return {"staged": True, "location": loc}
+            allies = payload
+    attacker_sources = await coop_mod.build_attacker_sources(session, fleet, allies)
+    for _s in attacker_sources:
+        if not _s["is_primary"]:
+            coop_mod.mark_consumed(_s["obj"], now_combat)
+    coop_attack = len(coop_mod.distinct_players(attacker_sources)) >= 2
+    merged_attacker_ships = coop_mod.merge_ships(attacker_sources)
+
+    # Koop-Kampfboni (nur bei echtem gemeinsamen Angriff, >=2 Spieler): Schildwall hebt die Aura,
+    # Enterhaken erhoeht die Kaperung. Beute-Multiplikator (Beutezug + Rudeljagd) erst zur Beutezeit.
+    coop_loot_mult = 1.0
+    if coop_attack:
+        from app.alliance.bonus import alliance_bonus
+        attack_mult *= 1.0 + await alliance_bonus(session, attacker_player, "shield_wall", coop=True)
+        _ba = await alliance_bonus(session, attacker_player, "boarding_ally", coop=True)
+        if _ba:
+            atk_tech["boarding_doctrine"] = int(atk_tech.get("boarding_doctrine", 0)) + int(round(_ba))
+        coop_loot_mult = 1.0 + (
+            await alliance_bonus(session, attacker_player, "raid_loot_mult", coop=True)
+            + await alliance_bonus(session, attacker_player, "pack_hunt", coop=True)
+        )
+
     # Scharfgeschaltete Faehigkeiten (RPG): Kampf-relevante Effekte anwenden.
     armed_loss_reduction = 0.0
     if commander is not None:
@@ -245,11 +309,17 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     def_ship_rows: list[Ship] = []
     def_rows: list[Defense] = []
     interception_sources: list[dict] = []
+    allied_def_sources: list[dict] = []
     def_ships: dict[str, int] = {}
     def_defenses: dict[str, int] = {}
     def_tech = {"weapons_tech": 0, "shield_tech": 0, "armor_tech": 0}
     defender_player_id = None
     npc_resources: dict = {}
+    target_station = None
+    ally_defense = False
+    coop_defense = False
+    defender_bonus_mult = 1.0
+    def_uncapture = 0.0
     target_moon = (fleet.mission_data or {}).get("target_type") == "moon"
 
     if cell and cell.occupant_type == "npc" and cell.ref_id is not None:
@@ -339,7 +409,50 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
             def_defenses[_t] = def_defenses.get(_t, 0) + _n
         if _shield_bonus:
             def_tech["shield_tech"] = def_tech.get("shield_tech", 0) + _shield_bonus
+
+        # Verbuendete Verteidigung (Phase 2): stationierte Patrouillen von Allianz-Mitgliedern am Ziel
+        # treten der Verteidigung bei (Kontext ally/coop). Solo unveraendert (Liste leer).
+        allied_def_sources = await coop_mod.gather_allied_defenders(
+            session, def_player, fleet.target_galaxy, fleet.target_system,
+            fleet.target_position, fleet.player_id,
+        )
+        if allied_def_sources:
+            for src in allied_def_sources:
+                for typ, cnt in src["ships"].items():
+                    def_ships[typ] = def_ships.get(typ, 0) + cnt
+            owners = {s["owner_id"] for s in allied_def_sources}
+            ally_defense = any(o != def_player.id for o in owners)
+            coop_defense = len(owners | {def_player.id}) >= 2
+            from app.alliance.bonus import alliance_bonus
+            if coop_defense:
+                defender_bonus_mult *= 1.0 + await alliance_bonus(
+                    session, def_player, "shield_wall", coop=True)
+            if ally_defense:
+                defender_bonus_mult *= 1.0 + await alliance_bonus(
+                    session, def_player, "interception_defense", ally=True)
+                def_uncapture = await alliance_bonus(
+                    session, def_player, "escort_uncapturable", ally=True)
     else:
+        from app.alliance import station as station_mod
+        target_station = await station_mod.station_at(
+            session, fleet.target_galaxy, fleet.target_system, fleet.target_position
+        )
+    if target_station is not None:
+        # Allianz-Station als Ziel: keine Schiffe, nur Abwehrbatterien (+ feste Tech). hp ist der
+        # dauerhafte Zerstoerungs-Zaehler (Belagerung, >=destroy_min_attackers verschiedene Spieler).
+        from app.alliance import station as station_mod
+        if attacker_player is not None and attacker_player.alliance_id == target_station.alliance_id:
+            await create_system_transmission(
+                session, player_id=fleet.player_id,
+                subject=f"Angriff abgedreht ({fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position})",
+                body="Das ist die Station deiner eigenen Allianz. Deine Flotte dreht ab und kehrt heim.",
+                ttype="system",
+            )
+            return None
+        _sd = station_mod.station_defender(target_station)
+        def_defenses = _sd["defenses"]
+        def_tech = _sd["tech"]
+    elif npc is None and def_planet is None:
         # Abfangen am Ziel: fangbare durchreisende Flotten (Ankunftsfenster) + Patrouillen.
         from app.fleet.stationing import gather_interception_defenders
         interception_sources = await gather_interception_defenders(
@@ -368,18 +481,18 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
             ).get("antimatter_forge", 0)
 
     # Flaggschiff-Kampf-Aura (flottenweit, praesenz-basiert, kein Stapeln) — beide Seiten.
-    attack_mult *= _combat_aura_mult(attacker_ships)
+    attack_mult *= _combat_aura_mult(merged_attacker_ships)
 
     seed = random.randrange(1, 2 ** 62)
     attacker = {
-        "ships": attacker_ships,
+        "ships": merged_attacker_ships,
         "tech": atk_tech,
         "attack_mult": attack_mult,
         "ship_bonuses": ship_bonuses,
     }
     defender = {
         "ships": def_ships, "defenses": def_defenses, "tech": def_tech,
-        "attack_mult": _combat_aura_mult(def_ships),
+        "attack_mult": _combat_aura_mult(def_ships) * defender_bonus_mult,
     }
 
     result = simulate_battle(attacker, defender, seed, bal.data)
@@ -389,6 +502,15 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     atk_losses = dict(result["attacker_losses"])
     def_losses = result["defender_losses"]
     winner = result["winner"]
+
+    # Geleitschutz (ally): ein Teil der vom Angreifer gekaperten Verteidiger-Schiffe widersteht
+    # und ueberlebt fuer den Verteidiger statt gekapert zu werden.
+    if def_uncapture > 0 and result.get("attacker_captured"):
+        for typ, n in list(result["attacker_captured"].items()):
+            resisted = int(round(int(n) * min(1.0, def_uncapture)))
+            if resisted > 0:
+                result["attacker_captured"][typ] = int(n) - resisted
+                result["defender_survivors"][typ] = result["defender_survivors"].get(typ, 0) + resisted
 
     # -- Trait 'cautious': loss_reduction rettet einen Teil der eigenen Verluste --
     if commander is not None:
@@ -446,16 +568,18 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     _def_total = sum(result["defender_initial"].values())
     bashing = winner == "attacker" and _def_total < atk_initial * 0.25
 
-    # Ueberlebende Angreifer-Schiffe in der Flotte aktualisieren.
-    fleet_ship_rows = (await session.execute(
-        select(Ship).where(Ship.fleet_id == fleet.id)
-    )).scalars().all()
-    for row in fleet_ship_rows:
-        surv = atk_survivors.get(row.type, 0)
-        if surv <= 0:
-            await session.delete(row)
-        else:
-            row.count = surv
+    # Ueberlebende Angreifer je Quell-Flotte zurueckverteilen (ACS-lite: greedy ueber die Quellen,
+    # primaere Flotte zuerst; Solo = nur die eigene Flotte -> identisch zum Einzelfall).
+    from app.fleet.stationing import distribute_losses
+    atk_per_source = distribute_losses(attacker_sources, atk_survivors)
+    for src, surv in zip(attacker_sources, atk_per_source):
+        src["survivors"] = surv
+        for row in src["rows"]:
+            s = surv.get(row.type, 0)
+            if s <= 0:
+                await session.delete(row)
+            else:
+                row.count = s
 
     # Entern: gekaperte Gegner-Schiffe der Angreifer-Flotte hinzufuegen (kehren heim).
     for typ, n in result.get("attacker_captured", {}).items():
@@ -492,14 +616,12 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     # Beute (nur bei Sieg des Angreifers).
     loot = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}
     if winner == "attacker":
-        capacity = _cargo_capacity(atk_survivors) * _raider_loot_mult(atk_survivors)
+        # coop_loot_mult: Beutezug + Rudeljagd erhoehen die effektive Frachtkapazitaet beim Koop-Raid.
+        capacity = _cargo_capacity(atk_survivors) * _raider_loot_mult(atk_survivors) * coop_loot_mult
         if npc is not None:
             loot = _compute_loot(npc_resources, capacity)
-            cargo = dict(fleet.cargo or {})
             for key in ("metal", "crystal", "deuterium"):
-                cargo[key] = cargo.get(key, 0) + loot[key]
                 npc_resources[key] = max(0.0, npc_resources.get(key, 0) - loot[key])
-            fleet.cargo = cargo
         elif def_planet is not None:
             # PvP-Pluenderung: aktuelle Ressourcen des Verteidiger-Planeten abziehen.
             res = await refresh_resources(session, def_planet)
@@ -511,12 +633,12 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
                 )
             )).scalars().all()
             by_type = {r.type: r for r in res_rows}
-            cargo = dict(fleet.cargo or {})
             for key in RESOURCE_KEYS:
                 if key in by_type:
                     by_type[key].amount = max(0.0, by_type[key].amount - loot[key])
-                cargo[key] = cargo.get(key, 0) + loot[key]
-            fleet.cargo = cargo
+        # Beute auf die (verbuendeten) Angreifer-Flotten nach ueberlebendem Frachtanteil aufteilen.
+        if any(v > 0 for v in loot.values()):
+            _distribute_attacker_loot(attacker_sources, loot)
 
     # NPC aktualisieren: Schiffe = Ueberlebende, Verteidigung mit 70 % Regen.
     if npc is not None:
@@ -537,7 +659,29 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
         npc.resources = npc_resources
     elif def_planet is not None:
         # PvP: Spieler-Garnison auf Ueberlebende, Verteidigung mit Regen, Kaperungen stationieren.
-        def_survivors = result["defender_survivors"]
+        def_survivors = dict(result["defender_survivors"])
+        if allied_def_sources:
+            # Verbuendete Stationen zuerst aus den Ueberlebenden bedienen (Helfer schuetzen), die
+            # Heimat-Garnison erhaelt den Rest. Verluste je Station zurueckschreiben + Besitzer melden.
+            from app.fleet.stationing import distribute_losses as _dl
+            garrison_ships = {r.type: r.count for r in def_ship_rows if r.count > 0}
+            _parts = _dl(allied_def_sources + [{"ships": garrison_ships}], def_survivors)
+            _loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+            for src, surv in zip(allied_def_sources, _parts[:-1]):
+                st = src["obj"]
+                st.ships = {t: surv.get(t, 0) for t in src["ships"] if surv.get(t, 0) > 0}
+                wiped = not st.ships
+                if wiped:
+                    await session.delete(st)
+                await create_system_transmission(
+                    session, player_id=src["owner_id"],
+                    subject=(f"{'💥 Verbuendete Patrouille vernichtet' if wiped else '⚔ Allianz verteidigt'} "
+                             f"({_loc})"),
+                    body=(f"Deine bei {_loc} stationierte Patrouille hat ein Allianz-Mitglied "
+                          f"{'bis zur Vernichtung ' if wiped else ''}mitverteidigt."),
+                    ttype="combat_report",
+                )
+            def_survivors = _parts[-1]  # Rest fuer die Heimat-Garnison
         for row in def_ship_rows:
             surv = def_survivors.get(row.type, 0)
             if surv <= 0:
@@ -606,6 +750,64 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
             loot = {k: round(loot_acc[k], 1) for k in loot_acc}
             fleet.cargo = cargo
 
+    # -- Allianz-Station: Belagerung anwenden (hp-Chip je Spieler, >=2-Angreifer-Gate) --------
+    if target_station is not None:
+        from app.alliance import station as station_mod
+        from app.alliance.service import notify_alliance
+        _scfg = bal.data.get("alliance", {}).get("station", {})
+        _factor = float(_scfg.get("siege_damage_factor", 1.0))
+        _max_hp = float(_scfg.get("hp", 1)) or 1.0
+        _min_atk = int(_scfg.get("destroy_min_attackers", 2))
+        loc_s = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+        # Schaden je beteiligtem Spieler = durchgebrachte (ueberlebende) Feuerkraft * Faktor.
+        for src in attacker_sources:
+            fp = sum(float(bal.ships.get(t, {}).get("attack", 0)) * c
+                     for t, c in src.get("survivors", {}).items())
+            dmg = fp * _factor
+            if dmg > 0:
+                station_mod.record_siege_hit(target_station, src["obj"].player_id, dmg, now_combat)
+        destroyed_station = target_station.status == "destroyed"
+        distinct = len((target_station.siege or {}).get("attackers", {}))
+        hp_pct = max(0.0, round(100.0 * float(target_station.hp or 0) / _max_hp, 1))
+        if destroyed_station:
+            head, body_a = (f"💥 Allianz-Station zerstoert ({loc_s})",
+                            "Die feindliche Allianz-Station wurde vernichtet — ihre Einflusszone "
+                            "und alle Zonen-Boni brechen zusammen.")
+        elif float(target_station.hp or 0) <= 0:
+            head, body_a = (f"Station sturmreif ({loc_s})",
+                            f"Die Stationshuelle ist auf 0 — doch ihre Zerstoerung erfordert mindestens "
+                            f"{_min_atk} verschiedene Angreifer ({distinct}/{_min_atk}). Hol Verbuendete dazu.")
+        else:
+            head, body_a = (f"⚔ Station beschossen ({loc_s})",
+                            f"Du hast die feindliche Allianz-Station getroffen. Resthuelle: {hp_pct} % "
+                            f"(Angreifer {distinct}/{_min_atk}). Sie regeneriert in Ruhephasen.")
+        for src in attacker_sources:
+            await create_system_transmission(
+                session, player_id=src["obj"].player_id, subject=head, body=body_a, ttype="combat_report",
+            )
+        if destroyed_station:
+            await notify_alliance(
+                session, target_station.alliance_id,
+                subject=f"🛑 Allianz-Station verloren ({loc_s})",
+                body=("Eure Allianz-Station wurde von Feinden zerstoert. Die Einflusszone und ihre Boni "
+                      "sind erloschen — eine neue Station muss errichtet werden."),
+            )
+
+    # -- Koop-Angriff: verbuendete (nicht-primaere) Flotten ueber den Ausgang informieren --------
+    if coop_attack and target_station is None:
+        loc_c = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+        for src in attacker_sources:
+            if src["is_primary"]:
+                continue
+            await create_system_transmission(
+                session, player_id=src["obj"].player_id,
+                subject=f"⚔ Gemeinsamer Angriff ({loc_c})",
+                body=(f"Deine Flotte hat sich einem koordinierten Allianz-Angriff angeschlossen — "
+                      f"{'Sieg' if winner == 'attacker' else 'Niederlage'}. Ueberlebende Schiffe + "
+                      f"Beuteanteil kehren heim."),
+                ttype="combat_report",
+            )
+
     # -- Commander-Folgen ----------------------------------------------------
     commander_outcome = await _apply_commander(
         session, commander, situation, atk_survivors, loot, atk_research, bashing=bashing
@@ -622,6 +824,9 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet) -> dict | None:
     elif npc is not None:
         outcome_json["defender_kind"] = "npc"
         outcome_json["defender_name"] = npc.name
+    elif target_station is not None:
+        outcome_json["defender_kind"] = "alliance_station"
+        outcome_json["defender_name"] = "Allianz-Station"
     report = CombatReport(
         attacker_id=fleet.player_id,
         defender_id=defender_player_id,

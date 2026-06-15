@@ -414,6 +414,8 @@ class AllianceStation(Base):
     status: Mapped[str] = mapped_column(Text, default="active")  # active | inactive | destroyed
     built_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
     last_upkeep_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    # Belagerungs-Status (Phase 2): {"attackers": {player_id: {"damage": float, "at": iso}}, "last_attack_at": iso}.
+    siege: Mapped[dict] = mapped_column(JSONB, default=dict)
 
 
 class AllianceInvite(Base):

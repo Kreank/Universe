@@ -368,6 +368,15 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
               placeholder="z. B. GFED"
             />
           </div>
+          @if (createCost(); as cc) {
+            <p class="muted small">
+              Gründungskosten (vom Heimatplaneten):
+            </p>
+            <app-cost-line [cost]="cc" />
+          }
+          @if (maxMembers(); as mm) {
+            <p class="muted small">Platz für bis zu {{ mm }} Mitglieder.</p>
+          }
           <button
             class="btn btn-primary btn-sm"
             type="button"
@@ -693,6 +702,8 @@ export class AllianceComponent implements OnInit {
   protected readonly busy = signal(false);
   protected readonly alliance = signal<AllianceOverview | null>(null);
   protected readonly invites = signal<AllianceInvite[]>([]);
+  protected readonly createCost = signal<ResourceCost | null>(null);
+  protected readonly maxMembers = signal<number | null>(null);
   protected readonly confirmReq = signal<ConfirmRequest | null>(null);
 
   // Reiter
@@ -750,6 +761,8 @@ export class AllianceComponent implements OnInit {
       next: (res) => {
         this.alliance.set(res.alliance);
         this.invites.set(res.invites ?? []);
+        this.createCost.set(res.create_cost ?? null);
+        this.maxMembers.set(res.max_members ?? null);
         if (res.alliance && !this.depPlanet()) {
           const home = this.planets().find((p) => p.is_homeworld) ?? this.planets()[0];
           if (home) {
