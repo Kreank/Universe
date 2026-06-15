@@ -57,6 +57,14 @@ interface NavGroup {
               energyBalance() | shortNumber
             }}</span>
           </div>
+          <div class="res exotic tip" data-tip="Dunkle Materie (kontoweit, erspielt)">
+            <img class="res-icon" src="assets/img/resources/dark_matter.png" alt="" />
+            <span class="res-amount mono">{{ darkMatter() | shortNumber }}</span>
+          </div>
+          <div class="res exotic tip" data-tip="Antimaterie (kontoweit, erspielt)">
+            <img class="res-icon" src="assets/img/resources/antimatter.png" alt="" />
+            <span class="res-amount mono">{{ antimatter() | shortNumber }}</span>
+          </div>
         </div>
 
         <div class="topbar-right">
@@ -176,6 +184,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   /** 1-Sekunden-Takt fuer die sekundengenaue Ressourcen-Hochrechnung. */
   protected readonly nowMs = signal(Date.now());
   private resTicker?: ReturnType<typeof setInterval>;
+  private exoticTicker?: ReturnType<typeof setInterval>;
 
   constructor() {
     // Screen-spezifischen (statischen) Hintergrund setzen: body[data-screen] = erstes Routen-Segment
@@ -190,6 +199,9 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   protected readonly planets = this.state.planets;
   protected readonly player = this.auth.player;
+  // Kontoweite Exoten (aus /auth/me): in der oberen Leiste neben Energie.
+  protected readonly darkMatter = computed(() => this.auth.player()?.dark_matter ?? 0);
+  protected readonly antimatter = computed(() => this.auth.player()?.antimatter ?? 0);
   protected readonly navOpen = signal(false);
 
   private static readonly ITEMS: Record<string, NavItem> = {
@@ -268,13 +280,20 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     void this.state.bootstrap();
+    // Kontoweite Exoten (dark_matter/antimatter) fuer die Leiste frisch laden + periodisch
+    // aktualisieren (aendern sich nach Expeditionen/Exo-Minen).
+    this.auth.refreshMe().subscribe({ error: () => {} });
     // Sekundentakt fuer die Live-Hochrechnung der Ressourcen-Leiste.
     this.resTicker = setInterval(() => this.nowMs.set(Date.now()), 1000);
+    this.exoticTicker = setInterval(() => this.auth.refreshMe().subscribe({ error: () => {} }), 60000);
   }
 
   ngOnDestroy(): void {
     if (this.resTicker) {
       clearInterval(this.resTicker);
+    }
+    if (this.exoticTicker) {
+      clearInterval(this.exoticTicker);
     }
   }
 

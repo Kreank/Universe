@@ -43,6 +43,9 @@ export interface Player {
   is_protected: boolean;
   created_at: string;
   last_active: string;
+  /** Exotische Endgame-Ressourcen (kontoweit, erspielt). Von /auth/me geliefert. */
+  dark_matter?: number;
+  antimatter?: number;
 }
 
 export interface AuthResponse {
@@ -295,8 +298,8 @@ export interface FleetSendRequest {
   ability_keys?: string[];
   /** Expedition (mission == 'expedition'): gewuenschte Verweildauer in Stunden (1..max). */
   expedition_hours?: number;
-  /** Ziel-Typ: 'moon' greift/spioniert den Mond statt des Planeten an der Koordinate. */
-  target_type?: 'moon';
+  /** Ziel-Typ: 'moon' greift/spioniert den Mond, 'station' belagert die Allianz-Station an der Koordinate. */
+  target_type?: 'moon' | 'station';
   /** Abfangen (mission == 'intercept'): Patrouillen-Radius in Systemen (Default 0 = nur Zielsystem). */
   radius?: number;
   /** Eskorte (mission == 'escort'): Deckungs-Radius in Systemen + Gebuehr (Anteil 0..max_fee_pct). */
@@ -347,6 +350,16 @@ export interface GalaxyCell {
     player_id: string;
     player_name: string | null;
     own: boolean;
+  } | null;
+  /** Allianz-Station am Ort (teilt die Position) — fremde Station ist ein Belagerungsziel. */
+  station?: {
+    alliance_id: string;
+    tag: string;
+    mine: boolean;
+    status: string;
+    hp: number;
+    max_hp: number;
+    hp_pct: number;
   } | null;
 }
 
@@ -865,4 +878,7 @@ export interface AllianceOverview {
 export interface AllianceResponse {
   alliance: AllianceOverview | null;
   invites: AllianceInvite[];
+  /** Nur ohne eigene Allianz: Gruendungskosten (vom Heimatplaneten) + Mitglieder-Cap. */
+  create_cost?: ResourceCost;
+  max_members?: number;
 }

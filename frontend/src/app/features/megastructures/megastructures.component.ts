@@ -46,14 +46,14 @@ import { resourceIcon } from '../../core/models/icon-assets';
             <p class="blurb">{{ m.blurb }}</p>
 
             <div class="cost">
-              <span>🔩 {{ m.cost.metal | number: '1.0-0' }}</span>
-              <span>💎 {{ m.cost.crystal | number: '1.0-0' }}</span>
-              <span>🛢️ {{ m.cost.deuterium | number: '1.0-0' }}</span>
+              <span><img class="res-ic" [src]="resIcon('metal')" alt="" /> {{ m.cost.metal | number: '1.0-0' }}</span>
+              <span><img class="res-ic" [src]="resIcon('crystal')" alt="" /> {{ m.cost.crystal | number: '1.0-0' }}</span>
+              <span><img class="res-ic" [src]="resIcon('deuterium')" alt="" /> {{ m.cost.deuterium | number: '1.0-0' }}</span>
               @if (m.cost.dark_matter > 0) {
-                <span class="dm">🌑 {{ m.cost.dark_matter | number: '1.0-0' }}</span>
+                <span class="dm"><img class="res-ic" [src]="resIcon('dark_matter')" alt="" /> {{ m.cost.dark_matter | number: '1.0-0' }}</span>
               }
               @if (m.cost.antimatter > 0) {
-                <span class="am">⚛️ {{ m.cost.antimatter | number: '1.0-0' }}</span>
+                <span class="am"><img class="res-ic" [src]="resIcon('antimatter')" alt="" /> {{ m.cost.antimatter | number: '1.0-0' }}</span>
               }
             </div>
 
@@ -106,6 +106,8 @@ import { resourceIcon } from '../../core/models/icon-assets';
       .lvl { font-size: var(--fs-sm); }
       .blurb { font-size: var(--fs-sm); color: var(--text-faint); flex: 1; }
       .cost { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); }
+      .cost span { display: inline-flex; align-items: center; gap: 5px; }
+      .cost .res-ic { width: 18px; height: 18px; }
       .cost .dm { color: var(--accent); }
       .cost .am { color: var(--warn); }
       .full { width: 100%; }

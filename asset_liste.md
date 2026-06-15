@@ -303,6 +303,12 @@ Es gibt **zwei** Asset-Wurzeln:
 | ✅ | trade_leviathan | `ships/trade_leviathan.png` | PNG transparent, 512×512 (Stil = `ships/battleship.png`) | **Handels-Leviathan** (Händler): kolossaler, bulliger Frachter — massive Container-/Laderaum-Sektionen, gepanzert aber zivil, Eskort-/Schutz-Pods. Logistik-Gigant. Cyan + violetter (Dunkle-Materie-)Akzent. |
 | ✅ | harvest_titan | `ships/harvest_titan.png` | PNG transparent, 512×512 (Stil = `ships/battleship.png`) | **Ernte-Titan** (Miner): gewaltiges Bergbau-/Erntschiff — Bohrer/Ernte-Arme, Erz-Einlauf-Trichter, Raffinerie-Module, industriell-wuchtig. Cyan + violetter (Dunkle-Materie-)Akzent. |
 
+### ⚙️ Kampfschiff-Artwork (nachgezogen) — referenziert als `assets/img/ships/<name>.png`
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | warp_stabilizer | `ships/warp_stabilizer.png` | PNG transparent, 512×512 (Stil = `ships/interdictor.png`) | **Warp-Stabilisator** (Konter zum Interdiktor): mittelgroßes Kampfschiff mit Stabilisator-Feld-Emittern/Gyroskop-Ringen (Gegenstück zu den Interdiktor-Feldpods), cyan `#2fe3d2` statt lila. Dunkler Metall-Rumpf, eigene Silhouette. |
+
 ### Kommando-Forschungen der Capstone-Schiffe (je +1 Besitz-Limit) — referenziert als `assets/img/tech/<name>.png`
 
 > Vier neue Forschungen, je eine pro Capstone-Schiff: default darf man 1 besitzen, jede Stufe gibt +1.
