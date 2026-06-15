@@ -122,24 +122,31 @@ def _cargo_capacity(survivors: dict[str, int]) -> float:
     return cap
 
 
-def _compute_loot(npc_resources: dict, capacity: float) -> dict[str, float]:
-    """Pluendert bis zu 50 % der ungeschuetzten Rohstoffe, durch Frachtraum begrenzt."""
-    bal = get_balance()
-    ratio = bal.combat["plunder_ratio"]
-    available = {
-        "metal": npc_resources.get("metal", 0) * ratio,
-        "crystal": npc_resources.get("crystal", 0) * ratio,
-        "deuterium": npc_resources.get("deuterium", 0) * ratio,
-    }
-    loot = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}
-    remaining = capacity
-    for key in ("metal", "crystal", "deuterium"):
-        take = min(available[key], remaining)
-        loot[key] = round(max(0.0, take), 1)
-        remaining -= loot[key]
+# Beute-Schluessel: Standard-Rohstoffe + (fuer Fracht-Beute) die transportablen Exoten.
+LOOT_KEYS = ("metal", "crystal", "deuterium")
+CARGO_LOOT_KEYS = ("metal", "crystal", "deuterium", "antimatter", "dark_matter")
+
+
+def _greedy_take(available: dict, capacity: float, keys=LOOT_KEYS) -> dict[str, float]:
+    """Nimmt aus ``available`` je Schluessel so viel, wie der Restfrachtraum (``capacity``) zulaesst,
+    greedy in Schluessel-Reihenfolge. Reine Funktion (kein Plunder-Ratio); deckt auch Exoten ab,
+    wenn ``keys`` sie enthaelt."""
+    out = {k: 0.0 for k in keys}
+    remaining = float(capacity)
+    for key in keys:
+        take = min(float(available.get(key, 0) or 0), remaining)
+        out[key] = round(max(0.0, take), 1)
+        remaining -= out[key]
         if remaining <= 0:
             break
-    return loot
+    return out
+
+
+def _compute_loot(npc_resources: dict, capacity: float) -> dict[str, float]:
+    """Pluendert bis zu 50 % der ungeschuetzten Rohstoffe, durch Frachtraum begrenzt."""
+    ratio = get_balance().combat["plunder_ratio"]
+    available = {k: npc_resources.get(k, 0) * ratio for k in LOOT_KEYS}
+    return _greedy_take(available, capacity, LOOT_KEYS)
 
 
 def _distribute_attacker_loot(sources: list[dict], loot: dict[str, float]) -> None:
@@ -309,6 +316,7 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
     def_ship_rows: list[Ship] = []
     def_rows: list[Defense] = []
     interception_sources: list[dict] = []
+    mining_sources: list[dict] = []
     allied_def_sources: list[dict] = []
     def_ships: dict[str, int] = {}
     def_defenses: dict[str, int] = {}
@@ -459,14 +467,22 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
             session, fleet.player_id,
             fleet.target_galaxy, fleet.target_system, fleet.target_position, _now_utc(),
         )
-        if not interception_sources:
+        # Schuerfende (geparkte) Bergbauflotten am Feld sind hier ebenfalls Verteidiger — wer am
+        # Asteroidenfeld farmt, kann gestellt und seine Fracht erbeutet werden (Risiko/Spannung).
+        from app.fleet.mining import parked_mining_fleets_at
+        mining_sources = await parked_mining_fleets_at(
+            session, fleet.target_galaxy, fleet.target_system, fleet.target_position, _now_utc(),
+            exclude_player_id=fleet.player_id,
+        )
+        defender_sources = interception_sources + mining_sources
+        if not defender_sources:
             return None
         merged: dict[str, int] = {}
-        for src in interception_sources:
+        for src in defender_sources:
             for typ, cnt in src["ships"].items():
                 merged[typ] = merged.get(typ, 0) + cnt
         def_ships = merged
-        first = interception_sources[0]["obj"]
+        first = defender_sources[0]["obj"]
         defender_player_id = getattr(first, "player_id", None) or getattr(first, "owner_id", None)
         # Forschung des Hauptverteidigers laden: die abfangende Patrouille kaempft sonst mit dem
         # Default-Tech 0 (Z. ~217) statt mit ihrer erforschten Waffen-/Schild-/Panzerungsstufe ->
@@ -696,16 +712,53 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
             lost = def_losses.get(row.type, 0)
             kept = row.count - lost
             row.count = max(0, kept + math.floor(lost * regen))
-    elif interception_sources:
-        # Abfangen: Verluste greedy auf Quellen verteilen, je Quelle anwenden.
+    elif interception_sources or mining_sources:
+        # Abfangen + geparkte Schuerf-Flotten: Verluste greedy auf alle Verteidiger-Quellen verteilen.
         from app.fleet.stationing import distribute_losses
         loc_str = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
-        per = distribute_losses(interception_sources, result["defender_survivors"])
+        defender_sources = interception_sources + mining_sources
+        per = distribute_losses(defender_sources, result["defender_survivors"])
         cargo = dict(fleet.cargo or {})
         loot_acc = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}
-        for src, surv in zip(interception_sources, per):
+        # Beute-Kapazitaet des Angreifers (Korsar-/Koop-Boni) — fuer die Fracht-Beute schuerfender Flotten.
+        mining_cap = _cargo_capacity(atk_survivors) * _raider_loot_mult(atk_survivors) * coop_loot_mult
+        mining_loot: dict[str, float] = {}
+        atk_name_i = attacker_player.display_name if attacker_player else "Eine Feindflotte"
+        for src, surv in zip(defender_sources, per):
             wiped = sum(surv.values()) == 0
-            if src["kind"] == "fleet":
+            if src["kind"] == "mining":
+                # Geparkte Bergbauflotte: Schiffsverluste anwenden; bei Angreifer-Sieg die Fracht
+                # (Erz + Exoten) bis zur Angreifer-Kapazitaet pluendern. Wiped -> Flotte erledigt.
+                f = src["obj"]
+                for row in src["rows"]:
+                    s = surv.get(row.type, 0)
+                    if s <= 0:
+                        await session.delete(row)
+                    else:
+                        row.count = s
+                if winner == "attacker" and mining_cap > 0:
+                    fcargo = dict(f.cargo or {})
+                    taken = _greedy_take(fcargo, mining_cap, CARGO_LOOT_KEYS)
+                    for k, v in taken.items():
+                        if v > 0:
+                            fcargo[k] = round(max(0.0, float(fcargo.get(k, 0)) - v), 1)
+                            mining_loot[k] = round(mining_loot.get(k, 0) + v, 1)
+                            mining_cap -= v
+                    f.cargo = fcargo
+                if wiped:
+                    f.status = "done"
+                    f.cargo = {}
+                await create_system_transmission(
+                    session, player_id=f.player_id,
+                    subject=(f"{'💥 Bergbauflotte vernichtet' if wiped else '⚔ Bergbauflotte angegriffen'} "
+                             f"({loc_str})"),
+                    body=(f"{atk_name_i} hat deine am Asteroidenfeld {loc_str} schuerfende Bergbauflotte "
+                          + ("vernichtet" if wiped else "angegriffen")
+                          + (" und ihre Fracht erbeutet." if winner == "attacker"
+                             else ". Sie hat den Angriff abgewehrt.")),
+                    ttype="combat_report",
+                )
+            elif src["kind"] == "fleet":
                 f = src["obj"]
                 for row in src["rows"]:
                     s = surv.get(row.type, 0)
@@ -749,6 +802,12 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
         if winner == "attacker" and any(v > 0 for v in loot_acc.values()):
             loot = {k: round(loot_acc[k], 1) for k in loot_acc}
             fleet.cargo = cargo
+        # Fracht-Beute der schuerfenden Flotten auf die (verbuendeten) Angreifer-Flotten verteilen
+        # (nach ueberlebendem Frachtanteil) und in den Bericht uebernehmen — inkl. Exoten.
+        if any(v > 0 for v in mining_loot.values()):
+            _distribute_attacker_loot(attacker_sources, mining_loot)
+            for k, v in mining_loot.items():
+                loot[k] = round(loot.get(k, 0) + v, 1)
 
     # -- Allianz-Station: Belagerung anwenden (hp-Chip je Spieler, >=2-Angreifer-Gate) --------
     if target_station is not None:
@@ -827,6 +886,9 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
     elif target_station is not None:
         outcome_json["defender_kind"] = "alliance_station"
         outcome_json["defender_name"] = "Allianz-Station"
+    elif mining_sources:
+        outcome_json["defender_kind"] = "mining_fleet"
+        outcome_json["defender_name"] = "Bergbauflotte"
     report = CombatReport(
         attacker_id=fleet.player_id,
         defender_id=defender_player_id,

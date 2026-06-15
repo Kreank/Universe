@@ -28,7 +28,7 @@ interface DispatchCtx {
   target: Coordinate;
   name: string | null;
   mission: FleetMission;
-  targetType?: 'moon' | 'station';
+  targetType?: 'moon' | 'station' | 'mining_fleet';
 }
 
 /**
@@ -114,6 +114,9 @@ interface DispatchCtx {
                   @if (c.station; as st) {
                     <span class="chip station tip" [class.mine]="st.mine" [attr.data-tip]="st.mine ? ('Allianz-Station deiner Allianz [' + st.tag + '] · Hülle ' + st.hp_pct + '%') : ('Fremde Allianz-Station [' + st.tag + '] — belagerbar (≥2 Angreifer) · Resthülle ' + st.hp_pct + '%')"><app-btn-icon [src]="'assets/img/alliance/alliance_station.png'" glyph="🛰" [size]="14" /> [{{ st.tag }}] {{ st.hp_pct }}%</span>
                   }
+                  @if (c.mining_fleet; as mf) {
+                    <span class="chip rock tip" [attr.data-tip]="mf.mine ? ('Deine Bergbauflotte schürft hier (' + mf.ships_total + ' Schiffe)') : ('Fremde Bergbauflotte von ' + (mf.owner ?? 'Spieler') + ' schürft hier — angreifbar, Fracht erbeutbar (' + mf.ships_total + ' Schiffe)')"><app-btn-icon [src]="missionIcon('mine')" glyph="⛏" [size]="14" /> Flotte{{ mf.mine ? '' : ' [' + (mf.owner ?? '?') + ']' }}</span>
+                  }
                 </div>
                 @if (c.asteroid) {
                   <div class="acts">
@@ -132,6 +135,13 @@ interface DispatchCtx {
                   @if (!st.mine && st.status !== 'destroyed') {
                     <div class="acts">
                       <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), 'Allianz-Station [' + st.tag + ']', 'attack', 'station')" title="Allianz-Station belagern — chippt die Hülle; zur Zerstörung ≥2 verschiedene Angreifer nötig"><app-btn-icon [src]="missionIcon('attack')" glyph="🛰⚔" [size]="18" /></button>
+                    </div>
+                  }
+                }
+                @if (c.mining_fleet; as mf) {
+                  @if (!mf.mine) {
+                    <div class="acts">
+                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), '⛏ Flotte [' + (mf.owner ?? '?') + ']', 'attack', 'mining_fleet')" title="Schürfende Bergbauflotte angreifen — bei Sieg wird ihre Fracht (Erz + Exoten) erbeutet"><app-btn-icon [src]="missionIcon('attack')" glyph="⛏⚔" [size]="18" /></button>
                     </div>
                   }
                 }
@@ -379,7 +389,7 @@ export class GalaxyComponent {
 
   // --- Schnellaktionen ---------------------------------------------------
   /** Versand-Overlay fuer Angriff/Transport am Ziel oeffnen. */
-  openDispatch(target: Coordinate, name: string | null, mission: FleetMission, targetType?: 'moon' | 'station'): void {
+  openDispatch(target: Coordinate, name: string | null, mission: FleetMission, targetType?: 'moon' | 'station' | 'mining_fleet'): void {
     this.dispatch.set({ target, name, mission, targetType });
   }
 

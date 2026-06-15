@@ -305,8 +305,9 @@ export interface FleetSendRequest {
   ability_keys?: string[];
   /** Expedition (mission == 'expedition'): gewuenschte Verweildauer in Stunden (1..max). */
   expedition_hours?: number;
-  /** Ziel-Typ: 'moon' greift/spioniert den Mond, 'station' belagert die Allianz-Station an der Koordinate. */
-  target_type?: 'moon' | 'station';
+  /** Ziel-Typ: 'moon' greift/spioniert den Mond, 'station' belagert die Allianz-Station,
+   *  'mining_fleet' greift die am Feld schuerfende Flotte an. */
+  target_type?: 'moon' | 'station' | 'mining_fleet';
   /** Abfangen (mission == 'intercept'): Patrouillen-Radius in Systemen (Default 0 = nur Zielsystem). */
   radius?: number;
   /** Eskorte (mission == 'escort'): Deckungs-Radius in Systemen + Gebuehr (Anteil 0..max_fee_pct). */
@@ -367,6 +368,12 @@ export interface GalaxyCell {
     hp: number;
     max_hp: number;
     hp_pct: number;
+  } | null;
+  /** Geparkte Schuerf-Flotte am Ort — fremde sind angreifbar (Fracht-Beute), eigene nur Info. */
+  mining_fleet?: {
+    owner: string | null;
+    mine: boolean;
+    ships_total: number;
   } | null;
 }
 

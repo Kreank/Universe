@@ -26,6 +26,7 @@ class CellOut(BaseModel):
     asteroid: dict | None = None  # Asteroidenfeld am Ort {richness, mult, metal, crystal} (Restvorrat)
     moon: dict | None = None  # Mond am Ort {name, player_id, player_name, own} — eigenes Angriffs-/Spionageziel
     station: dict | None = None  # Allianz-Station am Ort {alliance_id, tag, mine, status, hp, max_hp, hp_pct}
+    mining_fleet: dict | None = None  # geparkte Schuerf-Flotte am Ort {owner, mine, ships_total} — fremde sind angreifbar
 
 
 class ZoneOut(BaseModel):
@@ -176,11 +177,51 @@ async def galaxy_view(
             "hp_pct": max(0.0, round(100.0 * float(_st.hp or 0) / _max_hp, 1)),
         }
 
+    # Geparkte Schuerf-Flotten als OVERLAY: wer GERADE am Feld farmt, ist angreifbar (Fracht-Beute).
+    import datetime as _dt
+
+    from app.fleet.mining import is_parked_mining
+    from app.platform.models import Fleet as _Fleet
+    from app.platform.models import Ship as _Ship
+    _now_m = _dt.datetime.now(_dt.timezone.utc)
+    _mine_rows = (await session.execute(
+        select(_Fleet).where(
+            _Fleet.target_galaxy == galaxy, _Fleet.target_system == system,
+            _Fleet.mission == "mine", _Fleet.status != "done",
+        )
+    )).scalars().all()
+    _parked: dict[int, list[tuple[bool, str | None, int]]] = {}
+    for _f in _mine_rows:
+        if not is_parked_mining(_f, galaxy, system, _f.target_position, _now_m):
+            continue
+        _total = int(sum(
+            int(c[0]) for c in (await session.execute(
+                select(_Ship.count).where(_Ship.fleet_id == _f.id)
+            )).all()
+        ))
+        if _total <= 0:
+            continue
+        _owner = await session.get(Player, _f.player_id)
+        _parked.setdefault(_f.target_position, []).append(
+            (_f.player_id == player.id, _owner.display_name if _owner else None, _total)
+        )
+    mining_by_pos: dict[int, dict] = {}
+    for _pos, _lst in _parked.items():
+        _enemies = [x for x in _lst if not x[0]]
+        _shown = _enemies if _enemies else _lst
+        _names = {x[1] for x in _shown}
+        mining_by_pos[_pos] = {
+            "owner": (next(iter(_names)) if len(_names) == 1 else "Mehrere"),
+            "mine": not _enemies,  # nur eigene Flotten -> Info; sonst (auch gemischt) angreifbar
+            "ships_total": sum(x[2] for x in _shown),
+        }
+
     cells: list[CellOut] = []
     for pos in range(1, bal.positions_per_system + 1):
         cell = by_pos.get(pos)
         asteroid = _asteroid_overlay(pos)
         station_info = station_by_pos.get(pos)
+        mining_info = mining_by_pos.get(pos)
         moon_obj = moon_by_pos.get(pos)
         moon = None
         if moon_obj is not None:
@@ -193,7 +234,7 @@ async def galaxy_view(
             }
         if cell is None or cell.occupant_type == "empty":
             cells.append(CellOut(position=pos, occupant_type="empty", asteroid=asteroid,
-                                 moon=moon, station=station_info))
+                                 moon=moon, station=station_info, mining_fleet=mining_info))
             continue
         name = None
         player_id = None
@@ -232,6 +273,7 @@ async def galaxy_view(
             asteroid=asteroid,
             moon=moon,
             station=station_info,
+            mining_fleet=mining_info,
         ))
 
     # Galaktische Weiten: synthetischer Deep-Space-Slot (nur per Expedition erreichbar).

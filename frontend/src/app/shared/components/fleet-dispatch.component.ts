@@ -377,8 +377,9 @@ export class FleetDispatchComponent {
   readonly target = input.required<Coordinate>();
   readonly targetName = input<string | null>(null);
   readonly initialMission = input<FleetMission>('attack');
-  /** 'moon' -> Angriff/Spionage zielt auf den Mond; 'station' -> Belagerung der Allianz-Station. */
-  readonly targetType = input<'moon' | 'station' | null>(null);
+  /** 'moon' -> Angriff/Spionage zielt auf den Mond; 'station' -> Belagerung der Allianz-Station;
+   *  'mining_fleet' -> Angriff auf die am Feld schuerfende Flotte. */
+  readonly targetType = input<'moon' | 'station' | 'mining_fleet' | null>(null);
 
   readonly close = output<void>();
   readonly sent = output<void>();
@@ -818,6 +819,8 @@ export class FleetDispatchComponent {
       body.target_type = 'moon';
     } else if (this.targetType() === 'station') {
       body.target_type = 'station';
+    } else if (this.targetType() === 'mining_fleet') {
+      body.target_type = 'mining_fleet';
     }
     if (this.mission() === 'trade') {
       // Angebots-Ressource faehrt als Fracht mit; der Server baut Cargo + mission_data.
