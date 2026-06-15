@@ -419,9 +419,12 @@
   },
 
   "mining": {
-    "_note": "Doku 03c: Mining-Mission ('mine'). Modell 'fuelle deinen Frachtraum': Eine Bergbauflotte baut so viel ab, wie ihr GESAMTER Frachtraum (Summe aller Schiffe) fasst — gedeckelt nur durch den Restvorrat des Feldes. Metall/Kristall kommen ANTEILIG zur Zusammensetzung des Feld-Vorrats heim, der Rest bleibt im Feld. Mehr Schiffe (Bergbauschiffe ODER Transporter/Recycler) = mehr Frachtraum = mehr Ausbeute pro Flug. Feld-Reichtum bestimmt die Vorratsmenge (capacity x mult) und damit, wie oft man fuellen kann, bevor das Feld erschoepft. min_ships = mind. so viele Bergbauschiffe (oder ein Ernte-Titan) muessen dabei sein, damit ueberhaupt abgebaut wird.",
+    "_note": "Doku 03c: Mining-Mission ('mine'). Modell 'fuelle deinen Frachtraum' + ZEITBASIERT (2026-06-15): Eine Bergbauflotte verweilt am Feld und schuerft ueber die Zeit, bis ihr GESAMTER Frachtraum voll ist (oder das Feld leer). Schuerf-Rate = mine_rate_per_miner_per_hour x Anzahl Bergbauschiffe (Ernte-Titan zaehlt harvester_rate_units Bergbauschiffe). Verweildauer = zu_fuellender_Frachtraum / Rate (gedeckelt max_hold_seconds). -> Bergbauschiffe = TEMPO, Transporter = KAPAZITAET: mehr Transporter = mehr Ausbeute, aber laenger am Feld = riskanter (Flotte ist waehrend des Schuerfens am Feld). Ertrag anteilig zur Feld-Zusammensetzung, Rest bleibt im Feld. min_ships = mind. so viele Bergbauschiffe (oder ein Ernte-Titan).",
     "ship_type": "miner",
-    "min_ships": 1
+    "min_ships": 1,
+    "mine_rate_per_miner_per_hour": 48000,
+    "harvester_rate_units": 30,
+    "max_hold_seconds": 14400
   },
 
   "asteroids": {

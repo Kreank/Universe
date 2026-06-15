@@ -532,6 +532,28 @@ async def send_fleet(
     hold_seconds = 0
     if mission == "expedition":
         hold_seconds = int(mission_data.get("expedition_hours", 1)) * 3600
+    elif mission == "mine":
+        # ZEITBASIERTES SCHUERFEN (2026-06-15): die Flotte verweilt am Feld und fuellt ihren
+        # Frachtraum ueber die Zeit. Rate = mine_rate_per_miner_per_hour x Bergbauschiff-Einheiten
+        # (Ernte-Titan zaehlt harvester_rate_units). Verweildauer = Frachtraum / Rate (gedeckelt).
+        # -> Bergbauschiffe = Tempo, Transporter = Kapazitaet (mehr Transporter = laenger = riskanter).
+        m_cfg = bal.data.get("mining", {})
+        roster = bal.combat_roster
+        mtype = m_cfg.get("ship_type", "miner")
+        harv_units = float(m_cfg.get("harvester_rate_units", 1))
+        cargo_cap = sum(float((bal.ships.get(t) or {}).get("cargo", 0)) * c for t, c in ships.items())
+        miner_units = 0.0
+        for t, c in ships.items():
+            if t == mtype:
+                miner_units += c
+            elif (roster.get(t) or {}).get("harvester"):
+                miner_units += c * harv_units
+        rate_per_hour = float(m_cfg.get("mine_rate_per_miner_per_hour", 0)) * miner_units
+        if rate_per_hour > 0 and cargo_cap > 0:
+            hold_seconds = min(
+                int(m_cfg.get("max_hold_seconds", 14400)),
+                int(math.ceil(cargo_cap / rate_per_hour * 3600)),
+            )
     return_at = arrive + dt.timedelta(seconds=hold_seconds + secs)
 
     fleet = Fleet(
