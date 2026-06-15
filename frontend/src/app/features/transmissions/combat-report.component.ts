@@ -12,7 +12,7 @@ import { DatePipe } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { CombatReport, CombatRound } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { resourceIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
+import { rangeIcon, resourceIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
@@ -39,10 +39,10 @@ interface SideView {
 }
 
 /** Distanz-Band -> Label + Glyph (Doku 03b §6.1). */
-const BAND_META: Record<string, { label: string; glyph: string }> = {
-  near: { label: 'Nahkampf', glyph: '🔴' },
-  medium: { label: 'Mittel', glyph: '🟡' },
-  far: { label: 'Fernkampf', glyph: '🔵' },
+const BAND_META: Record<string, { key: string; label: string; glyph: string }> = {
+  near: { key: 'near', label: 'Nahkampf', glyph: '🔴' },
+  medium: { key: 'medium', label: 'Mittel', glyph: '🟡' },
+  far: { key: 'far', label: 'Fernkampf', glyph: '🔵' },
 };
 
 /**
@@ -83,7 +83,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
           </header>
 
           <div class="banner" [class]="'b-' + result()">
-            <span class="b-icon">{{ resultIcon() }}</span>
+            <span class="b-icon"><app-btn-icon [src]="resultIconSrc()" [glyph]="resultIcon()" [size]="24" /></span>
             <span class="b-text">{{ resultText() }}</span>
           </div>
 
@@ -155,7 +155,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
                 <div class="r-head">
                   <span class="r-no">@if (rd.ambush) {<app-btn-icon [src]="statusIcon('ambush')" glyph="🥷" [size]="14" /> Hinterhalt} @else {Runde {{ rd.round }}}</span>
                   @if (bandOf(rd); as b) {
-                    <span class="r-band">{{ b.glyph }} {{ b.label }}</span>
+                    <span class="r-band"><app-btn-icon [src]="rangeIcon(b.key)" [glyph]="b.glyph" [size]="14" /> {{ b.label }}</span>
                   }
                 </div>
                 <div class="fire">
@@ -286,6 +286,7 @@ export class CombatReportComponent {
   /** Asset-Pfad-Helfer fuers Template (Glyph-Fallback via app-btn-icon). */
   protected readonly statusIcon = statusIcon;
   protected readonly uiIcon = uiIcon;
+  protected readonly rangeIcon = rangeIcon;
 
   /** Lade-Modus: Report per ID vom Server holen (Postfach). */
   readonly reportId = input<string | null>(null);
@@ -345,6 +346,10 @@ export class CombatReportComponent {
     return { win: '🏆', loss: '☠️', draw: '🤝' }[this.result()];
   }
 
+  protected resultIconSrc(): string {
+    return { win: statusIcon('victory'), loss: statusIcon('defeat'), draw: statusIcon('draw') }[this.result()];
+  }
+
   protected resultText(): string {
     const r = this.reportData();
     if (!r) {
@@ -400,7 +405,7 @@ export class CombatReportComponent {
     return r.role === 'defender' ? [def, atk] : [atk, def];
   });
 
-  protected bandOf(rd: CombatRound): { label: string; glyph: string } | null {
+  protected bandOf(rd: CombatRound): { key: string; label: string; glyph: string } | null {
     return rd.distance ? BAND_META[rd.distance] ?? null : null;
   }
 

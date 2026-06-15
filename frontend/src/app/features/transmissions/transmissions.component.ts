@@ -5,7 +5,7 @@ import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Commander, DecisionChoice, Transmission } from '../../core/models/api.models';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { defenseIcon, missionIcon, navIcon, resourceIcon, shipIcon, statIcon, uiIcon } from '../../core/models/icon-assets';
+import { defenseIcon, missionIcon, navIcon, resourceIcon, shipIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import { transmissionStyles } from './transmission.styles';
 import { CombatReportComponent } from './combat-report.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
@@ -70,7 +70,7 @@ interface SpyIntelView {
         @for (t of visible(); track t.id) {
           <article class="card msg" [class.unread]="!t.read" [class.demand]="t.requires_decision">
             <div class="msg-head">
-              <span class="type-glyph">{{ typeGlyph(t) }}</span>
+              <span class="type-glyph"><app-btn-icon [src]="typeIconSrc(t)" [glyph]="typeGlyph(t)" [size]="16" /></span>
               <div class="msg-meta">
                 <div class="title-row">
                   <h3>{{ t.subject }}</h3>
@@ -90,7 +90,7 @@ interface SpyIntelView {
               <!-- Strukturierter Spionagebericht ----------------------------- -->
               <div class="intel">
                 <div class="intel-top">
-                  <span class="intel-target">{{ kindGlyph(intel.kind) }} {{ intel.name }}</span>
+                  <span class="intel-target"><app-btn-icon [src]="uiIcon(intel.kind === 'player' ? 'player' : 'npc')" [glyph]="kindGlyph(intel.kind)" [size]="14" /> {{ intel.name }}</span>
                   <span class="lvl-badge" [attr.data-lvl]="intel.level" title="Aufklaerungsstufe">
                     Stufe {{ intel.level }}/3
                   </span>
@@ -229,8 +229,8 @@ export class TransmissionsComponent {
   protected readonly onlyUnread = signal(false);
   protected readonly advisorBusy = signal(false);
   protected readonly filterTabs = computed(() => [
-    { key: 'all', label: 'Alle', glyph: '📨' },
-    { key: 'unread', label: 'Ungelesen', glyph: '●', count: this.state.unreadTransmissions() },
+    { key: 'all', label: 'Alle', glyph: '📨', icon: navIcon('mail') },
+    { key: 'unread', label: 'Ungelesen', glyph: '●', icon: statusIcon('transmission_unread'), count: this.state.unreadTransmissions() },
   ]);
   protected readonly deciding = signal<string | null>(null);
   protected readonly openReportId = signal<string | null>(null);
@@ -430,6 +430,26 @@ export class TransmissionsComponent {
         return '🛰️';
       default:
         return '📡';
+    }
+  }
+
+  typeIconSrc(t: Transmission): string | null {
+    if (t.requires_decision) {
+      return statusIcon('alert');
+    }
+    switch (t.type) {
+      case 'spy_report':
+        return missionIcon('spy');
+      case 'combat_report':
+        return missionIcon('attack');
+      case 'reaction':
+        return statusIcon('broadcast');
+      case 'big_moment':
+        return statusIcon('victory');
+      case 'system':
+        return statusIcon('transmission_unread');
+      default:
+        return statusIcon('transmission_unread');
     }
   }
 

@@ -26,7 +26,20 @@ import {
   PLANET_TYPE_META,
   metaFor,
 } from '../../core/models/display';
-import { navIcon, resourceIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
+import {
+  navIcon,
+  resourceIcon,
+  statIcon,
+  statusIcon,
+  uiIcon,
+  buildingIcon,
+  techIcon,
+  shipIcon,
+  defenseIcon,
+  missionIcon,
+  rankIcon,
+  planetIcon,
+} from '../../core/models/icon-assets';
 import {
   BuildQueueItem,
   BuildingState,
@@ -70,7 +83,7 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
     @if (planet(); as p) {
       <p class="muted sub">
-        {{ p.name }} · {{ planetType(p.planet_type).glyph }} {{ planetType(p.planet_type).label }} ·
+        {{ p.name }} · <app-btn-icon [src]="planetIcon(p.planet_type ?? 'normal')" [glyph]="planetType(p.planet_type).glyph" [size]="14" /> {{ planetType(p.planet_type).label }} ·
         Koordinaten [{{ p.galaxy }}:{{ p.system }}:{{ p.position }}] ·
         {{ p.temp_max }}°C · Felder {{ p.fields_used }}/{{ p.fields_max }}
         @if (moon(); as m) {
@@ -132,7 +145,7 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
             @for (c of state.commanders(); track c.id) {
               <a class="cmd-row" [routerLink]="['/commanders', c.id]">
                 <span class="cmd-name">
-                  {{ rank(c.rank).glyph }} {{ c.name }}
+                  <app-btn-icon [src]="rankIcon(c.rank)" [glyph]="rank(c.rank).glyph" [size]="14" /> {{ c.name }}
                   <span class="faint">· {{ spec(c.specialization).label }}</span>
                 </span>
                 <span class="cmd-morale" [class]="bandClass(c.morale)">
@@ -160,7 +173,7 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
             <div class="ops-label"><app-btn-icon [src]="navIcon('buildings')" glyph="🏗️" [size]="16" /> Bau</div>
             @if (activeBuild(); as b) {
               <div class="queue-row">
-                <span>{{ metaB(b.type).glyph }} {{ metaB(b.type).label }} → Stufe {{ b.level + 1 }}</span>
+                <span><app-btn-icon [src]="buildingIcon(b.type)" [glyph]="metaB(b.type).glyph" [size]="14" /> {{ metaB(b.type).label }} → Stufe {{ b.level + 1 }}</span>
                 <app-countdown [target]="b.upgrade_finishes_at" />
               </div>
             } @else {
@@ -174,7 +187,7 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
             <div class="ops-label"><app-btn-icon [src]="navIcon('research')" glyph="🔬" [size]="16" /> Forschung</div>
             @if (activeResearch(); as t) {
               <div class="queue-row">
-                <span>{{ metaT(t.type).glyph }} {{ metaT(t.type).label }} → Stufe {{ t.level + 1 }}</span>
+                <span><app-btn-icon [src]="techIcon(t.type)" [glyph]="metaT(t.type).glyph" [size]="14" /> {{ metaT(t.type).label }} → Stufe {{ t.level + 1 }}</span>
                 <app-countdown [target]="t.finishes_at" />
               </div>
             } @else {
@@ -189,7 +202,7 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
             @if (shipyardQueue().length) {
               @for (q of shipyardQueue(); track $index) {
                 <div class="queue-row">
-                  <span>{{ metaShip(q).glyph }} {{ q.count }}× {{ metaShip(q).label }}</span>
+                  <span><app-btn-icon [src]="q.category === 'defense' ? defenseIcon(q.type) : shipIcon(q.type)" [glyph]="metaShip(q).glyph" [size]="14" /> {{ q.count }}× {{ metaShip(q).label }}</span>
                   <app-countdown [target]="q.finishes_at" />
                 </div>
               }
@@ -206,7 +219,7 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
             @for (f of activeFleets(); track f.id) {
               <div class="queue-row">
                 <span>
-                  {{ metaM(f.mission).glyph }} {{ metaM(f.mission).label }}
+                  <app-btn-icon [src]="missionIcon(f.mission)" [glyph]="metaM(f.mission).glyph" [size]="14" /> {{ metaM(f.mission).label }}
                   <span class="faint">→ [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</span>
                   <span class="chip">{{ statusLabel(f.status) }}</span>
                 </span>
@@ -275,6 +288,13 @@ export class DashboardComponent {
   protected readonly statIcon = statIcon;
   protected readonly statusIcon = statusIcon;
   protected readonly uiIcon = uiIcon;
+  protected readonly buildingIcon = buildingIcon;
+  protected readonly techIcon = techIcon;
+  protected readonly shipIcon = shipIcon;
+  protected readonly defenseIcon = defenseIcon;
+  protected readonly missionIcon = missionIcon;
+  protected readonly rankIcon = rankIcon;
+  protected readonly planetIcon = planetIcon;
 
   protected readonly planet = this.state.activePlanet;
 

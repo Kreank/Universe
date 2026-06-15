@@ -4,7 +4,7 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { PlanetUnit, Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
 import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_META, metaFor } from '../../core/models/display';
-import { defenseIcon, navIcon, rangeIcon, resourceIcon, shipIcon, weaponIcon } from '../../core/models/icon-assets';
+import { defenseIcon, missionIcon, navIcon, rangeIcon, resourceIcon, shipIcon, statIcon, statusIcon, uiIcon, weaponIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { DetailPopupComponent, DetailTag } from '../../shared/components/detail-popup.component';
@@ -26,15 +26,17 @@ interface ShipGroup {
   key: string;
   label: string;
   glyph: string;
+  icon: string | null;
   ships: ShipOption[];
 }
 
 /** Schiffs-Kategorien: zivile Flotte vs. Kampfflotte. */
-const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string[] }[] = [
+const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string | null; types: string[] }[] = [
   {
     key: 'civil',
     label: 'Zivile Schiffe',
     glyph: '🚚',
+    icon: missionIcon('transport'),
     types: [
       'small_cargo',
       'large_cargo',
@@ -51,6 +53,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
     key: 'combat',
     label: 'Kampfschiffe',
     glyph: '⚔️',
+    icon: statusIcon('attack'),
     types: [
       'light_fighter',
       'heavy_fighter',
@@ -66,6 +69,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
     key: 'roles',
     label: 'Rollen-Schiffe',
     glyph: '🎯',
+    icon: uiIcon('target'),
     types: [
       'interceptor',
       'escort_frigate',
@@ -288,13 +292,13 @@ export class ShipyardComponent {
       const rows = cat.types.map((t) => byType.get(t)).filter((s): s is ShipOption => !!s);
       rows.forEach((s) => used.add(s.type));
       if (rows.length) {
-        groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, ships: rows });
+        groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, icon: cat.icon, ships: rows });
       }
     }
     // Etwaige unkategorisierte Schiffe als "Sonstiges".
     const rest = ships.filter((s) => !used.has(s.type));
     if (rest.length) {
-      groups.push({ key: 'other', label: 'Sonstiges', glyph: '🚀', ships: rest });
+      groups.push({ key: 'other', label: 'Sonstiges', glyph: '🚀', icon: navIcon('fleet'), ships: rest });
     }
     return groups;
   });
@@ -302,10 +306,10 @@ export class ShipyardComponent {
   // -- Reiter: Schiff-Kategorien + Verteidigung --
   protected readonly activeTab = signal<string>('');
   protected readonly tabDefs = computed(() => {
-    const tabs = this.shipGroups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, count: g.ships.length }));
+    const tabs = this.shipGroups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, icon: g.icon, count: g.ships.length }));
     const defenses = this.data()?.defenses ?? [];
     if (defenses.length) {
-      tabs.push({ key: 'defense', label: 'Verteidigung', glyph: '🛡️', count: defenses.length });
+      tabs.push({ key: 'defense', label: 'Verteidigung', glyph: '🛡️', icon: statIcon('shield'), count: defenses.length });
     }
     return tabs;
   });
@@ -369,12 +373,12 @@ export class ShipyardComponent {
       const w = this.weaponMeta(s.weapon_type);
       tags.push({ glyph: w.glyph, label: w.label, tip: w.vs, icon: weaponIcon(s.weapon_type) });
     } else {
-      tags.push({ glyph: '🛡', label: 'Unbewaffnet' });
+      tags.push({ glyph: '🛡', label: 'Unbewaffnet', icon: statIcon('shield') });
     }
     if (s.drive === 0) {
-      tags.push({ glyph: '⚓', label: 'stationär' });
+      tags.push({ glyph: '⚓', label: 'stationär', icon: statusIcon('stranded') });
     } else if (s.drive) {
-      tags.push({ glyph: '⚙', label: 'Antrieb ' + s.drive });
+      tags.push({ glyph: '⚙', label: 'Antrieb ' + s.drive, icon: statIcon('speed') });
     }
     return tags;
   }

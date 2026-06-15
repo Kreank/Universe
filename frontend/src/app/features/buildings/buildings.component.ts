@@ -3,7 +3,7 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { BuildingOption, BuildingState, BuildingsResponse } from '../../core/models/api.models';
 import { BUILDING_META, metaFor } from '../../core/models/display';
-import { resourceIcon, uiIcon } from '../../core/models/icon-assets';
+import { missionIcon, navIcon, resourceIcon, statIcon, uiIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { DetailPopupComponent } from '../../shared/components/detail-popup.component';
@@ -26,17 +26,18 @@ interface BuildingGroup {
   key: string;
   label: string;
   glyph: string;
+  icon: string | null;
   rows: BuildingRow[];
 }
 
 /** Kategorien gemaess Wunsch: Rohstoffe, Energie, Anlagen, Lager, Kommando. */
-const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string[] }[] = [
-  { key: 'resource', label: 'Rohstoff-Gebaeude', glyph: '⛏️', types: ['metal_mine', 'crystal_mine', 'deuterium_synth'] },
-  { key: 'energy', label: 'Energie', glyph: '⚡', types: ['solar_plant', 'fusion_reactor'] },
-  { key: 'facility', label: 'Anlagen', glyph: '🏭', types: ['robot_factory', 'shipyard', 'research_lab', 'nanite_factory'] },
-  { key: 'storage', label: 'Lager', glyph: '📦', types: ['metal_storage', 'crystal_storage', 'deuterium_tank'] },
-  { key: 'command', label: 'Kommando', glyph: '🎖️', types: ['command_academy', 'command_center'] },
-  { key: 'exotic', label: 'Exotisch', glyph: '🌌', types: ['antimatter_collector', 'dark_matter_condenser'] },
+const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string | null; types: string[] }[] = [
+  { key: 'resource', label: 'Rohstoff-Gebaeude', glyph: '⛏️', icon: missionIcon('mine'), types: ['metal_mine', 'crystal_mine', 'deuterium_synth'] },
+  { key: 'energy', label: 'Energie', glyph: '⚡', icon: resourceIcon('energy'), types: ['solar_plant', 'fusion_reactor'] },
+  { key: 'facility', label: 'Anlagen', glyph: '🏭', icon: navIcon('buildings'), types: ['robot_factory', 'shipyard', 'research_lab', 'nanite_factory'] },
+  { key: 'storage', label: 'Lager', glyph: '📦', icon: statIcon('cargo'), types: ['metal_storage', 'crystal_storage', 'deuterium_tank'] },
+  { key: 'command', label: 'Kommando', glyph: '🎖️', icon: navIcon('command'), types: ['command_academy', 'command_center'] },
+  { key: 'exotic', label: 'Exotisch', glyph: '🌌', icon: navIcon('megastructures'), types: ['antimatter_collector', 'dark_matter_condenser'] },
 ];
 
 @Component({
@@ -240,13 +241,13 @@ export class BuildingsComponent {
       const rows = cat.types.map((t) => byType.get(t)).filter((r): r is BuildingRow => !!r);
       rows.forEach((r) => used.add(r.type));
       if (rows.length) {
-        groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, rows });
+        groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, icon: cat.icon, rows });
       }
     }
     // Etwaige unkategorisierte Gebaeude (z. B. neue Typen) als "Sonstiges".
     const rest = this.rows().filter((r) => !used.has(r.type));
     if (rest.length) {
-      groups.push({ key: 'other', label: 'Sonstiges', glyph: '🏗️', rows: rest });
+      groups.push({ key: 'other', label: 'Sonstiges', glyph: '🏗️', icon: null, rows: rest });
     }
     return groups;
   });
@@ -254,7 +255,7 @@ export class BuildingsComponent {
   // -- Reiter (Kategorie-Tabs) --
   protected readonly activeTab = signal<string>('resource');
   protected readonly tabDefs = computed(() =>
-    this.groups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, count: g.rows.length })),
+    this.groups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, icon: g.icon, count: g.rows.length })),
   );
   protected readonly activeGroup = computed(() => {
     const gs = this.groups();

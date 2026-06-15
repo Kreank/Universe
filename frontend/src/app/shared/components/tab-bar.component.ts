@@ -1,9 +1,12 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { BtnIconComponent } from './btn-icon.component';
 
 export interface TabDef {
   key: string;
   label: string;
   glyph?: string;
+  /** Optionaler Asset-Pfad fuers Tab-Icon (faellt via app-btn-icon auf ``glyph`` zurueck). */
+  icon?: string | null;
   count?: number | null;
 }
 
@@ -14,6 +17,7 @@ export interface TabDef {
 @Component({
   selector: 'app-tab-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [BtnIconComponent],
   template: `
     <div class="tab-bar" role="tablist">
       @for (t of tabs(); track t.key) {
@@ -25,7 +29,9 @@ export interface TabDef {
           [attr.aria-selected]="t.key === active()"
           (click)="select.emit(t.key)"
         >
-          @if (t.glyph) { <span class="tab-glyph">{{ t.glyph }}</span> }
+          @if (t.icon || t.glyph) {
+            <span class="tab-glyph"><app-btn-icon [src]="t.icon ?? null" [glyph]="t.glyph ?? '◆'" [size]="16" /></span>
+          }
           {{ t.label }}
           @if (t.count != null) { <span class="tab-count">{{ t.count }}</span> }
         </button>

@@ -16,7 +16,7 @@ import {
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
-import { abilityCategoryIcon, rankIcon, specIcon, statusIcon, traitIcon, uiIcon } from '../../core/models/icon-assets';
+import { abilityCategoryIcon, rankIcon, specIcon, statIcon, statusIcon, traitIcon, uiIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { commanderDetailStyles } from './commander-detail.styles';
@@ -58,7 +58,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
               <div class="bonus-chips">
                 @for (b of c.bonuses; track b.stat + b.target) {
                   <span class="chip bonus tip" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
-                    {{ statGlyph(b.stat) }} {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
+                    <app-btn-icon [src]="statIcon(b.stat)" [glyph]="statGlyph(b.stat)" [size]="14" /> {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
                   </span>
                 }
               </div>
@@ -92,7 +92,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
 
           <!-- Charakter-Zucht (Trait-Reroll/Ersatz, Ressourcen-Kosten) -->
           <div class="trait-train">
-            <div class="panel-title">🧬 Charakter-Zucht</div>
+            <div class="panel-title"><app-btn-icon [src]="uiIcon('genetics')" glyph="🧬" [size]="16" /> Charakter-Zucht</div>
             <button class="btn btn-ghost btn-sm" type="button" (click)="reroll()">Traits neu würfeln</button>
             <div class="replace-row">
               <select [ngModel]="desiredTrait()" (ngModelChange)="desiredTrait.set($event)">
@@ -421,6 +421,7 @@ export class CommanderDetailComponent {
   protected readonly rankIcon = rankIcon;
   protected readonly specIcon = specIcon;
   protected readonly traitIcon = traitIcon;
+  protected readonly statIcon = statIcon;
   protected readonly statusIcon = statusIcon;
   protected readonly uiIcon = uiIcon;
   /** Blendet ein nicht ladbares Inline-Icon aus (Label bleibt sichtbar). */

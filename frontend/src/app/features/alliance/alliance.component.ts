@@ -29,7 +29,7 @@ import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { TabBarComponent, TabDef } from '../../shared/components/tab-bar.component';
-import { navIcon, resourceIcon, statIcon } from '../../core/models/icon-assets';
+import { navIcon, resourceIcon, statIcon, techIcon, uiIcon } from '../../core/models/icon-assets';
 
 /** Lesbare Label + Glyph der vier Forschungs-Zweige (Reihenfolge = Anzeige). */
 const TREE_ORDER = ['piracy', 'economy', 'trade', 'protection'] as const;
@@ -743,10 +743,10 @@ export class AllianceComponent implements OnInit {
   });
 
   protected readonly mainTabs = computed<TabDef[]>(() => [
-    { key: 'overview', label: 'Übersicht', glyph: '👥' },
-    { key: 'pool', label: 'Pool', glyph: '🏦' },
-    { key: 'research', label: 'Forschung', glyph: '🔬' },
-    { key: 'station', label: 'Station', glyph: '🛰' },
+    { key: 'overview', label: 'Übersicht', glyph: '👥', icon: navIcon('alliance') },
+    { key: 'pool', label: 'Pool', glyph: '🏦', icon: uiIcon('pool') },
+    { key: 'research', label: 'Forschung', glyph: '🔬', icon: navIcon('research') },
+    { key: 'station', label: 'Station', glyph: '🛰', icon: 'assets/img/alliance/alliance_station.png' },
   ]);
 
   protected readonly depTotal = computed(() => this.depMetal() + this.depCrystal() + this.depDeut());
@@ -860,6 +860,7 @@ export class AllianceComponent implements OnInit {
       key: k,
       label: a.research_catalog[k].label,
       glyph: TREE_GLYPH[k],
+      icon: techIcon('alliance_' + k),
     }));
   }
 

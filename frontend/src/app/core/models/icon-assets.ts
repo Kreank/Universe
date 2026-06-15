@@ -31,6 +31,10 @@ export function defenseIcon(key: string): string {
   return `assets/img/defenses/${key}.png`;
 }
 
+export function buildingIcon(key: string): string {
+  return `assets/img/buildings/${key}.png`;
+}
+
 export function traitIcon(key: string): string {
   return `assets/img/traits/${key}.png`;
 }

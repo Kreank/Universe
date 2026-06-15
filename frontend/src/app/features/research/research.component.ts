@@ -26,15 +26,17 @@ interface ResearchGroup {
   key: string;
   label: string;
   glyph: string;
+  icon: string | null;
   rows: ResearchRow[];
 }
 
 /** Kategorien des Techbaums: Antriebe, Kampftechnik, Fuehrung. */
-const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string[] }[] = [
+const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string | null; types: string[] }[] = [
   {
     key: 'drive',
     label: 'Antrieb & Reichweite',
     glyph: '🚀',
+    icon: techIcon('hyperspace_drive'),
     types: [
       'energy_tech',
       'combustion_drive',
@@ -48,6 +50,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
     key: 'combat',
     label: 'Kampftechnik',
     glyph: '⚔️',
+    icon: techIcon('weapons_tech'),
     types: [
       'weapons_tech',
       'shield_tech',
@@ -64,6 +67,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
     key: 'command',
     label: 'Führung & Crew',
     glyph: '🎖️',
+    icon: techIcon('command_doctrine'),
     types: [
       'command_doctrine',
       'logistics_tech',
@@ -78,12 +82,14 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
     key: 'economy',
     label: 'Wirtschaft & Expansion',
     glyph: '⛏️',
+    icon: techIcon('mining_efficiency'),
     types: ['mining_efficiency', 'extraction_tech', 'storage_tech', 'astrophysics', 'expedition_tech'],
   },
   {
     key: 'endgame',
     label: 'Endgame',
     glyph: '🌌',
+    icon: techIcon('research_network'),
     types: [
       'research_network',
       'terraforming',
@@ -269,13 +275,13 @@ export class ResearchComponent {
       const rows = cat.types.map((t) => byType.get(t)).filter((r): r is ResearchRow => !!r);
       rows.forEach((r) => used.add(r.type));
       if (rows.length) {
-        groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, rows });
+        groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, icon: cat.icon, rows });
       }
     }
     // Etwaige unkategorisierte Technologien als "Sonstiges".
     const rest = this.rows().filter((r) => !used.has(r.type));
     if (rest.length) {
-      groups.push({ key: 'other', label: 'Sonstiges', glyph: '🔬', rows: rest });
+      groups.push({ key: 'other', label: 'Sonstiges', glyph: '🔬', icon: navIcon('research'), rows: rest });
     }
     return groups;
   });
@@ -286,7 +292,7 @@ export class ResearchComponent {
   // -- Reiter (Kategorie-Tabs) --
   protected readonly activeTab = signal<string>('drive');
   protected readonly tabDefs = computed(() =>
-    this.groups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, count: g.rows.length })),
+    this.groups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, icon: g.icon, count: g.rows.length })),
   );
   protected readonly activeGroup = computed(() => {
     const gs = this.groups();

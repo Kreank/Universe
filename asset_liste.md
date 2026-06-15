@@ -453,7 +453,7 @@ Es gibt **zwei** Asset-Wurzeln:
 | ✅ | ability | `icons/ui/ability.png` | PNG transparent, 256×256 | **Aktive Fähigkeit** (löst ⚡ in „Fähigkeiten"-Kontext ab — Commander-Abilities, Versand „Fähigkeiten scharf"). Energie-/Funken-Sigille (klar verschieden vom Energie-Ressourcen-Blitz `resources/energy`), cyan. |
 | ✅ | morale | `icons/ui/morale.png` | PNG transparent, 256×256 | **Crew-Moral** (löst 🎖️ in „Crew-Moral" ab — Dashboard). Stimmungs-/Herz-puls- oder Banner-Symbol einer Crew, cyan. Unterscheidbar vom Kommando-Nav-Icon. |
 | ✅ | governor | `icons/ui/governor.png` | PNG transparent, 256×256 | **Gouverneur** (löst 🏛️ ab — Commander-Detail „Gouverneur": Kommandeur verwaltet einen Planeten). Verwaltungs-/Amts-Silhouette (Säulenbau + Stern/Rang), cyan. |
-| ⬜ | genetics | `icons/ui/genetics.png` | PNG transparent, 256×256 | **Charakter-Zucht** (löst 🧬 ab — Commander-Detail „Charakter-Zucht": Trait-Vererbung). DNA-/Doppelhelix-Strang, cyan. |
+| ✅ | genetics | `icons/ui/genetics.png` | PNG transparent, 256×256 | **Charakter-Zucht** (löst 🧬 ab — Commander-Detail „Charakter-Zucht": Trait-Vererbung). DNA-/Doppelhelix-Strang, cyan. |
 | ✅ | player | `icons/ui/player.png` | PNG transparent, 256×256 | **Spieler/Pilot** (löst 🧑‍🚀 ab — Handelspartner-Name). Helm-/Pilot-Silhouette (neutral), cyan Visier-Glanz. |
 | ✅ | rapidfire | `icons/ui/rapidfire.png` | PNG transparent, 256×256 | **Schnellfeuer** (löst 💥 im Detail-Popup „Schnellfeuer gegen" ab). Mehrfach-Mündungsfeuer-Salve/Burst, cyan-heiße Spitzen. |
 
@@ -470,6 +470,27 @@ Es gibt **zwei** Asset-Wurzeln:
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
 | ✅ | stat_hull | `icons/spec/stat_hull.png` | PNG transparent, 256×256 (Stil = `icons/spec/stat_*`) | **Hülle/HP** (löst ❤ ab — Allianz-Stations-Hülle, Schiffs-HP im Detail-Popup). Gepanzerte Rumpf-/Hüllen-Platte mit Niet/Integritäts-Glyph, cyan. Reiht sich in `stat_attack/stat_shield/stat_cargo/stat_speed/stat_fuel/stat_energy` ein. |
+
+### Welle 2 — TS-Glyph-Layer (2026-06-15): daten-getriebene Icons (Kampfbericht/Funk/Fähigkeiten)
+
+> Zweite Audit-Welle: Emojis aus TS-Datenstrukturen (`resultIcon`, `typeGlyph`, `catGlyph`, Tab-Defs),
+> die als Tabs/Chips/Labels rendern. Wo ein Asset existierte, ist es bereits verdrahtet (inkl. Reuse:
+> Allianz-Bäume `tech/alliance_*`, Reichweite `range/*`, Stat-Glyphs `icons/spec/stat_*`, Werft-Kategorien
+> via `missions/*`+`ui/target`, Funk-Typen via `missions/*`+`status/*`, Gebäude/Schiff/Tech-Queues via
+> `buildings|ships|defenses|tech/*`). Die folgenden fehlten noch. Stil-Anker wie oben.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | victory | `icons/status/victory.png` | PNG transparent, 256×256 | **Sieg** (löst 🏆 ab — Kampfbericht-Ergebnis, „Großmoment"-Funk). Sieges-Sigille (Lorbeer/Stern-Triumph, KEIN irdischer Pokal), cyan-leuchtend, positiv. |
+| ✅ | defeat | `icons/status/defeat.png` | PNG transparent, 256×256 | **Niederlage** (löst ☠️ ab — Kampfbericht-Ergebnis). Zerstörtes-Schiff-/Totenkopf-Sigille, gedämpft-warnend (dunkel + magenta Rand). Paarig zu `victory`. |
+| ✅ | draw | `icons/status/draw.png` | PNG transparent, 256×256 | **Unentschieden** (löst 🤝 ab — Kampfbericht-Ergebnis). Patt-/Gleichgewicht-Sigille (gekreuzte Klingen im Gleichstand / Waage), neutral cyan. |
+| ✅ | broadcast | `icons/status/broadcast.png` | PNG transparent, 256×256 | **Funkspruch/Reaktion** (löst 🎙️ ab — Funk-Nachrichtentyp). Sende-/Funk-Welle (Antennen-/Mikrofon-Puls), cyan. Unterscheidbar von `transmission_unread` (Postfach). |
+| ✅ | trait_category_combat | `icons/traits/trait_category_combat.png` | PNG transparent, 256×256 (Stil = `icons/traits/trait_category_*`) | **Fähigkeits-Kategorie Kampf** (löst ⚔ ab). Reiht sich in vorhandene `trait_category_admin/general` ein — gekreuzte Klingen, cyan. |
+| ✅ | trait_category_logistics | `icons/traits/trait_category_logistics.png` | PNG transparent, 256×256 (Stil wie oben) | **Fähigkeits-Kategorie Logistik** (löst 📦 ab). Fracht-/Versorgungs-Symbol, cyan. |
+| ✅ | trait_category_spy | `icons/traits/trait_category_spy.png` | PNG transparent, 256×256 (Stil wie oben) | **Fähigkeits-Kategorie Spionage** (löst 🛰️ ab). Aufklärungs-/Sonden-Symbol, cyan. |
+| ✅ | trait_category_research | `icons/traits/trait_category_research.png` | PNG transparent, 256×256 (Stil wie oben) | **Fähigkeits-Kategorie Forschung** (löst 🔬 ab). Wissenschafts-/Datensymbol, cyan. |
+| ✅ | npc | `icons/ui/npc.png` | PNG transparent, 256×256 | **NPC-Imperium** (löst 🤖 ab — Funk-Absender-/Belegungs-Kennung „NPC" vs. Spieler). Fremd-/KI-Fraktions-Silhouette (kantiger Droiden-/Alien-Kopf), cyan. Paarig zum vorhandenen `ui/player.png`. |
+| ✅ | pool | `icons/ui/pool.png` | PNG transparent, 256×256 | **Allianz-Pool** (löst 🏦 ab — Allianz-Tab „Pool", gemeinsamer Ressourcenspeicher). Tresor-/Sammelspeicher mit Erz-/Kristall-Andeutung (kein irdisches Bankgebäude), cyan. |
 
 ---
 

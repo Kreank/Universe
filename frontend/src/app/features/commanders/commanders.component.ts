@@ -15,7 +15,7 @@ import {
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
-import { navIcon, rankIcon, specIcon, statusIcon, traitIcon } from '../../core/models/icon-assets';
+import { navIcon, rankIcon, specIcon, statIcon, statusIcon, traitIcon } from '../../core/models/icon-assets';
 import { commanderStyles } from './commander.styles';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
@@ -110,7 +110,7 @@ interface GradesConfig {
           <div class="bonus-chips">
             @for (b of preview(); track b.stat + b.target) {
               <span class="chip bonus tip" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
-                {{ statGlyph(b.stat) }} {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
+                <app-btn-icon [src]="statIcon(b.stat)" [glyph]="statGlyph(b.stat)" [size]="14" /> {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
               </span>
             } @empty {
               <span class="faint small">—</span>
@@ -188,7 +188,7 @@ interface GradesConfig {
                   <div class="bonus-chips">
                     @for (b of c.bonuses; track b.stat + b.target) {
                       <span class="chip bonus tip" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
-                        {{ statGlyph(b.stat) }} {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
+                        <app-btn-icon [src]="statIcon(b.stat)" [glyph]="statGlyph(b.stat)" [size]="14" /> {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
                       </span>
                     }
                   </div>
@@ -334,6 +334,7 @@ export class CommandersComponent {
   protected readonly specIcon = specIcon;
   protected readonly traitIcon = traitIcon;
   protected readonly navIcon = navIcon;
+  protected readonly statIcon = statIcon;
   protected readonly statusIcon = statusIcon;
   /** Blendet ein nicht ladbares Inline-Icon aus (Label bleibt sichtbar). */
   hideImg(event: Event): void {
