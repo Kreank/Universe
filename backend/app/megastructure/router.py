@@ -10,7 +10,7 @@ from app.megastructure.schemas import (
     MegastructureListOut,
     MegastructureOptionOut,
 )
-from app.megastructure.service import options, start_build
+from app.megastructure.service import homeworld_exotics, options, start_build
 from app.platform.db import get_session
 from app.platform.models import Player
 from app.platform.security import get_current_player
@@ -24,9 +24,10 @@ async def get_megastructures(
     session: AsyncSession = Depends(get_session),
 ) -> MegastructureListOut:
     opts = await options(session, player)
+    exo = await homeworld_exotics(session, player.id)
     return MegastructureListOut(
-        dark_matter=float(player.dark_matter or 0),
-        antimatter=float(player.antimatter or 0),
+        dark_matter=exo["dark_matter"],
+        antimatter=exo["antimatter"],
         structures=[
             MegastructureOptionOut(**{**o, "cost": MegaCostOut(**o["cost"])}) for o in opts
         ],

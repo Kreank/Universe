@@ -231,19 +231,15 @@ async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: in
         "crystal": round(unit_cost.get("crystal", 0) * count * cost_mult),
         "deuterium": round(unit_cost.get("deuterium", 0) * count * cost_mult),
     }
-    # Exotische Kosten (kontoweit auf dem Spieler): Affordability VOR dem Abbuchen normaler Ressourcen.
-    exotic_cost = {k: float(unit_cost.get(k, 0)) * count for k in EXOTIC_KEYS if unit_cost.get(k, 0)}
-    if exotic_cost:
-        if player is None:
-            raise RuntimeError("Exotische Kosten nur fuer Schiffe")
-        for res, amt in exotic_cost.items():
-            if float(getattr(player, res, 0) or 0) + 1e-6 < amt:
-                raise RuntimeError(f"Nicht genug {res}")
+    # Exoten (pro Planet, 2026-06-15): Capstone-Schiffe zahlen ihre Exoten-Kosten VOM BAU-PLANETEN,
+    # gemeinsam mit metal/crystal (atomar via spend_resources) — nicht mehr kontoweit.
+    for k in EXOTIC_KEYS:
+        amt = float(unit_cost.get(k, 0)) * count
+        if amt:
+            total_cost[k] = amt
 
     if not await spend_resources(session, planet, total_cost):
-        raise RuntimeError("Nicht genug Ressourcen")
-    for res, amt in exotic_cost.items():
-        setattr(player, res, float(getattr(player, res, 0) or 0) - amt)
+        raise RuntimeError("Nicht genug Ressourcen (inkl. Exoten am Bau-Planeten)")
 
     secs_each = max(1, int(round(build_seconds_each(unit_cost, blevels.get("shipyard", 0), blevels.get("nanite_factory", 0)) * time_mult)))
     # Serielle Werft-Schlange (OGame): EINE Werft pro Planet baut nacheinander. Der neue Auftrag

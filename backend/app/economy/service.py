@@ -385,10 +385,10 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
             "capacity": round(cap, 2),
         }
 
-    # --- Exotische Materie (kontoweit): Lazy-Akkumulator je Planet -> aufs Konto auskehren -------
-    # Pro Exo-Mine fuehrt der Planet eine Resource-Zeile (rate + last_updated). Bei jedem Refresh:
-    # ueber das Intervall mit der ALTEN Rate akkumulieren, dem Player gutschreiben, Zeile auf 0
-    # zuruecksetzen und die NEUE Rate setzen. KEIN Cap (exotisch ist kontoweit, kein Lager).
+    # --- Exotische Materie (PRO PLANET, wie metal/crystal — KEIN Sweep aufs Konto mehr) ----------
+    # Lazy-Akkumulator je Planet (amount + rate + last_updated), UNCAPPED (kein Lagergebaeude).
+    # Bewusste Design-Entscheidung 2026-06-15: Exoten bleiben am Produktions-Planeten, muessen
+    # transportiert werden und sind erbeutbar (Spannung) — nicht mehr kontoweit-global.
     exotic_rows = (await session.execute(
         select(Resource).where(
             Resource.planet_id == planet.id,
@@ -397,32 +397,23 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     )).scalars().all()
     exotic_by_type = {r.type: r for r in exotic_rows}
     exotic_out: dict[str, dict] = {}
-    player = None
     for key in EXOTIC_KEYS:
         new_rate = float(new_rates.get(key, 0.0))
         row = exotic_by_type.get(key)
         if row is None:
             if new_rate <= 0:
                 continue  # nie produziert -> keine Zeile noetig
-            # Erstkontakt: keine Vergangenheits-Produktion gutschreiben, nur Rate verankern.
             session.add(Resource(planet_id=planet.id, type=key, amount=0.0, rate=new_rate, last_updated=now))
-            exotic_out[key] = {"rate": round(new_rate, 4)}
+            exotic_out[key] = {"amount": 0.0, "rate": round(new_rate, 4)}
             continue
         last = row.last_updated or now
         if last.tzinfo is None:
             last = last.replace(tzinfo=dt.timezone.utc)
         dt_hours = max(0.0, (now - last).total_seconds() / 3600.0)
-        earned = max(0.0, float(row.amount or 0.0) + float(row.rate or 0.0) * dt_hours)
-        if earned > 0:
-            if player is None:
-                from app.platform.models import Player
-                player = await session.get(Player, planet.player_id)
-            if player is not None:
-                setattr(player, key, float(getattr(player, key, 0) or 0) + earned)
-        row.amount = 0.0
+        row.amount = max(0.0, float(row.amount or 0.0) + float(row.rate or 0.0) * dt_hours)
         row.rate = new_rate
         row.last_updated = now
-        exotic_out[key] = {"rate": round(new_rate, 4)}
+        exotic_out[key] = {"amount": round(row.amount, 2), "rate": round(new_rate, 4)}
     if exotic_out:
         result["exotic"] = exotic_out
 
@@ -431,24 +422,26 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
 
 
 async def spend_resources(session: AsyncSession, planet: Planet, cost: dict[str, float]) -> bool:
-    """Versucht, ``cost`` abzuziehen. Aktualisiert zuerst lazy. Gibt False zurueck, wenn
-    nicht leistbar (es wird dann NICHTS abgezogen)."""
+    """Versucht, ``cost`` abzuziehen (metal/crystal/deuterium UND Exoten antimatter/dark_matter).
+    Aktualisiert zuerst lazy. Gibt False zurueck, wenn nicht leistbar (dann wird NICHTS abgezogen).
+    Exoten sind pro Planet (kein Konto mehr); fehlende Exoten-Zeile = 0."""
     await refresh_resources(session, planet)
+    keys = RESOURCE_KEYS + EXOTIC_KEYS
     rows = (await session.execute(
         select(Resource).where(
             Resource.planet_id == planet.id,
-            Resource.type.in_(RESOURCE_KEYS),
+            Resource.type.in_(keys),
         )
     )).scalars().all()
     by_type = {r.type: r for r in rows}
-    for key in RESOURCE_KEYS:
+    for key in keys:
         need = float(cost.get(key, 0))
         have = by_type[key].amount if key in by_type else 0.0
         if have + 1e-6 < need:
             return False
-    for key in RESOURCE_KEYS:
+    for key in keys:
         need = float(cost.get(key, 0))
-        if need:
+        if need and key in by_type:
             by_type[key].amount -= need
     return True
 
@@ -468,7 +461,7 @@ async def add_resources(session: AsyncSession, planet: Planet, gain: dict[str, f
     rows = (await session.execute(
         select(Resource).where(
             Resource.planet_id == planet.id,
-            Resource.type.in_(RESOURCE_KEYS),
+            Resource.type.in_(RESOURCE_KEYS + EXOTIC_KEYS),
         )
     )).scalars().all()
     by_type = {r.type: r for r in rows}
@@ -476,3 +469,13 @@ async def add_resources(session: AsyncSession, planet: Planet, gain: dict[str, f
         amount = float(gain.get(key, 0))
         if amount and key in by_type:
             by_type[key].amount = min(capacities[key], by_type[key].amount + amount)
+    # Exoten: UNCAPPED gutschreiben (kein Lagergebaeude), Zeile bei Bedarf anlegen.
+    for key in EXOTIC_KEYS:
+        amount = float(gain.get(key, 0))
+        if amount <= 0:
+            continue
+        row = by_type.get(key)
+        if row is not None:
+            row.amount = float(row.amount or 0) + amount
+        else:
+            session.add(Resource(planet_id=planet.id, type=key, amount=amount, rate=0.0))

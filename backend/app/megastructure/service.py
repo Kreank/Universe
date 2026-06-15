@@ -101,10 +101,11 @@ async def options(session: AsyncSession, player) -> list[dict]:
         level = levels.get(mtype, 0)
         maxed = level >= int(cfg.get("max_level", 99))
         cost = stage_cost(cfg, level)
+        exo = (res or {}).get("exotic", {})
         can_afford = res is not None and not maxed and all(
             res[r]["amount"] + 1e-6 >= cost.get(r, 0) for r in ("metal", "crystal", "deuterium")
-        ) and float(player.dark_matter or 0) + 1e-6 >= cost.get("dark_matter", 0) \
-            and float(player.antimatter or 0) + 1e-6 >= cost.get("antimatter", 0)
+        ) and float(exo.get("dark_matter", {}).get("amount", 0)) + 1e-6 >= cost.get("dark_matter", 0) \
+            and float(exo.get("antimatter", {}).get("amount", 0)) + 1e-6 >= cost.get("antimatter", 0)
         out.append({
             "type": mtype,
             "name": cfg.get("name", mtype),
@@ -126,6 +127,20 @@ async def options(session: AsyncSession, player) -> list[dict]:
     return out
 
 
+async def homeworld_exotics(session: AsyncSession, player_id: uuid.UUID) -> dict[str, float]:
+    """Exoten-Bestand des Heimatplaneten (Megastrukturen zahlen von dort). {dark_matter, antimatter}."""
+    home = await _homeworld(session, player_id)
+    if home is None:
+        return {"dark_matter": 0.0, "antimatter": 0.0}
+    from app.economy.service import refresh_resources
+    res = await refresh_resources(session, home)
+    exo = res.get("exotic", {})
+    return {
+        "dark_matter": float(exo.get("dark_matter", {}).get("amount", 0)),
+        "antimatter": float(exo.get("antimatter", {}).get("amount", 0)),
+    }
+
+
 async def start_build(session: AsyncSession, player, mtype: str) -> Megastructure:
     """Startet die nächste Ausbaustufe einer Megastruktur (Anti-Snowball: nur 1 Projekt)."""
     cfg = _catalog().get(mtype)
@@ -144,20 +159,13 @@ async def start_build(session: AsyncSession, player, mtype: str) -> Megastructur
         raise RuntimeError("Hoechststufe erreicht")
 
     cost = stage_cost(cfg, level)
-    dm_cost = float(cost.get("dark_matter", 0))
-    am_cost = float(cost.get("antimatter", 0))
-    if float(player.dark_matter or 0) + 1e-6 < dm_cost:
-        raise RuntimeError("Nicht genug Dunkle Materie")
-    if float(player.antimatter or 0) + 1e-6 < am_cost:
-        raise RuntimeError("Nicht genug Antimaterie")
     home = await _homeworld(session, player.id)
     if home is None:
         raise RuntimeError("Kein Heimatplanet")
-    res_cost = {k: cost.get(k, 0) for k in ("metal", "crystal", "deuterium")}
+    # Exoten (pro Planet, 2026-06-15) kommen jetzt VOM HEIMATPLANETEN — wie metal/crystal/deuterium.
+    res_cost = {k: cost.get(k, 0) for k in ("metal", "crystal", "deuterium", "antimatter", "dark_matter")}
     if not await spend_resources(session, home, res_cost):
-        raise RuntimeError("Nicht genug Ressourcen")
-    player.dark_matter = float(player.dark_matter or 0) - dm_cost
-    player.antimatter = float(player.antimatter or 0) - am_cost
+        raise RuntimeError("Nicht genug Ressourcen am Heimatplaneten (inkl. Exoten — ggf. dorthin transportieren)")
 
     if row is None:
         row = Megastructure(player_id=player.id, type=mtype, level=0)
