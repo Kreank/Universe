@@ -257,9 +257,12 @@ export class ShellComponent implements OnInit, OnDestroy {
       const base = pool?.amount ?? 0;
       const capacity = pool?.capacity ?? 0;
       const rate = pool?.rate ?? 0;
+      // OGame-Modell: die Produktion stoppt am Lager-Cap, ein bereits vorhandener Ueberschuss
+      // (extern zugefuehrt: Beute/Abbau/Recycling/Transport) bleibt erhalten -> nur das
+      // Produktions-Wachstum auf max(cap, Startbestand) deckeln.
       let amount = base + rate * elapsedH;
       if (capacity > 0) {
-        amount = Math.min(capacity, amount);
+        amount = Math.min(amount, Math.max(capacity, base));
       }
       amount = Math.max(0, amount);
       const pct = capacity > 0 ? Math.min(100, (amount / capacity) * 100) : 0;

@@ -816,6 +816,53 @@ async def recall_fleet(session: AsyncSession, player: Player, fleet_id: uuid.UUI
     return fleet
 
 
+async def resolve_transport(session: AsyncSession, fleet: Fleet) -> None:
+    """Transport-Mission: liefert die mitgefuehrte Fracht am Ziel ab (eigener ODER fremder
+    Planet/Mond — OGame-Stil, man kann auch an andere liefern), danach kehrt die Flotte LEER heim.
+
+    Das Ziel-Lager darf ueberfuellt werden (``add_resources`` deckelt extern zugefuehrte Rohstoffe
+    NICHT). Steht am Ziel kein Planet/Mond, bleibt die Fracht an Bord und faehrt unveraendert zurueck
+    (kein Verlust)."""
+    cargo = {k: float(v) for k, v in (fleet.cargo or {}).items() if float(v) > 0}
+    if not cargo:
+        return
+    target_moon = (fleet.mission_data or {}).get("target_type") == "moon"
+    rows = (await session.execute(
+        select(Planet).where(
+            Planet.galaxy == fleet.target_galaxy,
+            Planet.system == fleet.target_system,
+            Planet.position == fleet.target_position,
+        )
+    )).scalars().all()
+    target = None
+    for pl in rows:
+        is_moon = (pl.planet_type == "moon")
+        if (target_moon and is_moon) or (not target_moon and not is_moon):
+            target = pl
+            break
+    if target is None:
+        return  # kein Ablieferziel -> Fracht bleibt an Bord und kehrt zurueck
+
+    await add_resources(session, target, cargo)
+    fleet.cargo = {}
+    from app.messaging.service import create_system_transmission
+    loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+    parts = ", ".join(f"{int(v):,}".replace(",", ".") + " " + k for k, v in cargo.items())
+    if target.player_id != fleet.player_id:
+        await create_system_transmission(
+            session, player_id=target.player_id,
+            subject=f"📦 Warenlieferung erhalten ({loc})",
+            body=f"Eine fremde Transportflotte hat bei {loc} angeliefert: {parts}.",
+            ttype="system",
+        )
+    await create_system_transmission(
+        session, player_id=fleet.player_id,
+        subject=f"📦 Lieferung zugestellt ({loc})",
+        body=f"Deine Transportflotte hat {parts} bei {loc} abgeliefert und kehrt leer heim.",
+        ttype="system",
+    )
+
+
 async def fleet_arrive(fleet_id: str) -> None:
     """Anflug-Job: bei Angriff Kampf, bei Spionage Aufklaerung; danach Rueckflug."""
     from app.combat.service import resolve_attack
@@ -853,6 +900,8 @@ async def fleet_arrive(fleet_id: str) -> None:
             exp_result = await resolve_expedition(session, fleet)
         elif mission == "trade":
             await resolve_trade(session, fleet)
+        elif mission == "transport":
+            await resolve_transport(session, fleet)
         elif mission == "deploy":
             stationed = await resolve_deploy(session, fleet, mode="park")
         elif mission == "intercept":

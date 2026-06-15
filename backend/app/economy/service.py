@@ -365,16 +365,17 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
             last = last.replace(tzinfo=dt.timezone.utc)
         dt_hours = max(0.0, (now - last).total_seconds() / 3600.0)
         # ALTE Rate ueber das Intervall anwenden (deut-bewusst stueckweise, Befund #6),
-        # dann auf Kapazitaet deckeln.
+        # dann deckeln. OGame-Modell: die Produktion (Minen) stoppt am Lager-Cap, ABER bereits
+        # vorhandener Ueberschuss (extern zugefuehrt: Beute/Abbau/Recycling/Transport) bleibt
+        # erhalten -> nur das Wachstum DURCH PRODUKTION wird auf max(cap, Startbestand) gedeckelt.
+        start_amt = row.amount
         grown = accrue_amount(
-            row.amount, row.rate, dt_hours,
+            start_amt, row.rate, dt_hours,
             t_deplete=(t_deplete if off_rates is not None else None),
             rate_off=(off_rates[key] if off_rates is not None else None),
             is_deuterium=(key == "deuterium"),
         )
-        row.amount = min(cap, grown)
-        if row.amount < 0:
-            row.amount = 0.0
+        row.amount = max(0.0, min(grown, max(cap, start_amt)))
         # NEUE Rate setzen und Zeitstempel aktualisieren.
         row.rate = new_rates[key]
         row.last_updated = now
@@ -447,17 +448,13 @@ async def spend_resources(session: AsyncSession, planet: Planet, cost: dict[str,
 
 
 async def add_resources(session: AsyncSession, planet: Planet, gain: dict[str, float]) -> None:
-    """Schreibt Ressourcen gut (gedeckelt auf Kapazitaet). Z. B. Rueckgabe von Fracht."""
+    """Schreibt EXTERN zugefuehrte Ressourcen gut (Beute, Abbau, Recycling, Transport-Lieferung).
+
+    OGame-Modell: Das Lager-Maximum deckelt NUR die eigene Produktion (Minen stoppen am Cap).
+    Von aussen zugefuehrte Rohstoffe duerfen das Lager UEBERFUELLEN (ueber das Maximum hinaus) —
+    sie gehen nicht verloren. Die Produktion waechst danach nicht weiter (refresh_resources haelt
+    den Ueberschuss, schreibt aber keine Produktion mehr drauf, bis er unter den Cap faellt)."""
     await refresh_resources(session, planet)
-    buildings = await get_building_levels(session, planet.id)
-    research = await get_research_levels(session, planet.player_id)
-    store_mult = 1.0 + float(
-        get_balance().data["research"].get("effects", {}).get("storage_per_level", 0)
-    ) * int(research.get("storage_tech", 0))
-    capacities = {
-        key: get_balance().storage_capacity(int(buildings.get(STORAGE_BUILDING[key], 0))) * store_mult
-        for key in RESOURCE_KEYS
-    }
     rows = (await session.execute(
         select(Resource).where(
             Resource.planet_id == planet.id,
@@ -468,7 +465,7 @@ async def add_resources(session: AsyncSession, planet: Planet, gain: dict[str, f
     for key in RESOURCE_KEYS:
         amount = float(gain.get(key, 0))
         if amount and key in by_type:
-            by_type[key].amount = min(capacities[key], by_type[key].amount + amount)
+            by_type[key].amount = float(by_type[key].amount or 0) + amount
     # Exoten: UNCAPPED gutschreiben (kein Lagergebaeude), Zeile bei Bedarf anlegen.
     for key in EXOTIC_KEYS:
         amount = float(gain.get(key, 0))

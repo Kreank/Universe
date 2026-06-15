@@ -67,6 +67,38 @@ def test_lazy_growth_is_capped_at_capacity():
     assert abs(grown_short - rates["metal"]) < 1e-6
 
 
+def test_external_overfill_preserved_production_stops_at_cap():
+    """OGame-Modell (refresh_resources): extern zugefuehrter Ueberschuss ueber dem Lager-Cap
+    (Beute/Abbau/Recycling/Transport) bleibt erhalten — die Produktion waechst nur bis zum Cap."""
+    from app.economy.service import accrue_amount
+    cap = 10000.0
+    # Start UEBER dem Cap (z.B. nach einer Transport-Lieferung), positive Produktionsrate.
+    start = 25000.0
+    grown = accrue_amount(start, 500.0, 5.0)  # +2500 "Produktion"
+    amount = max(0.0, min(grown, max(cap, start)))
+    assert amount == start  # Ueberschuss bleibt, Produktion fuegt nichts hinzu, KEINE Kuerzung auf Cap
+
+
+def test_below_cap_production_still_capped():
+    """Von unterhalb des Caps waechst die Produktion weiterhin nur bis zum Cap (unveraendert)."""
+    from app.economy.service import accrue_amount
+    cap = 10000.0
+    start = 9000.0
+    grown = accrue_amount(start, 1000.0, 5.0)  # +5000 -> 14000
+    amount = max(0.0, min(grown, max(cap, start)))
+    assert amount == cap
+
+
+def test_overfilled_deuterium_still_burns_below_to_cap():
+    """Deuterium-Ueberschuss mit negativer Rate (Fusion verbrennt) sinkt korrekt — auch ueber Cap."""
+    from app.economy.service import accrue_amount
+    cap = 10000.0
+    start = 15000.0
+    grown = accrue_amount(start, -1000.0, 3.0)  # -3000 -> 12000 (immer noch > cap)
+    amount = max(0.0, min(grown, max(cap, start)))
+    assert amount == 12000.0
+
+
 # ---- Befund #6: Deuterium-bewusste stueckweise Lazy-Akkumulation ----
 
 def test_accrue_amount_linear_without_depletion():
