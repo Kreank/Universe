@@ -22,17 +22,17 @@ log = logging.getLogger("universe.mining")
 
 
 def mine_yield(miners: int, yield_per_miner: dict, capacity: float) -> dict[str, float]:
-    """Reines Frachtdeckel-Primitiv: Ertrag = miners x yield_per_miner, gedeckelt durch die
-    Frachtkapazitaet (Metall zuerst, dann Kristall). Reichtum/Restvorrat ignoriert
-    -> ``mine_from_field`` (asteroids.py) ist die vollstaendige Foerder-Logik."""
+    """Reines Frachtdeckel-Primitiv: geloestes Erz = miners x yield_per_miner, gedeckelt durch die
+    Frachtkapazitaet — reicht sie nicht, ANTEILIG auf Metall/Kristall aufgeteilt (nicht 'Metall
+    zuerst'). Reichtum/Restvorrat ignoriert -> ``mine_from_field`` (asteroids.py) ist die
+    vollstaendige Foerder-Logik."""
     remaining = max(0.0, float(capacity))
-    out: dict[str, float] = {"metal": 0.0, "crystal": 0.0}
-    for key in ("metal", "crystal"):
-        want = miners * float(yield_per_miner.get(key, 0))
-        take = min(want, remaining)
-        out[key] = round(take, 1)
-        remaining -= take
-    return out
+    loosened = {k: miners * float(yield_per_miner.get(k, 0)) for k in ("metal", "crystal")}
+    total = loosened["metal"] + loosened["crystal"]
+    if total > remaining and total > 0:
+        ratio = remaining / total
+        loosened = {k: v * ratio for k, v in loosened.items()}
+    return {k: round(loosened[k], 1) for k in ("metal", "crystal")}
 
 
 def _cargo_capacity(ships: dict[str, int]) -> float:

@@ -78,15 +78,17 @@ def test_mine_from_field_depletes_stock():
     assert m_rem == 0 and c_rem == 0
 
 
-def test_mine_from_field_capped_by_cargo_metal_first():
-    # Knappe Fracht (5000): Metall zuerst voll, Rest fuer Kristall.
+def test_mine_from_field_capped_by_cargo_proportional():
+    # Knappe Fracht (5000) < geloestem Erz (6000) -> Metall/Kristall ANTEILIG (2:1), nicht Metall zuerst.
     gained, m_rem, c_rem = mine_from_field(1, _YIELD, 1.0, metal_remaining=1e9,
                                            crystal_remaining=1e9, cargo_capacity=5000)
-    assert gained["metal"] == 4000
-    assert gained["crystal"] == 1000
-    # Vorrat wurde um die Foerderung reduziert.
-    assert abs(m_rem - (1e9 - 4000)) < 1
-    assert abs(c_rem - (1e9 - 1000)) < 1
+    # want 4000/2000 (total 6000) -> ratio 5/6 -> 3333.3 / 1666.7
+    assert abs(gained["metal"] - 4000 * 5 / 6) < 0.5
+    assert abs(gained["crystal"] - 2000 * 5 / 6) < 0.5
+    assert abs((gained["metal"] + gained["crystal"]) - 5000) < 0.5  # Fracht voll ausgenutzt
+    # Vorrat wurde nur um das tatsaechlich Abtransportierte reduziert.
+    assert abs(m_rem - (1e9 - gained["metal"])) < 1
+    assert abs(c_rem - (1e9 - gained["crystal"])) < 1
 
 
 def test_mine_from_field_empty_field_yields_nothing():

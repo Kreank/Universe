@@ -36,8 +36,10 @@ def test_mine_yield_scales_with_miners_and_caps_at_capacity():
     assert mine_yield(1, yc, 15000) == {"metal": 4000.0, "crystal": 2000.0}
     # 3 Bergbauschiffe -> 3x Ertrag.
     assert mine_yield(3, yc, 100000) == {"metal": 12000.0, "crystal": 6000.0}
-    # Knappe Kapazitaet: Metall zuerst, dann Rest-Kristall.
-    assert mine_yield(1, yc, 5000) == {"metal": 4000.0, "crystal": 1000.0}
+    # Knappe Kapazitaet (5000 < 6000 geloest): ANTEILIG 2:1 -> 3333.3 / 1666.7.
+    capped = mine_yield(1, yc, 5000)
+    assert abs(capped["metal"] - 4000 * 5 / 6) < 0.5
+    assert abs(capped["crystal"] - 2000 * 5 / 6) < 0.5
     assert mine_yield(1, yc, 0) == {"metal": 0.0, "crystal": 0.0}
 
 

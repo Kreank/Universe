@@ -71,18 +71,25 @@ def mine_from_field(
     metal_remaining: float, crystal_remaining: float,
     cargo_capacity: float,
 ) -> tuple[dict[str, float], float, float]:
-    """Ertrag = miners x base_yield x Reichtum, gedeckelt durch Restvorrat UND Fracht
-    (Metall zuerst, dann Kristall). Liefert (gewonnen, neuer_metal_rest, neuer_crystal_rest)."""
+    """Ertrag = miners x base_yield x Reichtum (= geloestes Erz), gedeckelt durch Restvorrat des
+    Feldes UND die Frachtkapazitaet der Flotte. Reicht die Fracht nicht fuer das geloeste Erz, kommt
+    Metall/Kristall ANTEILIG heim (nicht 'Metall zuerst'); nicht abtransportiertes Erz bleibt im Feld.
+    Liefert (gewonnen, neuer_metal_rest, neuer_crystal_rest)."""
     remaining_cargo = max(0.0, float(cargo_capacity))
-    gained = {"metal": 0.0, "crystal": 0.0}
-    stock = {"metal": metal_remaining, "crystal": crystal_remaining}
-    for key in ("metal", "crystal"):
-        want = miners * float(base_yield.get(key, 0)) * mult
-        take = min(want, max(0.0, stock[key]), remaining_cargo)
-        gained[key] = round(take, 1)
-        stock[key] -= take
-        remaining_cargo -= take
-    return gained, round(stock["metal"], 1), round(stock["crystal"], 1)
+    stock = {"metal": max(0.0, float(metal_remaining)), "crystal": max(0.0, float(crystal_remaining))}
+    # 1) Geloestes Erz = Schuerfkraft, je Ressource durch den Feld-Restvorrat gedeckelt.
+    loosened = {k: min(miners * float(base_yield.get(k, 0)) * mult, stock[k]) for k in ("metal", "crystal")}
+    total = loosened["metal"] + loosened["crystal"]
+    # 2) Frachtdeckel: reicht die Fracht nicht, beide Ressourcen ANTEILIG herunterskalieren.
+    if total > remaining_cargo and total > 0:
+        ratio = remaining_cargo / total
+        loosened = {k: v * ratio for k, v in loosened.items()}
+    gained = {k: round(loosened[k], 1) for k in ("metal", "crystal")}
+    return (
+        gained,
+        round(stock["metal"] - gained["metal"], 1),
+        round(stock["crystal"] - gained["crystal"], 1),
+    )
 
 
 # -- DB: Regeneration eines Feldes ----------------------------------------------

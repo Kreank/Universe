@@ -207,7 +207,7 @@
     "warp_stabilizer":  { "cost": { "metal": 14000, "crystal": 10000, "deuterium": 6000 },  "attack": 100,  "shield": 120,  "cargo": 200,   "speed": 12000, "fuel": 300, "fuel_tank": 210,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 5, "impulse_drive": 5 } },
     "shield_tender":    { "cost": { "metal": 20000, "crystal": 25000, "deuterium": 5000 },  "attack": 0,    "shield": 1000, "cargo": 200,   "speed": 6000,  "fuel": 400, "fuel_tank": 280,  "rapidfire": {}, "requires": { "shipyard": 6, "shield_tech": 6, "impulse_drive": 4 } },
     "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 8000 },  "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100, "fuel_tank": 35,  "rapidfire": {}, "requires": { "shipyard": 4, "laser_tech": 5, "impulse_drive": 3 } },
-    "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 15000, "speed": 3000,  "fuel": 300, "fuel_tank": 780,  "rapidfire": {}, "requires": { "combustion_drive": 4, "shipyard": 4 } },
+    "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 4000, "speed": 3000,  "fuel": 300, "fuel_tank": 780,  "rapidfire": {}, "_cargo_note": "BEWUSST klein (Digger): Schuerfkraft (mining.yield_per_miner) > eigener Laderaum -> Transporter noetig, um die Ausbeute heimzubringen.", "requires": { "combustion_drive": 4, "shipyard": 4 } },
     "deep_scout":       { "cost": { "metal": 8000,  "crystal": 12000, "deuterium": 1000 },  "attack": 0,    "shield": 50,   "cargo": 100,   "speed": 14000, "fuel": 80, "fuel_tank": 230,   "rapidfire": {}, "requires": { "shipyard": 5, "spy_tech": 3, "impulse_drive": 4 } },
     "expedition_ship":  { "cost": { "metal": 30000, "crystal": 20000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 10000, "speed": 6000,  "fuel": 800, "fuel_tank": 2100,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 4, "computer_tech": 6 } },
     "_note_capstones": "Endgame-Capstone-Schiffe (je Spielstil). Default-Besitz 1, je +1 ueber Kommando-Forschung (capstone_command_tech). exotische Kosten (antimatter/dark_matter) = kontoweite Senke. Auren (aura) stapeln NICHT (combat/service dedupliziert je Auratyp).",
@@ -419,10 +419,10 @@
   },
 
   "mining": {
-    "_note": "Doku 03c: Mining-Mission ('mine'). Bergbauschiffe bauen an einem ASTEROIDENFELD (occupant 'asteroid_field') Erz ab; Ertrag je Schiff (metal/crystal) x Feld-Reichtum, gedeckelt durch Restvorrat des Feldes UND Frachtkapazitaet der Flotte. Kostet Sprit + Zeit + Flottenslot. min_ships = benoetigte Bergbauschiffe. Ohne Asteroidenfeld am Ziel: kein Ertrag.",
+    "_note": "Doku 03c: Mining-Mission ('mine'). Modell 'Schuerfkraft x Frachtraum': Bergbauschiffe LOESEN Erz (yield_per_miner x Anzahl x Feld-Reichtum), aber das Bergbauschiff hat selbst nur einen KLEINEN Laderaum (ships.miner.cargo) -> Transporter/Recycler in der Flotte bringen die Ausbeute heim. Geloestes Erz wird durch Restvorrat des Feldes UND die GESAMT-Frachtkapazitaet der Flotte gedeckelt; reicht die Fracht nicht, kommt Metall/Kristall ANTEILIG heim (kein Metall-zuerst). Nicht abtransportiertes Erz bleibt im Feld. min_ships = benoetigte Bergbauschiffe.",
     "ship_type": "miner",
     "min_ships": 1,
-    "yield_per_miner": { "metal": 4000, "crystal": 2000 }
+    "yield_per_miner": { "metal": 6000, "crystal": 3000 }
   },
 
   "asteroids": {
