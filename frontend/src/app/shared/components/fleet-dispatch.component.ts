@@ -28,6 +28,10 @@ import { IconTileComponent } from './icon-tile.component';
  * Liest verfuegbare Schiffe/Commander/Ressourcen aus dem GameState des aktiven
  * Planeten und sendet via ApiService. Schliesst nach erfolgreichem Start.
  */
+/** Transportierbare Fracht-Ressourcen inkl. Exoten (pro Planet, 2026-06-15). */
+const CARGO_LOAD_KEYS = ['metal', 'crystal', 'deuterium', 'antimatter', 'dark_matter'] as const;
+type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
+
 @Component({
   selector: 'app-fleet-dispatch',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -95,7 +99,8 @@ import { IconTileComponent } from './icon-tile.component';
               <p class="hint small">Zuerst Schiffe mit Frachtraum auswählen.</p>
             }
             <div class="cargo-row">
-              @for (r of cargoFields; track r.key) {
+              @for (r of cargoLoadFields; track r.key) {
+                @if (showCargoField(r.key)) {
                 <div class="cargo-field">
                   <label><img class="cargo-ico" [src]="resourceIcon(r.key)" alt="" (error)="hideImg($event)" />{{ r.label }}</label>
                   <div class="cargo-input">
@@ -107,6 +112,7 @@ import { IconTileComponent } from './icon-tile.component';
                   </div>
                   <span class="cargo-avail faint mono">{{ availOnPlanet(r.key).toLocaleString('de-DE') }} verfügbar</span>
                 </div>
+                }
               }
             </div>
           </div>
@@ -394,15 +400,24 @@ export class FleetDispatchComponent {
   });
   protected readonly mission = linkedSignal<FleetMission>(() => this.initialMission());
 
+  // NUR metal/crystal/deuterium — auch für die Handels-Dropdowns (kein NPC-Handel mit Exoten!).
   protected readonly cargoFields = [
     { key: 'metal' as const, glyph: '⛏️', label: 'Metall' },
     { key: 'crystal' as const, glyph: '💎', label: 'Kristall' },
     { key: 'deuterium' as const, glyph: '🛢️', label: 'Deuterium' },
   ];
+  // Fracht-Beladung (Transport): inkl. Exoten (pro Planet, transportierbar).
+  protected readonly cargoLoadFields = [
+    { key: 'metal' as const, label: 'Metall' },
+    { key: 'crystal' as const, label: 'Kristall' },
+    { key: 'deuterium' as const, label: 'Deuterium' },
+    { key: 'antimatter' as const, label: 'Antimaterie' },
+    { key: 'dark_matter' as const, label: 'Dunkle Materie' },
+  ];
 
   protected readonly selection = signal<Record<string, number>>({});
-  protected readonly cargo = signal<{ metal: number; crystal: number; deuterium: number }>({
-    metal: 0, crystal: 0, deuterium: 0,
+  protected readonly cargo = signal<Record<DispatchCargoKey, number>>({
+    metal: 0, crystal: 0, deuterium: 0, antimatter: 0, dark_matter: 0,
   });
   protected readonly commanderId = signal<string | null>(null);
   protected readonly speed = signal(100);
@@ -524,12 +539,13 @@ export class FleetDispatchComponent {
     effect(() => {
       const cap = this.cargoInfo().capacity;
       const c = this.cargo();
-      let used = c.metal + c.crystal + c.deuterium;
+      let used = CARGO_LOAD_KEYS.reduce((s, k) => s + (c[k] || 0), 0);
       if (used <= cap) {
         return;
       }
       const next = { ...c };
-      for (const k of ['deuterium', 'crystal', 'metal'] as const) {
+      // Erst Standard-Ressourcen kuerzen, Exoten zuletzt (wertvoll -> moeglichst behalten).
+      for (const k of ['deuterium', 'crystal', 'metal', 'antimatter', 'dark_matter'] as const) {
         if (used <= cap) {
           break;
         }
@@ -675,7 +691,7 @@ export class FleetDispatchComponent {
       used = this.bnum(this.offerAmount());
     } else {
       const c = this.cargo();
-      used = this.bnum(c.metal) + this.bnum(c.crystal) + this.bnum(c.deuterium);
+      used = CARGO_LOAD_KEYS.reduce((s, k) => s + this.bnum(c[k]), 0);
     }
     return { capacity, used, free: Math.max(0, capacity - used), over: used > capacity };
   });
@@ -734,9 +750,20 @@ export class FleetDispatchComponent {
     this.selection.update((s) => ({ ...s, [type]: n }));
   }
 
-  /** Auf dem aktiven Planeten verfuegbare Menge einer Ressource (0, falls Planet/Res fehlt). */
-  availOnPlanet(key: 'metal' | 'crystal' | 'deuterium'): number {
-    return Math.floor(this.planetRes()?.[key]?.amount ?? 0);
+  /** Auf dem aktiven Planeten verfuegbare Menge einer Ressource — Exoten liegen unter .exotic. */
+  availOnPlanet(key: DispatchCargoKey): number {
+    const res = this.planetRes() as any;
+    if (!res) return 0;
+    if (key === 'antimatter' || key === 'dark_matter') {
+      return Math.floor(this.bnum(res.exotic?.[key]?.amount));
+    }
+    return Math.floor(this.bnum(res[key]?.amount));
+  }
+
+  /** Exoten-Ladefelder nur zeigen, wenn der Planet welche hat (oder schon geladen). */
+  showCargoField(key: DispatchCargoKey): boolean {
+    if (key !== 'antimatter' && key !== 'dark_matter') return true;
+    return this.availOnPlanet(key) > 0 || this.bnum(this.cargo()[key]) > 0;
   }
 
   /** Frachtkapazitaet eines Schiffstyps (pro Einheit) — fuer die Live-Anzeige im Picker. */
@@ -752,31 +779,28 @@ export class FleetDispatchComponent {
    * kurzzeitig null'er planetRes auf 0 -> Eingabe blockiert) und die Frachtkapazitaet
    * der Flotte gar nicht beruecksichtigt.
    */
-  cargoCapFor(key: 'metal' | 'crystal' | 'deuterium'): number {
-    const res = this.planetRes();
-    // Planet kurzzeitig nicht geladen -> nicht blockieren, nur ueber die Kapazitaet deckeln.
-    const avail = res ? Math.floor(res[key]?.amount ?? 0) : Infinity;
+  cargoCapFor(key: DispatchCargoKey): number {
     const c = this.cargo();
-    const others = c.metal + c.crystal + c.deuterium - (c[key] || 0);
+    const others = CARGO_LOAD_KEYS.reduce((s, k) => s + this.bnum(c[k]), 0) - this.bnum(c[key]);
     const room = Math.max(0, this.cargoInfo().capacity - others);
-    return Math.max(0, Math.min(avail, room));
+    return Math.max(0, Math.min(this.availOnPlanet(key), room));
   }
 
-  /** OGame „alles laden": Metall -> Kristall -> Deuterium bis die Gesamtkapazitaet voll ist. */
+  /** OGame „alles laden": Metall -> Kristall -> Deuterium -> Exoten bis die Kapazitaet voll ist. */
   fillAllCargo(): void {
     let remaining = this.cargoInfo().capacity;
-    const res = this.planetRes();
-    const next = { metal: 0, crystal: 0, deuterium: 0 };
-    for (const k of ['metal', 'crystal', 'deuterium'] as const) {
-      const avail = res ? Math.floor(res[k]?.amount ?? 0) : remaining;
-      const load = Math.max(0, Math.min(avail, remaining));
+    const next: Record<DispatchCargoKey, number> = {
+      metal: 0, crystal: 0, deuterium: 0, antimatter: 0, dark_matter: 0,
+    };
+    for (const k of CARGO_LOAD_KEYS) {
+      const load = Math.max(0, Math.min(this.availOnPlanet(k), remaining));
       next[k] = load;
       remaining -= load;
     }
     this.cargo.set(next);
   }
 
-  setCargo(key: 'metal' | 'crystal' | 'deuterium', value: number): void {
+  setCargo(key: DispatchCargoKey, value: number): void {
     const max = this.cargoCapFor(key);
     const n = Math.max(0, Math.min(max, Math.floor(value || 0)));
     this.cargo.update((c) => ({ ...c, [key]: n }));
@@ -801,7 +825,7 @@ export class FleetDispatchComponent {
     }
     const cargo = this.showCargo()
       ? this.cargo()
-      : { metal: 0, crystal: 0, deuterium: 0 };
+      : { metal: 0, crystal: 0, deuterium: 0, antimatter: 0, dark_matter: 0 };
     const body: FleetSendRequest = {
       origin_planet_id: origin,
       target: this.target(),

@@ -516,12 +516,17 @@ async def send_fleet(
         "metal": float(cargo.get("metal", 0)),
         "crystal": float(cargo.get("crystal", 0)),
         "deuterium": float(cargo.get("deuterium", 0)),
+        # Exoten sind pro Planet -> als Fracht transportierbar (2026-06-15).
+        "antimatter": float(cargo.get("antimatter", 0)),
+        "dark_matter": float(cargo.get("dark_matter", 0)),
     }
-    # Gesamtkosten = Fracht + Sprit (Deuterium).
+    # Gesamtkosten = Fracht + Sprit (Deuterium). Exoten werden ebenfalls vom Startplaneten abgezogen.
     total_cost = {
         "metal": cargo["metal"],
         "crystal": cargo["crystal"],
         "deuterium": cargo["deuterium"] + fuel,
+        "antimatter": cargo["antimatter"],
+        "dark_matter": cargo["dark_matter"],
     }
     if not await spend_resources(session, planet, total_cost):
         raise RuntimeError("Nicht genug Ressourcen (Fracht/Sprit)")

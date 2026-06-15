@@ -21,6 +21,10 @@ import { BalanceService } from '../../core/services/balance.service';
 import { fleetStyles } from './fleet.styles';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 
+/** Transportierbare Ressourcen (inkl. Exoten — pro Planet, 2026-06-15). */
+const CARGO_KEYS = ['metal', 'crystal', 'deuterium', 'antimatter', 'dark_matter'] as const;
+type CargoKey = (typeof CARGO_KEYS)[number];
+
 @Component({
   selector: 'app-fleet',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -129,6 +133,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
             </div>
             <div class="cargo-grid">
               @for (rf of cargoFields; track rf.key) {
+                @if (showCargoField(rf.key)) {
                 <div class="cargo-field">
                   <label><img class="cargo-ico" [src]="resourceIcon(rf.key)" alt="" />{{ rf.label }}</label>
                   <div class="cargo-input">
@@ -137,8 +142,9 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
                     <button class="btn btn-ghost btn-sm" type="button"
                             (click)="setCargo(rf.key, cargoCapFor(rf.key))">max</button>
                   </div>
-                  <span class="avail-hint muted">Vorrat: {{ (planetRes()?.[rf.key]?.amount ?? 0) | number: '1.0-0' }}</span>
+                  <span class="avail-hint muted">Vorrat: {{ availOf(rf.key) | number: '1.0-0' }}</span>
                 </div>
+                }
               }
             </div>
           </div>
@@ -352,14 +358,17 @@ export class FleetComponent {
   protected readonly targetS = signal(1);
   protected readonly targetP = signal(1);
   commanderId: string | null = null;
-  // Fracht (Transport/Stationierung), wird in send() mitgeschickt.
-  protected readonly cargo = signal<{ metal: number; crystal: number; deuterium: number }>({
-    metal: 0, crystal: 0, deuterium: 0,
+  // Fracht (Transport/Stationierung), wird in send() mitgeschickt. Exoten (antimatter/dark_matter)
+  // sind pro Planet -> transportierbar.
+  protected readonly cargo = signal<Record<CargoKey, number>>({
+    metal: 0, crystal: 0, deuterium: 0, antimatter: 0, dark_matter: 0,
   });
-  protected readonly cargoFields: { key: 'metal' | 'crystal' | 'deuterium'; label: string }[] = [
+  protected readonly cargoFields: { key: CargoKey; label: string }[] = [
     { key: 'metal', label: 'Metall' },
     { key: 'crystal', label: 'Kristall' },
     { key: 'deuterium', label: 'Deuterium' },
+    { key: 'antimatter', label: 'Antimaterie' },
+    { key: 'dark_matter', label: 'Dunkle Materie' },
   ];
   protected readonly speed = signal(100);
   protected readonly interceptRadius = signal(0);
@@ -498,7 +507,7 @@ export class FleetComponent {
 
   protected readonly cargoUsed = computed(() => {
     const c = this.cargo();
-    return this.bnum(c.metal) + this.bnum(c.crystal) + this.bnum(c.deuterium);
+    return CARGO_KEYS.reduce((s, k) => s + this.bnum(c[k]), 0);
   });
   protected readonly cargoFree = computed(() => Math.max(0, this.cargoCapacity() - this.cargoUsed()));
   protected readonly cargoOver = computed(() => this.cargoUsed() > this.cargoCapacity());
@@ -507,25 +516,39 @@ export class FleetComponent {
     return cap > 0 ? Math.min(100, (this.cargoUsed() / cap) * 100) : 0;
   });
 
-  /** Max. beladbare Menge je Ressource = min(Vorrat am Planeten, freie Flotten-Kapazität). */
-  cargoCapFor(key: 'metal' | 'crystal' | 'deuterium'): number {
-    const res = this.planetRes();
-    const avail = res ? Math.floor(this.bnum(res[key]?.amount)) : Infinity;
-    const c = this.cargo();
-    const others = this.bnum(c.metal) + this.bnum(c.crystal) + this.bnum(c.deuterium) - this.bnum(c[key]);
-    const room = Math.max(0, this.cargoCapacity() - others);
-    return Math.max(0, Math.min(avail, room));
+  /** Vorrat einer Ressource auf dem aktiven Planeten — Exoten liegen unter resources.exotic. */
+  availOf(key: CargoKey): number {
+    const res = this.planetRes() as any;
+    if (!res) return Infinity;
+    if (key === 'antimatter' || key === 'dark_matter') {
+      return Math.floor(this.bnum(res.exotic?.[key]?.amount));
+    }
+    return Math.floor(this.bnum(res[key]?.amount));
   }
 
-  setCargo(key: 'metal' | 'crystal' | 'deuterium', value: number): void {
+  /** Max. beladbare Menge je Ressource = min(Vorrat am Planeten, freie Flotten-Kapazität). */
+  cargoCapFor(key: CargoKey): number {
+    const c = this.cargo();
+    const others = CARGO_KEYS.reduce((s, k) => s + this.bnum(c[k]), 0) - this.bnum(c[key]);
+    const room = Math.max(0, this.cargoCapacity() - others);
+    return Math.max(0, Math.min(this.availOf(key), room));
+  }
+
+  /** Exoten-Felder nur zeigen, wenn der Planet welche hat (oder schon geladen) — sonst Standard 3. */
+  showCargoField(key: CargoKey): boolean {
+    if (key !== 'antimatter' && key !== 'dark_matter') return true;
+    return this.availOf(key) > 0 || this.bnum(this.cargo()[key]) > 0;
+  }
+
+  setCargo(key: CargoKey, value: number): void {
     const n = Math.max(0, Math.min(this.cargoCapFor(key), Math.floor(value || 0)));
     this.cargo.update((c) => ({ ...c, [key]: n }));
   }
 
-  /** „Alles laden": füllt Metall→Kristall→Deuterium bis zur Gesamtkapazität (so viel wie da ist). */
+  /** „Alles laden": füllt Metall→Kristall→Deuterium→Exoten bis zur Gesamtkapazität. */
   fillAll(): void {
-    this.cargo.set({ metal: 0, crystal: 0, deuterium: 0 });
-    for (const key of ['metal', 'crystal', 'deuterium'] as const) {
+    this.cargo.set({ metal: 0, crystal: 0, deuterium: 0, antimatter: 0, dark_matter: 0 });
+    for (const key of CARGO_KEYS) {
       this.setCargo(key, this.cargoCapFor(key));
     }
   }
@@ -599,7 +622,7 @@ export class FleetComponent {
         next: () => {
           this.sending.set(false);
           this.selection.set({});
-          this.cargo.set({ metal: 0, crystal: 0, deuterium: 0 });
+          this.cargo.set({ metal: 0, crystal: 0, deuterium: 0, antimatter: 0, dark_matter: 0 });
           this.notify.success('Flotte gestartet', `Mission ${this.missionMeta(this.missionSig()).label} unterwegs.`);
           void this.state.reloadFleets();
           void this.state.reloadActivePlanet();
