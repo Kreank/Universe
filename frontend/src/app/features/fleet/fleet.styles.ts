@@ -116,4 +116,24 @@ export const fleetStyles = `
     .ship-pick input,
     .ship-pick .btn-sm { min-height: 34px; }
   }
+
+  /* --- Fracht-Beladung + Flotten-Übersicht --- */
+  .cargo-box { margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-sm); }
+  .cargo-head { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-display); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: var(--sp-2); }
+  .cargo-grid { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+  .cargo-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; }
+  .cargo-field label { font-size: var(--fs-xs); color: var(--text-dim); display: inline-flex; align-items: center; gap: 5px; }
+  .cargo-ico { width: 15px; height: 15px; object-fit: contain; }
+  .cargo-input { display: flex; gap: var(--sp-1); }
+  .cargo-input input { min-height: 30px; flex: 1; }
+  .avail-hint { font-size: var(--fs-xs); }
+
+  .fleet-summary { margin-top: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+  .cap-line { display: flex; align-items: baseline; justify-content: space-between; font-size: var(--fs-sm); }
+  .cap-bar { height: 6px; border-radius: var(--r-pill); background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 4px; }
+  .cap-bar span { display: block; height: 100%; background: var(--accent); transition: width var(--motion-base) var(--ease-out); }
+  .cap-bar.over span { background: var(--danger); }
+  .cap.over .cap-line { color: var(--danger); }
+  .route-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); color: var(--text-dim); }
+  .route-chips img { vertical-align: -2px; margin-right: 3px; }
 `;

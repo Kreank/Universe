@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
@@ -11,7 +12,7 @@ import {
   StationedFleet,
 } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
-import { missionIcon } from '../../core/models/icon-assets';
+import { missionIcon, navIcon, resourceIcon, statIcon, statusIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
@@ -23,17 +24,17 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
 @Component({
   selector: 'app-fleet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, CountdownComponent, IconTileComponent, BtnIconComponent, EmptyStateComponent],
+  imports: [FormsModule, DecimalPipe, RouterLink, CountdownComponent, IconTileComponent, BtnIconComponent, EmptyStateComponent],
   template: `
     <h1>Flotte</h1>
 
     @if (incoming().length) {
       <section class="card incoming">
-        <div class="panel-title">🚨 Eingehende Angriffe</div>
+        <div class="panel-title"><app-btn-icon [src]="statusIcon('incoming_attack')" glyph="🚨" [size]="16" /> Eingehende Angriffe</div>
         @for (a of incoming(); track a.id) {
           <div class="incoming-row">
             <div class="incoming-info">
-              <span class="badge-threat">⚔️ {{ a.attacker }}</span>
+              <span class="badge-threat"><app-btn-icon [src]="statusIcon('attack')" glyph="⚔️" [size]="14" /> {{ a.attacker }}</span>
               <span class="mono small">@if (a.origin) { von [{{ a.origin }}] } → [{{ a.target.galaxy }}:{{ a.target.system }}:{{ a.target.position }}]</span>
               <span class="chip">{{ a.ships_total }} Schiffe</span>
             </div>
@@ -47,7 +48,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
     <div class="grid layout">
       <!-- Flotte senden -->
       <section class="card send">
-        <div class="panel-title">🚀 Flotte entsenden</div>
+        <div class="panel-title"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="16" /> Flotte entsenden</div>
 
         <!-- Schiffsauswahl als dichtes, bild-zentriertes Kachel-Raster (OGame-Stil) -->
         <div class="grid ships-grid">
@@ -90,16 +91,62 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
           <p class="hint small">🎯 Ziel aus der Galaxie-Karte uebernommen: [{{ prefilled() }}]</p>
         }
 
+        <!-- Fracht (Transport / Stationierung) -->
+        @if (showCargo() && hasSelection()) {
+          <div class="cargo-box">
+            <div class="cargo-head">
+              <span>📦 Fracht</span>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="fillAll()"
+                      [disabled]="cargoCapacity() <= 0">Alles laden</button>
+            </div>
+            <div class="cargo-grid">
+              @for (rf of cargoFields; track rf.key) {
+                <div class="cargo-field">
+                  <label><img class="cargo-ico" [src]="resourceIcon(rf.key)" alt="" />{{ rf.label }}</label>
+                  <div class="cargo-input">
+                    <input type="number" min="0" [max]="cargoCapFor(rf.key)"
+                           [ngModel]="cargo()[rf.key]" (ngModelChange)="setCargo(rf.key, $event)" />
+                    <button class="btn btn-ghost btn-sm" type="button"
+                            (click)="setCargo(rf.key, cargoCapFor(rf.key))">max</button>
+                  </div>
+                  <span class="avail-hint muted">Vorrat: {{ (planetRes()?.[rf.key]?.amount ?? 0) | number: '1.0-0' }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Flotten-Übersicht: Kapazität, Distanz, Sprit, Flugzeit -->
+        @if (hasSelection()) {
+          <div class="fleet-summary">
+            <div class="cap" [class.over]="cargoOver()">
+              <div class="cap-line">
+                <span>📦 Fracht {{ cargoUsed() | number: '1.0-0' }} / {{ cargoCapacity() | number: '1.0-0' }}</span>
+                <span class="muted small">frei {{ cargoFree() | number: '1.0-0' }}</span>
+              </div>
+              <div class="cap-bar" [class.over]="cargoOver()"><span [style.width.%]="cargoPct()"></span></div>
+              @if (cargoOver()) { <span class="hint small">Überladen — reduziere die Fracht oder nimm mehr Frachtraum mit.</span> }
+            </div>
+            @if (routeSummary(); as rs) {
+              <div class="route-chips small">
+                <span class="tip" data-tip="Distanz (OGame-Distanzmodell)">📏 {{ rs.distance.toLocaleString('de-DE') }}</span>
+                <span class="tip" data-tip="Treibstoff (Deuterium) vom Startplaneten"><img class="cargo-ico" [src]="resourceIcon('deuterium')" alt="" />{{ rs.fuel.toLocaleString('de-DE') }} {{ rs.roundTrip ? '(Hin+Rück)' : '(einfach)' }}</span>
+                <span class="tip" data-tip="Geschätzte Flugzeit je Strecke (Tempo-Regler wirkt; ohne Antriebsforschung konservativ)">⏱ ca. {{ rs.flightText }}{{ rs.roundTrip ? ' / Strecke' : '' }}</span>
+              </div>
+            }
+          </div>
+        }
+
         <!-- Auftrags-Leiste: Ziel, Mission, Tempo, Commander, Start -->
         <div class="order-bar">
           <div class="field coords">
             <label>Ziel (Galaxie : System : Position)</label>
             <div class="coord">
-              <input type="number" min="1" [(ngModel)]="targetG" aria-label="Galaxie" />
+              <input type="number" min="1" [ngModel]="targetG()" (ngModelChange)="targetG.set(+$event || 1)" aria-label="Galaxie" />
               <span class="sep">:</span>
-              <input type="number" min="1" [(ngModel)]="targetS" aria-label="System" />
+              <input type="number" min="1" [ngModel]="targetS()" (ngModelChange)="targetS.set(+$event || 1)" aria-label="System" />
               <span class="sep">:</span>
-              <input type="number" min="1" [(ngModel)]="targetP" aria-label="Position" />
+              <input type="number" min="1" [ngModel]="targetP()" (ngModelChange)="targetP.set(+$event || 1)" aria-label="Position" />
             </div>
           </div>
 
@@ -156,7 +203,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
               [disabled]="!hasSelection() || !state.activePlanetId() || sending()"
               title="Stellt die ausgewaehlten Schiffe sofort als Abfang-Patrouille im eigenen System auf (kein Flug)."
               (click)="patrolHome()">
-              ⚔ Eigenes System patrouillieren
+              <app-btn-icon [src]="missionIcon('attack')" glyph="⚔" [size]="18" /> Eigenes System patrouillieren
             </button>
             @if (!hasSelection()) {
               <span class="hint small">Mindestens ein Schiff auswaehlen.</span>
@@ -167,7 +214,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
 
       <!-- Laufende Flotten -->
       <section class="card running">
-        <div class="panel-title">🛰️ Laufende Flotten</div>
+        <div class="panel-title"><app-btn-icon [src]="navIcon('fleet')" glyph="🛰️" [size]="16" /> Laufende Flotten</div>
         @if (activeFleets().length) {
           @for (f of activeFleets(); track f.id) {
             <div class="fleet-row">
@@ -191,7 +238,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
 
       <!-- Stationierte Flotten (genau ein Modus je Flotte: Geparkt / Abfangen / Eskorte) -->
       <section class="card running">
-        <div class="panel-title">🛡 Stationierte Flotten</div>
+        <div class="panel-title"><app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="16" /> Stationierte Flotten</div>
         @if (stationed().length) {
           @for (s of stationed(); track s.id) {
             <div class="fleet-row">
@@ -200,13 +247,13 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
                 <span class="chip">{{ s.ships_total }} Schiffe</span>
                 @switch (s.mode) {
                   @case ('intercept') {
-                    <span class="chip">⚔ Abfangen · Radius {{ s.intercept_radius }}</span>
+                    <span class="chip"><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="⚔" [size]="14" /> Abfangen · Radius {{ s.intercept_radius }}</span>
                   }
                   @case ('escort') {
-                    <span class="chip">🛡 Eskorte · Radius {{ s.escort_radius }} · {{ (s.escort_fee_pct * 100).toFixed(1) }} %</span>
+                    <span class="chip"><app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="14" /> Eskorte · Radius {{ s.escort_radius }} · {{ (s.escort_fee_pct * 100).toFixed(1) }} %</span>
                   }
                   @default {
-                    <span class="chip muted">🚚 Geparkt</span>
+                    <span class="chip muted"><app-btn-icon [src]="missionIcon('deploy')" glyph="🚚" [size]="14" /> Geparkt</span>
                   }
                 }
               </div>
@@ -254,10 +301,19 @@ export class FleetComponent {
 
   // Sende-Formular
   protected readonly selection = signal<Record<string, number>>({});
-  targetG = 1;
-  targetS = 1;
-  targetP = 1;
+  protected readonly targetG = signal(1);
+  protected readonly targetS = signal(1);
+  protected readonly targetP = signal(1);
   commanderId: string | null = null;
+  // Fracht (Transport/Stationierung), wird in send() mitgeschickt.
+  protected readonly cargo = signal<{ metal: number; crystal: number; deuterium: number }>({
+    metal: 0, crystal: 0, deuterium: 0,
+  });
+  protected readonly cargoFields: { key: 'metal' | 'crystal' | 'deuterium'; label: string }[] = [
+    { key: 'metal', label: 'Metall' },
+    { key: 'crystal', label: 'Kristall' },
+    { key: 'deuterium', label: 'Deuterium' },
+  ];
   protected readonly speed = signal(100);
   protected readonly interceptRadius = signal(0);
   protected readonly escortRadius = signal(5);
@@ -287,7 +343,9 @@ export class FleetComponent {
     Object.values(this.selection()).some((n) => n > 0),
   );
 
-  protected readonly canSend = computed(() => this.hasSelection() && !!this.state.activePlanetId());
+  protected readonly canSend = computed(
+    () => this.hasSelection() && !!this.state.activePlanetId() && !this.cargoOver(),
+  );
 
   // Hinweis auf das Pflicht-Schiff der gewaehlten Mission, falls noch nicht ausgewaehlt.
   protected readonly missionHint = computed<string | null>(() => {
@@ -323,14 +381,14 @@ export class FleetComponent {
     const s = qp.get('s');
     const p = qp.get('p');
     if (g && s && p) {
-      this.targetG = Number(g);
-      this.targetS = Number(s);
-      this.targetP = Number(p);
+      this.targetG.set(Number(g));
+      this.targetS.set(Number(s));
+      this.targetP.set(Number(p));
       const m = qp.get('mission') as FleetMission | null;
       if (m && this.missions.includes(m)) {
         this.missionSig.set(m);
       }
-      this.prefilled.set(`${this.targetG}:${this.targetS}:${this.targetP}`);
+      this.prefilled.set(`${this.targetG()}:${this.targetS()}:${this.targetP()}`);
     }
 
     this.loadIncoming();
@@ -371,6 +429,100 @@ export class FleetComponent {
     this.selection.update((s) => ({ ...s, [type]: n }));
   }
 
+  // -- Fracht + Flotten-Übersicht (OGame-artig) --------------------------------
+  private bnum(v: unknown, d = 0): number {
+    return typeof v === 'number' ? v : d;
+  }
+
+  protected readonly showCargo = computed(
+    () => this.missionSig() === 'transport' || this.missionSig() === 'deploy',
+  );
+  protected readonly planetRes = computed(() => this.state.activePlanet()?.resources ?? null);
+
+  /** Gesamte Frachtkapazität der gewählten Flotte (Summe ship.cargo × Anzahl). */
+  protected readonly cargoCapacity = computed(() => {
+    const ships = this.balance.value?.ships as Record<string, { cargo?: number }> | undefined;
+    let cap = 0;
+    for (const [type, n] of Object.entries(this.selection())) {
+      if (n > 0) cap += this.bnum(ships?.[type]?.cargo) * n;
+    }
+    return cap;
+  });
+
+  protected readonly cargoUsed = computed(() => {
+    const c = this.cargo();
+    return this.bnum(c.metal) + this.bnum(c.crystal) + this.bnum(c.deuterium);
+  });
+  protected readonly cargoFree = computed(() => Math.max(0, this.cargoCapacity() - this.cargoUsed()));
+  protected readonly cargoOver = computed(() => this.cargoUsed() > this.cargoCapacity());
+  protected readonly cargoPct = computed(() => {
+    const cap = this.cargoCapacity();
+    return cap > 0 ? Math.min(100, (this.cargoUsed() / cap) * 100) : 0;
+  });
+
+  /** Max. beladbare Menge je Ressource = min(Vorrat am Planeten, freie Flotten-Kapazität). */
+  cargoCapFor(key: 'metal' | 'crystal' | 'deuterium'): number {
+    const res = this.planetRes();
+    const avail = res ? Math.floor(this.bnum(res[key]?.amount)) : Infinity;
+    const c = this.cargo();
+    const others = this.bnum(c.metal) + this.bnum(c.crystal) + this.bnum(c.deuterium) - this.bnum(c[key]);
+    const room = Math.max(0, this.cargoCapacity() - others);
+    return Math.max(0, Math.min(avail, room));
+  }
+
+  setCargo(key: 'metal' | 'crystal' | 'deuterium', value: number): void {
+    const n = Math.max(0, Math.min(this.cargoCapFor(key), Math.floor(value || 0)));
+    this.cargo.update((c) => ({ ...c, [key]: n }));
+  }
+
+  /** „Alles laden": füllt Metall→Kristall→Deuterium bis zur Gesamtkapazität (so viel wie da ist). */
+  fillAll(): void {
+    this.cargo.set({ metal: 0, crystal: 0, deuterium: 0 });
+    for (const key of ['metal', 'crystal', 'deuterium'] as const) {
+      this.setCargo(key, this.cargoCapFor(key));
+    }
+  }
+
+  private distanceTo(): number | null {
+    const p = this.state.activePlanet();
+    const bal = this.balance.value as { fleet?: { distance?: Record<string, number> } } | undefined;
+    const d = bal?.fleet?.distance;
+    if (!p || !d) return null;
+    const g = this.targetG(), s = this.targetS(), pos = this.targetP();
+    if (p.galaxy !== g) return this.bnum(d['inter_galaxy_per_galaxy']) * Math.abs(p.galaxy - g);
+    if (p.system !== s) return this.bnum(d['same_galaxy_base']) + this.bnum(d['same_galaxy_per_system']) * Math.abs(p.system - s);
+    if (p.position !== pos) return this.bnum(d['same_system_base']) + this.bnum(d['same_system_per_position']) * Math.abs(p.position - pos);
+    return this.bnum(d['same_position']);
+  }
+
+  /** Übersicht: Distanz, Sprit (Hin+Rück außer deploy), geschätzte Flugzeit je Strecke. */
+  protected readonly routeSummary = computed(() => {
+    const sel = Object.entries(this.selection()).filter(([, n]) => n > 0);
+    const dist = this.distanceTo();
+    if (!sel.length || dist === null) return null;
+    const bal = this.balance.value as any;
+    const roundTrip = this.missionSig() !== 'deploy';
+    const legs = roundTrip ? 2 : 1;
+    let fuelSum = 0;
+    let slowest = Infinity;
+    for (const [type, n] of sel) {
+      fuelSum += this.bnum(bal?.ships?.[type]?.fuel) * n;
+      const sp = this.bnum(bal?.ships?.[type]?.speed);
+      if (sp > 0 && sp < slowest) slowest = sp;
+    }
+    const f = bal?.fleet;
+    const fuel = Math.max(1, Math.ceil((fuelSum * dist) / this.bnum(f?.speed_factor, 1) * this.bnum(f?.fuel_per_distance_unit, 1) * legs));
+    let secsText = '–';
+    if (isFinite(slowest) && slowest > 0) {
+      const fleetSpeed = Math.max(0.01, this.bnum(bal?.universe?.fleet_speed, 1));
+      const pct = Math.max(1, this.speed());
+      const s = Math.round((10 + (35000 / pct) * Math.sqrt((dist * 10) / slowest)) / fleetSpeed);
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      secsText = (h ? `${h}h ` : '') + (h || m ? `${m}m ` : '') + `${sec}s`;
+    }
+    return { distance: dist, fuel, roundTrip, flightText: secsText };
+  });
+
   send(): void {
     const origin = this.state.activePlanetId();
     if (!origin || !this.hasSelection()) {
@@ -386,10 +538,10 @@ export class FleetComponent {
     this.api
       .sendFleet({
         origin_planet_id: origin,
-        target: { galaxy: this.targetG, system: this.targetS, position: this.targetP },
+        target: { galaxy: this.targetG(), system: this.targetS(), position: this.targetP() },
         mission: this.missionSig(),
         ships,
-        cargo: { metal: 0, crystal: 0, deuterium: 0 },
+        cargo: this.showCargo() ? this.cargo() : { metal: 0, crystal: 0, deuterium: 0 },
         commander_id: this.commanderId,
         speed_pct: this.speed(),
         radius: this.missionSig() === 'intercept' ? this.interceptRadius() : undefined,
@@ -400,6 +552,7 @@ export class FleetComponent {
         next: () => {
           this.sending.set(false);
           this.selection.set({});
+          this.cargo.set({ metal: 0, crystal: 0, deuterium: 0 });
           this.notify.success('Flotte gestartet', `Mission ${this.missionMeta(this.missionSig()).label} unterwegs.`);
           void this.state.reloadFleets();
           void this.state.reloadActivePlanet();
@@ -470,6 +623,10 @@ export class FleetComponent {
   missionMeta = (m: string) => metaFor(MISSION_META, m);
   rankMeta = (r: string) => metaFor(RANK_META, r);
   protected readonly missionIcon = missionIcon;
+  protected readonly navIcon = navIcon;
+  protected readonly statIcon = statIcon;
+  protected readonly resourceIcon = resourceIcon;
+  protected readonly statusIcon = statusIcon;
   /** Blendet ein nicht ladbares Inline-Icon aus (Label bleibt sichtbar). */
   hideImg(event: Event): void {
     (event.target as HTMLImageElement).style.display = 'none';
