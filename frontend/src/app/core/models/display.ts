@@ -280,6 +280,14 @@ export const TECH_META: Record<string, DisplayMeta> = {
     label: 'Schürf-Kommando', glyph: '⛏️', blurb: '+1 erlaubter Ernte-Titan/Stufe.',
     desc: 'Koordination einer ganzen Ernte-Flotte. Jede Stufe erlaubt dir einen weiteren Ernte-Titan (Standard: 1) — industrieller Bergbau auf Imperiumsmaßstab.',
   },
+  fleet_logistics: {
+    label: 'Logistik-Netz', glyph: '📦', blurb: '+1 gleichzeitige Farm-Routine/Stufe · wiederholbar.',
+    desc: 'Ein automatisiertes Versorgungsnetz koordiniert deine wiederkehrenden Farm-Routinen. Jede Stufe erlaubt dir +1 gleichzeitig laufende Farm-Routine — wiederholbar und ohne feste Obergrenze, der Schlüssel zu einem dicht getakteten Ernte-Imperium.',
+  },
+  route_planning: {
+    label: 'Routen-Planung', glyph: '🗺️', blurb: '+1 Feld je Farm-Route/Stufe · wiederholbar.',
+    desc: 'Vorberechnete Flugkorridore und Ziel-Priorisierung verlängern den Aktionsradius jeder Farm-Route. Jede Stufe hängt +1 Feld an jede Route an — wiederholbar, damit deine Routinen mit jedem Ausbau mehr Ziele in einem Durchlauf abklappern.',
+  },
 };
 
 /**

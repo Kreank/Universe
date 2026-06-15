@@ -26,6 +26,7 @@ import {
   ConfirmRequest,
 } from '../../shared/components/confirm-dialog.component';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
+import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { TabBarComponent, TabDef } from '../../shared/components/tab-bar.component';
 
 /** Lesbare Label + Glyph der vier Forschungs-Zweige (Reihenfolge = Anzeige). */
@@ -54,7 +55,7 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
 @Component({
   selector: 'app-alliance',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ConfirmDialogComponent, CostLineComponent, TabBarComponent],
+  imports: [FormsModule, ConfirmDialogComponent, CostLineComponent, IconTileComponent, TabBarComponent],
   template: `
     <section class="alliance">
       <header class="page-head">
@@ -216,10 +217,14 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
           <app-tab-bar [tabs]="treeTabs(a)" [active]="treeTab()" (select)="treeTab.set($event)" />
           @if (activeTree(a); as tree) {
             <div class="card">
-              <div class="panel-title">{{ tree.label }}</div>
+              <div class="panel-title tree-title">
+                <img class="tree-emblem" [src]="treeEmblem()" alt="" loading="lazy" />
+                <span>{{ tree.label }}</span>
+              </div>
               @for (n of treeNodes(tree); track n.key) {
                 <div class="node">
                   <div class="node-head">
+                    <app-icon-tile [src]="nodeIcon(n.key)" [glyph]="treeGlyph()" [size]="40" />
                     <span class="node-name">{{ n.node.lever }}</span>
                     <span class="ctx-badge" [class]="'ctx-' + n.node.context">{{ ctxLabel(n.node.context) }}</span>
                   </div>
@@ -271,6 +276,8 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
             }
             @for (s of a.stations; track s.id) {
               <div class="station">
+                <img class="station-art" [src]="stationArt" alt="" loading="lazy" />
+                <div class="station-body">
                 <div class="station-main">
                   <span class="mono">[{{ s.coords }}]</span>
                   <span class="status-badge" [class]="'st-' + s.status">{{ stationStatus(s.status) }}</span>
@@ -304,6 +311,7 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
                     </button>
                   </div>
                 }
+                </div>
               </div>
             }
             <p class="muted small">
@@ -315,6 +323,12 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
           @if (isOfficerPlus() && a.stations.length < a.station_config.max_per_alliance) {
             <div class="card">
               <div class="panel-title">Station errichten</div>
+              <div class="build-preview">
+                <img class="station-art" [src]="stationArt" alt="" loading="lazy" />
+                <p class="muted small">
+                  Eine Allianz-Station spannt eine Einflusszone über die umliegenden Systeme.
+                </p>
+              </div>
               <div class="coord-row">
                 <input class="mini" type="number" min="1" [ngModel]="stG()" (ngModelChange)="stG.set(+$event || 1)" placeholder="Gal" />
                 <span class="sep">:</span>
@@ -559,13 +573,57 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
         color: var(--warn);
       }
 
+      /* Forschungs-Zweig-Emblem im Karten-Titel */
+      .tree-title {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+      }
+      .tree-emblem {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+        border-radius: 8px;
+        filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
+      }
+
       /* Stationen */
       .station {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--sp-3);
         border-top: 1px solid var(--border);
         padding: var(--sp-3) 0;
       }
       .station:first-of-type {
         border-top: none;
+      }
+      .station-body {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .station-art {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+        flex: 0 0 auto;
+        border-radius: 10px;
+        background: linear-gradient(145deg, rgba(46, 230, 214, 0.12), rgba(13, 22, 41, 0.9));
+        border: 1px solid rgba(46, 230, 214, 0.28);
+        box-shadow: inset 0 0 14px rgba(46, 230, 214, 0.1);
+      }
+      .build-preview {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+        margin-bottom: var(--sp-3);
+      }
+      .build-preview .station-art {
+        width: 88px;
+        height: 88px;
+      }
+      .build-preview p {
+        margin: 0;
       }
       .station-main {
         display: flex;
@@ -734,6 +792,24 @@ export class AllianceComponent implements OnInit {
 
   ctxLabel(ctx: AllianceResearchContext): string {
     return CONTEXT_LABEL[ctx] ?? ctx;
+  }
+
+  /** Stations-Artwork (Karten + Bau-Vorschau). */
+  protected readonly stationArt = 'assets/img/alliance/alliance_station.png';
+
+  /** Emblem des aktiven Forschungs-Zweigs (assets/img/tech/alliance_<tree>.png). */
+  treeEmblem(): string {
+    return `assets/img/tech/alliance_${this.treeTab()}.png`;
+  }
+
+  /** Emoji-Glyph des aktiven Zweigs (Fallback fuer fehlende Knoten-Icons). */
+  treeGlyph(): string {
+    return TREE_GLYPH[this.treeTab()] ?? '🔬';
+  }
+
+  /** Knoten-Icon eines Forschungs-Knotens (assets/img/tech/alliance_<key>.png). */
+  nodeIcon(key: string): string {
+    return `assets/img/tech/alliance_${key}.png`;
   }
 
   stationStatus(status: string): string {
