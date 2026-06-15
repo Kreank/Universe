@@ -190,9 +190,16 @@ export const shellStyles = `
      Mobile (<900px): Drawer-Sidenav + persistente Bottom-Tab-Bar
      ============================================================ */
   @media (max-width: 899px) {
-    .res-bar { order: 3; width: 100%; justify-content: space-around; gap: var(--sp-3); }
-    .res-meta { min-width: 52px; }
-    .res .bar { width: 52px; }
+    /* Ressourcen-Leiste auf EINE kompakte Zeile (Icon + Betrag). Rate + Kapazitaets-Balken
+       wandern in den Tooltip (data-tip) — sonst brechen die 6 Posten auf ~3 Zeilen um und
+       blaehen die Topbar auf. */
+    .res-bar { order: 3; width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: var(--sp-1); overflow-x: auto; }
+    .res { gap: 4px; min-width: 0; }
+    .res-icon { width: 18px; height: 18px; }
+    .res-meta { min-width: 0; gap: 0; }
+    .res .bar { display: none; }
+    .res-rate { display: none; }
+    .res-amount { font-size: var(--fs-sm); }
     .player { display: none; }
 
     /* Sidenav wird zum Off-Canvas-Drawer ("Mehr"). */
