@@ -21,20 +21,6 @@ from app.universe.asteroids import mine_from_field, regen_field
 log = logging.getLogger("universe.mining")
 
 
-def mine_yield(miners: int, yield_per_miner: dict, capacity: float) -> dict[str, float]:
-    """Reines Frachtdeckel-Primitiv: geloestes Erz = miners x yield_per_miner, gedeckelt durch die
-    Frachtkapazitaet — reicht sie nicht, ANTEILIG auf Metall/Kristall aufgeteilt (nicht 'Metall
-    zuerst'). Reichtum/Restvorrat ignoriert -> ``mine_from_field`` (asteroids.py) ist die
-    vollstaendige Foerder-Logik."""
-    remaining = max(0.0, float(capacity))
-    loosened = {k: miners * float(yield_per_miner.get(k, 0)) for k in ("metal", "crystal")}
-    total = loosened["metal"] + loosened["crystal"]
-    if total > remaining and total > 0:
-        ratio = remaining / total
-        loosened = {k: v * ratio for k, v in loosened.items()}
-    return {k: round(loosened[k], 1) for k in ("metal", "crystal")}
-
-
 def _cargo_capacity(ships: dict[str, int]) -> float:
     bal = get_balance()
     cap = 0.0
@@ -58,16 +44,16 @@ async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
         for r in (await session.execute(select(Ship).where(Ship.fleet_id == fleet.id))).scalars().all()
         if r.count > 0
     }
-    # Bergbauschiffe + Ernte-Titan (roster.harvester zaehlt als harvester_yield_mult Bergbauschiffe).
+    # Mining-faehig = Bergbauschiffe ODER ein Ernte-Titan (roster.harvester). Beide sind nur die
+    # VORAUSSETZUNG; der Ertrag haengt am Frachtraum (Modell 'fuelle deinen Frachtraum'), NICHT an
+    # der Schiffszahl -> kein harvester_yield_mult mehr. Der Ernte-Titan zieht seine Staerke aus
+    # seinem riesigen eigenen Laderaum (ships.harvest_titan.cargo).
     roster = bal.combat_roster
-    harvester_mult = float(bal.data.get("capstone", {}).get("harvester_yield_mult", 1.0))
-    effective_miners = float(ships.get(ship_type, 0))
-    for typ, cnt in ships.items():
-        if (roster.get(typ) or {}).get("harvester"):
-            effective_miners += cnt * harvester_mult
-    if effective_miners <= 0:
+    miners = int(ships.get(ship_type, 0)) + sum(
+        c for t, c in ships.items() if (roster.get(t) or {}).get("harvester")
+    )
+    if miners <= 0:
         return None
-    miners = effective_miners
 
     field = (await session.execute(
         select(AsteroidField).where(
@@ -91,8 +77,9 @@ async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
     # Lazy-Regeneration vor der Foerderung anwenden.
     regen_field(field)
 
+    # Modell 'fuelle deinen Frachtraum': die Flotte holt so viel, wie ihr Frachtraum fasst,
+    # gedeckelt durch den Feld-Restvorrat. miners/Ernte-Titan sind nur die Voraussetzung (>0 oben).
     gained, new_metal, new_crystal = mine_from_field(
-        miners, cfg.get("yield_per_miner", {}), field.mult,
         field.metal_remaining, field.crystal_remaining, _cargo_capacity(ships),
     )
     field.metal_remaining = new_metal

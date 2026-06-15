@@ -60,38 +60,29 @@ def test_apply_regen_adds_and_caps():
     assert apply_regen(5, 6, m_max, c_max, hours=0, regen_ratio_per_hour=0.03) == (5, 6)
 
 
-def test_mine_from_field_richness_scales_yield():
-    cap = 10_000_000  # Fracht praktisch unbegrenzt
-    poor, _m, _c = mine_from_field(1, _YIELD, 0.5, 1e9, 1e9, cap)
-    rich, _m, _c = mine_from_field(1, _YIELD, 3.0, 1e9, 1e9, cap)
-    assert rich["metal"] == 4000 * 3.0
-    assert poor["metal"] == 4000 * 0.5
-    assert rich["metal"] > poor["metal"]
+def test_mine_from_field_fills_cargo():
+    # Feld praktisch unbegrenzt -> es wird genau der Frachtraum gefuellt (kommt VOLL zurueck).
+    gained, m_rem, c_rem = mine_from_field(1e9, 1e9, cargo_capacity=30_000)
+    assert abs((gained["metal"] + gained["crystal"]) - 30_000) < 0.5  # Frachtraum voll
+    assert abs(gained["metal"] - 15_000) < 0.5 and abs(gained["crystal"] - 15_000) < 0.5  # 1:1 (Feld 1:1)
 
 
-def test_mine_from_field_depletes_stock():
-    # Vorrat kleiner als gewuenschter Ertrag -> nimmt nur den Rest, Feld auf 0.
-    gained, m_rem, c_rem = mine_from_field(10, _YIELD, 1.0, metal_remaining=5000,
-                                           crystal_remaining=3000, cargo_capacity=10_000_000)
-    assert gained["metal"] == 5000  # Restvorrat begrenzt (Wunsch waere 40000)
-    assert gained["crystal"] == 3000
+def test_mine_from_field_capped_by_reserves():
+    # Vorrat kleiner als Frachtraum -> nimmt den ganzen Rest, Feld auf 0.
+    gained, m_rem, c_rem = mine_from_field(5000, 3000, cargo_capacity=10_000_000)
+    assert gained["metal"] == 5000 and gained["crystal"] == 3000
     assert m_rem == 0 and c_rem == 0
 
 
-def test_mine_from_field_capped_by_cargo_proportional():
-    # Knappe Fracht (5000) < geloestem Erz (6000) -> Metall/Kristall ANTEILIG (2:1), nicht Metall zuerst.
-    gained, m_rem, c_rem = mine_from_field(1, _YIELD, 1.0, metal_remaining=1e9,
-                                           crystal_remaining=1e9, cargo_capacity=5000)
-    # want 4000/2000 (total 6000) -> ratio 5/6 -> 3333.3 / 1666.7
-    assert abs(gained["metal"] - 4000 * 5 / 6) < 0.5
-    assert abs(gained["crystal"] - 2000 * 5 / 6) < 0.5
+def test_mine_from_field_split_by_field_composition():
+    # Knappe Fracht (5000) < Vorrat: Metall/Kristall ANTEILIG zur Feld-Zusammensetzung (4:1).
+    gained, m_rem, c_rem = mine_from_field(8000, 2000, cargo_capacity=5000)
     assert abs((gained["metal"] + gained["crystal"]) - 5000) < 0.5  # Fracht voll ausgenutzt
-    # Vorrat wurde nur um das tatsaechlich Abtransportierte reduziert.
-    assert abs(m_rem - (1e9 - gained["metal"])) < 1
-    assert abs(c_rem - (1e9 - gained["crystal"])) < 1
+    assert abs(gained["metal"] - 4000) < 0.5 and abs(gained["crystal"] - 1000) < 0.5  # 4:1
+    assert abs(m_rem - 4000) < 1 and abs(c_rem - 1000) < 1
 
 
 def test_mine_from_field_empty_field_yields_nothing():
-    gained, m_rem, c_rem = mine_from_field(5, _YIELD, 2.0, 0, 0, cargo_capacity=10_000)
+    gained, m_rem, c_rem = mine_from_field(0, 0, cargo_capacity=10_000)
     assert gained == {"metal": 0.0, "crystal": 0.0}
     assert m_rem == 0 and c_rem == 0

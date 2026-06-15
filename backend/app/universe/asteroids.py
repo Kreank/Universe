@@ -67,29 +67,23 @@ def apply_regen(
 
 
 def mine_from_field(
-    miners: int, base_yield: dict, mult: float,
-    metal_remaining: float, crystal_remaining: float,
-    cargo_capacity: float,
+    metal_remaining: float, crystal_remaining: float, cargo_capacity: float,
 ) -> tuple[dict[str, float], float, float]:
-    """Ertrag = miners x base_yield x Reichtum (= geloestes Erz), gedeckelt durch Restvorrat des
-    Feldes UND die Frachtkapazitaet der Flotte. Reicht die Fracht nicht fuer das geloeste Erz, kommt
-    Metall/Kristall ANTEILIG heim (nicht 'Metall zuerst'); nicht abtransportiertes Erz bleibt im Feld.
-    Liefert (gewonnen, neuer_metal_rest, neuer_crystal_rest)."""
-    remaining_cargo = max(0.0, float(cargo_capacity))
-    stock = {"metal": max(0.0, float(metal_remaining)), "crystal": max(0.0, float(crystal_remaining))}
-    # 1) Geloestes Erz = Schuerfkraft, je Ressource durch den Feld-Restvorrat gedeckelt.
-    loosened = {k: min(miners * float(base_yield.get(k, 0)) * mult, stock[k]) for k in ("metal", "crystal")}
-    total = loosened["metal"] + loosened["crystal"]
-    # 2) Frachtdeckel: reicht die Fracht nicht, beide Ressourcen ANTEILIG herunterskalieren.
-    if total > remaining_cargo and total > 0:
-        ratio = remaining_cargo / total
-        loosened = {k: v * ratio for k, v in loosened.items()}
-    gained = {k: round(loosened[k], 1) for k in ("metal", "crystal")}
-    return (
-        gained,
-        round(stock["metal"] - gained["metal"], 1),
-        round(stock["crystal"] - gained["crystal"], 1),
-    )
+    """Modell 'fuelle deinen Frachtraum': Die Flotte baut so viel ab, wie ihr Frachtraum fasst,
+    gedeckelt durch den Restvorrat des Feldes. Metall/Kristall kommen ANTEILIG zur Zusammensetzung
+    des Feld-Vorrats heim; der Rest bleibt im Feld. Liefert (gewonnen, metal_rest, crystal_rest)."""
+    cap = max(0.0, float(cargo_capacity))
+    am = max(0.0, float(metal_remaining))
+    ac = max(0.0, float(crystal_remaining))
+    avail = am + ac
+    take = min(cap, avail)
+    if avail > 0:
+        take_metal = take * am / avail
+        take_crystal = take - take_metal
+    else:
+        take_metal = take_crystal = 0.0
+    gained = {"metal": round(take_metal, 1), "crystal": round(take_crystal, 1)}
+    return gained, round(am - gained["metal"], 1), round(ac - gained["crystal"], 1)
 
 
 # -- DB: Regeneration eines Feldes ----------------------------------------------
