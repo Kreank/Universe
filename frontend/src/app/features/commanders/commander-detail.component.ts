@@ -16,14 +16,15 @@ import {
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
-import { abilityCategoryIcon, rankIcon, specIcon, traitIcon } from '../../core/models/icon-assets';
+import { abilityCategoryIcon, rankIcon, specIcon, statusIcon, traitIcon, uiIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { commanderDetailStyles } from './commander-detail.styles';
 
 @Component({
   selector: 'app-commander-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DatePipe, FormsModule, CountdownComponent],
+  imports: [RouterLink, DatePipe, FormsModule, CountdownComponent, BtnIconComponent],
   template: `
     <a class="back" routerLink="/commanders">← Zurueck zum Roster</a>
 
@@ -73,7 +74,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
             <div><dt>Status</dt><dd>{{ statusLabel(c) }}</dd></div>
           </dl>
           @if ((c.unrest ?? 0) >= 70) {
-            <p class="faint small">⚑ Wird bald eine Forderung stellen — erfüllen hebt die Treue, ignorieren senkt sie.</p>
+            <p class="faint small"><app-btn-icon [src]="statusIcon('alert')" glyph="⚑" [size]="14" /> Wird bald eine Forderung stellen — erfüllen hebt die Treue, ignorieren senkt sie.</p>
           }
 
           @if (c.training_finishes_at) {
@@ -110,7 +111,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
           <!-- Gouverneurs-Posten -->
           @if (c.status === 'active') {
             <div class="governor">
-              <div class="panel-title">🏛️ Gouverneur</div>
+              <div class="panel-title"><app-btn-icon [src]="uiIcon('governor')" glyph="🏛️" [size]="16" /> Gouverneur</div>
               @if (governedPlanet(); as gp) {
                 <p class="small">Verwaltet <strong>{{ gp.name }}</strong> [{{ gp.galaxy }}:{{ gp.system }}:{{ gp.position }}] — hebt dessen Produktion.</p>
                 <button class="btn btn-ghost btn-sm" type="button" (click)="recallGovernor(gp.id)">Abberufen</button>
@@ -132,7 +133,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
           <!-- Faehigkeiten (RPG-Entwicklung) -->
           <div class="abilities-panel">
             <div class="ab-head">
-              <span class="panel-title">⚡ Fähigkeiten</span>
+              <span class="panel-title"><app-btn-icon [src]="uiIcon('ability')" glyph="⚡" [size]="16" /> Fähigkeiten</span>
               <span class="sp-badge" title="Skillpunkte">{{ c.skill_points ?? 0 }} SP</span>
               <span class="slot-badge" title="gleichzeitig scharfschaltbar">{{ c.arm_slots ?? 1 }} Slots</span>
             </div>
@@ -183,7 +184,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
 
         <!-- Funkspruch-Historie -->
         <section class="card history">
-          <div class="panel-title">📡 Funkspruch-Historie</div>
+          <div class="panel-title"><app-btn-icon [src]="statusIcon('transmission_unread')" glyph="📡" [size]="16" /> Funkspruch-Historie</div>
           @if (c.history.length) {
             <ol class="timeline">
               @for (h of c.history; track h.id) {
@@ -420,6 +421,8 @@ export class CommanderDetailComponent {
   protected readonly rankIcon = rankIcon;
   protected readonly specIcon = specIcon;
   protected readonly traitIcon = traitIcon;
+  protected readonly statusIcon = statusIcon;
+  protected readonly uiIcon = uiIcon;
   /** Blendet ein nicht ladbares Inline-Icon aus (Label bleibt sichtbar). */
   hideImg(event: Event): void {
     (event.target as HTMLImageElement).style.display = 'none';

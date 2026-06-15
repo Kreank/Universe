@@ -4,7 +4,8 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { PlanetUnit, Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
 import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_META, metaFor } from '../../core/models/display';
-import { defenseIcon, rangeIcon, shipIcon, weaponIcon } from '../../core/models/icon-assets';
+import { defenseIcon, navIcon, rangeIcon, resourceIcon, shipIcon, weaponIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { DetailPopupComponent, DetailTag } from '../../shared/components/detail-popup.component';
 import { BuildTileComponent } from '../../shared/components/build-tile.component';
@@ -83,7 +84,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
 @Component({
   selector: 'app-shipyard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CountdownComponent, DetailPopupComponent, BuildTileComponent, IconTileComponent, TabBarComponent, ConfirmDialogComponent],
+  imports: [FormsModule, CountdownComponent, DetailPopupComponent, BuildTileComponent, IconTileComponent, TabBarComponent, ConfirmDialogComponent, BtnIconComponent],
   template: `
     <h1>Werft & Verteidigung</h1>
     <p class="muted sub">Baue Schiffe und Verteidigungsanlagen auf {{ state.activePlanet()?.name ?? '—' }}.</p>
@@ -93,7 +94,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
     } @else if (data(); as d) {
       <!-- Bauschleife -->
       <section class="card queue">
-        <div class="panel-title">🛠️ Bauschleife</div>
+        <div class="panel-title"><app-btn-icon [src]="navIcon('shipyard')" glyph="🛠️" [size]="16" /> Bauschleife</div>
         @if (d.queue.length) {
           @for (q of d.queue; track q.id; let first = $first) {
             <div class="queue-row" [class.building]="first">
@@ -157,8 +158,8 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; types: s
                 @if (s.capstone) {
                   <span class="hint small cap-line">
                     Besitz {{ s.capstone.owned }}/{{ s.capstone.cap }}
-                    @if (s.cost.antimatter) { · ⚛️ {{ s.cost.antimatter }} }
-                    @if (s.cost.dark_matter) { · 🌑 {{ s.cost.dark_matter }} }
+                    @if (s.cost.antimatter) { · <app-btn-icon [src]="resourceIcon('antimatter')" glyph="⚛️" [size]="14" /> {{ s.cost.antimatter }} }
+                    @if (s.cost.dark_matter) { · <app-btn-icon [src]="resourceIcon('dark_matter')" glyph="🌑" [size]="14" /> {{ s.cost.dark_matter }} }
                   </span>
                 }
                 @if (!s.requirements_met) {
@@ -256,6 +257,10 @@ export class ShipyardComponent {
   private readonly api = inject(ApiService);
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+
+  /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
+  protected readonly navIcon = navIcon;
+  protected readonly resourceIcon = resourceIcon;
 
   protected readonly data = signal<ShipyardResponse | null>(null);
   protected readonly loading = signal(true);

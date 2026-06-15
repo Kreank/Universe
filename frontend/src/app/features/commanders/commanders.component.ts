@@ -15,7 +15,7 @@ import {
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
-import { rankIcon, specIcon, traitIcon } from '../../core/models/icon-assets';
+import { navIcon, rankIcon, specIcon, statusIcon, traitIcon } from '../../core/models/icon-assets';
 import { commanderStyles } from './commander.styles';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
@@ -119,7 +119,7 @@ interface GradesConfig {
         </div>
 
         <button class="btn btn-primary" type="button" [disabled]="training()" (click)="train()">
-          {{ training() ? 'Bildet aus…' : '🎖️ Ausbildung starten' }}
+          <app-btn-icon [src]="navIcon('command')" glyph="🎖️" [size]="18" /> {{ training() ? 'Bildet aus…' : 'Ausbildung starten' }}
         </button>
       </div>
     }
@@ -127,7 +127,7 @@ interface GradesConfig {
     @if (span(); as s) {
       <div class="card span-card">
         <div class="span-head">
-          <span class="panel-title" style="margin:0">📡 Span of Control</span>
+          <span class="panel-title" style="margin:0"><app-btn-icon [src]="statusIcon('span_of_control')" glyph="📡" [size]="16" /> Span of Control</span>
           <span class="mono span-big" [class.over]="s.in_use > s.total">{{ s.in_use }} / {{ s.total }}</span>
         </div>
         <div class="bar" [class.full]="s.in_use >= s.total">
@@ -171,8 +171,8 @@ interface GradesConfig {
               </div>
               @if (c.loyalty < 30 || (c.unrest ?? 0) >= 80) {
                 <div class="risk small">
-                  @if (c.loyalty < 30) { <span class="chip warn">⚠ Treue {{ c.loyalty }} — Meuterei/Überlauf-Risiko</span> }
-                  @if ((c.unrest ?? 0) >= 80) { <span class="chip warn">⚑ Forderung steht bevor</span> }
+                  @if (c.loyalty < 30) { <span class="chip warn"><app-btn-icon [src]="statusIcon('alert')" glyph="⚠" [size]="14" /> Treue {{ c.loyalty }} — Meuterei/Überlauf-Risiko</span> }
+                  @if ((c.unrest ?? 0) >= 80) { <span class="chip warn"><app-btn-icon [src]="statusIcon('alert')" glyph="⚑" [size]="14" /> Forderung steht bevor</span> }
                 </div>
               }
 
@@ -333,6 +333,8 @@ export class CommandersComponent {
   protected readonly rankIcon = rankIcon;
   protected readonly specIcon = specIcon;
   protected readonly traitIcon = traitIcon;
+  protected readonly navIcon = navIcon;
+  protected readonly statusIcon = statusIcon;
   /** Blendet ein nicht ladbares Inline-Icon aus (Label bleibt sichtbar). */
   hideImg(event: Event): void {
     (event.target as HTMLImageElement).style.display = 'none';

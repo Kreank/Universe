@@ -13,6 +13,8 @@ import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Planet, PlanetUnit } from '../../core/models/api.models';
 import { SHIP_META, metaFor } from '../../core/models/display';
+import { resourceIcon, uiIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from './btn-icon.component';
 import { CountdownComponent } from './countdown.component';
 import { IconTileComponent } from './icon-tile.component';
 
@@ -28,7 +30,7 @@ import { IconTileComponent } from './icon-tile.component';
 @Component({
   selector: 'app-jump-gate-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, IconTileComponent, CountdownComponent],
+  imports: [FormsModule, IconTileComponent, CountdownComponent, BtnIconComponent],
   host: { '(document:keydown.escape)': 'close.emit()' },
   template: `
     <div class="backdrop" (click)="close.emit()">
@@ -36,9 +38,9 @@ import { IconTileComponent } from './icon-tile.component';
         <button class="x" type="button" (click)="close.emit()" aria-label="Schliessen">✕</button>
 
         <header class="head">
-          <h2>🌀 Sprungtor</h2>
+          <h2><app-btn-icon [src]="'assets/img/buildings/jump_gate.png'" glyph="🌀" [size]="16" /> Sprungtor</h2>
           @if (source(); as s) {
-            <span class="coord mono">🌑 {{ s.name }} [{{ s.galaxy }}:{{ s.system }}:{{ s.position }}]</span>
+            <span class="coord mono"><app-btn-icon [src]="'assets/img/backgrounds/moon.png'" glyph="🌑" [size]="14" /> {{ s.name }} [{{ s.galaxy }}:{{ s.system }}:{{ s.position }}]</span>
           }
         </header>
 
@@ -86,7 +88,7 @@ import { IconTileComponent } from './icon-tile.component';
           <!-- Kosten + Cooldown -->
           <div class="summary">
             <div class="sum-row">
-              <span class="faint">🛢️ Sprungkosten</span>
+              <span class="faint"><app-btn-icon [src]="resourceIcon('deuterium')" glyph="🛢️" [size]="14" /> Sprungkosten</span>
               <span class="mono" [class.neg]="!enoughDeuterium()">{{ jumpCost() }} Deuterium</span>
             </div>
             <div class="sum-row">
@@ -95,7 +97,7 @@ import { IconTileComponent } from './icon-tile.component';
             </div>
             @if (onCooldown()) {
               <div class="sum-row warn-row">
-                <span>⏳ Sprungtor im Cooldown</span>
+                <span><app-btn-icon [src]="uiIcon('time')" glyph="⏳" [size]="16" /> Sprungtor im Cooldown</span>
                 <app-countdown [target]="nextJumpAt()!" />
               </div>
             }
@@ -333,4 +335,6 @@ export class JumpGateDialogComponent {
   }
 
   shipMeta = (t: string) => metaFor(SHIP_META, t);
+  protected readonly resourceIcon = resourceIcon;
+  protected readonly uiIcon = uiIcon;
 }

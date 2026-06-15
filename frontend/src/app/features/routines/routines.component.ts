@@ -20,7 +20,7 @@ import {
   RoutineWriteRequest,
 } from '../../core/models/api.models';
 import { SHIP_META, metaFor } from '../../core/models/display';
-import { shipIcon } from '../../core/models/icon-assets';
+import { navIcon, shipIcon } from '../../core/models/icon-assets';
 import {
   ConfirmDialogComponent,
   ConfirmRequest,
@@ -61,7 +61,7 @@ interface RoutineDraft {
     <section class="routines">
       <header class="page-head">
         <div>
-          <h1>🛰 Routinen</h1>
+          <h1><app-btn-icon [src]="navIcon('routines')" glyph="🛰" [size]="18" /> Routinen</h1>
           <p class="muted small">
             Automatisierte Farm-Routen: deine Flotte klappert die Wegpunkte selbstständig ab.
           </p>
@@ -560,6 +560,7 @@ export class RoutinesComponent implements OnInit {
 
   /** Asset-Helfer fuers Template. */
   protected readonly shipIcon = shipIcon;
+  protected readonly navIcon = navIcon;
 
   protected readonly routines = signal<Routine[]>([]);
   protected readonly limits = signal<RoutineLimits | null>(null);

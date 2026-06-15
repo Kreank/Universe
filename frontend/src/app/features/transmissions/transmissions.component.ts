@@ -5,7 +5,7 @@ import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Commander, DecisionChoice, Transmission } from '../../core/models/api.models';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { defenseIcon, missionIcon, navIcon, resourceIcon, shipIcon, uiIcon } from '../../core/models/icon-assets';
+import { defenseIcon, missionIcon, navIcon, resourceIcon, shipIcon, statIcon, uiIcon } from '../../core/models/icon-assets';
 import { transmissionStyles } from './transmission.styles';
 import { CombatReportComponent } from './combat-report.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
@@ -77,7 +77,7 @@ interface SpyIntelView {
                   <span class="type-chip" [class]="'tc-' + t.type">{{ typeLabel(t) }}</span>
                 </div>
                 <span class="faint small">
-                  @if (t.from_name) { ✉ Von {{ t.from_name }} } @else { {{ commanderName(t.commander_id) }} }
+                  @if (t.from_name) { <app-btn-icon [src]="navIcon('mail')" glyph="✉" [size]="14" /> Von {{ t.from_name }} } @else { {{ commanderName(t.commander_id) }} }
                   · {{ t.created_at | date: 'short' }}
                 </span>
               </div>
@@ -103,7 +103,7 @@ interface SpyIntelView {
 
                 @if (intel.fleet) {
                   <div class="intel-section">
-                    <div class="intel-label">🚀 Flotte</div>
+                    <div class="intel-label"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="16" /> Flotte</div>
                     <div class="intel-rows">
                       @for (u of intel.fleet; track u.label) {
                         <span class="unit"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ u.count }}× {{ u.label }}</span>
@@ -113,7 +113,7 @@ interface SpyIntelView {
                 }
                 @if (intel.defenses) {
                   <div class="intel-section">
-                    <div class="intel-label">🛡 Verteidigung</div>
+                    <div class="intel-label"><app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="16" /> Verteidigung</div>
                     <div class="intel-rows">
                       @for (u of intel.defenses; track u.label) {
                         <span class="unit"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ u.count }}× {{ u.label }}</span>
@@ -125,7 +125,7 @@ interface SpyIntelView {
                 }
                 @if (intel.resources) {
                   <div class="intel-section">
-                    <div class="intel-label">💰 Ressourcen</div>
+                    <div class="intel-label"><app-btn-icon [src]="uiIcon('loot')" glyph="💰" [size]="16" /> Ressourcen</div>
                     <div class="intel-rows">
                       @for (u of intel.resources; track u.label) {
                         <span class="unit res"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ fmt(u.count) }} {{ u.label }}</span>
@@ -135,17 +135,17 @@ interface SpyIntelView {
                 }
                 @if (intel.economy; as eco) {
                   <div class="intel-section">
-                    <div class="intel-label">🏭 Wirtschaft</div>
+                    <div class="intel-label"><app-btn-icon [src]="'assets/img/buildings/robot_factory.png'" glyph="🏭" [size]="16" /> Wirtschaft</div>
                     <div class="intel-rows">
-                      <span class="unit" title="Wirtschaftlicher Ausbaustand — waechst mit Region, Spielerstaerke und Alter">🏗️ Ausbaustufe {{ eco.development }}</span>
-                      <span class="unit" title="Forschungsstand des Imperiums">🔬 Forschung {{ eco.research }}</span>
+                      <span class="unit" title="Wirtschaftlicher Ausbaustand — waechst mit Region, Spielerstaerke und Alter"><app-btn-icon [src]="navIcon('buildings')" glyph="🏗️" [size]="14" /> Ausbaustufe {{ eco.development }}</span>
+                      <span class="unit" title="Forschungsstand des Imperiums"><app-btn-icon [src]="navIcon('research')" glyph="🔬" [size]="14" /> Forschung {{ eco.research }}</span>
                     </div>
                   </div>
                 }
 
                 @if (intel.level < 3) {
                   <p class="intel-hint small">
-                    🔒 {{ intel.level < 2 ? 'Nur Gesamtstaerke aufgeklaert.' : 'Ressourcen verborgen.' }}
+                    <app-btn-icon [src]="uiIcon('lock')" glyph="🔒" [size]="14" /> {{ intel.level < 2 ? 'Nur Gesamtstaerke aufgeklaert.' : 'Ressourcen verborgen.' }}
                     Mehr Sonden oder hoehere Spionagetechnik liefern Details.
                   </p>
                 }
@@ -223,6 +223,7 @@ export class TransmissionsComponent {
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly missionIcon = missionIcon;
   protected readonly navIcon = navIcon;
+  protected readonly statIcon = statIcon;
   protected readonly uiIcon = uiIcon;
 
   protected readonly onlyUnread = signal(false);

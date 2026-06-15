@@ -10,7 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Coordinate, EscortOffer, StationedFleet, TradeIndex, TradePartner, TradeProfile } from '../../core/models/api.models';
-import { missionIcon, navIcon } from '../../core/models/icon-assets';
+import { missionIcon, navIcon, statIcon, uiIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
@@ -30,7 +30,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
   template: `
     <section class="trade">
       <header class="page-head">
-        <h1>💱 Handel</h1>
+        <h1><app-btn-icon [src]="navIcon('market')" glyph="💱" [size]="18" /> Handel</h1>
         <p class="muted">
           Globaler Handelskurs (Handelszentren):
           @if (index(); as ix) {
@@ -100,7 +100,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
         @for (p of partners(); track p.player_id) {
           <div class="partner">
             <div class="partner-main">
-              <span class="pname">🧑‍🚀 {{ p.name }}</span>
+              <span class="pname"><app-btn-icon [src]="uiIcon('player')" glyph="🧑‍🚀" [size]="14" /> {{ p.name }}</span>
               @if (p.coords) { <span class="mono small muted">[{{ p.coords }}]</span> }
             </div>
             <div class="partner-offer small">
@@ -122,25 +122,25 @@ type Res = 'metal' | 'crystal' | 'deuterium';
 
       <!-- Meine stationierten Flotten — Eskorte hier verwalten (exklusiv zum Abfangen) -->
       <div class="card">
-        <div class="panel-title">🛡 Meine stationierten Flotten ({{ stationed().length }})</div>
+        <div class="panel-title"><app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="16" /> Meine stationierten Flotten ({{ stationed().length }})</div>
         @if (stationed().length === 0) {
-          <p class="muted small">Keine stationierten Flotten. Schicke in der Galaxie eine Flotte mit Mission „🛡 Eskorte" (🚚 → Versand → Eskorte) in eine Region, deren Handelsrouten du decken willst. Eine schon geparkte Flotte (Mission „Stationierung") kannst du hier per „Eskorte anbieten" umschalten.</p>
+          <p class="muted small">Keine stationierten Flotten. Schicke in der Galaxie eine Flotte mit Mission „<app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="14" /> Eskorte" (<app-btn-icon [src]="missionIcon('deploy')" glyph="🚚" [size]="14" /> → Versand → Eskorte) in eine Region, deren Handelsrouten du decken willst. Eine schon geparkte Flotte (Mission „Stationierung") kannst du hier per „Eskorte anbieten" umschalten.</p>
         }
         @for (s of stationed(); track s.id) {
           <div class="partner">
             <div class="partner-main">
               <span class="mono">[{{ s.coords }}]</span>
-              <span class="small muted">{{ s.ships_total }} 🚀</span>
+              <span class="small muted">{{ s.ships_total }} <app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="14" /></span>
               @if (s.fuel === null) {
-                <span class="small tag-ok" title="Eigenes Gebiet — kein Treibstoff-Unterhalt">🏠 gratis</span>
+                <span class="small tag-ok" title="Eigenes Gebiet — kein Treibstoff-Unterhalt"><app-btn-icon [src]="uiIcon('home')" glyph="🏠" [size]="14" /> gratis</span>
               } @else {
-                <span class="small" [class.tag-warn]="s.fuel < 1000" title="Vorgeschoben: Deuterium-Vorrat. Leer → automatische Rückkehr.">⛽ {{ s.fuel }} Deut</span>
+                <span class="small" [class.tag-warn]="s.fuel < 1000" title="Vorgeschoben: Deuterium-Vorrat. Leer → automatische Rückkehr."><app-btn-icon [src]="statIcon('fuel')" glyph="⛽" [size]="14" /> {{ s.fuel }} Deut</span>
               }
             </div>
             <div class="escort-edit">
               @if (s.mode === 'intercept') {
                 <span class="small tag-ok" title="Aktive Abfang-Patrouille — auf der Flotten-Seite verwaltet.">
-                  📡 Abfangen · Radius {{ s.intercept_radius }} Sys
+                  <app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" [size]="14" /> Abfangen · Radius {{ s.intercept_radius }} Sys
                   @if (s.has_interdictor) { · Interdiktor (Pin) }
                   @else if (s.interceptors > 0) { · {{ s.interceptors }}× Abfangjäger }
                 </span>
@@ -157,7 +157,7 @@ type Res = 'metal' | 'crystal' | 'deuterium';
                     <input class="mini" type="number" min="0" max="10" step="0.5" [ngModel]="s.escort_fee_pct * 100" (ngModelChange)="updateEscort(s, { escort_fee_pct: (+$event || 0) / 100 })" />%
                   </span>
                 } @else {
-                  <span class="small muted">🚚 Geparkt — rein passiv.</span>
+                  <span class="small muted"><app-btn-icon [src]="missionIcon('deploy')" glyph="🚚" [size]="14" /> Geparkt — rein passiv.</span>
                 }
               }
               <button class="btn btn-ghost btn-sm" type="button" (click)="recall(s)"><app-btn-icon [src]="missionIcon('return')" glyph="↩" /> Zurückrufen</button>
@@ -168,14 +168,14 @@ type Res = 'metal' | 'crystal' | 'deuterium';
 
       <!-- Eskort-Angebote anderer Spieler -->
       <div class="card">
-        <div class="panel-title">🛰 Eskort-Angebote ({{ offers().length }})</div>
+        <div class="panel-title"><app-btn-icon [src]="statIcon('shield')" glyph="🛰" [size]="16" /> Eskort-Angebote ({{ offers().length }})</div>
         @if (offers().length === 0) {
           <p class="muted small">Aktuell bietet niemand Geleitschutz an.</p>
         }
         @for (o of offers(); track o.id) {
           <div class="partner">
             <div class="partner-main">
-              <span class="pname">🛡 {{ o.owner }}</span>
+              <span class="pname"><app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="14" /> {{ o.owner }}</span>
               <span class="mono small muted">[{{ o.coords }}] · Radius {{ o.radius }} Sys</span>
             </div>
             <div class="small muted">Kampfkraft ~{{ o.power }} · Gebühr {{ (o.fee_pct * 100).toFixed(1) }}% des Frachtwerts</div>
@@ -295,6 +295,8 @@ export class TradeComponent implements OnInit {
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly missionIcon = missionIcon;
   protected readonly navIcon = navIcon;
+  protected readonly statIcon = statIcon;
+  protected readonly uiIcon = uiIcon;
 
   protected readonly resList = [
     { key: 'metal' as const, glyph: '⛏️', label: 'Metall' },

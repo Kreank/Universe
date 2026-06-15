@@ -424,6 +424,55 @@ Es gibt **zwei** Asset-Wurzeln:
 
 ---
 
+## 🧩 UI-/Status-Icons — Ablösung hartkodierter Emoji-Fallbacks (2026-06-15)
+
+> **Kontext:** Audit des gesamten Frontends auf hartkodierte Emoji-„Fallback-Icons" in Templates.
+> Wo ein passendes Asset existierte, ist das Emoji bereits gegen das echte Asset getauscht (via
+> `app-btn-icon`/`app-icon-tile`, Emoji bleibt nur als Notfall-Glyph). Die folgenden **fehlten** —
+> bis sie geliefert sind, zeigen die Stellen weiterhin den Emoji-Fallback.
+>
+> **Stil-Anker (genau anschauen!):** vorhandene `icons/ui/*.png` (`broom`/`trash`/`advisor`), `icons/nav/*.png`,
+> `icons/status/*.png`, `icons/spec/stat_*.png`. Also: **schlichte, sofort lesbare Silhouette**, cyan
+> `#2fe3d2` Akzent, PNG transparent, KEIN Rahmen/Text (das Frontend rahmt selbst). Sitzen als **kleines
+> führendes Icon (~16–18px) in Buttons / Panel-Titeln / Chips** → bei ~16px klar erkennbar bleiben.
+> `ui/`-Ordner-Spiegel: Master `assets/icons/ui/<name>.png` → `frontend/src/assets/img/ui/<name>.png`.
+
+### Generische UI-Icons — referenziert als `assets/img/ui/<name>.png` (`uiIcon()`-Helfer)
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | time | `icons/ui/time.png` | PNG transparent, 256×256 | **Zeit/Dauer** (löst ⏱/⏳ ab — Bauzeit, Forschungszeit, Flugzeit, Cooldown; sehr häufig). Schlichte Uhr/Sanduhr-Silhouette, cyan Zeiger/Glow. Neutral genug für „läuft" UND „Restzeit". |
+| ✅ | home | `icons/ui/home.png` | PNG transparent, 256×256 | **Heimat/Heimatplanet** (löst 🏠/⌂ ab — „Heimat"-Button Galaxie, „gratis"-Heimatgebiet im Handel). Stilisierter Heimat-Planet mit Markierungs-Pin/Haus-Glyph, cyan Akzent. |
+| ✅ | target | `icons/ui/target.png` | PNG transparent, 256×256 | **Ziel/erfasst** (löst 🎯 ab — „Aufgeklärte Ziele", Anfälligkeit/Verwundbarkeit). Fadenkreuz/Zielscheibe, cyan Ringe. |
+| ✅ | loot | `icons/ui/loot.png` | PNG transparent, 256×256 | **Beute** (löst 💰 ab — Kampfbericht „Beute", Intel „Ressourcen"). Stapel/Truhe aus Erz-/Kristall-Splittern (kein irdisches Gold), cyan Glanz. Passt zur Ressourcen-Ästhetik (`resources/*`). |
+| ✅ | distance | `icons/ui/distance.png` | PNG transparent, 256×256 | **Distanz** (löst 📏 ab — Flotten-Versand Distanz-Anzeige). Mess-Linie/Lineal zwischen zwei Punkten über Sternenraster, cyan. Klar von `range/*` (Reichweiten-Klasse) unterscheidbar. |
+| ✅ | requirements | `icons/ui/requirements.png` | PNG transparent, 256×256 | **Voraussetzungen** (löst 🔗 ab — Detail-Popup „Voraussetzungen"). Verkettete Knoten/Glieder (Abhängigkeitskette), cyan. |
+| ✅ | unlock | `icons/ui/unlock.png` | PNG transparent, 256×256 | **Schaltet frei** (löst 🔓 ab — Detail-Popup „Schaltet frei"). Offenes Schloss mit cyan Aufleucht-Strahl. Paarig zu `lock`. |
+| ✅ | lock | `icons/ui/lock.png` | PNG transparent, 256×256 | **Verschlossen/geheim** (löst 🔒 ab — Intel unzureichend aufgeklärt). Geschlossenes Schloss, gedämpft cyan. Paarig zu `unlock`. |
+| ✅ | levels | `icons/ui/levels.png` | PNG transparent, 256×256 | **Nächste Stufen/Steigerung** (löst 📈 ab — Detail-Popup „Nächste Stufen"). Aufsteigende Balken-/Stufen-Treppe mit cyan Pfeil. |
+| ✅ | ability | `icons/ui/ability.png` | PNG transparent, 256×256 | **Aktive Fähigkeit** (löst ⚡ in „Fähigkeiten"-Kontext ab — Commander-Abilities, Versand „Fähigkeiten scharf"). Energie-/Funken-Sigille (klar verschieden vom Energie-Ressourcen-Blitz `resources/energy`), cyan. |
+| ✅ | morale | `icons/ui/morale.png` | PNG transparent, 256×256 | **Crew-Moral** (löst 🎖️ in „Crew-Moral" ab — Dashboard). Stimmungs-/Herz-puls- oder Banner-Symbol einer Crew, cyan. Unterscheidbar vom Kommando-Nav-Icon. |
+| ✅ | governor | `icons/ui/governor.png` | PNG transparent, 256×256 | **Gouverneur** (löst 🏛️ ab — Commander-Detail „Gouverneur": Kommandeur verwaltet einen Planeten). Verwaltungs-/Amts-Silhouette (Säulenbau + Stern/Rang), cyan. |
+| ⬜ | genetics | `icons/ui/genetics.png` | PNG transparent, 256×256 | **Charakter-Zucht** (löst 🧬 ab — Commander-Detail „Charakter-Zucht": Trait-Vererbung). DNA-/Doppelhelix-Strang, cyan. |
+| ✅ | player | `icons/ui/player.png` | PNG transparent, 256×256 | **Spieler/Pilot** (löst 🧑‍🚀 ab — Handelspartner-Name). Helm-/Pilot-Silhouette (neutral), cyan Visier-Glanz. |
+| ✅ | rapidfire | `icons/ui/rapidfire.png` | PNG transparent, 256×256 | **Schnellfeuer** (löst 💥 im Detail-Popup „Schnellfeuer gegen" ab). Mehrfach-Mündungsfeuer-Salve/Burst, cyan-heiße Spitzen. |
+
+### Status-Icons (Kampf) — referenziert als `assets/img/status/<name>.png` (`statusIcon()`-Helfer)
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | losses | `icons/status/losses.png` | PNG transparent, 256×256 | **Verluste** (löst 💥 im Kampfbericht „Verluste" ab). Zerbrochener Schiffsrumpf/Wrackteil mit Funken, gedämpft-warnend. Stil wie übrige `status/*`. |
+| ✅ | ambush | `icons/status/ambush.png` | PNG transparent, 256×256 | **Hinterhalt** (löst 🥷 im Kampfbericht-Runde ab). Verdeckte/getarnte Schiff-Silhouette aus dem Schatten auftauchend (Stealth-Motiv), cyan Kante. Passt zu `ships/stealth_corvette`. |
+| ✅ | fled | `icons/status/fled.png` | PNG transparent, 256×256 | **Geflohen** (löst 🏃 im Kampfbericht „Geflohen" ab). Abdrehendes Schiff mit Fluchtspur/Triebwerks-Streak, cyan. Klar von `stranded` (Antrieb tot) unterscheidbar. |
+
+### Stat-Icon — referenziert als `assets/img/icons/spec/stat_<key>.png` (`statIcon()`-Helfer)
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | stat_hull | `icons/spec/stat_hull.png` | PNG transparent, 256×256 (Stil = `icons/spec/stat_*`) | **Hülle/HP** (löst ❤ ab — Allianz-Stations-Hülle, Schiffs-HP im Detail-Popup). Gepanzerte Rumpf-/Hüllen-Platte mit Niet/Integritäts-Glyph, cyan. Reiht sich in `stat_attack/stat_shield/stat_cargo/stat_speed/stat_fuel/stat_energy` ein. |
+
+---
+
 ## 🗒️ Notizen für Codex
 
 - Optional/später (noch NICHT verdrahtet, daher keine aktive Anforderung): Regions-Hintergründe

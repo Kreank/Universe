@@ -26,6 +26,7 @@ import {
   PLANET_TYPE_META,
   metaFor,
 } from '../../core/models/display';
+import { navIcon, resourceIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import {
   BuildQueueItem,
   BuildingState,
@@ -36,11 +37,12 @@ import {
 import { dashboardStyles } from './dashboard.styles';
 import { OnboardingPanelComponent } from '../../shared/components/onboarding-panel.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent, OnboardingPanelComponent, IconTileComponent],
+  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent, OnboardingPanelComponent, IconTileComponent, BtnIconComponent],
   template: `
     <h1>Dashboard</h1>
 
@@ -58,10 +60,10 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
         <span class="faint small">von {{ totalPlayers() }}</span>
       </div>
       <div class="score-breakdown">
-        <span class="bd tip" data-tip="Gebäude">🏗️ {{ (me()?.buildings ?? 0) | shortNumber }}</span>
-        <span class="bd tip" data-tip="Forschung">🔬 {{ (me()?.research ?? 0) | shortNumber }}</span>
-        <span class="bd tip" data-tip="Flotte">🚀 {{ (me()?.fleet ?? 0) | shortNumber }}</span>
-        <span class="bd tip" data-tip="Verteidigung">🛡️ {{ (me()?.defense ?? 0) | shortNumber }}</span>
+        <span class="bd tip" data-tip="Gebäude"><app-btn-icon [src]="navIcon('buildings')" glyph="🏗️" [size]="14" /> {{ (me()?.buildings ?? 0) | shortNumber }}</span>
+        <span class="bd tip" data-tip="Forschung"><app-btn-icon [src]="navIcon('research')" glyph="🔬" [size]="14" /> {{ (me()?.research ?? 0) | shortNumber }}</span>
+        <span class="bd tip" data-tip="Flotte"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="14" /> {{ (me()?.fleet ?? 0) | shortNumber }}</span>
+        <span class="bd tip" data-tip="Verteidigung"><app-btn-icon [src]="statIcon('shield')" glyph="🛡️" [size]="14" /> {{ (me()?.defense ?? 0) | shortNumber }}</span>
       </div>
       <span class="score-cta faint small">Rangliste →</span>
     </a>
@@ -73,15 +75,15 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
         {{ p.temp_max }}°C · Felder {{ p.fields_used }}/{{ p.fields_max }}
         @if (moon(); as m) {
           · <button class="moon-chip" type="button" (click)="selectMoon(m.id)"
-              title="Zum Mond wechseln">🌑 Mond</button>
+              title="Zum Mond wechseln"><app-btn-icon [src]="'assets/img/backgrounds/moon.png'" glyph="🌑" [size]="14" /> Mond</button>
         }
         @if (parentPlanet(); as pp) {
           · <button class="moon-chip" type="button" (click)="selectMoon(pp.id)"
-              title="Zum Planeten wechseln">🪐 Planet</button>
+              title="Zum Planeten wechseln"><app-btn-icon [src]="'assets/img/planets/normal.png'" glyph="🪐" [size]="14" /> Planet</button>
         }
         @if (isMoon() && hasJumpGate()) {
           · <button class="moon-chip jump" type="button" (click)="showJump.set(true)"
-              title="Sprungtor: Schiffe sofort zu einem anderen Mond versetzen">🌀 Sprungtor</button>
+              title="Sprungtor: Schiffe sofort zu einem anderen Mond versetzen"><app-btn-icon [src]="'assets/img/buildings/jump_gate.png'" glyph="🌀" [size]="14" /> Sprungtor</button>
         }
       </p>
 
@@ -108,7 +110,7 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
             }
             <div class="res-card energy">
               <div class="row-between">
-                <span>⚡ Energie</span>
+                <span><app-btn-icon [src]="resourceIcon('energy')" glyph="⚡" [size]="16" /> Energie</span>
                 <span class="mono" [class.neg]="energy().balance < 0">{{ energy().balance | shortNumber }}</span>
               </div>
               <div class="row-between small">
@@ -125,7 +127,7 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
 
         <!-- Commander-Moral -->
         <section class="card">
-          <div class="panel-title">🎖️ Crew-Moral</div>
+          <div class="panel-title"><app-btn-icon [src]="uiIcon('morale')" glyph="🎖️" [size]="16" /> Crew-Moral</div>
           @if (state.commanders().length) {
             @for (c of state.commanders(); track c.id) {
               <a class="cmd-row" [routerLink]="['/commanders', c.id]">
@@ -152,10 +154,10 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
        <div class="col">
         <!-- Aktive Vorgaenge -->
         <section class="card">
-          <div class="panel-title">⏳ Aktive Vorgaenge</div>
+          <div class="panel-title"><app-btn-icon [src]="uiIcon('time')" glyph="⏳" [size]="16" /> Aktive Vorgaenge</div>
 
           <div class="ops-block">
-            <div class="ops-label">🏗️ Bau</div>
+            <div class="ops-label"><app-btn-icon [src]="navIcon('buildings')" glyph="🏗️" [size]="16" /> Bau</div>
             @if (activeBuild(); as b) {
               <div class="queue-row">
                 <span>{{ metaB(b.type).glyph }} {{ metaB(b.type).label }} → Stufe {{ b.level + 1 }}</span>
@@ -169,7 +171,7 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
           <hr />
 
           <div class="ops-block">
-            <div class="ops-label">🔬 Forschung</div>
+            <div class="ops-label"><app-btn-icon [src]="navIcon('research')" glyph="🔬" [size]="16" /> Forschung</div>
             @if (activeResearch(); as t) {
               <div class="queue-row">
                 <span>{{ metaT(t.type).glyph }} {{ metaT(t.type).label }} → Stufe {{ t.level + 1 }}</span>
@@ -183,7 +185,7 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
           <hr />
 
           <div class="ops-block">
-            <div class="ops-label">🛠️ Werft</div>
+            <div class="ops-label"><app-btn-icon [src]="navIcon('shipyard')" glyph="🛠️" [size]="16" /> Werft</div>
             @if (shipyardQueue().length) {
               @for (q of shipyardQueue(); track $index) {
                 <div class="queue-row">
@@ -199,7 +201,7 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
 
         <!-- Flottenbewegungen -->
         <section class="card">
-          <div class="panel-title">🚀 Flottenbewegungen</div>
+          <div class="panel-title"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="16" /> Flottenbewegungen</div>
           @if (activeFleets().length) {
             @for (f of activeFleets(); track f.id) {
               <div class="queue-row">
@@ -218,30 +220,30 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
 
         <!-- Alerts / Ereignisse -->
         <section class="card">
-          <div class="panel-title">⚠ Alerts & Ereignisse</div>
+          <div class="panel-title"><app-btn-icon [src]="statusIcon('alert')" glyph="⚠" [size]="16" /> Alerts & Ereignisse</div>
           @if (state.attackAlerts().length) {
             @for (a of state.attackAlerts(); track a.location) {
               <div class="alert danger">
-                <span>⚔️ Angriff auf {{ a.location }}</span>
+                <span><app-btn-icon [src]="statusIcon('attack')" glyph="⚔️" [size]="14" /> Angriff auf {{ a.location }}</span>
                 <app-countdown [target]="a.arriveAt" />
               </div>
             }
           }
           @if (energyDeficit()) {
             <div class="alert danger">
-              <span>⚡ Energie-Defizit ({{ energy().balance | shortNumber }}) drosselt die Minen</span>
+              <span><app-btn-icon [src]="statusIcon('energy_deficit')" glyph="⚡" [size]="14" /> Energie-Defizit ({{ energy().balance | shortNumber }}) drosselt die Minen</span>
               <a class="btn btn-sm" routerLink="/buildings">Beheben</a>
             </div>
           }
           @if (fullStorages().length) {
             <div class="alert">
-              <span>📦 Lager fast voll: {{ fullStoragesLabel() }}</span>
+              <span><app-btn-icon [src]="statusIcon('storage_full')" glyph="📦" [size]="14" /> Lager fast voll: {{ fullStoragesLabel() }}</span>
               <a class="btn btn-sm" routerLink="/buildings">Ausbauen</a>
             </div>
           }
           @if (state.unreadTransmissions() > 0) {
             <div class="alert decision">
-              <span>📡 {{ state.unreadTransmissions() }} ungelesene Transmission(en)</span>
+              <span><app-btn-icon [src]="statusIcon('transmission_unread')" glyph="📡" [size]="14" /> {{ state.unreadTransmissions() }} ungelesene Transmission(en)</span>
               <a class="btn btn-sm" routerLink="/transmissions">Oeffnen</a>
             </div>
           }
@@ -266,6 +268,13 @@ export class DashboardComponent {
   protected readonly state = inject(GameStateService);
   private readonly api = inject(ApiService);
   private readonly balance = inject(BalanceService);
+
+  /** Asset-Pfad-Helfer fuers Template (Glyph-Fallback via app-btn-icon). */
+  protected readonly navIcon = navIcon;
+  protected readonly resourceIcon = resourceIcon;
+  protected readonly statIcon = statIcon;
+  protected readonly statusIcon = statusIcon;
+  protected readonly uiIcon = uiIcon;
 
   protected readonly planet = this.state.activePlanet;
 

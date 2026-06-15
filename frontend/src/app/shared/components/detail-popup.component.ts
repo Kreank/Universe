@@ -19,7 +19,8 @@ import {
   metaFor,
   TECH_EFFECTS,
 } from '../../core/models/display';
-import { statIcon, techIcon } from '../../core/models/icon-assets';
+import { statIcon, techIcon, uiIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from './btn-icon.component';
 import { CostLineComponent } from './cost-line.component';
 import { IconTileComponent } from './icon-tile.component';
 
@@ -68,7 +69,7 @@ interface RapidFireRow {
 @Component({
   selector: 'app-detail-popup',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, CostLineComponent, IconTileComponent],
+  imports: [RouterLink, CostLineComponent, IconTileComponent, BtnIconComponent],
   host: {
     '(document:keydown.escape)': 'close.emit()',
   },
@@ -146,7 +147,7 @@ interface RapidFireRow {
 
         @if (nextLevels(); as nl) {
           <section class="block">
-            <div class="block-title">📈 Nächste Stufen{{ nl.note }}</div>
+            <div class="block-title"><app-btn-icon [src]="uiIcon('levels')" glyph="📈" [size]="16" /> Nächste Stufen{{ nl.note }}</div>
             <table class="next-levels">
               <thead>
                 <tr><th>Stufe</th><th><app-icon-tile [glyph]="nl.glyph" [src]="nl.img" [size]="16" variant="muted" /> {{ nl.outLabel }}</th><th>Zuwachs</th></tr>
@@ -167,7 +168,7 @@ interface RapidFireRow {
         @if (rapidfire().length) {
           <section class="block">
             <div class="block-title tip" data-tip="Schnellfeuer: diese Einheit darf nach einem Treffer sofort erneut auf das genannte Ziel feuern (Wahrscheinlichkeit (n−1)/n).">
-              💥 Schnellfeuer gegen
+              <app-btn-icon [src]="uiIcon('rapidfire')" glyph="💥" [size]="16" /> Schnellfeuer gegen
             </div>
             <div class="rf-list">
               @for (r of rapidfire(); track r.type) {
@@ -184,7 +185,7 @@ interface RapidFireRow {
         @if (rapidfireFrom().length) {
           <section class="block">
             <div class="block-title tip" data-tip="Diese Einheiten haben Schnellfeuer GEGEN dieses Objekt — sie feuern nach einem Treffer sofort erneut darauf. (Gegenrichtung)">
-              🎯 Anfällig für Schnellfeuer von
+              <app-btn-icon [src]="uiIcon('target')" glyph="🎯" [size]="16" /> Anfällig für Schnellfeuer von
             </div>
             <div class="rf-list">
               @for (r of rapidfireFrom(); track r.type) {
@@ -200,7 +201,7 @@ interface RapidFireRow {
 
         @if (requirementRows().length) {
           <section class="block">
-            <div class="block-title">🔗 Voraussetzungen</div>
+            <div class="block-title"><app-btn-icon [src]="uiIcon('requirements')" glyph="🔗" [size]="16" /> Voraussetzungen</div>
             <div class="req-list">
               @for (r of requirementRows(); track r.type) {
                 <span class="req" [class.met]="r.met === true" [class.unmet]="r.met === false">
@@ -221,7 +222,7 @@ interface RapidFireRow {
 
         @if (unlocks().length) {
           <section class="block">
-            <div class="block-title">🔓 Schaltet frei</div>
+            <div class="block-title"><app-btn-icon [src]="uiIcon('unlock')" glyph="🔓" [size]="16" /> Schaltet frei</div>
             <div class="req-list">
               @for (u of unlocks(); track u.type) {
                 <span class="req unlock" [attr.data-tip]="u.kind + (u.reqLevel > 1 ? ' · ab Stufe ' + u.reqLevel : '')">
@@ -237,7 +238,7 @@ interface RapidFireRow {
           <div class="cost-row">
             <app-cost-line [cost]="c" [available]="available()" />
             @if (buildSeconds() !== null) {
-              <span class="time mono">⏱ {{ formatTime(buildSeconds()!) }}</span>
+              <span class="time mono"><app-btn-icon [src]="uiIcon('time')" glyph="⏱" [size]="14" /> {{ formatTime(buildSeconds()!) }}</span>
             }
           </div>
         }
@@ -499,6 +500,7 @@ export class DetailPopupComponent {
   }
 
   protected readonly statIconFn = statIcon;
+  protected readonly uiIcon = uiIcon;
 
   /** Stat-Icon nicht ladbar -> Glyph-Fallback (Geschwister-Span) einblenden. */
   onStatIcoError(event: Event): void {

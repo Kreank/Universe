@@ -12,7 +12,7 @@ import {
   StationedFleet,
 } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
-import { missionIcon, navIcon, resourceIcon, statIcon, statusIcon } from '../../core/models/icon-assets';
+import { missionIcon, navIcon, resourceIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
@@ -88,7 +88,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
         </div>
 
         @if (prefilled()) {
-          <p class="hint small">🎯 Ziel aus der Galaxie-Karte uebernommen: [{{ prefilled() }}]</p>
+          <p class="hint small"><app-btn-icon [src]="uiIcon('target')" glyph="🎯" [size]="14" /> Ziel aus der Galaxie-Karte uebernommen: [{{ prefilled() }}]</p>
         }
 
         <!-- Fracht (Transport / Stationierung) -->
@@ -131,7 +131,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
               <div class="route-chips small">
                 <span class="tip" data-tip="Distanz (OGame-Distanzmodell)">📏 {{ rs.distance.toLocaleString('de-DE') }}</span>
                 <span class="tip" data-tip="Treibstoff (Deuterium) vom Startplaneten"><img class="cargo-ico" [src]="resourceIcon('deuterium')" alt="" />{{ rs.fuel.toLocaleString('de-DE') }} {{ rs.roundTrip ? '(Hin+Rück)' : '(einfach)' }}</span>
-                <span class="tip" data-tip="Geschätzte Flugzeit je Strecke (Tempo-Regler wirkt; ohne Antriebsforschung konservativ)">⏱ ca. {{ rs.flightText }}{{ rs.roundTrip ? ' / Strecke' : '' }}</span>
+                <span class="tip" data-tip="Geschätzte Flugzeit je Strecke (Tempo-Regler wirkt; ohne Antriebsforschung konservativ)"><app-btn-icon [src]="uiIcon('time')" glyph="⏱" [size]="14" /> ca. {{ rs.flightText }}{{ rs.roundTrip ? ' / Strecke' : '' }}</span>
               </div>
             }
           </div>
@@ -627,6 +627,7 @@ export class FleetComponent {
   protected readonly statIcon = statIcon;
   protected readonly resourceIcon = resourceIcon;
   protected readonly statusIcon = statusIcon;
+  protected readonly uiIcon = uiIcon;
   /** Blendet ein nicht ladbares Inline-Icon aus (Label bleibt sichtbar). */
   hideImg(event: Event): void {
     (event.target as HTMLImageElement).style.display = 'none';

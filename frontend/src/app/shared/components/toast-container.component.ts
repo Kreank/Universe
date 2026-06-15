@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NotificationService } from '../../core/services/notification.service';
+import { BtnIconComponent } from './btn-icon.component';
+import { statusIcon } from '../../core/models/icon-assets';
 
 /**
  * Globaler Toast-Stack. Eingehende Funksprueche bekommen eine eigene
@@ -9,7 +11,7 @@ import { NotificationService } from '../../core/services/notification.service';
 @Component({
   selector: 'app-toast-container',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, BtnIconComponent],
   template: `
     <div class="toast-stack" aria-live="polite">
       @for (t of notify.toasts(); track t.id) {
@@ -17,7 +19,7 @@ import { NotificationService } from '../../core/services/notification.service';
           <div class="toast-head">
             <span class="toast-title">
               @if (t.kind === 'transmission') {
-                <span class="pulse">📡</span>
+                <span class="pulse"><app-btn-icon [src]="statusIcon('transmission_unread')" glyph="📡" [size]="16" /></span>
               }
               {{ t.title }}
             </span>
@@ -142,4 +144,7 @@ import { NotificationService } from '../../core/services/notification.service';
 })
 export class ToastContainerComponent {
   protected readonly notify = inject(NotificationService);
+
+  /** Asset-Pfad-Helfer fuers Template (Glyph-Fallback via app-btn-icon). */
+  protected readonly statusIcon = statusIcon;
 }

@@ -11,6 +11,8 @@ import {
 } from '@angular/core';
 import { ApiService } from '../../core/services/api.service';
 import { Coordinate, PhalanxMovement } from '../../core/models/api.models';
+import { navIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from './btn-icon.component';
 
 /**
  * Sensorphalanx-Panel: scannt beim Öffnen die Flottenbewegungen zu/von einer
@@ -20,13 +22,14 @@ import { Coordinate, PhalanxMovement } from '../../core/models/api.models';
 @Component({
   selector: 'app-phalanx-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [BtnIconComponent],
   host: { '(document:keydown.escape)': 'close.emit()' },
   template: `
     <div class="backdrop" (click)="close.emit()">
       <div class="popup glass" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
         <button class="x" type="button" (click)="close.emit()" aria-label="Schliessen">✕</button>
         <header class="head">
-          <h2>📡 Sensorphalanx</h2>
+          <h2><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" [size]="16" /> Sensorphalanx</h2>
           <span class="coord mono">[{{ target().galaxy }}:{{ target().system }}:{{ target().position }}]</span>
         </header>
 
@@ -44,7 +47,7 @@ import { Coordinate, PhalanxMovement } from '../../core/models/api.models';
                 <span class="dir">{{ m.direction === 'incoming' ? '➡ Anflug' : '⬅ Abflug' }}</span>
                 <span class="owner">{{ m.owner }}</span>
                 <span class="mission mono">{{ m.mission }}</span>
-                <span class="ships mono">{{ m.ships_total }} 🚀</span>
+                <span class="ships mono">{{ m.ships_total }} <app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="14" /></span>
               </div>
               <div class="mv-bot small mono">
                 {{ m.origin ?? '?' }} → {{ m.target }}
@@ -89,6 +92,8 @@ import { Coordinate, PhalanxMovement } from '../../core/models/api.models';
 })
 export class PhalanxPanelComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
+
+  protected readonly navIcon = navIcon;
 
   readonly target = input.required<Coordinate>();
   readonly close = output<void>();

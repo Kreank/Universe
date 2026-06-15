@@ -5,6 +5,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 import { RESOURCE_META } from '../../core/models/display';
+import { statusIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { shellStyles } from './shell.styles';
 
 interface NavItem {
@@ -23,7 +25,7 @@ interface NavGroup {
 @Component({
   selector: 'app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ShortNumberPipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ShortNumberPipe, BtnIconComponent],
   template: `
     <div class="shell">
       <!-- Topbar: Ressourcen + Planet + Spieler -->
@@ -89,7 +91,7 @@ interface NavGroup {
       <!-- Angriffswarnung -->
       @if (state.attackAlerts().length) {
         <div class="attack-banner">
-          ⚠ Eingehender Angriff auf {{ state.attackAlerts()[0].location }} — Fleetsave pruefen!
+          <app-btn-icon [src]="statusIcon('incoming_attack')" glyph="⚠" [size]="14" /> Eingehender Angriff auf {{ state.attackAlerts()[0].location }} — Fleetsave pruefen!
         </div>
       }
 
@@ -176,6 +178,7 @@ interface NavGroup {
   styles: [shellStyles],
 })
 export class ShellComponent implements OnInit, OnDestroy {
+  protected readonly statusIcon = statusIcon;
   protected readonly state = inject(GameStateService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);

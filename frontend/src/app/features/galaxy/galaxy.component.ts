@@ -14,7 +14,7 @@ import {
 } from '../../core/models/api.models';
 import { NotificationService } from '../../core/services/notification.service';
 import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { missionIcon, navIcon } from '../../core/models/icon-assets';
+import { missionIcon, navIcon, uiIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
 import { MessageComposeComponent } from '../../shared/components/message-compose.component';
@@ -51,7 +51,7 @@ interface DispatchCtx {
     <div class="grid layout">
       <!-- System-Scanner ------------------------------------------------ -->
       <section class="card scanner">
-        <div class="panel-title">🌌 System-Scanner</div>
+        <div class="panel-title"><app-btn-icon [src]="navIcon('map')" glyph="🌌" [size]="16" /> System-Scanner</div>
 
         <div class="gx-nav">
           <button class="btn btn-sm" type="button" (click)="stepSystem(-1)" aria-label="System zurueck">◀</button>
@@ -67,7 +67,7 @@ interface DispatchCtx {
           </div>
           <button class="btn btn-sm" type="button" (click)="stepSystem(1)" aria-label="System vor">▶</button>
           <button class="btn btn-primary btn-sm" type="button" (click)="scan()">Scannen</button>
-          <button class="btn btn-ghost btn-sm" type="button" (click)="goHome()">⌂ Heimat</button>
+          <button class="btn btn-ghost btn-sm" type="button" (click)="goHome()"><app-btn-icon [src]="uiIcon('home')" glyph="⌂" [size]="16" /> Heimat</button>
         </div>
 
         <div class="coords-current mono">[{{ viewG }}:{{ viewS }}] · {{ scannedCount() }} belegt</div>
@@ -103,16 +103,16 @@ interface DispatchCtx {
                   <span class="kind">{{ occupantLabel(c) }}</span>
                   @if (c.name) { <span class="name">{{ c.name }}</span> }
                   @if (c.trade; as tr) {
-                    <span class="chip trade tip" [attr.data-tip]="tradeTip(tr, c.player_name)">💱 {{ tr.offer }}→{{ tr.want }}{{ tr.rate ? ' @' + tr.rate : '' }}</span>
+                    <span class="chip trade tip" [attr.data-tip]="tradeTip(tr, c.player_name)"><app-btn-icon [src]="navIcon('market')" glyph="💱" [size]="14" /> {{ tr.offer }}→{{ tr.want }}{{ tr.rate ? ' @' + tr.rate : '' }}</span>
                   }
                   @if (c.asteroid; as a) {
-                    <span class="chip rock tip" [attr.data-tip]="asteroidTip(a)">⛏ {{ a.metal | shortNumber }}M / {{ a.crystal | shortNumber }}K</span>
+                    <span class="chip rock tip" [attr.data-tip]="asteroidTip(a)"><app-btn-icon [src]="missionIcon('mine')" glyph="⛏" [size]="14" /> {{ a.metal | shortNumber }}M / {{ a.crystal | shortNumber }}K</span>
                   }
                   @if (c.moon; as m) {
-                    <span class="chip moon tip" [attr.data-tip]="m.own ? 'Dein Mond' : ('Mond von ' + (m.player_name ?? 'Spieler') + ' — angreifbar/spionierbar')">🌙 {{ m.name }}</span>
+                    <span class="chip moon tip" [attr.data-tip]="m.own ? 'Dein Mond' : ('Mond von ' + (m.player_name ?? 'Spieler') + ' — angreifbar/spionierbar')"><app-btn-icon [src]="'assets/img/backgrounds/moon.png'" glyph="🌙" [size]="14" /> {{ m.name }}</span>
                   }
                   @if (c.station; as st) {
-                    <span class="chip station tip" [class.mine]="st.mine" [attr.data-tip]="st.mine ? ('Allianz-Station deiner Allianz [' + st.tag + '] · Hülle ' + st.hp_pct + '%') : ('Fremde Allianz-Station [' + st.tag + '] — belagerbar (≥2 Angreifer) · Resthülle ' + st.hp_pct + '%')">🛰 [{{ st.tag }}] {{ st.hp_pct }}%</span>
+                    <span class="chip station tip" [class.mine]="st.mine" [attr.data-tip]="st.mine ? ('Allianz-Station deiner Allianz [' + st.tag + '] · Hülle ' + st.hp_pct + '%') : ('Fremde Allianz-Station [' + st.tag + '] — belagerbar (≥2 Angreifer) · Resthülle ' + st.hp_pct + '%')"><app-btn-icon [src]="'assets/img/alliance/alliance_station.png'" glyph="🛰" [size]="14" /> [{{ st.tag }}] {{ st.hp_pct }}%</span>
                   }
                 </div>
                 @if (c.asteroid) {
@@ -123,22 +123,22 @@ interface DispatchCtx {
                 @if (c.moon; as m) {
                   @if (!m.own) {
                     <div class="acts">
-                      <button class="ic spy" type="button" (click)="openDispatch(cellCoord(c), m.name, 'spy', 'moon')" title="Mond spionieren">🌙🛰</button>
-                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), m.name, 'attack', 'moon')" title="Mond angreifen">🌙⚔</button>
+                      <button class="ic spy" type="button" (click)="openDispatch(cellCoord(c), m.name, 'spy', 'moon')" title="Mond spionieren"><app-btn-icon [src]="missionIcon('spy')" glyph="🌙🛰" [size]="18" /></button>
+                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), m.name, 'attack', 'moon')" title="Mond angreifen"><app-btn-icon [src]="missionIcon('attack')" glyph="🌙⚔" [size]="18" /></button>
                     </div>
                   }
                 }
                 @if (c.station; as st) {
                   @if (!st.mine && st.status !== 'destroyed') {
                     <div class="acts">
-                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), 'Allianz-Station [' + st.tag + ']', 'attack', 'station')" title="Allianz-Station belagern — chippt die Hülle; zur Zerstörung ≥2 verschiedene Angreifer nötig">🛰⚔</button>
+                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), 'Allianz-Station [' + st.tag + ']', 'attack', 'station')" title="Allianz-Station belagern — chippt die Hülle; zur Zerstörung ≥2 verschiedene Angreifer nötig"><app-btn-icon [src]="missionIcon('attack')" glyph="🛰⚔" [size]="18" /></button>
                     </div>
                   }
                 }
                 @if (isHostile(c)) {
                   <div class="acts">
                     @if (c.discovered) {
-                      <span class="chip disc tip" data-tip="Automatisch aufgeklärt: spawnte nahe deinem Planeten (≤ 8 Systeme). Sende eine Sonde für tiefere/aktuellere Daten.">🛰 aufgeklärt</span>
+                      <span class="chip disc tip" data-tip="Automatisch aufgeklärt: spawnte nahe deinem Planeten (≤ 8 Systeme). Sende eine Sonde für tiefere/aktuellere Daten."><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="14" /> aufgeklärt</span>
                     }
                     @if (c.occupant_type === 'player' && c.player_id) {
                       <button class="ic msg" type="button" (click)="messagePlayer(c)" title="Nachricht an Spieler"><app-btn-icon [src]="navIcon('mail')" glyph="✉" [size]="18" /></button>
@@ -167,7 +167,7 @@ interface DispatchCtx {
 
       <!-- Ziel-Verzeichnis ---------------------------------------------- -->
       <section class="card targets">
-        <div class="panel-title">🎯 Aufgeklärte Ziele</div>
+        <div class="panel-title"><app-btn-icon [src]="uiIcon('target')" glyph="🎯" [size]="16" /> Aufgeklärte Ziele</div>
         @if (targets().length) {
           <ul class="tgt-list">
             @for (t of targets(); track t.coords) {
@@ -249,6 +249,7 @@ export class GalaxyComponent {
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly missionIcon = missionIcon;
   protected readonly navIcon = navIcon;
+  protected readonly uiIcon = uiIcon;
 
   /** Standard-Sondenzahl der Schnell-Spionage (L2-Intel, balance.spy.level2_probes). */
   private readonly DEFAULT_PROBES = 3;

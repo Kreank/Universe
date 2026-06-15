@@ -12,8 +12,9 @@ import { DatePipe } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { CombatReport, CombatRound } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { resourceIcon } from '../../core/models/icon-assets';
+import { resourceIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
 /** Eine Einheit-Zeile (Bild/Glyph + Name + Anzahl) im Kampfbericht. */
 interface UnitRow {
@@ -57,7 +58,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
 @Component({
   selector: 'app-combat-report',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, IconTileComponent],
+  imports: [DatePipe, IconTileComponent, BtnIconComponent],
   template: `
     <div class="overlay" (click)="close.emit()">
       <div class="panel" (click)="$event.stopPropagation()">
@@ -70,7 +71,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
         } @else if (reportData(); as r) {
           <!-- Kopf + Ergebnis-Banner -------------------------------------- -->
           <header class="rep-head">
-            <span class="rep-glyph">⚔️</span>
+            <span class="rep-glyph"><app-btn-icon [src]="statusIcon('attack')" glyph="⚔️" [size]="24" /></span>
             <div>
               <h2>Kampfbericht — {{ r.location }}</h2>
               <p class="faint small">
@@ -112,7 +113,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
 
                 @if (s.losses.length) {
                   <div class="sub-block losses">
-                    <span class="sb-label">💥 Verluste</span>
+                    <span class="sb-label"><app-btn-icon [src]="statusIcon('losses')" glyph="💥" [size]="16" /> Verluste</span>
                     @for (u of s.losses; track u.label) {
                       <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
                     }
@@ -120,7 +121,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
                 }
                 @if (s.captured.length) {
                   <div class="sub-block captured">
-                    <span class="sb-label">🪝 Gekapert</span>
+                    <span class="sb-label"><app-btn-icon [src]="statusIcon('boarding')" glyph="🪝" [size]="16" /> Gekapert</span>
                     @for (u of s.captured; track u.label) {
                       <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
                     }
@@ -128,7 +129,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
                 }
                 @if (s.stranded.length) {
                   <div class="sub-block stranded">
-                    <span class="sb-label">⚓ Gestrandet (Antrieb tot)</span>
+                    <span class="sb-label"><app-btn-icon [src]="statusIcon('stranded')" glyph="⚓" [size]="16" /> Gestrandet (Antrieb tot)</span>
                     @for (u of s.stranded; track u.label) {
                       <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
                     }
@@ -136,7 +137,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
                 }
                 @if (s.fled.length) {
                   <div class="sub-block fled">
-                    <span class="sb-label">🏃 Geflohen</span>
+                    <span class="sb-label"><app-btn-icon [src]="statusIcon('fled')" glyph="🏃" [size]="16" /> Geflohen</span>
                     @for (u of s.fled; track u.label) {
                       <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
                     }
@@ -152,7 +153,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
             @for (rd of reportData()!.rounds; track $index) {
               <div class="round" [class.ambush]="rd.ambush">
                 <div class="r-head">
-                  <span class="r-no">{{ rd.ambush ? '🥷 Hinterhalt' : 'Runde ' + rd.round }}</span>
+                  <span class="r-no">@if (rd.ambush) {<app-btn-icon [src]="statusIcon('ambush')" glyph="🥷" [size]="14" /> Hinterhalt} @else {Runde {{ rd.round }}}</span>
                   @if (bandOf(rd); as b) {
                     <span class="r-band">{{ b.glyph }} {{ b.label }}</span>
                   }
@@ -180,7 +181,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
           <footer class="spoils">
             @if (lootRows().length) {
               <div class="spoil-block">
-                <span class="sb-label">💰 Beute</span>
+                <span class="sb-label"><app-btn-icon [src]="uiIcon('loot')" glyph="💰" [size]="16" /> Beute</span>
                 @for (x of lootRows(); track x.label) {
                   <span class="res"><app-icon-tile class="res-ico" [glyph]="x.glyph" [src]="x.icon" [size]="18" variant="muted" /> {{ fmt(x.count) }} {{ x.label }}</span>
                 }
@@ -188,7 +189,7 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
             }
             @if (debrisRows().length) {
               <div class="spoil-block">
-                <span class="sb-label">🛰 Trümmerfeld</span>
+                <span class="sb-label"><app-btn-icon [src]="'assets/img/backgrounds/debris_field.png'" glyph="🛰" [size]="16" /> Trümmerfeld</span>
                 @for (x of debrisRows(); track x.label) {
                   <span class="res"><app-icon-tile class="res-ico" [glyph]="x.glyph" [src]="x.icon" [size]="18" variant="muted" /> {{ fmt(x.count) }} {{ x.label }}</span>
                 }
@@ -281,6 +282,10 @@ const BAND_META: Record<string, { label: string; glyph: string }> = {
 })
 export class CombatReportComponent {
   private readonly api = inject(ApiService);
+
+  /** Asset-Pfad-Helfer fuers Template (Glyph-Fallback via app-btn-icon). */
+  protected readonly statusIcon = statusIcon;
+  protected readonly uiIcon = uiIcon;
 
   /** Lade-Modus: Report per ID vom Server holen (Postfach). */
   readonly reportId = input<string | null>(null);

@@ -5,12 +5,13 @@ import { GameStateService } from '../../core/services/game-state.service';
 import { MegastructureListResponse, MegastructureOption } from '../../core/models/api.models';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { NotificationService } from '../../core/services/notification.service';
-import { resourceIcon } from '../../core/models/icon-assets';
+import { navIcon, resourceIcon, uiIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
 @Component({
   selector: 'app-megastructures',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CountdownComponent, DecimalPipe],
+  imports: [CountdownComponent, DecimalPipe, BtnIconComponent],
   template: `
     <h1>Megastrukturen</h1>
     <p class="muted sub">
@@ -36,7 +37,7 @@ import { resourceIcon } from '../../core/models/icon-assets';
         @for (m of structures(); track m.type) {
           <div class="card mega" [class.building]="m.building_until">
             <div class="art-banner">
-              <span class="glyph">🌌</span>
+              <app-btn-icon class="glyph" [src]="navIcon('megastructures')" glyph="🌌" [size]="48" />
               <img [src]="megaIcon(m.type)" alt="" class="art" (error)="$any($event.target).remove()" />
             </div>
             <div class="mega-head">
@@ -59,7 +60,7 @@ import { resourceIcon } from '../../core/models/icon-assets';
 
             @if (m.building_until) {
               <div class="status building-status">
-                ⏳ Im Bau · <app-countdown [target]="m.building_until" />
+                <app-btn-icon [src]="uiIcon('time')" glyph="⏳" [size]="16" /> Im Bau · <app-countdown [target]="m.building_until" />
               </div>
             } @else if (m.maxed) {
               <div class="status done">✓ Höchststufe erreicht</div>
@@ -130,6 +131,8 @@ export class MegastructuresComponent {
   protected readonly pending = signal<string | null>(null);
 
   protected readonly resIcon = resourceIcon;
+  protected readonly navIcon = navIcon;
+  protected readonly uiIcon = uiIcon;
   megaIcon = (type: string) => `assets/img/megastructures/${type}.png`;
 
   protected readonly structures = computed(() => this.data()?.structures ?? []);

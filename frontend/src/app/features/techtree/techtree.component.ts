@@ -11,6 +11,7 @@ import {
 import { TECH_META, metaFor } from '../../core/models/display';
 import { techIcon } from '../../core/models/icon-assets';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
 /** Labor-(Gebaeude-)Voraussetzung, als Chip in der Kachel. */
 interface LabReq {
@@ -68,9 +69,9 @@ interface Graph {
 @Component({
   selector: 'app-techtree',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconTileComponent],
+  imports: [IconTileComponent, BtnIconComponent],
   template: `
-    <h1>🌳 Techbaum</h1>
+    <h1><app-btn-icon [src]="techIcon('techtree')" glyph="🌳" [size]="18" /> Techbaum</h1>
     <p class="muted sub">
       Abhaengigkeitsgraph der Forschung. Linien zeigen, was welche Technologie voraussetzt —
       <span class="legend met">erfuellt</span> /
@@ -142,7 +143,7 @@ interface Graph {
 
               @if (n.labReq) {
                 <span class="chip lab" [class.ok]="n.labReq.met" [class.warn]="!n.labReq.met">
-                  🏛 Labor {{ n.labReq.level }}
+                  <app-btn-icon [src]="'assets/img/buildings/research_lab.png'" glyph="🏛" [size]="14" /> Labor {{ n.labReq.level }}
                 </span>
               } @else {
                 <span class="chip base">Basis-Tech</span>

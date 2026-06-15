@@ -16,7 +16,8 @@ import { NotificationService } from '../../core/services/notification.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { Coordinate, EscortOffer, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit, TradeIndex } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
-import { missionIcon, resourceIcon } from '../../core/models/icon-assets';
+import { missionIcon, navIcon, resourceIcon, statIcon, uiIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from './btn-icon.component';
 import { IconTileComponent } from './icon-tile.component';
 
 /**
@@ -30,7 +31,7 @@ import { IconTileComponent } from './icon-tile.component';
 @Component({
   selector: 'app-fleet-dispatch',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, IconTileComponent],
+  imports: [FormsModule, IconTileComponent, BtnIconComponent],
   host: { '(document:keydown.escape)': 'close.emit()' },
   template: `
     <div class="backdrop" (click)="close.emit()">
@@ -70,7 +71,7 @@ import { IconTileComponent } from './icon-tile.component';
                 <button class="btn btn-ghost btn-sm" type="button" (click)="setShip(s.type, s.count, s.count)">alle</button>
               </div>
               @if (shipCount(s.type) > 0 && shipCargo(s.type) > 0) {
-                <div class="ship-cargo faint mono">📦 {{ (shipCargo(s.type) * shipCount(s.type)).toLocaleString('de-DE') }}</div>
+                <div class="ship-cargo faint mono"><app-btn-icon [src]="statIcon('cargo')" glyph="📦" [size]="14" /> {{ (shipCargo(s.type) * shipCount(s.type)).toLocaleString('de-DE') }}</div>
               }
             </div>
           } @empty {
@@ -86,7 +87,7 @@ import { IconTileComponent } from './icon-tile.component';
         @if (showCargo()) {
           <div class="cargo">
             <div class="cargo-head">
-              <div class="cargo-title">📦 Fracht laden</div>
+              <div class="cargo-title"><app-btn-icon [src]="statIcon('cargo')" glyph="📦" [size]="16" /> Fracht laden</div>
               <button class="btn btn-trade btn-sm" type="button"
                 [disabled]="cargoInfo().capacity <= 0" (click)="fillAllCargo()">Alles laden</button>
             </div>
@@ -114,7 +115,7 @@ import { IconTileComponent } from './icon-tile.component';
         <!-- Handelsauftrag -->
         @if (showTrade()) {
           <div class="cargo">
-            <div class="cargo-title">💱 Handelsauftrag</div>
+            <div class="cargo-title"><app-btn-icon [src]="navIcon('market')" glyph="💱" [size]="16" /> Handelsauftrag</div>
             <div class="trade-grid">
               <div class="field">
                 <label>Biete</label>
@@ -131,7 +132,7 @@ import { IconTileComponent } from './icon-tile.component';
                 </select>
                 @if (merchantIntel(); as mi) {
                   @if (mi.trade_center) {
-                    <span class="muted small">💱 Handelszentrum · globaler Handelskurs</span>
+                    <span class="muted small"><app-btn-icon [src]="navIcon('market')" glyph="💱" [size]="14" /> Handelszentrum · globaler Handelskurs</span>
                   } @else {
                     <span class="muted small">Spez.: {{ mi.spec }} · Kurse vom letzten Besuch</span>
                   }
@@ -148,7 +149,7 @@ import { IconTileComponent } from './icon-tile.component';
             }
             @if (coveringEscorts().length) {
               <div class="escorts">
-                <div class="cargo-title">🛡 Eskorte auf der Route</div>
+                <div class="cargo-title"><app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="16" /> Eskorte auf der Route</div>
                 @for (e of coveringEscorts(); track e.id) {
                   <label class="escort-row small">
                     <input type="checkbox" [checked]="chosenEscorts().has(e.id)" (change)="toggleEscort(e.id)" />
@@ -179,7 +180,7 @@ import { IconTileComponent } from './icon-tile.component';
         </div>
         @if (commanderId() && commanderAbilities().abilities.length) {
           <div class="escorts">
-            <div class="cargo-title">⚡ Fähigkeiten scharf ({{ armed().size }}/{{ commanderAbilities().slots }})</div>
+            <div class="cargo-title"><app-btn-icon [src]="uiIcon('ability')" glyph="⚡" [size]="16" /> Fähigkeiten scharf ({{ armed().size }}/{{ commanderAbilities().slots }})</div>
             @for (a of commanderAbilities().abilities; track a.key) {
               <label class="escort-row small">
                 <input type="checkbox" [checked]="armed().has(a.key)" (change)="toggleArmed(a.key)" />
@@ -193,7 +194,7 @@ import { IconTileComponent } from './icon-tile.component';
           <div class="field">
             @if (maxExpHours() > 0) {
               <label class="tip" data-tip="Länger = mehr Ertrag, aber mehr Risiko (Piraten/Aliens/Schwarzes Loch). Forschung Astrophysik hebt das Maximum (bis 24h).">
-                🌌 Verweildauer {{ expHours() }} / {{ maxExpHours() }} h
+                <app-btn-icon [src]="missionIcon('expedition')" glyph="🌌" [size]="16" /> Verweildauer {{ expHours() }} / {{ maxExpHours() }} h
               </label>
               <input type="range" min="1" [max]="maxExpHours()" step="1" [ngModel]="expHours()" (ngModelChange)="setExpHours($event)" />
             } @else {
@@ -205,7 +206,7 @@ import { IconTileComponent } from './icon-tile.component';
         @if (hasSelection()) {
           <div class="fleet-summary" [class.out]="rangeInfo()?.inRange === false">
             <div class="cap-head">
-              <span class="cap-label">📦 Frachtraum</span>
+              <span class="cap-label"><app-btn-icon [src]="statIcon('cargo')" glyph="📦" [size]="14" /> Frachtraum</span>
               <span class="cap-val mono" [class.over]="cargoInfo().over">{{ cargoInfo().used.toLocaleString('de-DE') }} / {{ cargoInfo().capacity.toLocaleString('de-DE') }}</span>
             </div>
             <div class="bar" [class.full]="cargoInfo().over">
@@ -217,7 +218,7 @@ import { IconTileComponent } from './icon-tile.component';
               </div>
               @if (rangeInfo(); as r) {
                 <div class="sum-cell tip" data-tip="Distanz zwischen Startplanet und Ziel (OGame-Distanzmodell)">
-                  <span class="faint">📏 Distanz</span><span class="mono">{{ r.distance.toLocaleString('de-DE') }}</span>
+                  <span class="faint"><app-btn-icon [src]="uiIcon('distance')" glyph="📏" [size]="14" /> Distanz</span><span class="mono">{{ r.distance.toLocaleString('de-DE') }}</span>
                 </div>
                 <div class="sum-cell tip" [attr.data-tip]="'Reichweite der Flotte (Tank). Limitierendes Schiff: ' + shipLabel(r.limiting)">
                   <span class="faint">🛰 Reichweite</span><span class="mono" [class.over]="!r.inRange">{{ r.maxRangeText }}</span>
@@ -226,7 +227,7 @@ import { IconTileComponent } from './icon-tile.component';
                   <span class="faint"><img class="cargo-ico" [src]="resourceIcon('deuterium')" alt="" (error)="hideImg($event)" />Sprit</span><span class="mono">{{ r.fuel.toLocaleString('de-DE') }} {{ r.roundTrip ? '(H+R)' : '' }}</span>
                 </div>
                 <div class="sum-cell tip" data-tip="Geschätzte Flugzeit je Strecke (ohne Antriebsforschung — mit Forschung schneller). Tempo-Regler wirkt.">
-                  <span class="faint">⏱ Flugzeit</span><span class="mono">{{ flightText(flightSecs()) }}{{ r.roundTrip ? ' /Strecke' : '' }}</span>
+                  <span class="faint"><app-btn-icon [src]="uiIcon('time')" glyph="⏱" [size]="14" /> Flugzeit</span><span class="mono">{{ flightText(flightSecs()) }}{{ r.roundTrip ? ' /Strecke' : '' }}</span>
                 </div>
               }
             </div>
@@ -857,6 +858,9 @@ export class FleetDispatchComponent {
   /** Asset-Pfad-Helfer fuer das Template (Glyph-Fallback via (error)="hideImg"). */
   protected readonly missionIcon = missionIcon;
   protected readonly resourceIcon = resourceIcon;
+  protected readonly navIcon = navIcon;
+  protected readonly statIcon = statIcon;
+  protected readonly uiIcon = uiIcon;
 
   /** Verbirgt ein kaputtes/fehlendes Icon-Bild, sodass der Text-/Glyph-Fallback greift. */
   hideImg(event: Event): void {

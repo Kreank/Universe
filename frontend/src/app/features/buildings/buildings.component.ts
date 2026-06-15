@@ -3,6 +3,8 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { BuildingOption, BuildingState, BuildingsResponse } from '../../core/models/api.models';
 import { BUILDING_META, metaFor } from '../../core/models/display';
+import { resourceIcon, uiIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { DetailPopupComponent } from '../../shared/components/detail-popup.component';
 import { BuildTileComponent } from '../../shared/components/build-tile.component';
@@ -40,7 +42,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
 @Component({
   selector: 'app-buildings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent, ConfirmDialogComponent],
+  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent, ConfirmDialogComponent, BtnIconComponent],
   template: `
     <h1>Gebaeude</h1>
     <p class="muted sub">
@@ -76,13 +78,13 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
                   [class.produces]="b.option.energy_now > 0"
                   [class.consumes]="b.option.energy_now < 0"
                   [attr.data-tip]="energyTip(b.option)">
-                  ⚡ {{ energyLabel(b.option.energy_now) }}@if (b.option.energy_delta !== 0) {<span class="delta"> (Δ {{ signed(b.option.energy_delta) }})</span>}
+                  <app-btn-icon [src]="resourceIcon('energy')" glyph="⚡" [size]="14" /> {{ energyLabel(b.option.energy_now) }}@if (b.option.energy_delta !== 0) {<span class="delta"> (Δ {{ signed(b.option.energy_delta) }})</span>}
                 </span>
               }
 
               <ng-container action>
                 @if (b.finishesAt) {
-                  <span class="building-badge">⏳ Im Bau</span>
+                  <span class="building-badge"><app-btn-icon [src]="uiIcon('time')" glyph="⏳" [size]="14" /> Im Bau</span>
                   <app-countdown [target]="b.finishesAt" />
                   <button
                     class="btn btn-ghost btn-sm full cancel-build"
@@ -422,6 +424,8 @@ export class BuildingsComponent {
   }
 
   meta = (t: string) => metaFor(BUILDING_META, t);
+  protected readonly resourceIcon = resourceIcon;
+  protected readonly uiIcon = uiIcon;
 
   /** Energie-Label: erzeugt (+), verbraucht (-) oder neutral. */
   energyLabel(value: number): string {

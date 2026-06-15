@@ -27,7 +27,9 @@ import {
 } from '../../shared/components/confirm-dialog.component';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { TabBarComponent, TabDef } from '../../shared/components/tab-bar.component';
+import { navIcon, resourceIcon, statIcon } from '../../core/models/icon-assets';
 
 /** Lesbare Label + Glyph der vier Forschungs-Zweige (Reihenfolge = Anzeige). */
 const TREE_ORDER = ['piracy', 'economy', 'trade', 'protection'] as const;
@@ -55,12 +57,12 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
 @Component({
   selector: 'app-alliance',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ConfirmDialogComponent, CostLineComponent, IconTileComponent, TabBarComponent],
+  imports: [FormsModule, ConfirmDialogComponent, CostLineComponent, IconTileComponent, BtnIconComponent, TabBarComponent],
   template: `
     <section class="alliance">
       <header class="page-head">
         <div>
-          <h1>🤝 Allianz</h1>
+          <h1><app-btn-icon [src]="navIcon('alliance')" glyph="🤝" [size]="18" /> Allianz</h1>
           <p class="muted small">
             Schließt euch zusammen: gemeinsamer Pool, Allianz-Forschung und Zonen-Stationen.
           </p>
@@ -188,15 +190,15 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
               </div>
               <div class="dep-grid">
                 <div class="field">
-                  <label>⛏️ Metall</label>
+                  <label><app-btn-icon [src]="resourceIcon('metal')" glyph="⛏️" [size]="14" /> Metall</label>
                   <input type="number" min="0" [ngModel]="depMetal()" (ngModelChange)="depMetal.set(+$event || 0)" />
                 </div>
                 <div class="field">
-                  <label>💎 Kristall</label>
+                  <label><app-btn-icon [src]="resourceIcon('crystal')" glyph="💎" [size]="14" /> Kristall</label>
                   <input type="number" min="0" [ngModel]="depCrystal()" (ngModelChange)="depCrystal.set(+$event || 0)" />
                 </div>
                 <div class="field">
-                  <label>🛢️ Deuterium</label>
+                  <label><app-btn-icon [src]="resourceIcon('deuterium')" glyph="🛢️" [size]="14" /> Deuterium</label>
                   <input type="number" min="0" [ngModel]="depDeut()" (ngModelChange)="depDeut.set(+$event || 0)" />
                 </div>
               </div>
@@ -284,7 +286,7 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
                 </div>
                 <div class="station-meta small muted">
                   Zonen-Radius {{ zoneRadius(a, s) }} Sys (Stufe {{ s.radius_level }}) ·
-                  ⛽ {{ s.fuel }} Deut · ❤ {{ s.hp }} HP
+                  <app-btn-icon [src]="statIcon('fuel')" glyph="⛽" [size]="14" /> {{ s.fuel }} Deut · <app-btn-icon [src]="statIcon('hull')" glyph="❤" [size]="14" /> {{ s.hp }} HP
                 </div>
                 @if (isOfficerPlus() && s.status !== 'destroyed') {
                   <div class="station-act">
@@ -697,6 +699,10 @@ export class AllianceComponent implements OnInit {
   private readonly notify = inject(NotificationService);
 
   protected readonly planets = this.state.planets;
+
+  protected readonly navIcon = navIcon;
+  protected readonly resourceIcon = resourceIcon;
+  protected readonly statIcon = statIcon;
 
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);

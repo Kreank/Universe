@@ -9,6 +9,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { BtnIconComponent } from './btn-icon.component';
+import { navIcon } from '../../core/models/icon-assets';
 
 /**
  * Kompaktes Overlay zum Verschicken einer Spieler-zu-Spieler-Nachricht (klassisch,
@@ -18,14 +20,14 @@ import { NotificationService } from '../../core/services/notification.service';
 @Component({
   selector: 'app-message-compose',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [FormsModule, BtnIconComponent],
   host: { '(document:keydown.escape)': 'close.emit()' },
   template: `
     <div class="backdrop" (click)="close.emit()">
       <div class="popup glass" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
         <button class="x" type="button" (click)="close.emit()" aria-label="Schliessen">✕</button>
         <header class="head">
-          <h2>✉ Nachricht an {{ toName() }}</h2>
+          <h2><app-btn-icon [src]="navIcon('mail')" glyph="✉" [size]="16" /> Nachricht an {{ toName() }}</h2>
         </header>
         <div class="field">
           <label>Betreff</label>
@@ -39,7 +41,7 @@ import { NotificationService } from '../../core/services/notification.service';
         </div>
         <div class="actions">
           <button class="btn btn-primary" type="button" [disabled]="!canSend() || sending()" (click)="send()">
-            {{ sending() ? 'Sende…' : '✉ Senden' }}
+<app-btn-icon [src]="navIcon('mail')" glyph="✉" [size]="18" /> {{ sending() ? 'Sende…' : 'Senden' }}
           </button>
         </div>
       </div>
@@ -94,6 +96,9 @@ import { NotificationService } from '../../core/services/notification.service';
 export class MessageComposeComponent {
   private readonly api = inject(ApiService);
   private readonly notify = inject(NotificationService);
+
+  /** Asset-Pfad-Helfer fuers Template (Glyph-Fallback via app-btn-icon). */
+  protected readonly navIcon = navIcon;
 
   readonly toPlayerId = input.required<string>();
   readonly toName = input<string>('Spieler');

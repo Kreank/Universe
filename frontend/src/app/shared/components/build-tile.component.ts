@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { uiIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from './btn-icon.component';
 import { IconTileComponent } from './icon-tile.component';
 import { CostLineComponent } from './cost-line.component';
 import { ResourceCost } from '../../core/models/api.models';
@@ -16,7 +18,7 @@ import { ResourceCost } from '../../core/models/api.models';
 @Component({
   selector: 'app-build-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconTileComponent, CostLineComponent],
+  imports: [IconTileComponent, CostLineComponent, BtnIconComponent],
   template: `
     <div class="tile" [class.busy]="busy()" [class.locked]="locked()">
       <button type="button" class="art" (click)="openDetail.emit()" [attr.aria-label]="name() + ' – Details'">
@@ -34,7 +36,7 @@ import { ResourceCost } from '../../core/models/api.models';
           <app-cost-line [cost]="c" [available]="available()" />
         }
         @if (timeSeconds() !== null) {
-          <span class="muted small time">⏱ {{ fmtTime(timeSeconds()!) }}</span>
+          <span class="muted small time"><app-btn-icon [src]="uiIcon('time')" glyph="⏱" [size]="14" /> {{ fmtTime(timeSeconds()!) }}</span>
         }
         <ng-content select="[stats]" />
       </div>
@@ -124,6 +126,8 @@ export class BuildTileComponent {
   readonly locked = input<boolean>(false);
 
   readonly openDetail = output<void>();
+
+  protected readonly uiIcon = uiIcon;
 
   protected fmtTime(s: number): string {
     s = Math.max(0, Math.floor(s));

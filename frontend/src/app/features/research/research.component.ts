@@ -3,7 +3,8 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { Requirement, ResearchOption, ResearchResponse, ResearchState } from '../../core/models/api.models';
 import { BUILDING_META, TECH_META, metaFor } from '../../core/models/display';
-import { techIcon } from '../../core/models/icon-assets';
+import { navIcon, techIcon, uiIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { DetailPopupComponent } from '../../shared/components/detail-popup.component';
 import { BuildTileComponent } from '../../shared/components/build-tile.component';
@@ -101,7 +102,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
 @Component({
   selector: 'app-research',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent, ConfirmDialogComponent],
+  imports: [CountdownComponent, DetailPopupComponent, BuildTileComponent, TabBarComponent, ConfirmDialogComponent, BtnIconComponent],
   template: `
     <h1>Forschung</h1>
     <p class="muted sub">
@@ -111,7 +112,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
 
     @if (activeResearch(); as ar) {
       <div class="card active-banner">
-        <span>🔬 In Forschung: {{ meta(ar.type).label }} → Stufe {{ ar.level + 1 }}</span>
+        <span><app-btn-icon [src]="navIcon('research')" glyph="🔬" [size]="14" /> In Forschung: {{ meta(ar.type).label }} → Stufe {{ ar.level + 1 }}</span>
         <app-countdown [target]="ar.finishesAt" />
         <button
           class="btn btn-ghost btn-sm cancel-research"
@@ -146,7 +147,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; types: string
             >
               <ng-container action>
                 @if (t.finishesAt) {
-                  <span class="building-badge">⏳ In Forschung</span>
+                  <span class="building-badge"><app-btn-icon [src]="uiIcon('time')" glyph="⏳" [size]="14" /> In Forschung</span>
                   <app-countdown [target]="t.finishesAt" />
                 } @else if (t.option) {
                   <button
@@ -409,6 +410,8 @@ export class ResearchComponent {
 
   meta = (t: string) => metaFor(TECH_META, t);
   protected readonly techIcon = techIcon;
+  protected readonly navIcon = navIcon;
+  protected readonly uiIcon = uiIcon;
 
   /** Klarname einer Voraussetzung (Tech ODER Gebaeude) inkl. benoetigter Stufe. */
   reqLabel(r: Requirement): string {

@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { ApiService } from '../../core/services/api.service';
 import { RankingEntry, RankingResponse } from '../../core/models/api.models';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
+import { navIcon, statIcon } from '../../core/models/icon-assets';
+import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
 /**
  * Rangliste (Punktesystem, OGame-Stil). Punkte = aktueller Imperiumswert / 1000
@@ -11,7 +13,7 @@ import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 @Component({
   selector: 'app-ranking',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ShortNumberPipe],
+  imports: [ShortNumberPipe, BtnIconComponent],
   template: `
     <section class="rank">
       <header class="rank-head">
@@ -35,10 +37,10 @@ import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
             <span class="c-rank">#</span>
             <span class="c-name">Spieler</span>
             <span class="c-pts">Punkte</span>
-            <span class="c-cat tip" data-tip="Gebäude">🏗️</span>
-            <span class="c-cat tip" data-tip="Forschung">🔬</span>
-            <span class="c-cat tip" data-tip="Flotte">🚀</span>
-            <span class="c-cat tip" data-tip="Verteidigung">🛡️</span>
+            <span class="c-cat tip" data-tip="Gebäude"><app-btn-icon [src]="navIcon('buildings')" glyph="🏗️" [size]="14" /></span>
+            <span class="c-cat tip" data-tip="Forschung"><app-btn-icon [src]="navIcon('research')" glyph="🔬" [size]="14" /></span>
+            <span class="c-cat tip" data-tip="Flotte"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="14" /></span>
+            <span class="c-cat tip" data-tip="Verteidigung"><app-btn-icon [src]="statIcon('shield')" glyph="🛡️" [size]="14" /></span>
           </div>
 
           @for (e of entries(); track e.player_id) {
@@ -136,6 +138,9 @@ import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 })
 export class RankingComponent implements OnInit {
   private readonly api = inject(ApiService);
+
+  protected readonly statIcon = statIcon;
+  protected readonly navIcon = navIcon;
 
   protected readonly entries = signal<RankingEntry[]>([]);
   protected readonly me = signal<RankingEntry | null>(null);

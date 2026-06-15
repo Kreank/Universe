@@ -11,7 +11,7 @@ import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { CombatReport } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { navIcon, uiIcon } from '../../core/models/icon-assets';
+import { navIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import { CombatReportComponent } from '../transmissions/combat-report.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
@@ -39,7 +39,7 @@ interface PickRow {
   template: `
     <section class="sim">
       <header class="sim-head">
-        <h1>⚔️ Kampf-Simulator</h1>
+        <h1><app-btn-icon [src]="navIcon('simulator')" glyph="⚔️" [size]="18" /> Kampf-Simulator</h1>
         <p class="faint small">
           Nutzt deine aktuelle Forschung; Gegner-Tech = 0. Das Ergebnis ist eine Stichprobe —
           erneut simulieren für Varianz.
@@ -53,7 +53,7 @@ interface PickRow {
           <!-- Eigene Flotte: nur Kampf-Schiffe -->
           <div class="card col side-own">
             <div class="panel-title">
-              🛡 Deine Flotte
+              <app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="16" /> Deine Flotte
               @if (ownTotal()) { <span class="ptotal mono">{{ ownTotal() }}</span> }
               <button class="mini" type="button" [disabled]="!garrisonCombat().length"
                 title="Schiffe vom aktiven Planeten übernehmen" (click)="fillOwnFromFleet()"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" /> Meine Flotte</button>
@@ -77,7 +77,7 @@ interface PickRow {
           <!-- Gegner: Schiffe + Verteidigung -->
           <div class="card col side-enemy">
             <div class="panel-title">
-              ⚔ Gegner
+              <app-btn-icon [src]="statusIcon('attack')" glyph="⚔" [size]="16" /> Gegner
               @if (enemyTotal()) { <span class="ptotal mono">{{ enemyTotal() }}</span> }
             </div>
 
@@ -121,7 +121,7 @@ interface PickRow {
             [disabled]="!canSimulate() || pending()"
             (click)="simulate()"
           >
-            {{ pending() ? 'Simuliere …' : '⚔️ Simulieren' }}
+            <app-btn-icon [src]="navIcon('simulator')" glyph="⚔️" [size]="18" /> {{ pending() ? 'Simuliere …' : 'Simulieren' }}
           </button>
           <button class="btn btn-ghost" type="button" (click)="clearAll()"><app-btn-icon [src]="uiIcon('broom')" glyph="🧹" /> Leeren</button>
           @if (error()) {
@@ -213,6 +213,8 @@ export class CombatSimComponent {
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly navIcon = navIcon;
   protected readonly uiIcon = uiIcon;
+  protected readonly statIcon = statIcon;
+  protected readonly statusIcon = statusIcon;
 
   protected readonly ownCounts = signal<Record<string, number>>({});
   protected readonly enemyShipCounts = signal<Record<string, number>>({});
