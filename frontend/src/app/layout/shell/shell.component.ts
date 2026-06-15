@@ -59,11 +59,11 @@ interface NavGroup {
               energyBalance() | shortNumber
             }}</span>
           </div>
-          <div class="res exotic tip" data-tip="Dunkle Materie (kontoweit, erspielt)">
+          <div class="res exotic tip" data-tip="Dunkle Materie (auf diesem Planeten — transportierbar/erbeutbar)">
             <img class="res-icon" src="assets/img/resources/dark_matter.png" alt="" />
             <span class="res-amount mono">{{ darkMatter() | shortNumber }}</span>
           </div>
-          <div class="res exotic tip" data-tip="Antimaterie (kontoweit, erspielt)">
+          <div class="res exotic tip" data-tip="Antimaterie (auf diesem Planeten — transportierbar/erbeutbar)">
             <img class="res-icon" src="assets/img/resources/antimatter.png" alt="" />
             <span class="res-amount mono">{{ antimatter() | shortNumber }}</span>
           </div>
@@ -203,8 +203,14 @@ export class ShellComponent implements OnInit, OnDestroy {
   protected readonly planets = this.state.planets;
   protected readonly player = this.auth.player;
   // Kontoweite Exoten (aus /auth/me): in der oberen Leiste neben Energie.
-  protected readonly darkMatter = computed(() => this.auth.player()?.dark_matter ?? 0);
-  protected readonly antimatter = computed(() => this.auth.player()?.antimatter ?? 0);
+  // Exoten sind jetzt PRO PLANET (2026-06-15) — Leiste zeigt den Bestand des AKTIVEN Planeten
+  // (aus dem refresh_resources-„exotic"-Block der Planet-Detail-Antwort).
+  protected readonly darkMatter = computed(
+    () => (this.state.activePlanet()?.resources as any)?.exotic?.dark_matter?.amount ?? 0,
+  );
+  protected readonly antimatter = computed(
+    () => (this.state.activePlanet()?.resources as any)?.exotic?.antimatter?.amount ?? 0,
+  );
   protected readonly navOpen = signal(false);
 
   private static readonly ITEMS: Record<string, NavItem> = {
