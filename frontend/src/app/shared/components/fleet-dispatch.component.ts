@@ -69,6 +69,9 @@ import { IconTileComponent } from './icon-tile.component';
                   [ngModel]="shipCount(s.type)" (ngModelChange)="setShip(s.type, $event, s.count)" aria-label="Menge" />
                 <button class="btn btn-ghost btn-sm" type="button" (click)="setShip(s.type, s.count, s.count)">alle</button>
               </div>
+              @if (shipCount(s.type) > 0 && shipCargo(s.type) > 0) {
+                <div class="ship-cargo faint mono">📦 {{ (shipCargo(s.type) * shipCount(s.type)).toLocaleString('de-DE') }}</div>
+              }
             </div>
           } @empty {
             <p class="muted small">Keine Schiffe auf diesem Planeten. <a href="/shipyard">Werft →</a></p>
@@ -82,15 +85,26 @@ import { IconTileComponent } from './icon-tile.component';
         <!-- Cargo (Transport/Stationierung) -->
         @if (showCargo()) {
           <div class="cargo">
-            <div class="cargo-title">📦 Fracht</div>
+            <div class="cargo-head">
+              <div class="cargo-title">📦 Fracht laden</div>
+              <button class="btn btn-trade btn-sm" type="button"
+                [disabled]="cargoInfo().capacity <= 0" (click)="fillAllCargo()">Alles laden</button>
+            </div>
+            @if (cargoInfo().capacity <= 0) {
+              <p class="hint small">Zuerst Schiffe mit Frachtraum auswählen.</p>
+            }
             <div class="cargo-row">
               @for (r of cargoFields; track r.key) {
                 <div class="cargo-field">
                   <label><img class="cargo-ico" [src]="resourceIcon(r.key)" alt="" (error)="hideImg($event)" />{{ r.label }}</label>
-                  <input type="number" min="0" [max]="planetRes()?.[r.key]?.amount ?? 0"
-                    [ngModel]="cargo()[r.key]" (ngModelChange)="setCargo(r.key, $event)" />
-                  <button class="btn btn-ghost btn-sm" type="button"
-                    (click)="setCargo(r.key, planetRes()?.[r.key]?.amount ?? 0)">max</button>
+                  <div class="cargo-input">
+                    <input type="number" min="0" [max]="cargoCapFor(r.key)"
+                      [ngModel]="cargo()[r.key]" (ngModelChange)="setCargo(r.key, $event)" />
+                    <button class="btn btn-ghost btn-sm" type="button"
+                      [disabled]="cargoCapFor(r.key) <= 0"
+                      (click)="setCargo(r.key, cargoCapFor(r.key))">max</button>
+                  </div>
+                  <span class="cargo-avail faint mono">{{ availOnPlanet(r.key).toLocaleString('de-DE') }} verfügbar</span>
                 </div>
               }
             </div>
@@ -188,14 +202,34 @@ import { IconTileComponent } from './icon-tile.component';
           </div>
         }
 
-        @if (rangeInfo(); as r) {
-          <div class="range-info small" [class.out]="!r.inRange">
-            <span class="tip" data-tip="Distanz zwischen Startplanet und Ziel (OGame-Distanzmodell)">📏 Distanz {{ r.distance.toLocaleString('de-DE') }}</span>
-            <span class="tip" [attr.data-tip]="'Reichweite der Flotte (Tank). Limitierendes Schiff: ' + shipLabel(r.limiting)">🛰 Reichweite {{ r.maxRangeText }}</span>
-            <span class="tip cap" [class.over]="cargoInfo().over"
-                  [attr.data-tip]="'Gesamte Frachtkapazität der gewählten Flotte. Beladen: ' + cargoInfo().used.toLocaleString('de-DE') + ' · Frei: ' + cargoInfo().free.toLocaleString('de-DE')">📦 {{ cargoInfo().used.toLocaleString('de-DE') }} / {{ cargoInfo().capacity.toLocaleString('de-DE') }}</span>
-            <span class="tip" data-tip="Treibstoff (Deuterium) vom Startplaneten"><img class="cargo-ico" [src]="resourceIcon('deuterium')" alt="" (error)="hideImg($event)" />{{ r.fuel.toLocaleString('de-DE') }} {{ r.roundTrip ? '(Hin+Rück)' : '(einfach)' }}</span>
-            <span class="tip" data-tip="Geschätzte Flugzeit je Strecke (ohne Antriebsforschung — mit Forschung schneller). Tempo-Regler wirkt.">⏱ ca. {{ flightText(flightSecs()) }}{{ r.roundTrip ? ' / Strecke' : '' }}</span>
+        @if (hasSelection()) {
+          <div class="fleet-summary" [class.out]="rangeInfo()?.inRange === false">
+            <div class="cap-head">
+              <span class="cap-label">📦 Frachtraum</span>
+              <span class="cap-val mono" [class.over]="cargoInfo().over">{{ cargoInfo().used.toLocaleString('de-DE') }} / {{ cargoInfo().capacity.toLocaleString('de-DE') }}</span>
+            </div>
+            <div class="bar" [class.full]="cargoInfo().over">
+              <div class="fill" [style.width.%]="capPct()"></div>
+            </div>
+            <div class="sum-grid">
+              <div class="sum-cell tip" data-tip="Noch freie Frachtkapazität der gewählten Flotte">
+                <span class="faint">Frei</span><span class="mono" [class.over]="cargoInfo().over">{{ cargoInfo().free.toLocaleString('de-DE') }}</span>
+              </div>
+              @if (rangeInfo(); as r) {
+                <div class="sum-cell tip" data-tip="Distanz zwischen Startplanet und Ziel (OGame-Distanzmodell)">
+                  <span class="faint">📏 Distanz</span><span class="mono">{{ r.distance.toLocaleString('de-DE') }}</span>
+                </div>
+                <div class="sum-cell tip" [attr.data-tip]="'Reichweite der Flotte (Tank). Limitierendes Schiff: ' + shipLabel(r.limiting)">
+                  <span class="faint">🛰 Reichweite</span><span class="mono" [class.over]="!r.inRange">{{ r.maxRangeText }}</span>
+                </div>
+                <div class="sum-cell tip" data-tip="Treibstoff (Deuterium) vom Startplaneten">
+                  <span class="faint"><img class="cargo-ico" [src]="resourceIcon('deuterium')" alt="" (error)="hideImg($event)" />Sprit</span><span class="mono">{{ r.fuel.toLocaleString('de-DE') }} {{ r.roundTrip ? '(H+R)' : '' }}</span>
+                </div>
+                <div class="sum-cell tip" data-tip="Geschätzte Flugzeit je Strecke (ohne Antriebsforschung — mit Forschung schneller). Tempo-Regler wirkt.">
+                  <span class="faint">⏱ Flugzeit</span><span class="mono">{{ flightText(flightSecs()) }}{{ r.roundTrip ? ' /Strecke' : '' }}</span>
+                </div>
+              }
+            </div>
           </div>
         }
 
@@ -206,6 +240,8 @@ import { IconTileComponent } from './icon-tile.component';
         </div>
         @if (!hasSelection()) {
           <p class="hint small">Mindestens ein Schiff auswählen.</p>
+        } @else if (showCargo() && cargoInfo().over) {
+          <p class="hint small">Frachtraum überladen: {{ cargoInfo().used.toLocaleString('de-DE') }} / {{ cargoInfo().capacity.toLocaleString('de-DE') }}. Fracht reduzieren oder mehr Schiffe wählen.</p>
         } @else if (rangeInfo(); as r) {
           @if (!r.inRange) {
             <p class="hint small">Außer Reichweite: {{ shipLabel(r.limiting) }} schafft nur {{ r.maxRangeText }} (Hin+Rück). Kürzeres Ziel wählen, das schwächste Schiff weglassen oder per Stationierung vorschieben.</p>
@@ -275,13 +311,18 @@ import { IconTileComponent } from './icon-tile.component';
       .ship-name { font-size: var(--fs-sm); text-align: center; line-height: 1.1; color: var(--text-dim); }
       .ship-pick { display: flex; gap: var(--sp-1); align-items: center; }
       .ship-pick input { width: 52px; text-align: center; min-height: 28px; padding: var(--sp-1); }
+      .ship-cargo { font-size: var(--fs-xs); color: var(--accent); }
 
       .cargo { margin-top: var(--sp-3); }
-      .cargo-title { font-family: var(--font-display); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: var(--sp-1); }
+      .cargo-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+      .cargo-title { font-family: var(--font-display); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); }
       .cargo-row { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
-      .cargo-field { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1 1 130px; }
+      .cargo-field { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1 1 150px; }
       .cargo-field label { font-size: var(--fs-xs); color: var(--text-dim); }
-      .cargo-field input { min-height: 30px; }
+      .cargo-input { display: flex; gap: var(--sp-1); align-items: center; }
+      .cargo-input input { min-height: 32px; }
+      .cargo-input .btn { flex: 0 0 auto; }
+      .cargo-avail { font-size: var(--fs-xs); }
 
       .opts { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-3); }
       .opts .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: var(--sp-1); }
@@ -297,9 +338,27 @@ import { IconTileComponent } from './icon-tile.component';
       .actions { margin-top: var(--sp-4); }
       .actions .btn { width: 100%; }
       .hint { color: var(--warn); margin: var(--sp-1) 0 0; }
-      .range-info { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-3); padding: var(--sp-1) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text-dim); }
-      .range-info.out { border-color: var(--warn); color: var(--warn); }
-      .range-info .cap.over { color: var(--danger); font-weight: 600; }
+      .small { font-size: var(--fs-sm); }
+
+      .fleet-summary {
+        margin-top: var(--sp-3); padding: var(--sp-3);
+        border: 1px solid var(--border); border-radius: var(--r-md);
+        background: rgba(255,255,255,0.02);
+        transition: border-color var(--motion-fast) var(--ease-out);
+      }
+      .fleet-summary.out { border-color: var(--warn); }
+      .cap-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+      .cap-label { font-family: var(--font-display); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); }
+      .cap-val { font-size: var(--fs-base); color: var(--text); font-variant-numeric: tabular-nums; }
+      .cap-val.over { color: var(--danger); font-weight: 600; }
+      .sum-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-3);
+      }
+      .sum-cell { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-sm); }
+      .sum-cell .faint { font-size: var(--fs-xs); }
+      .sum-cell .mono { font-variant-numeric: tabular-nums; color: var(--text); }
+      .sum-cell .mono.over { color: var(--danger); font-weight: 600; }
 
       @media (max-width: 560px) {
         .backdrop { padding: var(--sp-2); }
@@ -458,6 +517,26 @@ export class FleetDispatchComponent {
       const astro = (r.research ?? []).find((x) => x.type === 'astrophysics');
       this.astroLevel.set(astro?.level ?? 0);
     });
+    // Schrumpft die Auswahl, sodass die geladene Fracht die Kapazitaet uebersteigt,
+    // automatisch von hinten (Deut -> Kristall -> Metall) kuerzen -> nie ueberladen.
+    effect(() => {
+      const cap = this.cargoInfo().capacity;
+      const c = this.cargo();
+      let used = c.metal + c.crystal + c.deuterium;
+      if (used <= cap) {
+        return;
+      }
+      const next = { ...c };
+      for (const k of ['deuterium', 'crystal', 'metal'] as const) {
+        if (used <= cap) {
+          break;
+        }
+        const cut = Math.min(next[k], used - cap);
+        next[k] -= cut;
+        used -= cut;
+      }
+      this.cargo.set(next);
+    });
     // Kurs-Schnappschuss/Typ des Zielhaendlers laden (Handelszentrum vs. Legacy).
     effect(() => {
       const t = this.target();
@@ -503,6 +582,9 @@ export class FleetDispatchComponent {
       return false;
     }
     if (this.rangeInfo()?.inRange === false) {
+      return false;
+    }
+    if (this.showCargo() && this.cargoInfo().over) {
       return false;
     }
     if (this.mission() === 'expedition') {
@@ -650,11 +732,59 @@ export class FleetDispatchComponent {
     this.selection.update((s) => ({ ...s, [type]: n }));
   }
 
+  /** Auf dem aktiven Planeten verfuegbare Menge einer Ressource (0, falls Planet/Res fehlt). */
+  availOnPlanet(key: 'metal' | 'crystal' | 'deuterium'): number {
+    return Math.floor(this.planetRes()?.[key]?.amount ?? 0);
+  }
+
+  /** Frachtkapazitaet eines Schiffstyps (pro Einheit) — fuer die Live-Anzeige im Picker. */
+  shipCargo(type: string): number {
+    return this.bnum((this.balanceSvc.value as any)?.ships?.[type]?.cargo);
+  }
+
+  /**
+   * Maximal ladbare Menge EINER Ressource = min(auf dem Planeten verfuegbar,
+   * freie Restkapazitaet der Flotte ohne diese Ressource).
+   *
+   * Behebt den Lade-Bug: zuvor wurde nur auf den Planetenbestand begrenzt (und bei
+   * kurzzeitig null'er planetRes auf 0 -> Eingabe blockiert) und die Frachtkapazitaet
+   * der Flotte gar nicht beruecksichtigt.
+   */
+  cargoCapFor(key: 'metal' | 'crystal' | 'deuterium'): number {
+    const res = this.planetRes();
+    // Planet kurzzeitig nicht geladen -> nicht blockieren, nur ueber die Kapazitaet deckeln.
+    const avail = res ? Math.floor(res[key]?.amount ?? 0) : Infinity;
+    const c = this.cargo();
+    const others = c.metal + c.crystal + c.deuterium - (c[key] || 0);
+    const room = Math.max(0, this.cargoInfo().capacity - others);
+    return Math.max(0, Math.min(avail, room));
+  }
+
+  /** OGame „alles laden": Metall -> Kristall -> Deuterium bis die Gesamtkapazitaet voll ist. */
+  fillAllCargo(): void {
+    let remaining = this.cargoInfo().capacity;
+    const res = this.planetRes();
+    const next = { metal: 0, crystal: 0, deuterium: 0 };
+    for (const k of ['metal', 'crystal', 'deuterium'] as const) {
+      const avail = res ? Math.floor(res[k]?.amount ?? 0) : remaining;
+      const load = Math.max(0, Math.min(avail, remaining));
+      next[k] = load;
+      remaining -= load;
+    }
+    this.cargo.set(next);
+  }
+
   setCargo(key: 'metal' | 'crystal' | 'deuterium', value: number): void {
-    const cap = Math.floor(this.planetRes()?.[key]?.amount ?? 0);
-    const n = Math.max(0, Math.min(cap, Math.floor(value || 0)));
+    const max = this.cargoCapFor(key);
+    const n = Math.max(0, Math.min(max, Math.floor(value || 0)));
     this.cargo.update((c) => ({ ...c, [key]: n }));
   }
+
+  /** Frachtraum-Auslastung in % (0..100, gedeckelt) fuer den Kapazitaetsbalken. */
+  protected readonly capPct = computed(() => {
+    const ci = this.cargoInfo();
+    return ci.capacity > 0 ? Math.min(100, (ci.used / ci.capacity) * 100) : 0;
+  });
 
   send(): void {
     const origin = this.state.activePlanetId();
