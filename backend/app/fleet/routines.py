@@ -460,3 +460,16 @@ async def delete_route(session: AsyncSession, player: Player, route_id: uuid.UUI
     if route is None or route.player_id != player.id:
         raise ValueError("Routine nicht gefunden.")
     await session.delete(route)
+
+
+async def resume_route(session: AsyncSession, player: Player, route_id: uuid.UUID) -> FarmRoute:
+    """Holt eine pausierte (oder steckengebliebene) Routine aus dem Wartezustand: aktiviert sie,
+    loescht den Pausen-Grund + eine etwaige Geister-Flotte. Der Aufrufer plant danach einen Zyklus."""
+    route = await session.get(FarmRoute, route_id)
+    if route is None or route.player_id != player.id:
+        raise ValueError("Routine nicht gefunden.")
+    route.enabled = True
+    route.status = "idle"
+    route.pause_reason = None
+    route.active_fleet_id = None
+    return route

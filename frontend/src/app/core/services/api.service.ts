@@ -353,6 +353,10 @@ export class ApiService {
     return this.http.delete<void>(`/api/routines/${id}`);
   }
 
+  resumeRoutine(id: string): Observable<Routine> {
+    return this.http.post<Routine>(`/api/routines/${id}/resume`, {});
+  }
+
   // --- Allianz ---
   getAlliance(): Observable<AllianceResponse> {
     return this.http.get<AllianceResponse>('/api/alliance');

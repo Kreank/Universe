@@ -143,6 +143,12 @@ interface RoutineDraft {
           </div>
 
           <div class="routine-act">
+            @if (r.status === 'paused') {
+              <button class="btn btn-primary btn-sm" type="button" [disabled]="busyId() === r.id"
+                      (click)="resume(r)" title="Routine fortsetzen / erneut auslösen">
+                ▶ Fortsetzen
+              </button>
+            }
             <button class="btn btn-ghost btn-sm" type="button" (click)="openEdit(r)">
               Bearbeiten
             </button>
@@ -657,6 +663,21 @@ export class RoutinesComponent implements OnInit {
       error: (err) => {
         this.busyId.set(null);
         this.notify.warning('Umschalten fehlgeschlagen', err?.error?.detail ?? 'Fehler.');
+      },
+    });
+  }
+
+  resume(r: Routine): void {
+    this.busyId.set(r.id);
+    this.api.resumeRoutine(r.id).subscribe({
+      next: (updated) => {
+        this.busyId.set(null);
+        this.routines.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+        this.notify.success('Routine fortgesetzt', `„${updated.name}" läuft wieder.`);
+      },
+      error: (err) => {
+        this.busyId.set(null);
+        this.notify.warning('Fortsetzen fehlgeschlagen', err?.error?.detail ?? 'Fehler.');
       },
     });
   }

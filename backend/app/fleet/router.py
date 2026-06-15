@@ -539,3 +539,21 @@ async def delete_routine(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"ok": True}
+
+
+@router.post("/routines/{route_id}/resume")
+async def resume_routine(
+    route_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Setzt eine pausierte Routine fort (holt sie aus dem Wartezustand) und stoesst einen Zyklus an."""
+    from app.fleet.routines import resume_route, route_to_dict, schedule_start
+
+    try:
+        route = await resume_route(session, player, route_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    out = route_to_dict(route)
+    schedule_start(out["id"], delay_seconds=2.0)
+    return out
