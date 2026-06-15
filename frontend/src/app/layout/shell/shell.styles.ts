@@ -36,21 +36,33 @@ export const shellStyles = `
   /* ---------- Ressourcen-Leiste ---------- */
   .res-bar {
     display: flex;
-    gap: var(--sp-5);
+    align-items: center;
+    gap: var(--sp-4);
     flex: 1 1 auto;
     justify-content: center;
     flex-wrap: wrap;
+    min-width: 0;
   }
-  .res { display: flex; align-items: center; gap: var(--sp-2); }
+  /* Gruppen halten ihre Posten IMMER nebeneinander (kein Stapeln); nur ZWISCHEN den Gruppen
+     darf bei Platzmangel umbrochen werden. */
+  .res-group { display: flex; align-items: center; flex-wrap: nowrap; }
+  .res-group.main { gap: var(--sp-5); }
+  .res-group.exotics { gap: var(--sp-4); }
+  .res-sep { width: 1px; align-self: center; height: 26px; background: var(--border-strong); flex: 0 0 auto; }
+  .res { display: flex; flex-direction: row; align-items: center; gap: var(--sp-2); white-space: nowrap; flex: 0 0 auto; }
   .res-icon { width: 22px; height: 22px; object-fit: contain; flex: 0 0 auto; }
-  .res-meta { display: flex; flex-direction: column; gap: 3px; min-width: 70px; }
+  .res-meta { display: flex; flex-direction: column; gap: 3px; min-width: 64px; }
   .res-amount { font-size: var(--fs-base); font-weight: 600; }
   .res-amount.neg { color: var(--danger); }
   .res-rate { font-size: var(--fs-xs); color: var(--ok); }
   .res-rate.neg { color: var(--danger); }
-  .res .bar { width: 70px; height: 4px; }
+  .res .bar { width: 64px; height: 4px; }
   .res.full .res-amount { color: var(--warn); }
   .res.energy { gap: var(--sp-1); }
+  /* Exoten = kontoweite Sonderressourcen -> dezent kleiner/gedaempfter (sekundaere Gruppe). */
+  .res.exotic { gap: var(--sp-1); }
+  .res.exotic .res-icon { width: 19px; height: 19px; }
+  .res.exotic .res-amount { font-size: var(--fs-sm); color: var(--text-dim); }
 
   .planet-select { width: auto; min-height: 34px; padding: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); }
   .player { font-size: var(--fs-sm); }
@@ -190,16 +202,20 @@ export const shellStyles = `
      Mobile (<900px): Drawer-Sidenav + persistente Bottom-Tab-Bar
      ============================================================ */
   @media (max-width: 899px) {
-    /* Ressourcen-Leiste auf EINE kompakte Zeile (Icon + Betrag). Rate + Kapazitaets-Balken
-       wandern in den Tooltip (data-tip) — sonst brechen die 6 Posten auf ~3 Zeilen um und
-       blaehen die Topbar auf. */
-    .res-bar { order: 3; width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: var(--sp-1); overflow-x: auto; }
-    .res { gap: 4px; min-width: 0; }
+    /* Mobile: Haupt-Rohstoffe (Metall/Kristall/Deut/Energie) gut lesbar in EINER Reihe,
+       gleichmaessig verteilt; die Exoten als kompakte, gedaempfte ZWEITE Mini-Zeile darunter.
+       Rate + Kapazitaets-Balken wandern in den Tooltip (data-tip). */
+    .res-bar { order: 3; width: 100%; flex-wrap: wrap; justify-content: center; gap: 2px var(--sp-2); }
+    .res-sep { display: none; }
+    .res-group.main { flex: 1 1 100%; justify-content: space-around; gap: var(--sp-1); }
+    .res-group.exotics { flex: 1 1 100%; justify-content: center; gap: var(--sp-4); opacity: 0.85; }
+    .res { gap: 5px; min-width: 0; }
     .res-icon { width: 18px; height: 18px; }
     .res-meta { min-width: 0; gap: 0; }
     .res .bar { display: none; }
     .res-rate { display: none; }
     .res-amount { font-size: var(--fs-sm); }
+    .res.exotic .res-icon { width: 16px; height: 16px; }
     .player { display: none; }
 
     /* Sidenav wird zum Off-Canvas-Drawer ("Mehr"). */

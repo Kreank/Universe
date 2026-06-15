@@ -35,37 +35,44 @@ interface NavGroup {
         </div>
 
         <div class="res-bar">
-          @for (r of resourceRows(); track r.key) {
-            <div
-              class="res tip"
-              [attr.data-tip]="r.tip"
-              [class.full]="r.pct >= 100"
-            >
-              <img class="res-icon" src="assets/img/resources/{{ r.key }}.png" alt="" />
-              <div class="res-meta">
-                <span class="res-amount mono">{{ r.display }}</span>
-                <div class="bar" [class.full]="r.pct >= 100">
-                  <span class="fill" [style.width.%]="r.pct"></span>
-                </div>
-              </div>
-              <span class="res-rate mono" [class.neg]="r.rate < 0"
-                >{{ r.rate >= 0 ? '+' : '' }}{{ r.rate | shortNumber }}/h</span
+          <div class="res-group main">
+            @for (r of resourceRows(); track r.key) {
+              <div
+                class="res tip"
+                [attr.data-tip]="r.tip"
+                [class.full]="r.pct >= 100"
               >
+                <img class="res-icon" src="assets/img/resources/{{ r.key }}.png" alt="" />
+                <div class="res-meta">
+                  <span class="res-amount mono">{{ r.display }}</span>
+                  <div class="bar" [class.full]="r.pct >= 100">
+                    <span class="fill" [style.width.%]="r.pct"></span>
+                  </div>
+                </div>
+                <span class="res-rate mono" [class.neg]="r.rate < 0"
+                  >{{ r.rate >= 0 ? '+' : '' }}{{ r.rate | shortNumber }}/h</span
+                >
+              </div>
+            }
+            <div class="res energy tip" [attr.data-tip]="energyTip()">
+              <img class="res-icon" src="assets/img/resources/energy.png" alt="" />
+              <span class="res-amount mono" [class.neg]="energyBalance() < 0">{{
+                energyBalance() | shortNumber
+              }}</span>
             </div>
-          }
-          <div class="res energy tip" [attr.data-tip]="energyTip()">
-            <img class="res-icon" src="assets/img/resources/energy.png" alt="" />
-            <span class="res-amount mono" [class.neg]="energyBalance() < 0">{{
-              energyBalance() | shortNumber
-            }}</span>
           </div>
-          <div class="res exotic tip" data-tip="Dunkle Materie (auf diesem Planeten — transportierbar/erbeutbar)">
-            <img class="res-icon" src="assets/img/resources/dark_matter.png" alt="" />
-            <span class="res-amount mono">{{ darkMatter() | shortNumber }}</span>
-          </div>
-          <div class="res exotic tip" data-tip="Antimaterie (auf diesem Planeten — transportierbar/erbeutbar)">
-            <img class="res-icon" src="assets/img/resources/antimatter.png" alt="" />
-            <span class="res-amount mono">{{ antimatter() | shortNumber }}</span>
+
+          <span class="res-sep" aria-hidden="true"></span>
+
+          <div class="res-group exotics">
+            <div class="res exotic tip" data-tip="Dunkle Materie (auf diesem Planeten — transportierbar/erbeutbar)">
+              <img class="res-icon" src="assets/img/resources/dark_matter.png" alt="" />
+              <span class="res-amount mono">{{ darkMatter() | shortNumber }}</span>
+            </div>
+            <div class="res exotic tip" data-tip="Antimaterie (auf diesem Planeten — transportierbar/erbeutbar)">
+              <img class="res-icon" src="assets/img/resources/antimatter.png" alt="" />
+              <span class="res-amount mono">{{ antimatter() | shortNumber }}</span>
+            </div>
           </div>
         </div>
 
