@@ -319,6 +319,81 @@ Es gibt **zwei** Asset-Wurzeln:
 
 ---
 
+## 🤝 Allianzen (NEU 2026-06-14 — Feature in Planung, Verdrahtung folgt)
+
+> Assets für das kommende **Allianz-System**: eine kollektive Allianz-Forschung mit **4 Rollen-Bäumen**
+> (Piraterie / Wirtschaft / Handel / Schutz) und eine **Allianz-Station** mit Einflusszone (±1 System,
+> über Forschung auf ±5 erweiterbar). Design-Stand siehe Memory/Plan. **Erst die hier bereits
+> ENTSCHIEDENEN Assets bauen** (4 Baum-Embleme, Station, Nav-Icon, Zonen-Marker); die **Einzel-Knoten-Icons**
+> der Bäume kommen, sobald die Knotenliste final ist (siehe letzte Zeile dieser Sektion — noch NICHT bauen).
+
+### Allianz-Forschungsbaum-Embleme — referenziert als `assets/img/tech/<name>.png`
+
+> Die 4 obersten **Baum-/Branch-Embleme** (Kategorie-Köpfe der Allianz-Forschung). **Stil-Anker (genau
+> anschauen!):** `tech/weapons_tech.png`, `tech/energy_tech.png` — EIN klares, plastisch gerendertes
+> Tech-Emblem, cyan `#2fe3d2`, transparent, 256×256, KEIN Text. Jedes Emblem soll die Rolle sofort lesbar
+> machen; je ein dezenter rollentypischer Zweitakzent erlaubt.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | alliance_piracy | `tech/alliance_piracy.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Piraterie**: räuberisches Emblem — Enterhaken/Krallen + schlanke Raider-Silhouette oder Totenkopf-Anmutung dezent, aggressiv. Cyan + dezent **magenta `#ff4d7d`** Piraten-Akzent. |
+| ⬜ | alliance_economy | `tech/alliance_economy.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Wirtschaft/Förderung**: industrielles Förder-Emblem — Bohr-/Förderkopf + Zahnrad/Erzstrom, solide/produktiv. Cyan, dezent goldener Industrie-Akzent. |
+| ⬜ | alliance_trade | `tech/alliance_trade.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Handel**: Merkantil-Emblem — Frachtcontainer + Handelsrouten-Pfeile/Waage, wohlhabend-logistisch. Cyan, dezent warm-goldener Akzent. |
+| ⬜ | alliance_protection | `tech/alliance_protection.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Schutz/Ordnungsmacht**: Wächter-Emblem — Schild + Geleitschutz-/Stern-Insignie (Polizei/Eskorte), wehrhaft-ehrenhaft. Cyan, klar/blau. |
+
+### Allianz-Station — NEUER Ordner `alliance/` (Master `assets/alliance/`, Spiegel `frontend/src/assets/img/alliance/`)
+
+> Die **Allianz-Station** ist eine **orbitale Weltraum-Struktur** (sitzt als Besatzer in einem System,
+> NICHT auf einem Planeten) — projiziert die Einflusszone. **Stil-Anker (genau anschauen!):**
+> `ships/deathstar.png` (Stations-Anmutung im Raum) + `megastructures/research_nexus.png` (monumentale
+> Bauwerks-Plastik). Also: eine **imposante, frei im Raum schwebende Stationsstruktur** — Ring-/Kern-Bau,
+> Andock-Arme, Antennen-/Sensor-Türme, bewohnt/beleuchtet. PNG RGBA transparent, 512×512, EINE Station
+> mittig, cyan `#2fe3d2` Akzentlicht, KEIN Text, KEINE Planetenoberfläche/Weltraumszene drumherum.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | alliance_station | `alliance/alliance_station.png` | PNG transparent, 512×512 | **Allianz-Station**: monumentale orbitale Kommando-/Versorgungs-Station, frei im Raum schwebend — zentraler Kern mit umlaufendem Ring/Andock-Armen, Sensor-/Kommunikationstürme, viele beleuchtete Fenster (bewohnt), cyan `#2fe3d2` Energiekern/Akzentglow. Wirkt wie das **Herz eines Territoriums** — wuchtig, dauerhaft, wehrhaft. Gerendert als freistehende Station (wie `deathstar`, aber Ring-/Bau-Station statt Kugel). |
+
+### Allianz-UI-Icons — referenziert als `assets/img/nav/<name>.png` bzw. `assets/img/status/<name>.png`
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | alliance (nav) | `icons/nav/alliance.png` | PNG transparent, 256×256 (~24px lesbar) | Nav-Icon „Allianz"-Screen: schlichte Wappen-/Bündnis-Silhouette (zwei verschränkte Hände / geteiltes Wappenschild / Sternen-Bund), cyan Akzent. Stil wie vorhandene `nav/*.png`, als kleine klare Silhouette lesbar. |
+| ⬜ | alliance_zone | `icons/status/alliance_zone.png` | PNG transparent, 256×256 | Karten-Marker „Einflusszone" (liegt auf Systemen im Stations-Radius der Galaxie-/System-Karte): weicher, **tintbarer** cyan Aura-/Ring-Glow (heller Rand, transparente Mitte), neutral genug zum Einfärben pro Allianz. Dezent, soll Inhalt nicht überdecken. |
+
+> **⬜ NOCH NICHT BAUEN — Einzel-Knoten-Icons der 4 Bäume:** jeder Forschungs-Knoten (≈5 pro Baum,
+> wiederholbare bekommen den **∞-Ring** wie `tech/*_mastery.png`) bekommt ein eigenes `tech/<knoten>.png`.
+> Die finale Knotenliste wird zu Beginn der Implementierung (morgen) festgelegt — DANN werden die
+> konkreten Icon-Zeilen hier ergänzt. Bis dahin keine Knoten-Icons anfordern.
+
+---
+
+## 🛰️ Farm-Routinen (automatisiertes Farmen von Asteroiden-/Trümmerfeldern)
+
+> Feature **Routinen**: Spieler legen dauerhafte Sammelschleifen (Flotte fliegt Feld für Feld ab,
+> lädt an der Heim-Station aus, wiederholt endlos). Eigener Screen + zwei wiederholbare Forschungen.
+
+### Screen-Hintergrund — referenziert als `assets/img/backgrounds/bg_routines.jpg`
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | bg_routines | `backgrounds/` | JPG, 1920×1080, dunkel | Screen-Hintergrund **Routinen**: Bergbau-/Sammel-Szene im All — Förder-/Bergbauschiffe + Transporter an einem Asteroidengürtel/Trümmerfeld, dünne Förderstrahlen, ferne Frachtcontainer. Ruhige, dunkle Mitte (dort liegt die Routinen-Liste), Interesse an Rändern/oben. **Stil-/Kompositions-Brief siehe oben bei den bg_***. |
+
+### Navigations-Icon — referenziert als `assets/img/nav/routines.png`
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | routines (nav) | `icons/nav/routines.png` | PNG transparent, 256×256 (~24px lesbar) | Nav-Icon „Routinen"-Screen: schlichte Silhouette einer **zyklischen Sammelroute** — kleiner Frachter/Bergbauschiff auf einer geschlossenen Umlauf-/Schleifenbahn zwischen zwei Punkten (Pfeil-Kreislauf), cyan Akzent. Stil wie vorhandene `nav/*.png`, als kleine klare Silhouette lesbar. |
+
+### Forschungs-Icons — referenziert als `assets/img/tech/<name>.png` (beide **wiederholbar → ∞-Ring** wie `tech/*_mastery.png`)
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | fleet_logistics | `tech/fleet_logistics.png` | PNG transparent, 256×256 (Stil = `tech/*`) | **Logistik-Netz** (wiederholbar, +1 gleichzeitige Routine je Stufe): plastisches Tech-Emblem — ein zentraler Stations-/Hub-Knoten mit mehreren auslaufenden Versorgungs-/Frachtrouten (verzweigtes Logistik-Netz), cyan Datenlinien + dezenter **∞-Ring** (repeatable-Merkmal). |
+| ⬜ | route_planning | `tech/route_planning.png` | PNG transparent, 256×256 (Stil = `tech/*`) | **Routen-Planung** (wiederholbar, +1 Feld je Route je Stufe): plastisches Tech-Emblem — eine geplante Mehr-Stopp-Route (Wegpunkt-Kette mit nummerierten Knoten/Pins über einer Sternenkarte), cyan Pfad + dezenter **∞-Ring** (repeatable-Merkmal). |
+
+---
+
 ## 🗒️ Notizen für Codex
 
 - Optional/später (noch NICHT verdrahtet, daher keine aktive Anforderung): Regions-Hintergründe

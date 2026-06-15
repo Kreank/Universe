@@ -844,6 +844,8 @@ async def fleet_return(fleet_id: str) -> None:
         if fleet is None or fleet.status == "done":
             return
         player_id = fleet.player_id
+        # Farm-Routinen-Tag frueh auslesen (nach commit sind die Attribute expired).
+        farm_route_id = (fleet.mission_data or {}).get("farm_route_id")
         origin = await session.get(Planet, fleet.origin_planet_id) if fleet.origin_planet_id else None
 
         fleet_ships = (await session.execute(
@@ -881,3 +883,11 @@ async def fleet_return(fleet_id: str) -> None:
         "fleet_id": fleet_id,
     })
     log.info("Flotte %s zurueckgekehrt", fleet_id)
+
+    # Farm-Routine: Zyklus abschliessen (Cursor weiterruecken + naechsten Zyklus planen).
+    if farm_route_id:
+        from app.fleet.routines import advance_after_return
+        try:
+            await advance_after_return(str(farm_route_id), fleet_id)
+        except Exception:  # noqa: BLE001 — Routinen-Fehler darf die Rueckkehr nie sprengen
+            log.exception("Routinen-Advance fuer Flotte %s fehlgeschlagen (ignoriert)", fleet_id)

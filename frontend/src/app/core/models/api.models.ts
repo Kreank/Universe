@@ -714,3 +714,55 @@ export interface MegastructureListResponse {
   antimatter: number;
   structures: MegastructureOption[];
 }
+
+// --- Routinen (automatisierte Farm-Routen) ---
+
+/** Ein Wegpunkt einer Farm-Route (galaktische Koordinate). */
+export interface RoutineWaypoint {
+  galaxy: number;
+  system: number;
+  position: number;
+}
+
+export type RoutineStatus = 'idle' | 'flying' | 'paused';
+export type RoutinePauseReason =
+  | 'no_fuel'
+  | 'no_ships'
+  | 'no_slot'
+  | 'no_target'
+  | 'fleet_lost';
+
+/** Eine gespeicherte Farm-Routine (Backend-autoritativer Status). */
+export interface Routine {
+  id: string;
+  name: string;
+  home_planet_id: string;
+  ships: Record<string, number>;
+  waypoints: RoutineWaypoint[];
+  enabled: boolean;
+  status: RoutineStatus;
+  pause_reason: RoutinePauseReason | null;
+  /** Index des aktuellen Wegpunkts. */
+  cursor: number;
+  active_fleet_id: string | null;
+}
+
+export interface RoutineLimits {
+  max_routines: number;
+  max_fields_per_route: number;
+  used_routines: number;
+}
+
+export interface RoutineListResponse {
+  routines: Routine[];
+  limits: RoutineLimits;
+}
+
+/** Anlage-/Bearbeitungs-Body (POST/PATCH). */
+export interface RoutineWriteRequest {
+  name?: string;
+  home_planet_id?: string;
+  enabled?: boolean;
+  ships?: Record<string, number>;
+  waypoints?: RoutineWaypoint[];
+}

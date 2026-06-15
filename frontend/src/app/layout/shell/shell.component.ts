@@ -202,6 +202,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     fleet: { path: '/fleet', label: 'Flotte', glyph: '🚀', icon: 'assets/img/nav/fleet.png' },
     combat: { path: '/combat-sim', label: 'Simulator', glyph: '⚔️', icon: 'assets/img/nav/simulator.png' },
     galaxy: { path: '/galaxy', label: 'Galaxie', glyph: '🌌', icon: 'assets/img/nav/map.png' },
+    routines: { path: '/routines', label: 'Routinen', glyph: '🛰', icon: 'assets/img/nav/routines.png' },
     trade: { path: '/trade', label: 'Handel', glyph: '💱', icon: 'assets/img/nav/market.png' },
     commanders: { path: '/commanders', label: 'Kommandozentrale', glyph: '🎖️', icon: 'assets/img/nav/command.png' },
     transmissions: { path: '/transmissions', label: 'Postfach', glyph: '📡', icon: 'assets/img/nav/mail.png' },
@@ -210,7 +211,7 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   protected readonly navGroups: NavGroup[] = [
     { label: 'Imperium', items: [ShellComponent.ITEMS['dashboard'], ShellComponent.ITEMS['buildings'], ShellComponent.ITEMS['research'], ShellComponent.ITEMS['techtree'], ShellComponent.ITEMS['shipyard'], ShellComponent.ITEMS['megastructures']] },
-    { label: 'Militaer', items: [ShellComponent.ITEMS['fleet'], ShellComponent.ITEMS['combat'], ShellComponent.ITEMS['galaxy']] },
+    { label: 'Militaer', items: [ShellComponent.ITEMS['fleet'], ShellComponent.ITEMS['combat'], ShellComponent.ITEMS['galaxy'], ShellComponent.ITEMS['routines']] },
     { label: 'Reich & Sozial', items: [ShellComponent.ITEMS['trade'], ShellComponent.ITEMS['commanders'], ShellComponent.ITEMS['transmissions'], ShellComponent.ITEMS['ranking']] },
   ];
 

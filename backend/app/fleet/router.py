@@ -432,3 +432,110 @@ async def trade_partners(
             want=p.trade_want, rate=p.trade_rate, note=p.trade_note, coords=coords,
         ))
     return out
+
+
+# -- Farm-Routinen (automatisiertes Farmen von Asteroiden-/Truemmerfeldern) -----
+
+class RoutineWaypointIn(BaseModel):
+    galaxy: int
+    system: int
+    position: int
+
+
+class RoutineCreateIn(BaseModel):
+    name: str
+    home_planet_id: str
+    ships: dict[str, int]
+    waypoints: list[RoutineWaypointIn]
+
+
+class RoutineUpdateIn(BaseModel):
+    name: str | None = None
+    enabled: bool | None = None
+    ships: dict[str, int] | None = None
+    waypoints: list[RoutineWaypointIn] | None = None
+
+
+@router.get("/routines")
+async def list_routines(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Eigene Farm-Routinen + aktuelle Forschungs-Limits (Anzahl Routinen / Felder pro Route)."""
+    from app.economy.service import get_research_levels
+    from app.fleet.routines import list_routes, max_fields_per_route, max_routines, route_to_dict
+
+    routes = await list_routes(session, player.id)
+    research = await get_research_levels(session, player.id)
+    return {
+        "routines": [route_to_dict(r) for r in routes],
+        "limits": {
+            "max_routines": max_routines(research),
+            "max_fields_per_route": max_fields_per_route(research),
+            "used_routines": len(routes),
+        },
+    }
+
+
+@router.post("/routines", status_code=201)
+async def create_routine(
+    body: RoutineCreateIn,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    from app.fleet.routines import create_route, route_to_dict, schedule_start
+
+    try:
+        route = await create_route(
+            session, player,
+            name=body.name,
+            home_planet_id=uuid.UUID(body.home_planet_id),
+            ships=body.ships,
+            waypoints=[w.model_dump() for w in body.waypoints],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    out = route_to_dict(route)
+    # Nach dem (auto-)Commit den ersten Zyklus anstossen (kleiner Verzug, damit der Commit landet).
+    schedule_start(out["id"], delay_seconds=2.0)
+    return out
+
+
+@router.patch("/routines/{route_id}")
+async def update_routine(
+    route_id: uuid.UUID,
+    body: RoutineUpdateIn,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    from app.fleet.routines import route_to_dict, schedule_start, update_route
+
+    try:
+        route, should_start = await update_route(
+            session, player, route_id,
+            name=body.name,
+            enabled=body.enabled,
+            ships=body.ships,
+            waypoints=[w.model_dump() for w in body.waypoints] if body.waypoints is not None else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    out = route_to_dict(route)
+    if should_start:
+        schedule_start(out["id"], delay_seconds=2.0)
+    return out
+
+
+@router.delete("/routines/{route_id}")
+async def delete_routine(
+    route_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    from app.fleet.routines import delete_route
+
+    try:
+        await delete_route(session, player, route_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"ok": True}

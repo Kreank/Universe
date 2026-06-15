@@ -95,6 +95,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/ranking/ranking.component').then((m) => m.RankingComponent),
       },
+      {
+        path: 'routines',
+        loadComponent: () =>
+          import('./features/routines/routines.component').then((m) => m.RoutinesComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

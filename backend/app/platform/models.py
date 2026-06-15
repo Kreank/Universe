@@ -335,6 +335,31 @@ class AsteroidField(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class FarmRoute(Base):
+    """Farm-Routine: dauerhaft fliegende Sammelschleife einer Flotte ueber Asteroiden-/
+    Truemmerfelder. Persistente Definition + zugeordnete Schiffe; der Controller
+    (``fleet/routines.py``) startet je Zyklus einen getaggten mine/recycle-Flug zum
+    aktuellen Waypoint (``cursor``) und advanced den Cursor bei Rueckkehr."""
+    __tablename__ = "farm_routes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"))
+    home_planet_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("planets.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    # {typ: count} der zugeordneten Farm-Flotte.
+    ships: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # [{galaxy, system, position}] in Flugreihenfolge.
+    waypoints: Mapped[list] = mapped_column(JSONB, default=list)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(Text, default="idle")          # idle | flying | paused
+    pause_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cursor: Mapped[int] = mapped_column(Integer, default=0)
+    active_fleet_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("fleets.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class NpcEmpire(Base):
     __tablename__ = "npc_empires"
 

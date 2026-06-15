@@ -36,6 +36,9 @@ import {
   UpgradeResponse,
   DemolishResponse,
   MegastructureListResponse,
+  Routine,
+  RoutineListResponse,
+  RoutineWriteRequest,
 } from '../models/api.models';
 
 /**
@@ -328,5 +331,22 @@ export class ApiService {
   // --- Rangliste ---
   getRanking(limit = 100): Observable<RankingResponse> {
     return this.http.get<RankingResponse>(`/api/ranking?limit=${limit}`);
+  }
+
+  // --- Routinen (automatisierte Farm-Routen) ---
+  getRoutines(): Observable<RoutineListResponse> {
+    return this.http.get<RoutineListResponse>('/api/routines');
+  }
+
+  createRoutine(body: RoutineWriteRequest): Observable<Routine> {
+    return this.http.post<Routine>('/api/routines', body);
+  }
+
+  updateRoutine(id: string, body: RoutineWriteRequest): Observable<Routine> {
+    return this.http.patch<Routine>(`/api/routines/${id}`, body);
+  }
+
+  deleteRoutine(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/routines/${id}`);
   }
 }

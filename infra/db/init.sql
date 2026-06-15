@@ -269,6 +269,26 @@ CREATE TABLE asteroid_fields (
 );
 CREATE INDEX idx_asteroid_coords ON asteroid_fields(galaxy, system, position);
 
+-- Farm-Routinen: dauerhaft fliegende Sammelschleifen ueber Asteroiden-/Truemmerfelder.
+-- Jeder Zyklus startet einen getaggten mine/recycle-Flug (mission_data.farm_route_id) zum
+-- aktuellen Feld (cursor); bei Rueckkehr advanced der Controller den Cursor. active_fleet_id =
+-- die Flotte, die GERADE fuer diese Routine fliegt (NULL zwischen Zyklen / pausiert).
+CREATE TABLE farm_routes (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    player_id       UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    home_planet_id  UUID NOT NULL REFERENCES planets(id) ON DELETE CASCADE,
+    name            TEXT NOT NULL,
+    ships           JSONB NOT NULL DEFAULT '{}'::jsonb,   -- {typ: count} der zugeordneten Farm-Flotte
+    waypoints       JSONB NOT NULL DEFAULT '[]'::jsonb,   -- [{galaxy, system, position}] in Flugreihenfolge
+    enabled         BOOLEAN NOT NULL DEFAULT true,
+    status          TEXT NOT NULL DEFAULT 'idle',         -- idle | flying | paused
+    pause_reason    TEXT,                                 -- no_fuel | fleet_lost | no_ships | no_slot | no_target | NULL
+    cursor          INT NOT NULL DEFAULT 0,               -- Index des aktuellen Waypoints
+    active_fleet_id UUID REFERENCES fleets(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_farm_routes_player ON farm_routes(player_id);
+
 CREATE TABLE npc_empires (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name             TEXT NOT NULL,

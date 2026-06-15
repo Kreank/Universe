@@ -173,7 +173,9 @@
       "flagship_command":   { "cost": { "metal": 200000, "crystal": 150000, "deuterium": 80000 }, "repeatable": true, "requires": { "research_lab": 10, "computer_tech": 10 }, "effect": "Flaggschiff-Doktrin (wiederholbar): +1 erlaubtes Flaggschiff je Stufe (Default 1)." },
       "corsair_command":    { "cost": { "metal": 120000, "crystal": 90000, "deuterium": 50000 }, "repeatable": true, "requires": { "research_lab": 8, "ion_tech": 8 }, "effect": "Korsaren-Verband (wiederholbar): +1 erlaubter Korsar je Stufe (Default 1)." },
       "leviathan_command":  { "cost": { "metal": 150000, "crystal": 100000, "deuterium": 40000 }, "repeatable": true, "requires": { "research_lab": 8, "computer_tech": 8 }, "effect": "Grosshandels-Lizenz (wiederholbar): +1 erlaubter Handels-Leviathan je Stufe (Default 1)." },
-      "harvest_command":    { "cost": { "metal": 180000, "crystal": 120000, "deuterium": 40000 }, "repeatable": true, "requires": { "research_lab": 8, "mining_efficiency": 8 }, "effect": "Schuerf-Kommando (wiederholbar): +1 erlaubter Ernte-Titan je Stufe (Default 1)." }
+      "harvest_command":    { "cost": { "metal": 180000, "crystal": 120000, "deuterium": 40000 }, "repeatable": true, "requires": { "research_lab": 8, "mining_efficiency": 8 }, "effect": "Schuerf-Kommando (wiederholbar): +1 erlaubter Ernte-Titan je Stufe (Default 1)." },
+      "fleet_logistics":    { "cost": { "metal": 4000, "crystal": 6000, "deuterium": 2000 }, "repeatable": true, "requires": { "research_lab": 4, "computer_tech": 4 }, "effect": "Logistik-Netz (wiederholbar): +1 gleichzeitig laufende Farm-Routine je Stufe (Default 2)." },
+      "route_planning":     { "cost": { "metal": 3000, "crystal": 5000, "deuterium": 2000 }, "repeatable": true, "requires": { "research_lab": 4, "impulse_drive": 3 }, "effect": "Routen-Planung (wiederholbar): +1 Feld je Farm-Route je Stufe (Default 2)." }
     }
   },
 
@@ -393,6 +395,18 @@
     "_note": "Recycler-Mission: sammelt das Truemmerfeld (universe_cells.debris_field) am Zielort ein, begrenzt durch die Frachtkapazitaet der Flotte. min_collectors = benoetigte Recycler.",
     "collector_type": "recycler",
     "min_collectors": 1
+  },
+
+  "routines": {
+    "_note": "Automatisierte Farm-Routen ('Routinen'). Eine Routine = eine dauerhaft fliegende Sammelschleife einer Flotte ueber Asteroiden-/Truemmerfelder. Jeder Zyklus = ein getaggter mine/recycle-Flug zum aktuellen Feld (Cursor) + Rueckkehr + Ausladen an der Heim-Station; danach startet die naechste Runde. Feld leer geraeumt -> Cursor rueckt zum naechsten Feld (modulo, endlos); Laderaum voll bevor Feld leer -> Cursor bleibt (selbes Feld nochmal). Anzahl Routinen = base_routines + fleet_logistics-Stufe; Felder pro Route = base_fields_per_route + route_planning-Stufe. Routinen-Fluege sind normale Flotten -> abfangbar + Fracht erbeutbar. Treibstoff pro Flug von der Heim-Station; kein Deuterium -> Routine pausiert.",
+    "base_routines": 2,
+    "base_fields_per_route": 2,
+    "routines_research": "fleet_logistics",
+    "fields_research": "route_planning",
+    "allowed_field_types": ["asteroid_field", "debris_field"],
+    "empty_threshold": 1.0,
+    "dock_seconds": 5,
+    "loss_check_buffer_seconds": 30
   },
 
   "colonization": {
