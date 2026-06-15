@@ -554,6 +554,8 @@ async def send_fleet(
                 int(m_cfg.get("max_hold_seconds", 14400)),
                 int(math.ceil(cargo_cap / rate_per_hour * 3600)),
             )
+        # „Am Feld"-Fenster fuer Angreifbarkeit: [arrive, hold_until]. Danach Rueckflug.
+        mission_data = {**mission_data, "hold_until": (arrive + dt.timedelta(seconds=hold_seconds)).isoformat()}
     return_at = arrive + dt.timedelta(seconds=hold_seconds + secs)
 
     fleet = Fleet(
