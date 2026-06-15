@@ -202,12 +202,20 @@ export const shellStyles = `
      Mobile (<900px): Drawer-Sidenav + persistente Bottom-Tab-Bar
      ============================================================ */
   @media (max-width: 899px) {
-    /* Mobile: Haupt-Rohstoffe (Metall/Kristall/Deut/Energie) gut lesbar in EINER Reihe,
-       gleichmaessig verteilt; die Exoten als kompakte, gedaempfte ZWEITE Mini-Zeile darunter.
+    /* Mobile: Haupt-Rohstoffe (Metall/Kristall/Deut/Energie) als sauberes 2x2-Raster — so passen
+       auch grosse Werte ("140.000") IMMER rein, statt in einer nowrap-Reihe rechts abgeschnitten
+       zu werden. Exoten als kompakte, gedaempfte Mini-Zeile darunter.
        Rate + Kapazitaets-Balken wandern in den Tooltip (data-tip). */
     .res-bar { order: 3; width: 100%; flex-wrap: wrap; justify-content: center; gap: 2px var(--sp-2); }
     .res-sep { display: none; }
-    .res-group.main { flex: 1 1 100%; justify-content: space-around; gap: var(--sp-1); }
+    .res-group.main {
+      flex: 1 1 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: var(--sp-4);
+      row-gap: 4px;
+    }
+    .res-group.main .res { justify-content: center; }
     .res-group.exotics { flex: 1 1 100%; justify-content: center; gap: var(--sp-4); opacity: 0.85; }
     .res { gap: 5px; min-width: 0; }
     .res-icon { width: 18px; height: 18px; }
