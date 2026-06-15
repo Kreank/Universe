@@ -336,10 +336,10 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | alliance_piracy | `tech/alliance_piracy.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Piraterie**: räuberisches Emblem — Enterhaken/Krallen + schlanke Raider-Silhouette oder Totenkopf-Anmutung dezent, aggressiv. Cyan + dezent **magenta `#ff4d7d`** Piraten-Akzent. |
-| ⬜ | alliance_economy | `tech/alliance_economy.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Wirtschaft/Förderung**: industrielles Förder-Emblem — Bohr-/Förderkopf + Zahnrad/Erzstrom, solide/produktiv. Cyan, dezent goldener Industrie-Akzent. |
-| ⬜ | alliance_trade | `tech/alliance_trade.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Handel**: Merkantil-Emblem — Frachtcontainer + Handelsrouten-Pfeile/Waage, wohlhabend-logistisch. Cyan, dezent warm-goldener Akzent. |
-| ⬜ | alliance_protection | `tech/alliance_protection.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Schutz/Ordnungsmacht**: Wächter-Emblem — Schild + Geleitschutz-/Stern-Insignie (Polizei/Eskorte), wehrhaft-ehrenhaft. Cyan, klar/blau. |
+| ✅ | alliance_piracy | `tech/alliance_piracy.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Piraterie**: räuberisches Emblem — Enterhaken/Krallen + schlanke Raider-Silhouette oder Totenkopf-Anmutung dezent, aggressiv. Cyan + dezent **magenta `#ff4d7d`** Piraten-Akzent. |
+| ✅ | alliance_economy | `tech/alliance_economy.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Wirtschaft/Förderung**: industrielles Förder-Emblem — Bohr-/Förderkopf + Zahnrad/Erzstrom, solide/produktiv. Cyan, dezent goldener Industrie-Akzent. |
+| ✅ | alliance_trade | `tech/alliance_trade.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Handel**: Merkantil-Emblem — Frachtcontainer + Handelsrouten-Pfeile/Waage, wohlhabend-logistisch. Cyan, dezent warm-goldener Akzent. |
+| ✅ | alliance_protection | `tech/alliance_protection.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Baum **Schutz/Ordnungsmacht**: Wächter-Emblem — Schild + Geleitschutz-/Stern-Insignie (Polizei/Eskorte), wehrhaft-ehrenhaft. Cyan, klar/blau. |
 
 ### Allianz-Station — NEUER Ordner `alliance/` (Master `assets/alliance/`, Spiegel `frontend/src/assets/img/alliance/`)
 
@@ -352,14 +352,14 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | alliance_station | `alliance/alliance_station.png` | PNG transparent, 512×512 | **Allianz-Station**: monumentale orbitale Kommando-/Versorgungs-Station, frei im Raum schwebend — zentraler Kern mit umlaufendem Ring/Andock-Armen, Sensor-/Kommunikationstürme, viele beleuchtete Fenster (bewohnt), cyan `#2fe3d2` Energiekern/Akzentglow. Wirkt wie das **Herz eines Territoriums** — wuchtig, dauerhaft, wehrhaft. Gerendert als freistehende Station (wie `deathstar`, aber Ring-/Bau-Station statt Kugel). |
+| ✅ | alliance_station | `alliance/alliance_station.png` | PNG transparent, 512×512 | **Allianz-Station**: monumentale orbitale Kommando-/Versorgungs-Station, frei im Raum schwebend — zentraler Kern mit umlaufendem Ring/Andock-Armen, Sensor-/Kommunikationstürme, viele beleuchtete Fenster (bewohnt), cyan `#2fe3d2` Energiekern/Akzentglow. Wirkt wie das **Herz eines Territoriums** — wuchtig, dauerhaft, wehrhaft. Gerendert als freistehende Station (wie `deathstar`, aber Ring-/Bau-Station statt Kugel). |
 
 ### Allianz-UI-Icons — referenziert als `assets/img/nav/<name>.png` bzw. `assets/img/status/<name>.png`
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | alliance (nav) | `icons/nav/alliance.png` | PNG transparent, 256×256 (~24px lesbar) | Nav-Icon „Allianz"-Screen: schlichte Wappen-/Bündnis-Silhouette (zwei verschränkte Hände / geteiltes Wappenschild / Sternen-Bund), cyan Akzent. Stil wie vorhandene `nav/*.png`, als kleine klare Silhouette lesbar. |
-| ⬜ | alliance_zone | `icons/status/alliance_zone.png` | PNG transparent, 256×256 | Karten-Marker „Einflusszone" (liegt auf Systemen im Stations-Radius der Galaxie-/System-Karte): weicher, **tintbarer** cyan Aura-/Ring-Glow (heller Rand, transparente Mitte), neutral genug zum Einfärben pro Allianz. Dezent, soll Inhalt nicht überdecken. |
+| ✅ | alliance (nav) | `icons/nav/alliance.png` | PNG transparent, 256×256 (~24px lesbar) | Nav-Icon „Allianz"-Screen: schlichte Wappen-/Bündnis-Silhouette (zwei verschränkte Hände / geteiltes Wappenschild / Sternen-Bund), cyan Akzent. Stil wie vorhandene `nav/*.png`, als kleine klare Silhouette lesbar. |
+| ✅ | alliance_zone | `icons/status/alliance_zone.png` | PNG transparent, 256×256 | Karten-Marker „Einflusszone" (liegt auf Systemen im Stations-Radius der Galaxie-/System-Karte): weicher, **tintbarer** cyan Aura-/Ring-Glow (heller Rand, transparente Mitte), neutral genug zum Einfärben pro Allianz. Dezent, soll Inhalt nicht überdecken. |
 
 ### Allianz-Forschungs-Knoten-Icons (Knotenliste FINAL, 2026-06-15) — referenziert als `assets/img/tech/<name>.png`
 
@@ -369,26 +369,26 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | alliance_raid_loot | `tech/alliance_raid_loot.png` | PNG 256×256 | 🏴‍☠️🔁 Beutezug: Plünderungs-/Beute-Emblem (Schatztruhe/Krallen am Frachtgut) + **∞-Ring**. |
-| ⬜ | alliance_shadow_fleet | `tech/alliance_shadow_fleet.png` | PNG 256×256 | 🏴‍☠️🔁 Schattenflotte: getarnte Raider-Silhouette, halb im Dunkel/Phasen-Effekt + **∞-Ring**. |
-| ⬜ | alliance_boarding_doctrine_ally | `tech/alliance_boarding_doctrine_ally.png` | PNG 256×256 | 🏴‍☠️ Enterhaken (Koop): Enterhaken/Greifarm an gekapertem Schiff. |
-| ⬜ | alliance_gravity_snare | `tech/alliance_gravity_snare.png` | PNG 256×256 | 🏴‍☠️ Fanggriff: Gravitations-/Interdiktionsfeld, das ein Schiff festhält (Räuberhöhle). |
-| ⬜ | alliance_pack_hunt | `tech/alliance_pack_hunt.png` | PNG 256×256 | 🏴‍☠️⭐ Rudeljagd: mehrere Raider im Verband auf ein Ziel, geteilte Sicht (Gruppen-Anmutung). |
-| ⬜ | alliance_extraction_zone | `tech/alliance_extraction_zone.png` | PNG 256×256 | 🏭🔁 Förderquote: Förderkopf/Erzstrom über einem Zonen-Ring + **∞-Ring**. |
-| ⬜ | alliance_deep_drilling | `tech/alliance_deep_drilling.png` | PNG 256×256 | 🏭🔁 Tiefenbohrung: tiefer Bohrer in Asteroid/Trümmer + **∞-Ring**. |
-| ⬜ | alliance_forward_yards | `tech/alliance_forward_yards.png` | PNG 256×256 | 🏭🔁 Vorgeschobene Werften: kompaktes Werft-/Baugerüst mit Tempo-Anmutung + **∞-Ring**. |
-| ⬜ | alliance_depot_storage | `tech/alliance_depot_storage.png` | PNG 256×256 | 🏭 Lagernetz: Depot-/Lagercontainer-Cluster, solide. |
-| ⬜ | alliance_joint_extraction | `tech/alliance_joint_extraction.png` | PNG 256×256 | 🏭⭐ Gemeinschaftsförderung: mehrere Förderschiffe an einem Feld (Gruppen-Anmutung). |
-| ⬜ | alliance_market_access | `tech/alliance_market_access.png` | PNG 256×256 | 💱🔁 Marktzugang: Handels-/Kurs-Emblem (Waage/Kurvenpfeil) + **∞-Ring**. |
-| ⬜ | alliance_cargo_logistics | `tech/alliance_cargo_logistics.png` | PNG 256×256 | 💱🔁 Frachtoptimierung: prall gefüllter Frachter/Container mit Effizienz-Pfeil + **∞-Ring**. |
-| ⬜ | alliance_safe_routes | `tech/alliance_safe_routes.png` | PNG 256×256 | 💱 Sichere Routen: Handelsroute mit Schutzschirm/Konvoi-Linie. |
-| ⬜ | alliance_depot_logistics | `tech/alliance_depot_logistics.png` | PNG 256×256 | 💱 Depot-Logistik: Einzahlung/Pfeil-in-Depot, günstig/effizient. |
-| ⬜ | alliance_escort_convoy | `tech/alliance_escort_convoy.png` | PNG 256×256 | 💱⭐ Geleitzug: eskortierter Konvoi (Frachter + Begleitschiffe). |
-| ⬜ | alliance_escort_doctrine | `tech/alliance_escort_doctrine.png` | PNG 256×256 | 🛡️ Geleitschutz: Schild über Frachter/Verbündetem. |
-| ⬜ | alliance_rapid_response | `tech/alliance_rapid_response.png` | PNG 256×256 | 🛡️🔁 Schnelle Eingreiftruppe: Abfangjäger mit Tempo-/Alarm-Anmutung + **∞-Ring**. |
-| ⬜ | alliance_early_warning | `tech/alliance_early_warning.png` | PNG 256×256 | 🛡️🔁 Frühwarnnetz: Sensor-/Radar-Sweep über der Zone + **∞-Ring**. |
-| ⬜ | alliance_bounty | `tech/alliance_bounty.png` | PNG 256×256 | 🛡️ Kopfgeld: Fahndungs-/Kopfgeld-Marke gegen Pirat. |
-| ⬜ | alliance_shield_wall | `tech/alliance_shield_wall.png` | PNG 256×256 | 🛡️⭐ Schildwall: gestapelte Schilde mehrerer Schiffe (Gruppen-Verteidigung). |
+| ✅ | alliance_raid_loot | `tech/alliance_raid_loot.png` | PNG 256×256 | 🏴‍☠️🔁 Beutezug: Plünderungs-/Beute-Emblem (Schatztruhe/Krallen am Frachtgut) + **∞-Ring**. |
+| ✅ | alliance_shadow_fleet | `tech/alliance_shadow_fleet.png` | PNG 256×256 | 🏴‍☠️🔁 Schattenflotte: getarnte Raider-Silhouette, halb im Dunkel/Phasen-Effekt + **∞-Ring**. |
+| ✅ | alliance_boarding_doctrine_ally | `tech/alliance_boarding_doctrine_ally.png` | PNG 256×256 | 🏴‍☠️ Enterhaken (Koop): Enterhaken/Greifarm an gekapertem Schiff. |
+| ✅ | alliance_gravity_snare | `tech/alliance_gravity_snare.png` | PNG 256×256 | 🏴‍☠️ Fanggriff: Gravitations-/Interdiktionsfeld, das ein Schiff festhält (Räuberhöhle). |
+| ✅ | alliance_pack_hunt | `tech/alliance_pack_hunt.png` | PNG 256×256 | 🏴‍☠️⭐ Rudeljagd: mehrere Raider im Verband auf ein Ziel, geteilte Sicht (Gruppen-Anmutung). |
+| ✅ | alliance_extraction_zone | `tech/alliance_extraction_zone.png` | PNG 256×256 | 🏭🔁 Förderquote: Förderkopf/Erzstrom über einem Zonen-Ring + **∞-Ring**. |
+| ✅ | alliance_deep_drilling | `tech/alliance_deep_drilling.png` | PNG 256×256 | 🏭🔁 Tiefenbohrung: tiefer Bohrer in Asteroid/Trümmer + **∞-Ring**. |
+| ✅ | alliance_forward_yards | `tech/alliance_forward_yards.png` | PNG 256×256 | 🏭🔁 Vorgeschobene Werften: kompaktes Werft-/Baugerüst mit Tempo-Anmutung + **∞-Ring**. |
+| ✅ | alliance_depot_storage | `tech/alliance_depot_storage.png` | PNG 256×256 | 🏭 Lagernetz: Depot-/Lagercontainer-Cluster, solide. |
+| ✅ | alliance_joint_extraction | `tech/alliance_joint_extraction.png` | PNG 256×256 | 🏭⭐ Gemeinschaftsförderung: mehrere Förderschiffe an einem Feld (Gruppen-Anmutung). |
+| ✅ | alliance_market_access | `tech/alliance_market_access.png` | PNG 256×256 | 💱🔁 Marktzugang: Handels-/Kurs-Emblem (Waage/Kurvenpfeil) + **∞-Ring**. |
+| ✅ | alliance_cargo_logistics | `tech/alliance_cargo_logistics.png` | PNG 256×256 | 💱🔁 Frachtoptimierung: prall gefüllter Frachter/Container mit Effizienz-Pfeil + **∞-Ring**. |
+| ✅ | alliance_safe_routes | `tech/alliance_safe_routes.png` | PNG 256×256 | 💱 Sichere Routen: Handelsroute mit Schutzschirm/Konvoi-Linie. |
+| ✅ | alliance_depot_logistics | `tech/alliance_depot_logistics.png` | PNG 256×256 | 💱 Depot-Logistik: Einzahlung/Pfeil-in-Depot, günstig/effizient. |
+| ✅ | alliance_escort_convoy | `tech/alliance_escort_convoy.png` | PNG 256×256 | 💱⭐ Geleitzug: eskortierter Konvoi (Frachter + Begleitschiffe). |
+| ✅ | alliance_escort_doctrine | `tech/alliance_escort_doctrine.png` | PNG 256×256 | 🛡️ Geleitschutz: Schild über Frachter/Verbündetem. |
+| ✅ | alliance_rapid_response | `tech/alliance_rapid_response.png` | PNG 256×256 | 🛡️🔁 Schnelle Eingreiftruppe: Abfangjäger mit Tempo-/Alarm-Anmutung + **∞-Ring**. |
+| ✅ | alliance_early_warning | `tech/alliance_early_warning.png` | PNG 256×256 | 🛡️🔁 Frühwarnnetz: Sensor-/Radar-Sweep über der Zone + **∞-Ring**. |
+| ✅ | alliance_bounty | `tech/alliance_bounty.png` | PNG 256×256 | 🛡️ Kopfgeld: Fahndungs-/Kopfgeld-Marke gegen Pirat. |
+| ✅ | alliance_shield_wall | `tech/alliance_shield_wall.png` | PNG 256×256 | 🛡️⭐ Schildwall: gestapelte Schilde mehrerer Schiffe (Gruppen-Verteidigung). |
 
 ---
 
@@ -401,20 +401,20 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | bg_routines | `backgrounds/` | JPG, 1920×1080, dunkel | Screen-Hintergrund **Routinen**: Bergbau-/Sammel-Szene im All — Förder-/Bergbauschiffe + Transporter an einem Asteroidengürtel/Trümmerfeld, dünne Förderstrahlen, ferne Frachtcontainer. Ruhige, dunkle Mitte (dort liegt die Routinen-Liste), Interesse an Rändern/oben. **Stil-/Kompositions-Brief siehe oben bei den bg_***. |
+| ✅ | bg_routines | `backgrounds/` | JPG, 1920×1080, dunkel | Screen-Hintergrund **Routinen**: Bergbau-/Sammel-Szene im All — Förder-/Bergbauschiffe + Transporter an einem Asteroidengürtel/Trümmerfeld, dünne Förderstrahlen, ferne Frachtcontainer. Ruhige, dunkle Mitte (dort liegt die Routinen-Liste), Interesse an Rändern/oben. **Stil-/Kompositions-Brief siehe oben bei den bg_***. |
 
 ### Navigations-Icon — referenziert als `assets/img/nav/routines.png`
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | routines (nav) | `icons/nav/routines.png` | PNG transparent, 256×256 (~24px lesbar) | Nav-Icon „Routinen"-Screen: schlichte Silhouette einer **zyklischen Sammelroute** — kleiner Frachter/Bergbauschiff auf einer geschlossenen Umlauf-/Schleifenbahn zwischen zwei Punkten (Pfeil-Kreislauf), cyan Akzent. Stil wie vorhandene `nav/*.png`, als kleine klare Silhouette lesbar. |
+| ✅ | routines (nav) | `icons/nav/routines.png` | PNG transparent, 256×256 (~24px lesbar) | Nav-Icon „Routinen"-Screen: schlichte Silhouette einer **zyklischen Sammelroute** — kleiner Frachter/Bergbauschiff auf einer geschlossenen Umlauf-/Schleifenbahn zwischen zwei Punkten (Pfeil-Kreislauf), cyan Akzent. Stil wie vorhandene `nav/*.png`, als kleine klare Silhouette lesbar. |
 
 ### Forschungs-Icons — referenziert als `assets/img/tech/<name>.png` (beide **wiederholbar → ∞-Ring** wie `tech/*_mastery.png`)
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | fleet_logistics | `tech/fleet_logistics.png` | PNG transparent, 256×256 (Stil = `tech/*`) | **Logistik-Netz** (wiederholbar, +1 gleichzeitige Routine je Stufe): plastisches Tech-Emblem — ein zentraler Stations-/Hub-Knoten mit mehreren auslaufenden Versorgungs-/Frachtrouten (verzweigtes Logistik-Netz), cyan Datenlinien + dezenter **∞-Ring** (repeatable-Merkmal). |
-| ⬜ | route_planning | `tech/route_planning.png` | PNG transparent, 256×256 (Stil = `tech/*`) | **Routen-Planung** (wiederholbar, +1 Feld je Route je Stufe): plastisches Tech-Emblem — eine geplante Mehr-Stopp-Route (Wegpunkt-Kette mit nummerierten Knoten/Pins über einer Sternenkarte), cyan Pfad + dezenter **∞-Ring** (repeatable-Merkmal). |
+| ✅ | fleet_logistics | `tech/fleet_logistics.png` | PNG transparent, 256×256 (Stil = `tech/*`) | **Logistik-Netz** (wiederholbar, +1 gleichzeitige Routine je Stufe): plastisches Tech-Emblem — ein zentraler Stations-/Hub-Knoten mit mehreren auslaufenden Versorgungs-/Frachtrouten (verzweigtes Logistik-Netz), cyan Datenlinien + dezenter **∞-Ring** (repeatable-Merkmal). |
+| ✅ | route_planning | `tech/route_planning.png` | PNG transparent, 256×256 (Stil = `tech/*`) | **Routen-Planung** (wiederholbar, +1 Feld je Route je Stufe): plastisches Tech-Emblem — eine geplante Mehr-Stopp-Route (Wegpunkt-Kette mit nummerierten Knoten/Pins über einer Sternenkarte), cyan Pfad + dezenter **∞-Ring** (repeatable-Merkmal). |
 
 ---
 
