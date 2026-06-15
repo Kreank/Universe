@@ -158,4 +158,12 @@ export const galaxyStyles = `
     .ic { width: 44px; height: 44px; }
     .coordbox input { min-height: 44px; }
   }
+  .zone-banner { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: var(--sp-1) 0 var(--sp-2); }
+  .zone-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid rgba(255,170,80,.5); background: rgba(255,170,80,.08); }
+  .zone-chip.mine { border-color: rgba(46,230,214,.6); background: rgba(46,230,214,.10); }
+  .zone-mark { width: 18px; height: 18px; object-fit: contain;
+    filter: sepia(1) saturate(3) hue-rotate(330deg); }
+  .zone-chip.mine .zone-mark { filter: none; }
+  .zone-tag { font-weight: 600; letter-spacing: .04em; }
 `;

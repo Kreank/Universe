@@ -7,6 +7,7 @@ import { GameStateService } from '../../core/services/game-state.service';
 import {
   Coordinate,
   FleetMission,
+  AllianceZone,
   GalaxyCell,
   GalaxyIntel,
   GalaxyTarget,
@@ -70,6 +71,19 @@ interface DispatchCtx {
         </div>
 
         <div class="coords-current mono">[{{ viewG }}:{{ viewS }}] · {{ scannedCount() }} belegt</div>
+
+        @if (zones().length) {
+          <div class="zone-banner">
+            @for (z of zones(); track z.alliance_id) {
+              <span class="zone-chip" [class.mine]="z.mine"
+                    [title]="(z.mine ? 'Einflusszone deiner Allianz' : 'Fremde Einflusszone') + ' [' + z.tag + '] · Zentrum System ' + z.center_system + ' · Radius ' + z.radius">
+                <img class="zone-mark" src="assets/img/status/alliance_zone.png" alt="" aria-hidden="true" />
+                <span class="zone-tag">[{{ z.tag }}]</span>
+                <span class="small muted">{{ z.mine ? 'eigene Zone' : 'Einflusszone' }}</span>
+              </span>
+            }
+          </div>
+        }
 
         @if (loading()) {
           <p class="muted small">Scanne System…</p>
@@ -248,6 +262,7 @@ export class GalaxyComponent {
   viewG = 1;
   viewS = 1;
   protected readonly cells = signal<GalaxyCell[]>([]);
+  protected readonly zones = signal<AllianceZone[]>([]);
   protected readonly targets = signal<GalaxyTarget[]>([]);
   protected readonly loading = signal(false);
   protected readonly dispatch = signal<DispatchCtx | null>(null);
@@ -312,10 +327,12 @@ export class GalaxyComponent {
     this.api.getGalaxy(this.viewG, this.viewS).subscribe({
       next: (res) => {
         this.cells.set(res.cells);
+        this.zones.set(res.zones ?? []);
         this.loading.set(false);
       },
       error: () => {
         this.cells.set([]);
+        this.zones.set([]);
         this.loading.set(false);
       },
     });

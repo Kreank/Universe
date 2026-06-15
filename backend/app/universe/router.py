@@ -27,8 +27,18 @@ class CellOut(BaseModel):
     moon: dict | None = None  # Mond am Ort {name, player_id, player_name, own} — eigenes Angriffs-/Spionageziel
 
 
+class ZoneOut(BaseModel):
+    """Allianz-Einflusszone, die dieses System abdeckt (aktive, getankte Station in Reichweite)."""
+    alliance_id: str
+    tag: str
+    center_system: int
+    radius: int
+    mine: bool  # gehoert die Zone der eigenen Allianz?
+
+
 class GalaxyViewOut(BaseModel):
     cells: list[CellOut]
+    zones: list[ZoneOut] = []  # Allianz-Einflusszonen, die dieses System abdecken
 
 
 class TargetOut(BaseModel):
@@ -201,4 +211,25 @@ async def galaxy_view(
     deep = int(bal.data.get("expedition", {}).get("deep_space_position", 0))
     if deep:
         cells.append(CellOut(position=deep, occupant_type="deep_space", name="Galaktische Weiten"))
-    return GalaxyViewOut(cells=cells)
+
+    # Allianz-Einflusszonen, die dieses System abdecken (aktive + getankte Station in Reichweite).
+    from app.alliance.station import covers, zone_radius
+    from app.platform.models import Alliance, AllianceStation
+    zones: list[ZoneOut] = []
+    st_rows = (await session.execute(
+        select(AllianceStation).where(
+            AllianceStation.galaxy == galaxy, AllianceStation.status == "active"
+        )
+    )).scalars().all()
+    for st in st_rows:
+        if not covers(st, galaxy, system):
+            continue
+        al = await session.get(Alliance, st.alliance_id)
+        zones.append(ZoneOut(
+            alliance_id=str(st.alliance_id),
+            tag=al.tag if al else "?",
+            center_system=st.system,
+            radius=zone_radius(st),
+            mine=(player.alliance_id is not None and st.alliance_id == player.alliance_id),
+        ))
+    return GalaxyViewOut(cells=cells, zones=zones)

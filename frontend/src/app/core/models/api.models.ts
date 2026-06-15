@@ -350,8 +350,19 @@ export interface GalaxyCell {
   } | null;
 }
 
+export interface AllianceZone {
+  alliance_id: string;
+  tag: string;
+  center_system: number;
+  radius: number;
+  /** Gehoert die Zone der eigenen Allianz? */
+  mine: boolean;
+}
+
 export interface GalaxyResponse {
   cells: GalaxyCell[];
+  /** Allianz-Einflusszonen, die dieses System abdecken. */
+  zones?: AllianceZone[];
 }
 
 /** Aufklaerungs-Schnappschuss eines Ziels (Detailtiefe je nach Stufe). */
