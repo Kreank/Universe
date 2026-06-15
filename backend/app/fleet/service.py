@@ -8,7 +8,7 @@ import logging
 import math
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.economy.service import add_resources, get_research_levels, spend_resources
@@ -681,7 +681,20 @@ async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> 
 
     NPC-Angriffe stammen aus ``npc_attacks``; Spieler-Angriffe sind fremde Fleet-Zeilen
     mission='attack' im Anflug (status 'flying') auf einen eigenen Planeten — sie machen
-    Fleetsave moeglich (rechtzeitig die eigene Flotte wegschicken)."""
+    Fleetsave moeglich (rechtzeitig die eigene Flotte wegschicken).
+
+    Die Detailtiefe richtet sich nach der Spionagetechnik des Betrachters (analog
+    Planeten-Spionage): L1 nur Gesamtstaerke, L2 (spy_tech>=level2_spy_tech) zusaetzlich
+    die Flotten-Zusammensetzung, L3 (spy_tech>=level3_spy_tech) zusaetzlich die Fracht."""
+    research = await get_research_levels(session, player_id)
+    spy_tech = int(research.get("spy_tech", 0))
+    spy_cfg = get_balance().data.get("spy", {})
+    intel_level = 1
+    if spy_tech >= int(spy_cfg.get("level2_spy_tech", 2)):
+        intel_level = 2
+    if spy_tech >= int(spy_cfg.get("level3_spy_tech", 4)):
+        intel_level = 3
+
     rows = (await session.execute(
         select(NpcAttack)
         .where(NpcAttack.target_player_id == player_id, NpcAttack.status == "incoming")
@@ -690,6 +703,7 @@ async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> 
     out: list[dict] = []
     for a in rows:
         npc = await session.get(NpcEmpire, a.npc_id)
+        npc_fleet = a.fleet or {}
         out.append({
             "id": str(a.id),
             "attacker": npc.name if npc else "Unbekannte Flotte",
@@ -700,8 +714,13 @@ async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> 
                 "system": a.target_system,
                 "position": a.target_position,
             },
-            "ships_total": sum((a.fleet or {}).values()),
+            "ships_total": sum(npc_fleet.values()),
             "arrive_at": a.arrive_at,
+            "mission": "attack",
+            "intel_level": intel_level,
+            # NPC-Angriffsflotten fuehren keine erbeutbare Fracht -> cargo bleibt None.
+            "ships": {k: v for k, v in npc_fleet.items() if v} if intel_level >= 2 else None,
+            "cargo": None,
         })
 
     # -- Eingehende SPIELER-Angriffsflotten auf eigene Planeten --
@@ -722,9 +741,7 @@ async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> 
                 continue
             attacker = await session.get(Player, f.player_id)
             origin = await session.get(Planet, f.origin_planet_id) if f.origin_planet_id else None
-            ships_total = int((await session.execute(
-                select(func.coalesce(func.sum(Ship.count), 0)).where(Ship.fleet_id == f.id)
-            )).scalar_one() or 0)
+            ship_map = await _fleet_ship_map(session, f.id)
             out.append({
                 "id": str(f.id),
                 "attacker": attacker.display_name if attacker else "Feindflotte",
@@ -735,8 +752,12 @@ async def list_incoming_attacks(session: AsyncSession, player_id: uuid.UUID) -> 
                     "system": f.target_system,
                     "position": f.target_position,
                 },
-                "ships_total": ships_total,
+                "ships_total": sum(ship_map.values()),
                 "arrive_at": f.arrive_at,
+                "mission": f.mission,
+                "intel_level": intel_level,
+                "ships": ship_map if intel_level >= 2 else None,
+                "cargo": (f.cargo or {}) if intel_level >= 3 else None,
             })
 
     out.sort(key=lambda x: x["arrive_at"])

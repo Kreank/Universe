@@ -264,6 +264,13 @@ export interface IncomingAttack {
   target: Coordinate;
   ships_total: number;
   arrive_at: string;
+  mission?: FleetMission;
+  /** Aufklaerungsstufe des Betrachters (1..3): L1 nur Gesamtstaerke, L2 + Zusammensetzung, L3 + Fracht. */
+  intel_level?: number;
+  /** Flotten-Zusammensetzung — nur ab Aufklaerungsstufe 2 gesetzt, sonst null. */
+  ships?: Record<string, number> | null;
+  /** Mitgefuehrte Fracht — nur ab Aufklaerungsstufe 3 gesetzt, sonst null. */
+  cargo?: Partial<ResourceCost> | null;
 }
 
 export interface Fleet {

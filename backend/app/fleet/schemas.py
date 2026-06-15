@@ -35,6 +35,14 @@ class IncomingAttackOut(BaseModel):
     target: TargetCoords
     ships_total: int
     arrive_at: dt.datetime
+    mission: str = "attack"
+    # Aufklaerungsstufe des Betrachters (1..3, analog Planeten-Spionage):
+    # L1 = nur Gesamtstaerke, L2 (spy_tech>=2) = + Flotten-Zusammensetzung, L3 (spy_tech>=4) = + Fracht.
+    intel_level: int = 1
+    # Schiffs-Zusammensetzung (nur ab Aufklaerungsstufe 2 befuellt, sonst None).
+    ships: dict[str, int] | None = None
+    # Mitgefuehrte Fracht (nur ab Aufklaerungsstufe 3 befuellt, sonst None).
+    cargo: dict | None = None
 
 
 class SendFleetRequest(BaseModel):

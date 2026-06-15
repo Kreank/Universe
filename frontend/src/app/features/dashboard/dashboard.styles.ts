@@ -86,6 +86,44 @@ export const dashboardStyles = `
   .ok { color: var(--ok); }
   .neg { color: var(--danger); }
 
+  /* --- Hover-Aufschluesselung der Flotte (Schiffe + Fracht) --- */
+  .has-tip { position: relative; }
+  .fleet-tip {
+    position: absolute;
+    top: calc(100% + var(--sp-1)); left: 0;
+    z-index: 30;
+    min-width: 210px; max-width: 320px;
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--surface-2, var(--surface-1));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2, 8px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    opacity: 0; visibility: hidden; transform: translateY(-4px);
+    transition: opacity .12s ease, transform .12s ease, visibility .12s;
+    pointer-events: none;
+  }
+  .has-tip:hover .fleet-tip,
+  .has-tip:focus-within .fleet-tip {
+    opacity: 1; visibility: visible; transform: translateY(0);
+  }
+  .tip-head {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: var(--fs-sm); margin-bottom: var(--sp-2);
+    padding-bottom: var(--sp-1); border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .tip-sec { margin-top: var(--sp-2); }
+  .tip-sec:first-of-type { margin-top: 0; }
+  .tip-sec-title {
+    font-size: var(--fs-xs, .72rem); text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-dim); margin-bottom: var(--sp-1);
+  }
+  .tip-row {
+    display: flex; justify-content: space-between; gap: var(--sp-3);
+    font-size: var(--fs-sm); padding: 1px 0;
+  }
+  .tip-row.muted { color: var(--text-dim); justify-content: flex-start; }
+
   .queue-row, .alert, .cmd-row {
     display: flex;
     align-items: center;

@@ -39,6 +39,7 @@ import {
   missionIcon,
   rankIcon,
   planetIcon,
+  fleetIcon,
 } from '../../core/models/icon-assets';
 import {
   BuildQueueItem,
@@ -217,13 +218,32 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
           <div class="panel-title"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="16" /> Flottenbewegungen</div>
           @if (activeFleets().length) {
             @for (f of activeFleets(); track f.id) {
-              <div class="queue-row">
+              <div class="queue-row has-tip">
                 <span>
-                  <app-btn-icon [src]="missionIcon(f.mission)" [glyph]="metaM(f.mission).glyph" [size]="14" /> {{ metaM(f.mission).label }}
+                  <app-btn-icon [src]="fleetIcon()" glyph="🚀" [size]="16" /> {{ metaM(f.mission).label }}
                   <span class="faint">→ [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</span>
                   <span class="chip">{{ statusLabel(f.status) }}</span>
                 </span>
                 <app-countdown [target]="f.status === 'returning' ? f.return_at : f.arrive_at" />
+                <div class="fleet-tip" role="tooltip">
+                  <div class="tip-head"><app-btn-icon [src]="fleetIcon()" glyph="🚀" [size]="14" /> {{ metaM(f.mission).label }} → [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</div>
+                  <div class="tip-sec">
+                    <div class="tip-sec-title">Schiffe</div>
+                    @for (e of shipEntries(f.ships); track e.label) {
+                      <div class="tip-row"><span>{{ e.label }}</span><span class="mono">{{ e.count | shortNumber }}</span></div>
+                    }
+                  </div>
+                  @if (cargoEntries(f.cargo).length) {
+                    <div class="tip-sec">
+                      <div class="tip-sec-title">Fracht</div>
+                      @for (e of cargoEntries(f.cargo); track e.label) {
+                        <div class="tip-row"><span>{{ e.label }}</span><span class="mono">{{ e.amount | shortNumber }}</span></div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="tip-sec"><div class="tip-row muted">Keine Fracht</div></div>
+                  }
+                </div>
               </div>
             }
           } @else {
@@ -460,6 +480,25 @@ export class DashboardComponent {
   spec = (s: string) => metaFor(SPECIALIZATION_META, s);
   planetType = (t: string | undefined) => metaFor(PLANET_TYPE_META, t ?? 'normal');
   bandClass = (m: number) => this.balance.moraleBandClass(m);
+
+  protected readonly fleetIcon = fleetIcon;
+
+  /** Schiffs-Zusammensetzung einer Flotte als sortierte Label/Anzahl-Liste (groesste zuerst). */
+  shipEntries(ships: Record<string, number> | null | undefined): { label: string; count: number }[] {
+    if (!ships) return [];
+    return Object.entries(ships)
+      .filter(([, c]) => (c ?? 0) > 0)
+      .map(([t, c]) => ({ label: metaFor(SHIP_META, t).label, count: c as number }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  /** Fracht einer Flotte als Label/Menge-Liste (nur Ressourcen mit Menge > 0). */
+  cargoEntries(cargo: Record<string, number> | null | undefined): { label: string; amount: number }[] {
+    if (!cargo) return [];
+    return Object.entries(cargo)
+      .filter(([, v]) => (v ?? 0) > 0)
+      .map(([k, v]) => ({ label: metaFor(RESOURCE_META, k).label, amount: v as number }));
+  }
 
   protected onIcoError(event: Event): void {
     (event.target as HTMLImageElement).style.display = 'none';

@@ -11,8 +11,8 @@ import {
   PlanetUnit,
   StationedFleet,
 } from '../../core/models/api.models';
-import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
-import { missionIcon, navIcon, resourceIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
+import { MISSION_META, RANK_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
+import { fleetIcon, missionIcon, navIcon, resourceIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
@@ -32,11 +32,39 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
       <section class="card incoming">
         <div class="panel-title"><app-btn-icon [src]="statusIcon('incoming_attack')" glyph="🚨" [size]="16" /> Eingehende Angriffe</div>
         @for (a of incoming(); track a.id) {
-          <div class="incoming-row">
+          <div class="incoming-row has-tip">
             <div class="incoming-info">
-              <span class="badge-threat"><app-btn-icon [src]="statusIcon('attack')" glyph="⚔️" [size]="14" /> {{ a.attacker }}</span>
+              <span class="badge-threat"><app-btn-icon [src]="fleetIcon()" glyph="⚔️" [size]="18" /> {{ a.attacker }}</span>
               <span class="mono small">@if (a.origin) { von [{{ a.origin }}] } → [{{ a.target.galaxy }}:{{ a.target.system }}:{{ a.target.position }}]</span>
-              <span class="chip">{{ a.ships_total }} Schiffe</span>
+              <span class="chip">@if ((a.intel_level ?? 1) < 2) {~}{{ a.ships_total }} Schiffe</span>
+              <span class="chip muted">{{ missionMeta(a.mission ?? 'attack').label }}</span>
+              <div class="fleet-tip" role="tooltip">
+                <div class="tip-head">📡 Aufklaerung {{ a.intel_level ?? 1 }}/3 · {{ missionMeta(a.mission ?? 'attack').label }}</div>
+                @if (a.ships) {
+                  <div class="tip-sec">
+                    <div class="tip-sec-title">Schiffe ({{ a.ships_total }})</div>
+                    @for (e of shipEntries(a.ships); track e.label) {
+                      <div class="tip-row"><span>{{ e.label }}</span><span class="mono">{{ e.count | number: '1.0-0' }}</span></div>
+                    }
+                  </div>
+                } @else {
+                  <div class="tip-sec"><div class="tip-row muted">Zusammensetzung unbekannt — Spionagetechnik Stufe 2 nötig.</div></div>
+                }
+                @if (a.cargo) {
+                  @if (cargoEntries(a.cargo).length) {
+                    <div class="tip-sec">
+                      <div class="tip-sec-title">Fracht</div>
+                      @for (e of cargoEntries(a.cargo); track e.label) {
+                        <div class="tip-row"><span>{{ e.label }}</span><span class="mono">{{ e.amount | number: '1.0-0' }}</span></div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="tip-sec"><div class="tip-row muted">Keine erbeutbare Fracht.</div></div>
+                  }
+                } @else {
+                  <div class="tip-sec"><div class="tip-row muted">Fracht unbekannt — Spionagetechnik Stufe 4 nötig.</div></div>
+                }
+              </div>
             </div>
             <app-countdown [target]="a.arrive_at" />
           </div>
@@ -217,11 +245,30 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
         <div class="panel-title"><app-btn-icon [src]="navIcon('fleet')" glyph="🛰️" [size]="16" /> Laufende Flotten</div>
         @if (activeFleets().length) {
           @for (f of activeFleets(); track f.id) {
-            <div class="fleet-row">
+            <div class="fleet-row has-tip">
               <div class="fleet-info">
-                <span class="badge-mission">@if (missionIcon(f.mission); as mi) {<img class="mission-ico" [src]="mi" alt="" (error)="hideImg($event)" />} @else {{{ missionMeta(f.mission).glyph }} }{{ missionMeta(f.mission).label }}</span>
+                <span class="badge-mission"><app-btn-icon [src]="fleetIcon()" glyph="🚀" [size]="20" /> {{ missionMeta(f.mission).label }}</span>
                 <span class="mono small">→ [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</span>
                 <span class="chip">{{ shipsTotal(f) }} Schiffe · {{ statusLabel(f.status) }}</span>
+                <div class="fleet-tip" role="tooltip">
+                  <div class="tip-head"><app-btn-icon [src]="fleetIcon()" glyph="🚀" [size]="14" /> {{ missionMeta(f.mission).label }} → [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</div>
+                  <div class="tip-sec">
+                    <div class="tip-sec-title">Schiffe ({{ shipsTotal(f) }})</div>
+                    @for (e of shipEntries(f.ships); track e.label) {
+                      <div class="tip-row"><span>{{ e.label }}</span><span class="mono">{{ e.count | number: '1.0-0' }}</span></div>
+                    }
+                  </div>
+                  @if (cargoEntries(f.cargo).length) {
+                    <div class="tip-sec">
+                      <div class="tip-sec-title">Fracht</div>
+                      @for (e of cargoEntries(f.cargo); track e.label) {
+                        <div class="tip-row"><span>{{ e.label }}</span><span class="mono">{{ e.amount | number: '1.0-0' }}</span></div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="tip-sec"><div class="tip-row muted">Keine Fracht</div></div>
+                  }
+                </div>
               </div>
               <div class="fleet-act">
                 <app-countdown [target]="f.status === 'returning' ? f.return_at : f.arrive_at" />
@@ -622,6 +669,26 @@ export class FleetComponent {
   shipMeta = (t: string) => metaFor(SHIP_META, t);
   missionMeta = (m: string) => metaFor(MISSION_META, m);
   rankMeta = (r: string) => metaFor(RANK_META, r);
+  resMeta = (r: string) => metaFor(RESOURCE_META, r);
+
+  /** Schiffs-Zusammensetzung als sortierte Label/Anzahl-Liste (groesste Gruppe zuerst). */
+  shipEntries(ships: Record<string, number> | null | undefined): { label: string; count: number }[] {
+    if (!ships) return [];
+    return Object.entries(ships)
+      .filter(([, c]) => (c ?? 0) > 0)
+      .map(([t, c]) => ({ label: this.shipMeta(t).label, count: c as number }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  /** Fracht als Label/Menge-Liste (nur Ressourcen mit Menge > 0). */
+  cargoEntries(cargo: Record<string, number> | null | undefined): { label: string; amount: number }[] {
+    if (!cargo) return [];
+    return Object.entries(cargo)
+      .filter(([, v]) => (v ?? 0) > 0)
+      .map(([k, v]) => ({ label: this.resMeta(k).label, amount: v as number }));
+  }
+
+  protected readonly fleetIcon = fleetIcon;
   protected readonly missionIcon = missionIcon;
   protected readonly navIcon = navIcon;
   protected readonly statIcon = statIcon;

@@ -67,6 +67,15 @@ export function navIcon(key: string): string {
   return `assets/img/nav/${key}.png`;
 }
 
+/**
+ * Generisches Flotten-Icon (ein Schiff im Flug) — ersetzt in den Flottenbewegungs-Zeilen
+ * das Missions-Label durch ein einheitliches Schiff-Symbol. Ein einziges Asset fuer alle
+ * Missionen; Glyph-Fallback (🚀) im Aufrufer, solange das Bild fehlt.
+ */
+export function fleetIcon(): string {
+  return 'assets/img/ui/fleet_underway.png';
+}
+
 /** Generisches UI-Icon (Aktions-Buttons): ``assets/img/ui/<name>.png``. */
 export function uiIcon(name: string): string {
   return `assets/img/ui/${name}.png`;

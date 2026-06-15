@@ -492,6 +492,43 @@ Es gibt **zwei** Asset-Wurzeln:
 | ✅ | npc | `icons/ui/npc.png` | PNG transparent, 256×256 | **NPC-Imperium** (löst 🤖 ab — Funk-Absender-/Belegungs-Kennung „NPC" vs. Spieler). Fremd-/KI-Fraktions-Silhouette (kantiger Droiden-/Alien-Kopf), cyan. Paarig zum vorhandenen `ui/player.png`. |
 | ✅ | pool | `icons/ui/pool.png` | PNG transparent, 256×256 | **Allianz-Pool** (löst 🏦 ab — Allianz-Tab „Pool", gemeinsamer Ressourcenspeicher). Tresor-/Sammelspeicher mit Erz-/Kristall-Andeutung (kein irdisches Bankgebäude), cyan. |
 
+### Flottenbewegung — Schiff statt Missions-Name (Dashboard + Flotten-Screen)
+
+> **Kontext (Nutzer-Wunsch 2026-06-15):** In der Liste der Flottenbewegungen (Dashboard
+> „Flottenbewegungen" UND Flotten-Screen „Laufende Flotten") soll **statt des Missions-Namens**
+> (Bergbau/Transport/Angriff …) **ein Schiff** angezeigt werden. **Verbessert (Nutzer):** lieber
+> **je Mission das passende Schiff** statt eines einzigen generischen.
+>
+> **➜ Für den verdrahtenden Agenten — REUSE-FIRST (keine neuen Assets nötig):** Für fast jede
+> Mission existiert bereits ein passendes Schiff-Asset unter `ships/*`. Verdrahte je Bewegungs-Zeile
+> ein führendes Icon (~16–20px) über eine Mission→Schiff-Abbildung, z. B. `shipIcon(MISSION_SHIP[mission])`
+> (Glyph-Fallback = bisheriges Missions-Glyph). Tabelle unten. **Nur `deploy` (Stationierung)** hat
+> kein eigenes Schiff → dort das generische `ui/fleet_underway.png` (bereits vorhanden) ODER `ships/cruiser.png`.
+
+| Mission | Asset (vorhanden, reuse) | Schiff |
+|---|---|---|
+| `attack`     | `ships/battlecruiser.png` | Schlachtkreuzer (Kriegsschiff) |
+| `transport`  | `ships/large_cargo.png`   | Großer Transporter |
+| `spy`        | `ships/spy_probe.png`     | Spionagesonde |
+| `recycle`    | `ships/recycler.png`      | Recycler |
+| `colonize`   | `ships/colony_ship.png`   | Kolonieschiff |
+| `mine`       | `ships/miner.png`         | Bergbauschiff |
+| `expedition` | `ships/expedition_ship.png` | Expeditionsschiff |
+| `trade`      | `ships/large_cargo.png`   | Handelsfrachter (alt.: `ships/trade_leviathan.png`) |
+| `intercept`  | `ships/interceptor.png`   | Abfangjäger |
+| `escort`     | `ships/escort_frigate.png` | Eskort-Fregatte |
+| `deploy`     | `ui/fleet_underway.png` *(generisch)* | — (kein eigenes Schiff; Fallback) |
+
+> **Optional (NEU erstellen — nur falls ein einheitlicher kleiner „im Flug"-Look gewünscht ist
+> statt der detaillierten 512er-Renders):** dedizierte Mini-Flug-Icons `icons/ui/fleet_<mission>.png`
+> (gleiche 11 Missionen), je eine **kompakte 3/4-Schiffs-Silhouette im Flug mit kurzer Triebwerksspur**,
+> cyan `#2fe3d2`, ~16–20px lesbar (Stil-Anker: `nav/fleet.png` + das jeweilige `ships/*` oben als
+> Form-Referenz). Nicht zwingend — die Reuse-Variante oben sieht je Mission bereits ein echtes Schiff.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | fleet_underway | `icons/ui/fleet_underway.png` | PNG transparent, 256×256 (~16–20px lesbar) | **Flotte unterwegs (generisch)** — Fallback für `deploy` und unbekannte Missionen. Kompakte 3/4-Schiffs-Silhouette im Flug mit kurzer Triebwerksspur, cyan `#2fe3d2`. Stil zwischen `nav/fleet.png` und `ships/*`. |
+
 ---
 
 ## 🗒️ Notizen für Codex
