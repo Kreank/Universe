@@ -19,6 +19,7 @@ from app.combat.router import router as combat_router
 from app.commander.router import router as commander_router
 from app.commander.service import morale_drift_tick
 from app.economy.router import router as economy_router
+from app.feedback.router import router as feedback_router
 from app.fleet.router import router as fleet_router
 from app.fleet.stationing import station_fuel_tick
 from app.fleet.trade import market_regen_tick
@@ -148,6 +149,7 @@ for r in (
     ranking_router,
     megastructure_router,
     alliance_router,
+    feedback_router,
 ):
     app.include_router(r, prefix="/api")
 

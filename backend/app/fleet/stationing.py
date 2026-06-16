@@ -99,6 +99,55 @@ def starter_reserve(ships: dict, bal) -> float:
 
 # -- deploy: Stationierung ----------------------------------------------------
 
+async def _land_at_own_planet(
+    session: AsyncSession,
+    fleet: Fleet,
+    planet: Planet,
+    ship_rows: list,
+    ships: dict,
+    cargo: dict,
+    coords: str,
+) -> None:
+    """Landet eine stationierende Flotte auf dem eigenen Ziel-Planeten/-Mond: Schiffe werden
+    Teil der Planeten-Garnison (mit gleichartigen Zeilen verschmolzen) und die komplette Fracht
+    wird gutgeschrieben (Lager darf ueberfuellt werden, wie beim Transport)."""
+    from app.economy.service import add_resources
+
+    for r in ship_rows:
+        existing = (await session.execute(
+            select(Ship).where(
+                Ship.planet_id == planet.id, Ship.fleet_id.is_(None), Ship.type == r.type
+            )
+        )).scalars().all()
+        if existing:
+            dest = existing[0]
+            dest.count += r.count
+            for extra in existing[1:]:  # etwaige Duplikate konsolidieren
+                dest.count += extra.count
+                await session.delete(extra)
+            await session.delete(r)
+        else:
+            r.planet_id = planet.id   # bestehende Schiff-Zeile umhaengen statt neu anlegen
+            r.fleet_id = None
+
+    if cargo:
+        await add_resources(session, planet, cargo)
+
+    fleet.status = "done"
+    fleet.cargo = {}
+    parts = ", ".join(
+        f"{int(v):,}".replace(",", ".") + " " + k for k, v in cargo.items()
+    ) or "keine Fracht"
+    await create_system_transmission(
+        session, player_id=fleet.player_id,
+        subject=f"🛬 Flotte gelandet ({coords})",
+        body=(f"Deine Flotte ist bei {coords} auf deinem eigenen Planeten gelandet — die Schiffe "
+              f"stehen dort wieder zur Verfuegung. Gutgeschrieben: {parts}."),
+        ttype="system",
+    )
+    log.info("Deploy(park@own): player=%s landet %s @ %s, cargo=%s", fleet.player_id, ships, coords, cargo)
+
+
 async def resolve_deploy(session: AsyncSession, fleet: Fleet, mode: str = "park") -> bool:
     """Stationiert die Flotten-Schiffe am Ziel als StationedFleet. True = stationiert
     (Flotte ``done``, kehrt nicht zurueck).
@@ -119,21 +168,43 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet, mode: str = "park"
     if not ships:
         return False
     coords = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
-    # Treibstoff-Tank = mitgefuehrtes Deuterium (Fracht). Wird als Vorrat BEHALTEN (auch auf
-    # eigenem Gebiet). Gezehrt wird erst im station_fuel_tick: vorgeschoben immer, eigenes Gebiet
-    # nur als Patrouille (und langsamer). Laenger patrouillieren -> mehr Deuterium mitladen.
-    own_here = (await session.execute(
+    md = fleet.mission_data or {}
+    cargo = {k: float(v) for k, v in (fleet.cargo or {}).items() if float(v) > 0}
+
+    # Eigener Himmelskoerper am Ziel? Planet vs. Mond anhand mission_data.target_type aufloesen
+    # (beide koennen dieselbe Koordinate teilen — wie beim Transport).
+    target_moon = md.get("target_type") == "moon"
+    own_rows = (await session.execute(
         select(Planet).where(
             Planet.player_id == fleet.player_id,
             Planet.galaxy == fleet.target_galaxy,
             Planet.system == fleet.target_system,
             Planet.position == fleet.target_position,
         )
-    )).scalars().first()
-    cargo = fleet.cargo or {}
-    fuel_reserve = float(cargo.get("deuterium", 0) or 0)
+    )).scalars().all()
+    own_here: Planet | None = None
+    for pl in own_rows:
+        is_moon = (pl.planet_type == "moon")
+        if (target_moon and is_moon) or (not target_moon and not is_moon):
+            own_here = pl
+            break
+    if own_here is None and len(own_rows) == 1:
+        own_here = own_rows[0]  # nur ein eigener Koerper an der Koordinate -> eindeutig
 
-    md = fleet.mission_data or {}
+    # --- Reines Parken auf EIGENEM Planeten/Mond = "buendeln" ------------------
+    # Schiffe landen dort (werden wieder Teil der Planeten-Flotte) und die KOMPLETTE Fracht wird
+    # gutgeschrieben — kein gesperrter Garnisons-Zustand, kein Frachtverlust. Abfangen/Eskorte
+    # bleiben auch im eigenen System aktive Stationen, daher nur fuer ``mode == 'park'``.
+    if mode == "park" and own_here is not None:
+        await _land_at_own_planet(session, fleet, own_here, rows, ships, cargo, coords)
+        return True
+
+    # Treibstoff-Tank = mitgefuehrtes Deuterium (Fracht). Wird als Vorrat BEHALTEN. Gezehrt wird
+    # erst im station_fuel_tick. Laenger patrouillieren -> mehr Deuterium mitladen. Restliche
+    # Nicht-Treibstoff-Fracht (Metall/Kristall/Exoten) bleibt an Bord und kommt beim Rueckruf zurueck.
+    fuel_reserve = float(cargo.get("deuterium", 0) or 0)
+    held_cargo = {k: v for k, v in cargo.items() if k != "deuterium" and v > 0}
+
     radius = 0
     esc_radius = 0
     esc_fee = 0.0
@@ -162,6 +233,7 @@ async def resolve_deploy(session: AsyncSession, fleet: Fleet, mode: str = "park"
         position=fleet.target_position,
         ships=ships,
         fuel=fuel_reserve,
+        cargo=held_cargo,
         intercept_enabled=intercept,
         intercept_radius=radius,
         escort_enabled=escort,
@@ -276,6 +348,7 @@ def station_out(st: StationedFleet) -> dict:
         "galaxy": st.galaxy, "system": st.system, "position": st.position,
         "ships": ships,
         "ships_total": sum(ships.values()),
+        "cargo": {k: v for k, v in (getattr(st, "cargo", None) or {}).items() if v},
         "mode": station_mode(st),
         "escort_enabled": st.escort_enabled,
         "escort_radius": st.escort_radius,
@@ -397,12 +470,14 @@ async def _send_station_home(session: AsyncSession, st: StationedFleet) -> Fleet
     research = await get_research_levels(session, st.owner_id)
     secs = flight_seconds(dist, slowest_ship_speed(ships, research), 100)
     now = _now()
+    # Mitgefuehrte Nicht-Treibstoff-Fracht der Station kehrt mit zurueck (sonst Frachtverlust).
+    return_cargo = {k: float(v) for k, v in (st.cargo or {}).items() if float(v) > 0}
     fleet = Fleet(
         player_id=st.owner_id, origin_planet_id=home.id,
         target_galaxy=st.galaxy, target_system=st.system, target_position=st.position,
         mission="deploy", status="returning",
         depart_at=now, arrive_at=now, return_at=now + dt.timedelta(seconds=int(secs)),
-        cargo={},
+        cargo=return_cargo,
     )
     session.add(fleet)
     await session.flush()

@@ -57,6 +57,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
       BALANCE_PATH: /app/shared/balance.json
+      FEEDBACK_TELEGRAM_BOT_TOKEN: ${FEEDBACK_TELEGRAM_BOT_TOKEN:-}
+      FEEDBACK_TELEGRAM_CHAT_ID: ${FEEDBACK_TELEGRAM_CHAT_ID:-}
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:

@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     # WebSocket: Intervall fuer periodische resource_tick-Nachrichten (Sekunden)
     WS_TICK_SECONDS: int = 15
 
+    # Spieler-Feedback (Testphase): meldet eingehendes Feedback per Telegram-Bot an den
+    # Entwickler. Beide leer => Feedback wird nur in der DB gespeichert (kein Push).
+    FEEDBACK_TELEGRAM_BOT_TOKEN: str = ""
+    FEEDBACK_TELEGRAM_CHAT_ID: str = ""
+
     def balance_path(self) -> str:
         return self.BALANCE_PATH or _find_balance_fallback()
 

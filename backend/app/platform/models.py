@@ -474,6 +474,9 @@ class StationedFleet(Base):
     # Treibstoff-Vorrat: NULL = eigenes Gebiet (gratis), Zahl = mitgefuehrter Deuterium-Vorrat
     # vorgeschobener Stationierung (zehrt per Tick, leer -> Zwangs-Rueckkehr).
     fuel: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Mitgefuehrte Nicht-Treibstoff-Fracht (Metall/Kristall/Exoten), die auf einer vorgeschobenen
+    # Station an Bord bleibt und beim Rueckruf zurueckkommt — sonst ginge sie verloren.
+    cargo: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
     # Eskort-Angebot (optional): deckt Routen im Umkreis escort_radius, Gebuehr = % Frachtwert.
     escort_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     escort_radius: Mapped[int] = mapped_column(Integer, default=0)
@@ -545,3 +548,23 @@ class TradeReputation(Base):
     npc_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("npc_empires.id", ondelete="CASCADE"), primary_key=True)
     volume: Mapped[float] = mapped_column(Float, default=0.0)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Feedback(Base):
+    """Spieler-Feedback aus der Testphase (Bug-Report / Idee / Sonstiges).
+
+    Bewusst entkoppelt von der Spiel-Logik: nur Sammelbecken fuers Entwickler-Postfach.
+    ``player_id`` ist nullable (ON DELETE SET NULL), damit Meldungen einen geloeschten
+    Test-Account ueberleben; ``display_name`` haelt den Namen zum Zeitpunkt der Meldung."""
+    __tablename__ = "feedback"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    player_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="SET NULL"), nullable=True
+    )
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(Text, nullable=False)  # 'bug' | 'idea' | 'other'
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    page: Mapped[str | None] = mapped_column(Text, nullable=True)        # Route, auf der gemeldet wurde
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)  # Browser/Geraet (gekuerzt)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

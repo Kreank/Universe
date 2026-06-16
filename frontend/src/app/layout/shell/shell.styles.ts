@@ -57,7 +57,7 @@ export const shellStyles = `
   .res-rate { font-size: var(--fs-xs); color: var(--ok); }
   .res-rate.neg { color: var(--danger); }
   .res .bar { width: 64px; height: 4px; }
-  .res.full .res-amount { color: var(--warn); }
+  .res.at-cap .res-amount { color: var(--warn); }
   .res.energy { gap: var(--sp-1); }
   /* Exoten = kontoweite Sonderressourcen -> dezent kleiner/gedaempfter (sekundaere Gruppe). */
   .res.exotic { gap: var(--sp-1); }

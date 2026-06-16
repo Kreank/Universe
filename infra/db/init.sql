@@ -425,3 +425,17 @@ CREATE INDEX idx_alliance_invites_player ON alliance_invites(player_id);
 
 -- Spieler -> Allianz (denormalisiert, synchron mit alliance_members; Schnell-Zugriff Resolver).
 ALTER TABLE players ADD COLUMN alliance_id UUID REFERENCES alliances(id) ON DELETE SET NULL;
+
+-- Spieler-Feedback (Testphase): Bug-Report / Idee / Sonstiges. Entkoppelt von der
+-- Spiel-Logik; player_id ON DELETE SET NULL, damit Meldungen geloeschte Test-Accounts ueberleben.
+CREATE TABLE feedback (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    player_id    UUID REFERENCES players(id) ON DELETE SET NULL,
+    display_name TEXT NOT NULL,
+    category     TEXT NOT NULL,                       -- 'bug' | 'idea' | 'other'
+    message      TEXT NOT NULL,
+    page         TEXT,                                -- Route, auf der gemeldet wurde
+    user_agent   TEXT,                                -- Browser/Geraet (gekuerzt)
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_feedback_created ON feedback(created_at DESC);

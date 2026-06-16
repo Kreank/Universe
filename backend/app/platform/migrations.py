@@ -293,6 +293,23 @@ _STATEMENTS: list[str] = [
     # Spieler -> Allianz (denormalisierter Schnell-Zugriff fuer den Bonus-Resolver; mit
     # alliance_members synchron gehalten). Einziger Eingriff am Spieler-Modell.
     "ALTER TABLE players ADD COLUMN IF NOT EXISTS alliance_id UUID REFERENCES alliances(id) ON DELETE SET NULL",
+    # Stationierte Flotte: mitgefuehrte Nicht-Treibstoff-Fracht behalten (Rueckruf liefert sie
+    # zurueck) — verhindert den stillen Frachtverlust beim vorgeschobenen Stationieren.
+    "ALTER TABLE stationed_fleets ADD COLUMN IF NOT EXISTS cargo JSONB NOT NULL DEFAULT '{}'::jsonb",
+    # -- Feature: Spieler-Feedback (Testphase: Bug-Report / Idee / Sonstiges) --
+    """
+    CREATE TABLE IF NOT EXISTS feedback (
+        id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        player_id    UUID REFERENCES players(id) ON DELETE SET NULL,
+        display_name TEXT NOT NULL,
+        category     TEXT NOT NULL,                       -- 'bug' | 'idea' | 'other'
+        message      TEXT NOT NULL,
+        page         TEXT,
+        user_agent   TEXT,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC)",
 ]
 
 

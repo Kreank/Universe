@@ -40,7 +40,7 @@ interface NavGroup {
               <div
                 class="res tip"
                 [attr.data-tip]="r.tip"
-                [class.full]="r.pct >= 100"
+                [class.at-cap]="r.pct >= 100"
               >
                 <img class="res-icon" src="assets/img/resources/{{ r.key }}.png" alt="" />
                 <div class="res-meta">

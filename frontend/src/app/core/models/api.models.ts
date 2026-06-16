@@ -896,3 +896,13 @@ export interface AllianceResponse {
   create_cost?: ResourceCost;
   max_members?: number;
 }
+
+// --- Spieler-Feedback (Testphase) ---
+export type FeedbackCategory = 'bug' | 'idea' | 'other';
+
+/** Body fuer POST /api/feedback. `page` wird vom Frontend automatisch gesetzt. */
+export interface FeedbackRequest {
+  category: FeedbackCategory;
+  message: string;
+  page?: string | null;
+}

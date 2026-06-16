@@ -11,6 +11,7 @@ import {
   CommanderTrainResponse,
   DecisionChoice,
   DecisionResponse,
+  FeedbackRequest,
   Fleet,
   IncomingAttack,
   FleetSendRequest,
@@ -334,6 +335,11 @@ export class ApiService {
   // --- Rangliste ---
   getRanking(limit = 100): Observable<RankingResponse> {
     return this.http.get<RankingResponse>(`/api/ranking?limit=${limit}`);
+  }
+
+  // --- Feedback (Testphase) ---
+  submitFeedback(body: FeedbackRequest): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>('/api/feedback', body);
   }
 
   // --- Routinen (automatisierte Farm-Routen) ---

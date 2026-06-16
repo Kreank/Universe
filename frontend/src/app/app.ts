@@ -3,13 +3,15 @@ import { RouterOutlet } from '@angular/router';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs';
 import { ToastContainerComponent } from './shared/components/toast-container.component';
+import { FeedbackButtonComponent } from './shared/components/feedback-button.component';
 
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, ToastContainerComponent],
+  imports: [RouterOutlet, ToastContainerComponent, FeedbackButtonComponent],
   template: `<router-outlet />
-    <app-toast-container />`,
+    <app-toast-container />
+    <app-feedback-button />`,
 })
 export class App {
   private readonly sw = inject(SwUpdate);
