@@ -34,6 +34,7 @@ MAP_EVENT_TYPES = (
     "solar_storm",
     "black_market",
     "refugee_flotilla",
+    "utopia_shipyard",
 )
 
 
@@ -274,12 +275,62 @@ async def _spawn_refugee_flotilla(session: AsyncSession, bal, cfg: dict) -> Cosm
     return ev
 
 
+async def _spawn_utopia_shipyard(session: AsyncSession, bal, cfg: dict) -> CosmicEvent | None:
+    coords = await _free_coords(session, bal)
+    if coords is None:
+        return None
+    g, s, p = coords
+    lifetime = float(cfg.get("lifetime_hours", 48))
+    ev = CosmicEvent(
+        event_type="utopia_shipyard", scope="global", galaxy=g, system=s, position=p,
+        data={
+            "reward_ship": cfg.get("reward_ship", "battleship"),
+            "reward_count": int(cfg.get("reward_count", 5)),
+            "top_n": int(cfg.get("top_n", 3)),
+            "contributions": {},  # player_id -> gelieferter Wert (Metall+Kristall+Deuterium)
+        },
+        expires_at=_now() + dt.timedelta(hours=lifetime),
+    )
+    session.add(ev)
+    await session.flush()
+    await _announce(
+        session, "⚙️ Utopia-Werft erwacht",
+        f"Eine verlassene Orbital-Werft bei {g}:{s}:{p} hat noch Energie für eine Handvoll legendärer "
+        f"Prototyp-Schiffe. Liefer Ressourcen per TRANSPORT dorthin — die {int(cfg.get('top_n',3))} "
+        f"größten Spender in {int(lifetime)} h bekommen je {int(cfg.get('reward_count',5))}× ein "
+        f"einzigartiges Flaggschiff. Ein Wettrennen — bevor der Reaktor kollabiert!",
+    )
+    return ev
+
+
+async def record_utopia_contribution(session: AsyncSession, g: int, s: int, p: int, player_id, amount: float) -> bool:
+    """Verbucht eine Transport-Lieferung an eine aktive Utopia-Werft. True = verbucht (kein Planet
+    am Ort noetig). Aufgerufen aus resolve_transport."""
+    ev = (await session.execute(
+        select(CosmicEvent).where(
+            CosmicEvent.event_type == "utopia_shipyard", CosmicEvent.status == "active",
+            CosmicEvent.galaxy == g, CosmicEvent.system == s, CosmicEvent.position == p,
+            CosmicEvent.expires_at > _now(),
+        )
+    )).scalar_one_or_none()
+    if ev is None:
+        return False
+    data = dict(ev.data or {})
+    contrib = dict(data.get("contributions", {}))
+    contrib[str(player_id)] = float(contrib.get(str(player_id), 0)) + float(amount)
+    data["contributions"] = contrib
+    ev.data = data
+    await session.flush()
+    return True
+
+
 _SPAWNERS = {
     "wandering_comet": _spawn_wandering_comet,
     "cosmic_anomaly": _spawn_cosmic_anomaly,
     "solar_storm": _spawn_solar_storm,
     "black_market": _spawn_black_market,
     "refugee_flotilla": _spawn_refugee_flotilla,
+    "utopia_shipyard": _spawn_utopia_shipyard,
 }
 
 
@@ -302,6 +353,37 @@ async def resolve_event(event_id: str) -> None:
             )).scalar_one_or_none()
             if field is not None:
                 await session.delete(field)
+        # Utopia-Werft: bei Ablauf bekommen die Top-N Spender je reward_count Belohnungs-Schiffe.
+        if ev.event_type == "utopia_shipyard":
+            contrib = (data.get("contributions") or {})
+            ranked = sorted(contrib.items(), key=lambda kv: -float(kv[1]))[: int(data.get("top_n", 3))]
+            reward_ship = data.get("reward_ship", "battleship")
+            reward_count = int(data.get("reward_count", 5))
+            from app.messaging.service import create_system_transmission
+            from app.platform.models import Ship as _Ship
+            for rank, (pid_str, amount) in enumerate(ranked, start=1):
+                if float(amount) <= 0:
+                    continue
+                home = (await session.execute(
+                    select(Planet).where(Planet.player_id == uuid.UUID(pid_str))
+                    .order_by(Planet.is_homeworld.desc(), Planet.created_at.asc())
+                )).scalars().first()
+                if home is None:
+                    continue
+                existing = (await session.execute(
+                    select(_Ship).where(_Ship.planet_id == home.id, _Ship.fleet_id.is_(None), _Ship.type == reward_ship)
+                )).scalars().first()
+                if existing:
+                    existing.count += reward_count
+                else:
+                    session.add(_Ship(planet_id=home.id, fleet_id=None, type=reward_ship, count=reward_count))
+                await create_system_transmission(
+                    session, player_id=uuid.UUID(pid_str),
+                    subject="⚙️ Utopia-Werft: Prototyp erhalten!",
+                    body=f"Du bist Platz {rank} im Wettrennen um die Utopia-Werft! Als Belohnung wurden "
+                         f"{reward_count}× {reward_ship} in deiner Werft gebaut. Ein legendärer Prototyp.",
+                    ttype="big_moment", publish=False,
+                )
         # Flüchtlinge: bei Ablauf greifen die Verfolger jeden Helfer an.
         if ev.event_type == "refugee_flotilla":
             from app.events.personal import spawn_pursuer_attack

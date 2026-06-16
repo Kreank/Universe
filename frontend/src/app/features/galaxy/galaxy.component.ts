@@ -126,6 +126,16 @@ interface DispatchCtx {
                     <button class="ic mine" type="button" (click)="openDispatch(cellCoord(c), 'Asteroidenfeld', 'mine')" title="Hier Erz abbauen (Bergbauschiff nötig)"><app-btn-icon [src]="missionIcon('mine')" glyph="⛏" [size]="18" /></button>
                   </div>
                 }
+                @if (c.event; as ev) {
+                  <div class="acts">
+                    @if (ev.event_type === 'cosmic_anomaly') {
+                      <button class="ic spy" type="button" (click)="openDispatch(cellCoord(c), 'Anomalie', 'spy')" title="Spionagesonde schicken → Forschungstempo-Buff"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="18" /></button>
+                    }
+                    @if (ev.event_type === 'utopia_shipyard' || ev.event_type === 'black_market') {
+                      <button class="ic trp" type="button" (click)="openDispatch(cellCoord(c), eventLabel(ev.event_type), 'transport')" title="Per Transport liefern/handeln"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" [size]="18" /></button>
+                    }
+                  </div>
+                }
                 @if (c.moon; as m) {
                   @if (!m.own) {
                     <div class="acts">

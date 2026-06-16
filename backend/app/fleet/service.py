@@ -841,6 +841,24 @@ async def resolve_transport(session: AsyncSession, fleet: Fleet) -> None:
     cargo = {k: float(v) for k, v in (fleet.cargo or {}).items() if float(v) > 0}
     if not cargo:
         return
+    # Utopia-Werft am Ziel? -> Fracht zaehlt als Beitrag zum Wettrennen (kein Planet noetig).
+    from app.events.service import record_utopia_contribution
+    _contrib = sum(cargo.get(k, 0) for k in ("metal", "crystal", "deuterium"))
+    if _contrib > 0 and await record_utopia_contribution(
+        session, fleet.target_galaxy, fleet.target_system, fleet.target_position, fleet.player_id, _contrib
+    ):
+        fleet.cargo = {}
+        from app.messaging.service import create_system_transmission
+        loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+        await create_system_transmission(
+            session, player_id=fleet.player_id,
+            subject=f"⚙️ Lieferung an die Utopia-Werft ({loc})",
+            body=f"Deine Transportflotte hat {int(_contrib):,} Ressourcen an die Utopia-Werft geliefert "
+                 f"und kehrt leer heim. Je mehr du lieferst, desto besser deine Chance auf den Prototyp!".replace(",", "."),
+            ttype="system",
+        )
+        return
+
     target_moon = (fleet.mission_data or {}).get("target_type") == "moon"
     rows = (await session.execute(
         select(Planet).where(
