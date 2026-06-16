@@ -1,5 +1,16 @@
 # 🌌 Game-Events / Quests — Design & Architektur
 
+> ## ✅ Umsetzungsstand (2026-06-16) — 10 von 12 Events LIVE
+> **Fundament komplett & live:** event_buffs + cosmic_events Tabellen, generisches Buff-System (5
+> Integrationspunkte), offline-sichere Postfach-Entscheidungen mit Timeout-Default, Spawner-Tick,
+> Recovery, API (`/api/events`, `/api/events/decide`), Galaxie-Overlay + Chips, balance.json -> events.
+> **Live (Commits ab9a7ca, 06a9046, eae5ab8):** Wandernder Komet, Kosmische Anomalie, Sonnensturm,
+> Schwarzmarkt, Piraten-Razzia, Minen-Streik, Wiss. Durchbruch, Expeditions-Doktrin + Geisterschiff,
+> Flüchtlings-Flottille, Utopia-Werft. (Schwarzes-Loch-RISIKO existiert als Expeditions-Outcome.)
+> **NOCH OFFEN (framework-ready, bewusst aufgeschoben — kampf-gekoppelt, Live-Risiko):**
+> Super-Frachter-Wrack (Drohnen besiegen → dann minebar), dediziertes Schwarzes-Loch-KARTEN-Event
+> (temporäres Wurmloch mit kurzer Flugzeit/3× Ertrag). Beide leicht ergänzbar auf dem Fundament.
+
 > Stand 2026-06-16. Dynamische Welt-Events + persönliche Events, die Minern Sinn geben,
 > Ressourcen/Schiffe verbrauchen (Anti-Stagnation) und Geschichten erzeugen.
 > **Grundprinzip: ALLES offline-sicher** — keine Live-Reaktion nötig; Entscheidungen laufen

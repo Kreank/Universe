@@ -76,13 +76,20 @@
   weg, sah aus wie Fehlschlag. Fix: round-half-up `int(spent*ratio+0.5)` (`commander/router.py`). ⚠️ Vesna Calder
   (Pflanzenextrakt) hat 1 SP verloren — Wiedergutmachung (manuelles +1) bei Bedarf offen.
 
-### 💬 Tester-Ideen — NOCH ZU BESPRECHEN (NICHT bauen ohne Sascha-Freigabe!)
-- **Ingame-Währung 💰:** für Handel + Eskort-Bezahlung, eintauschbar bei NPC-Händlern. Tiefgreifend (berührt
-  Handel/Eskorte/NPC-Tausch/Balance) → erst Konzept besprechen.
-- **Questsystem 📜:** NPCs stellen Aufgaben rein, Spieler arbeitet sie ab + wird bezahlt (evtl. mit der Währung).
-  Tiefgreifend (Aufgaben-Struktur, Belohnungen) → erst Konzept besprechen.
-- Bereits umgesetzte Tester-Ideen: Nachrichten-Feature, Dashboard-Deeplinks, Kolonie-mit-Fracht, Verteidigungs-Anzeige,
-  Planeten-Umbenennen, Galaxie-Spielernamen.
+### 🌌 Game-Events / Quests — GEBAUT (Sascha-freigegeben, Vollausbau in einer Session)
+- **Ingame-Währung:** ABGELEHNT (Sascha/Tester) — KEINE neue Währung. Nicht bauen.
+- **Quests = dynamische Events:** Vollausbau gebaut & live (Commits `ab9a7ca`, `06a9046`, `eae5ab8`).
+  Fundament: `event_buffs` + `cosmic_events` Tabellen, generisches Buff-System (5 Integrationspunkte:
+  Produktion/Bau/Forschung/Phalanx/Spionage), OFFLINE-sichere Postfach-Entscheidungen mit Timeout-Default,
+  Spawner-Tick (`events-spawn`, 15 min) + Recovery, API `/api/events` + `/api/events/decide`, Galaxie-Event-
+  Overlay/Chips. Code: `backend/app/events/` (buffs/service/personal/decisions/router). Design: `docs/events_design.md`.
+- **10 Events live:** Komet, Anomalie, Sonnensturm, Schwarzmarkt, Piraten-Razzia, Minen-Streik, Durchbruch,
+  Expeditions-Doktrin+Geisterschiff, Flüchtlings-Flottille, Utopia-Werft. Häufigkeit „selten & besonders"
+  (alles in `balance.json -> events` justierbar).
+- **NOCH OFFEN (framework-ready):** Super-Frachter-Wrack + dediziertes Schwarzes-Loch-Karten-Event
+  (kampf-gekoppelt → bewusst aufgeschoben; leicht auf dem Fundament ergänzbar).
+- Weitere umgesetzte Tester-Ideen: Nachrichten-Feature, Dashboard-Deeplinks, Kolonie-mit-Fracht,
+  Verteidigungs-Anzeige, Planeten-Umbenennen, Galaxie-Spielernamen, Bugfixes (Bau-Abbruch, Fähigkeit-Verlernen).
 
 ---
 
