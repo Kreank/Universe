@@ -464,6 +464,16 @@ async def send_fleet(
                 tgt_player = await session.get(Player, tgt_planet.player_id)
                 if tgt_player and tgt_player.is_protected:
                     raise RuntimeError("Ziel steht unter Neulingsschutz")
+                # B — Bashing-Schutz: ein deutlich staerkerer Spieler darf ein viel schwaecheres
+                # Ziel nicht angreifen (Platz 1 vs. Platz 500). Greift nur zwischen verschiedenen
+                # Spielern und erst ab etablierter Angreifer-Staerke (siehe balance.protection).
+                if tgt_player and tgt_player.id != player.id:
+                    from app.platform.protection import bash_blocked
+                    if bash_blocked(float(player.score or 0), float(tgt_player.score or 0), bal.protection):
+                        raise RuntimeError(
+                            "Ziel ist fuer dich gesperrt (Bashing-Schutz): es ist im Verhaeltnis "
+                            "zu deinen Punkten zu schwach"
+                        )
         # Handelszentren sind unangreifbar (neutrale Infrastruktur).
         if cell and cell.occupant_type == "npc" and cell.ref_id:
             tgt_npc = await session.get(NpcEmpire, cell.ref_id)

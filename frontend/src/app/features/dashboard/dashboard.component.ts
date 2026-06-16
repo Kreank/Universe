@@ -45,7 +45,7 @@ import {
   BuildQueueItem,
   BuildingState,
   Fleet,
-  RankingEntry,
+  RankBoardEntry,
   ResearchState,
 } from '../../core/models/api.models';
 import { dashboardStyles } from './dashboard.styles';
@@ -67,7 +67,7 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
       <img class="score-ico" src="assets/img/nav/ranking.png" alt="" (error)="onIcoError($event)" />
       <div class="score-main">
         <span class="score-label">Imperiums-Punkte</span>
-        <span class="score-value mono">{{ (me()?.points ?? 0) | shortNumber }}</span>
+        <span class="score-value mono">{{ (me()?.total ?? 0) | shortNumber }}</span>
       </div>
       <div class="score-rank">
         <span class="rank-big mono">#{{ me()?.rank ?? '–' }}</span>
@@ -373,7 +373,7 @@ export class DashboardComponent {
   protected readonly shipyardQueue = signal<BuildQueueItem[]>([]);
 
   // --- Imperiums-Punkte (Rangliste) ---
-  protected readonly me = signal<RankingEntry | null>(null);
+  protected readonly me = signal<RankBoardEntry | null>(null);
   protected readonly totalPlayers = signal(0);
 
   constructor() {
@@ -381,7 +381,7 @@ export class DashboardComponent {
     this.api.getRanking().subscribe({
       next: (r) => {
         this.me.set(r.me);
-        this.totalPlayers.set(r.total_players);
+        this.totalPlayers.set(r.total);
       },
       error: () => {},
     });

@@ -5,23 +5,33 @@
 
 export type ResourceKey = 'metal' | 'crystal' | 'deuterium';
 
-/** Ein Eintrag der Rangliste (Punktesystem, OGame-Stil). */
-export interface RankingEntry {
-  rank: number;
-  player_id: string;
-  display_name: string;
+/** Rangliste (OGame-Stil): Reiter Spieler/Allianzen + Kategorie-Wertungen. */
+export type RankBoard = 'players' | 'alliances';
+export type RankCategory = 'total' | 'buildings' | 'research' | 'fleet' | 'defense';
+
+/** Ein Eintrag (Spieler ODER Allianz, je nach Board). `id` = player_id bzw. alliance_id. */
+export interface RankBoardEntry {
+  rank: number; // Rang in der aktuell gewählten Kategorie
+  id: string;
+  name: string;
+  tag?: string | null; // Allianz-Tag (nur Allianz-Board)
+  member_count?: number | null; // nur Allianz-Board
   is_self: boolean;
-  points: number;
+  value: number; // Punkte in der gewählten Kategorie
+  total: number;
   buildings: number;
   research: number;
   fleet: number;
   defense: number;
 }
 
-export interface RankingResponse {
-  entries: RankingEntry[];
-  me: RankingEntry | null;
-  total_players: number;
+export interface RankBoardResponse {
+  board: RankBoard;
+  category: RankCategory;
+  entries: RankBoardEntry[];
+  me: RankBoardEntry | null;
+  my_ranks: Record<RankCategory, number> | null; // eigener Rang je Kategorie ("Dein Platz")
+  total: number;
 }
 
 export interface ResourceCost {

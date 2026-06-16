@@ -11,6 +11,7 @@ Stufe N investierte Summe ist die geometrische Reihe ``base * (factor^N - 1)/(fa
 Forschung = ``base * 2^(stufe)`` -> kumuliert ``base * (2^N - 1)``."""
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import uuid
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
+from app.platform.protection import newbie_protection_active, newbie_threshold
 from app.platform.models import (
     Building,
     Defense,
@@ -108,6 +110,34 @@ def to_points(resources: float) -> int:
     return int(resources // POINTS_DIVISOR)
 
 
+# Wertungs-Kategorien (OGame-Stil): Gesamt + die vier Imperiumswert-Komponenten. Jede hat eine
+# EIGENE Rangliste -> ein Spieler kann z. B. #1 Forschung, aber #10 Flotte sein.
+CATEGORIES: tuple[str, ...] = ("total", "buildings", "research", "fleet", "defense")
+
+
+def category_values(breakdowns: dict[uuid.UUID, Breakdown]) -> dict[uuid.UUID, dict[str, int]]:
+    """Punkte je Kategorie und Spieler. ``total`` = Summe der vier Komponenten-Punkte (jeweils
+    einzeln gefloored — konsistent mit der Anzeige, Befund R-2)."""
+    out: dict[uuid.UUID, dict[str, int]] = {}
+    for pid, b in breakdowns.items():
+        parts = {
+            "buildings": to_points(b.buildings),
+            "research": to_points(b.research),
+            "fleet": to_points(b.fleet),
+            "defense": to_points(b.defense),
+        }
+        parts["total"] = sum(parts.values())
+        out[pid] = parts
+    return out
+
+
+def ranks_in_category(values: dict[uuid.UUID, dict[str, int]], category: str) -> dict[uuid.UUID, int]:
+    """ID -> 1-basierter Rang in dieser Kategorie. Gleichstand deterministisch nach ID (Befund R-3),
+    damit Raenge zwischen Abrufen nicht springen."""
+    ordered = sorted(values.items(), key=lambda kv: (-kv[1].get(category, 0), str(kv[0])))
+    return {oid: rank for rank, (oid, _) in enumerate(ordered, start=1)}
+
+
 async def compute_breakdowns(session: AsyncSession) -> dict[uuid.UUID, Breakdown]:
     """Berechnet den Imperiumswert je Spieler (eine Sammel-Abfrage je Tabelle)."""
     bal = get_balance()
@@ -174,14 +204,42 @@ async def compute_breakdowns(session: AsyncSession) -> dict[uuid.UUID, Breakdown
     return out
 
 
+def _on_vacation(player: Player, now: dt.datetime) -> bool:
+    vac = player.vacation_until
+    if vac is None:
+        return False
+    if vac.tzinfo is None:
+        vac = vac.replace(tzinfo=dt.timezone.utc)
+    return vac > now
+
+
 async def recompute_and_store(session: AsyncSession) -> dict[uuid.UUID, Breakdown]:
-    """Berechnet alle Breakdowns und schreibt den Gesamt-Score in ``Player.score``."""
+    """Berechnet alle Breakdowns, schreibt den Gesamt-Score in ``Player.score`` und beendet
+    den Neulingsschutz (A) fuer Spieler, die ihn ueberwachsen haben."""
     breakdowns = await compute_breakdowns(session)
     # ORDER BY player_id -> deterministische UPDATE-Reihenfolge (Befund R-7: vermeidet
     # Deadlock-Potenzial bei nebenlaeufigen Bulk-Updates).
     players = (await session.execute(select(Player).order_by(Player.id))).scalars().all()
     for p in players:
         p.score = to_points(breakdowns.get(p.id, Breakdown()).total)
+
+    # A — dynamischer Neulingsschutz, REIN punkte-relativ (kein Zeitlimit, kein Fix-Floor).
+    # Bezugsgroesse ist der Punkte-Durchschnitt der Spieler mit Punkten>0 (nicht im Urlaub) ->
+    # noch-nicht-gestartete 0-Punkte-Accounts ziehen den Schnitt nicht runter, und im jungen
+    # Universum (Schnitt 0) graduiert niemand. Graduierung EINMALIG (nur True->False), damit der
+    # Schutz nicht an/aus flackert, wenn der Schnitt schwankt; 0-Punkte-Spieler graduieren nie
+    # (Cold-Start-Schutz). Eigenes Angreifen beendet den Schutz separat sofort (combat.service).
+    cfg = get_balance().protection
+    now = dt.datetime.now(dt.timezone.utc)
+    scored = [float(p.score) for p in players if p.score > 0 and not _on_vacation(p, now)]
+    avg = (sum(scored) / len(scored)) if scored else 0.0
+    for p in players:
+        if not p.is_protected or _on_vacation(p, now) or p.score <= 0:
+            continue
+        if not newbie_protection_active(float(p.score), avg, cfg):
+            p.is_protected = False
+            log.info("Neulingsschutz beendet: player=%s score=%s schwelle=%.0f",
+                     p.id, p.score, newbie_threshold(avg, cfg))
     return breakdowns
 
 

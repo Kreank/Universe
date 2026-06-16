@@ -19,7 +19,9 @@ import {
   GalaxyTarget,
   Planet,
   PlanetDetail,
-  RankingResponse,
+  RankBoard,
+  RankBoardResponse,
+  RankCategory,
   ResearchResponse,
   ResearchStartResponse,
   ShipyardBuildRequest,
@@ -332,9 +334,15 @@ export class ApiService {
     return this.http.post<CombatReport>('/api/combat/simulate', body);
   }
 
-  // --- Rangliste ---
-  getRanking(limit = 100): Observable<RankingResponse> {
-    return this.http.get<RankingResponse>(`/api/ranking?limit=${limit}`);
+  // --- Rangliste (Spieler/Allianzen, Kategorie-Wertung) ---
+  getRanking(
+    board: RankBoard = 'players',
+    category: RankCategory = 'total',
+    limit = 100,
+  ): Observable<RankBoardResponse> {
+    return this.http.get<RankBoardResponse>(
+      `/api/ranking?board=${board}&category=${category}&limit=${limit}`,
+    );
   }
 
   // --- Feedback (Testphase) ---

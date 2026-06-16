@@ -830,9 +830,10 @@
   },
 
   "protection": {
-    "newbie_days": 7,
-    "newbie_score_threshold": 5000,
-    "_note": "Was zuerst endet (GDD §8). Kein Permadeath/Plunder unter Schutz."
+    "newbie_avg_factor": 0.30,
+    "bash_band_factor": 5,
+    "bash_min_attacker_score": 5000,
+    "_note": "A (Neulingsschutz, Grundsystem): REIN punkte-relativ. Geschuetzt, solange Imperiumswert < newbie_avg_factor * Durchschnitt aller Spieler mit Punkten>0 (nicht im Urlaub). KEIN Zeitlimit, KEIN fester Floor -> die Schwelle ergibt sich nur aus dem Punkteschnitt und waechst mit dem Universum mit. Spieler mit 0 Punkten graduieren nie (Cold-Start-Schutz). Graduierung einmalig (nur an->aus); eigenes Angreifen verwirkt den Schutz sofort. Kein Permadeath/Plunder unter Schutz. B (Bashing-Schutz, Zusatz): ein Angreifer mit >= bash_min_attacker_score Punkten darf KEIN Ziel mit weniger als (eigene Punkte / bash_band_factor) angreifen -> Platz 1 kann Platz 500 nicht wegsnacken."
   },
 
   "decay": {
