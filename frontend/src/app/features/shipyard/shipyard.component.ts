@@ -16,6 +16,8 @@ import {
   ConfirmRequest,
 } from '../../shared/components/confirm-dialog.component';
 import { NotificationService } from '../../core/services/notification.service';
+import { ActivatedRoute } from '@angular/router';
+import { scrollToTile } from '../../shared/focus-scroll';
 
 interface SelectedUnit {
   cat: ShipyardCategory;
@@ -127,10 +129,12 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
         <div class="tile-grid">
           @for (s of view.items; track s.type) {
             <app-build-tile
+              [attr.id]="'tile-' + s.type"
               [iconSrc]="'assets/img/' + (view.cat === 'ship' ? 'ships' : 'defenses') + '/' + s.type + '.png'"
               [glyph]="unitMeta(s.type, view.cat).glyph"
               [name]="unitMeta(s.type, view.cat).label"
               [badge]="ownedCount(s.type, view.cat)"
+              [focused]="focusType() === s.type"
               badgeTip="Bestand"
               [cost]="s.cost"
               [available]="balances()"
@@ -261,6 +265,11 @@ export class ShipyardComponent {
   private readonly api = inject(ApiService);
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+  private readonly route = inject(ActivatedRoute);
+
+  /** Per Deeplink angesprungener Bau (Query-Param ?focus=) — Reiter + Highlight + Scroll. */
+  protected readonly focusType = signal<string | null>(null);
+  private focusHandled = false;
 
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly navIcon = navIcon;
@@ -331,6 +340,10 @@ export class ShipyardComponent {
   }
 
   constructor() {
+    const focus = this.route.snapshot.queryParamMap.get('focus');
+    if (focus) {
+      this.focusType.set(focus);
+    }
     effect(() => {
       const id = this.state.activePlanetId();
       this.state.shipyardVersion(); // bei Werft-Fertigstellung automatisch neu laden
@@ -346,12 +359,30 @@ export class ShipyardComponent {
       next: (res) => {
         this.data.set(res);
         this.loading.set(false);
+        this.applyFocus();
       },
       error: () => {
         this.data.set(null);
         this.loading.set(false);
       },
     });
+  }
+
+  /** Deeplink vom Dashboard: zum Werft-Auftrag springen (richtiger Reiter + Scroll + Flash). */
+  private applyFocus(): void {
+    const ft = this.focusType();
+    if (this.focusHandled || !ft) {
+      return;
+    }
+    this.focusHandled = true;
+    const grp = this.shipGroups().find((g) => g.ships.some((s) => s.type === ft));
+    if (grp) {
+      this.activeTab.set(grp.key);
+    } else if ((this.data()?.defenses ?? []).some((d) => d.type === ft)) {
+      this.activeTab.set('defense');
+    }
+    scrollToTile(ft);
+    setTimeout(() => this.focusType.set(null), 4500);
   }
 
   buildable(s: ShipOption): boolean {

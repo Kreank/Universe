@@ -123,7 +123,7 @@ type CargoKey = (typeof CARGO_KEYS)[number];
           <p class="hint small"><app-btn-icon [src]="uiIcon('target')" glyph="🎯" [size]="14" /> Ziel aus der Galaxie-Karte uebernommen: [{{ prefilled() }}]</p>
         }
 
-        <!-- Fracht (Transport / Stationierung) -->
+        <!-- Fracht (Transport / Stationierung / Kolonisierung) -->
         @if (showCargo() && hasSelection()) {
           <div class="cargo-box">
             <div class="cargo-head">
@@ -131,6 +131,9 @@ type CargoKey = (typeof CARGO_KEYS)[number];
               <button class="btn btn-ghost btn-sm" type="button" (click)="fillAll()"
                       [disabled]="cargoCapacity() <= 0">Alles laden</button>
             </div>
+            @if (missionSig() === 'colonize') {
+              <p class="hint small">Wird der neuen Kolonie gutgeschrieben. Nimm Transporter mit, um mehr Frachtraum zu haben.</p>
+            }
             <div class="cargo-grid">
               @for (rf of cargoFields; track rf.key) {
                 @if (showCargoField(rf.key)) {
@@ -491,7 +494,10 @@ export class FleetComponent {
   }
 
   protected readonly showCargo = computed(
-    () => this.missionSig() === 'transport' || this.missionSig() === 'deploy',
+    () =>
+      this.missionSig() === 'transport' ||
+      this.missionSig() === 'deploy' ||
+      this.missionSig() === 'colonize', // Fracht startet die neue Kolonie (Backend bucht sie ein)
   );
   protected readonly planetRes = computed(() => this.state.activePlanet()?.resources ?? null);
 

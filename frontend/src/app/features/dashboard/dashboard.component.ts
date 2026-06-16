@@ -173,10 +173,11 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
           <div class="ops-block">
             <div class="ops-label"><app-btn-icon [src]="navIcon('buildings')" glyph="🏗️" [size]="16" /> Bau</div>
             @if (activeBuild(); as b) {
-              <div class="queue-row">
+              <a class="queue-row link" routerLink="/buildings" [queryParams]="{ focus: b.type }"
+                title="Zum laufenden Ausbau springen">
                 <span><app-btn-icon [src]="buildingIcon(b.type)" [glyph]="metaB(b.type).glyph" [size]="14" /> {{ metaB(b.type).label }} → Stufe {{ b.level + 1 }}</span>
                 <app-countdown [target]="b.upgrade_finishes_at" />
-              </div>
+              </a>
             } @else {
               <p class="muted small">Kein Bau aktiv. <a routerLink="/buildings">Bauen →</a></p>
             }
@@ -187,10 +188,11 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
           <div class="ops-block">
             <div class="ops-label"><app-btn-icon [src]="navIcon('research')" glyph="🔬" [size]="16" /> Forschung</div>
             @if (activeResearch(); as t) {
-              <div class="queue-row">
+              <a class="queue-row link" routerLink="/research" [queryParams]="{ focus: t.type }"
+                title="Zur laufenden Forschung springen">
                 <span><app-btn-icon [src]="techIcon(t.type)" [glyph]="metaT(t.type).glyph" [size]="14" /> {{ metaT(t.type).label }} → Stufe {{ t.level + 1 }}</span>
                 <app-countdown [target]="t.finishes_at" />
-              </div>
+              </a>
             } @else {
               <p class="muted small">Keine Forschung aktiv. <a routerLink="/research">Techbaum →</a></p>
             }
@@ -202,10 +204,11 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
             <div class="ops-label"><app-btn-icon [src]="navIcon('shipyard')" glyph="🛠️" [size]="16" /> Werft</div>
             @if (shipyardQueue().length) {
               @for (q of shipyardQueue(); track $index) {
-                <div class="queue-row">
+                <a class="queue-row link" routerLink="/shipyard" [queryParams]="{ focus: q.type }"
+                  title="Zur Werft springen">
                   <span><app-btn-icon [src]="q.category === 'defense' ? defenseIcon(q.type) : shipIcon(q.type)" [glyph]="metaShip(q).glyph" [size]="14" /> {{ q.count }}× {{ metaShip(q).label }}</span>
                   <app-countdown [target]="q.finishes_at" />
-                </div>
+                </a>
               }
             } @else {
               <p class="muted small">Werft frei. <a routerLink="/shipyard">Schiffe bauen →</a></p>

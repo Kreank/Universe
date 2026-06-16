@@ -14,6 +14,8 @@ import {
   ConfirmRequest,
 } from '../../shared/components/confirm-dialog.component';
 import { NotificationService } from '../../core/services/notification.service';
+import { ActivatedRoute } from '@angular/router';
+import { scrollToTile } from '../../shared/focus-scroll';
 
 interface BuildingRow {
   type: string;
@@ -63,6 +65,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
         <div class="tile-grid">
           @for (b of group.rows; track b.type) {
             <app-build-tile
+              [attr.id]="'tile-' + b.type"
               [iconSrc]="'assets/img/buildings/' + b.type + '.png'"
               [glyph]="meta(b.type).glyph"
               [name]="meta(b.type).label"
@@ -72,6 +75,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
               [available]="balances()"
               [timeSeconds]="b.option?.build_seconds ?? null"
               [busy]="!!b.finishesAt"
+              [focused]="focusType() === b.type"
               (openDetail)="openDetail(b)"
             >
               @if (b.option && (b.option.energy_now !== 0 || b.option.energy_delta !== 0)) {
@@ -203,6 +207,11 @@ export class BuildingsComponent {
   private readonly api = inject(ApiService);
   private readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+  private readonly route = inject(ActivatedRoute);
+
+  /** Per Deeplink angesprungenes Gebaeude (Query-Param ?focus=) — Tab + Highlight + Scroll. */
+  protected readonly focusType = signal<string | null>(null);
+  private focusHandled = false;
 
   private readonly data = signal<BuildingsResponse | null>(null);
   protected readonly loading = signal(true);
@@ -278,6 +287,10 @@ export class BuildingsComponent {
   });
 
   constructor() {
+    const focus = this.route.snapshot.queryParamMap.get('focus');
+    if (focus) {
+      this.focusType.set(focus);
+    }
     effect(() => {
       const id = this.state.activePlanetId();
       this.state.buildingsVersion(); // bei Bau-Fertigstellung automatisch neu laden
@@ -293,9 +306,25 @@ export class BuildingsComponent {
       next: (res) => {
         this.data.set(res);
         this.loading.set(false);
+        this.applyFocus();
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  /** Deeplink vom Dashboard: zum laufenden Ausbau springen (Tab + Scroll + Flash), einmalig. */
+  private applyFocus(): void {
+    const ft = this.focusType();
+    if (this.focusHandled || !ft) {
+      return;
+    }
+    this.focusHandled = true;
+    const grp = this.groups().find((g) => g.rows.some((r) => r.type === ft));
+    if (grp) {
+      this.activeTab.set(grp.key);
+    }
+    scrollToTile(ft);
+    setTimeout(() => this.focusType.set(null), 4500);
   }
 
   canUpgrade(b: BuildingRow): boolean {

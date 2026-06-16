@@ -20,7 +20,7 @@ import { ResourceCost } from '../../core/models/api.models';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconTileComponent, CostLineComponent, BtnIconComponent],
   template: `
-    <div class="tile" [class.busy]="busy()" [class.locked]="locked()">
+    <div class="tile" [class.busy]="busy()" [class.locked]="locked()" [class.focused]="focused()">
       <button type="button" class="art" (click)="openDetail.emit()" [attr.aria-label]="name() + ' – Details'">
         <app-icon-tile [glyph]="glyph()" [src]="iconSrc()" [size]="76" [variant]="variant()" />
         @if (badge() !== null) {
@@ -70,6 +70,16 @@ import { ResourceCost } from '../../core/models/api.models';
     }
     @keyframes tileBusy { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.95; } }
     @media (prefers-reduced-motion: reduce) { .tile.busy::after { animation: none; opacity: 0.6; } }
+
+    /* Deeplink-Ziel: heller Akzent-Rahmen + dreimaliger Aufmerk-Flash beim Ankommen. */
+    .tile.focused { border-color: var(--accent); }
+    .tile.focused::before {
+      content: ''; position: absolute; inset: -2px; border-radius: inherit; pointer-events: none; z-index: 1;
+      box-shadow: 0 0 0 2px var(--accent), 0 0 22px var(--accent-soft);
+      animation: tileFocus 0.7s ease-in-out 3;
+    }
+    @keyframes tileFocus { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .tile.focused::before { animation: none; opacity: 1; } }
 
     .art {
       position: relative; padding: 0; border: 0; background: none; cursor: pointer; line-height: 0;
@@ -124,6 +134,8 @@ export class BuildTileComponent {
   readonly variant = input<'accent' | 'magenta' | 'muted'>('accent');
   readonly busy = input<boolean>(false);
   readonly locked = input<boolean>(false);
+  /** Per Deeplink (Dashboard -> laufender Prozess) angesprungene Kachel: einmaliger Aufmerk-Flash. */
+  readonly focused = input<boolean>(false);
 
   readonly openDetail = output<void>();
 

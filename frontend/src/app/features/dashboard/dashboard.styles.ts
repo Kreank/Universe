@@ -139,6 +139,15 @@ export const dashboardStyles = `
   hr { border: none; border-top: 1px solid var(--border); margin: var(--sp-2) 0; }
 
   .cmd-row { text-decoration: none; color: var(--text); }
+
+  /* Laufender Prozess als Deeplink (Dashboard -> Forschung/Gebaeude/Werft mit Highlight). */
+  .queue-row.link {
+    text-decoration: none; color: var(--text); cursor: pointer;
+    border-radius: var(--r-sm); padding-left: var(--sp-2); padding-right: var(--sp-2);
+    margin: 0 calc(-1 * var(--sp-2));
+    transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
+  }
+  .queue-row.link:hover { background: rgba(255,255,255,0.05); color: var(--accent); }
   .cmd-row:hover { background: rgba(255,255,255,0.04); border-radius: var(--r-sm); }
   .cmd-name { font-size: var(--fs-base); }
   .cmd-morale {

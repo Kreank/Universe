@@ -14,6 +14,8 @@ import {
   ConfirmRequest,
 } from '../../shared/components/confirm-dialog.component';
 import { NotificationService } from '../../core/services/notification.service';
+import { ActivatedRoute } from '@angular/router';
+import { scrollToTile } from '../../shared/focus-scroll';
 
 interface ResearchRow {
   type: string;
@@ -139,6 +141,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
         <div class="tile-grid">
           @for (t of group.rows; track t.type) {
             <app-build-tile
+              [attr.id]="'tile-' + t.type"
               [iconSrc]="techIcon(t.type)"
               [glyph]="meta(t.type).glyph"
               [name]="meta(t.type).label"
@@ -149,6 +152,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
               [available]="balances()"
               [timeSeconds]="t.option?.research_seconds ?? null"
               [busy]="!!t.finishesAt"
+              [focused]="focusType() === t.type"
               (openDetail)="openDetail(t)"
             >
               <ng-container action>
@@ -236,6 +240,11 @@ export class ResearchComponent {
   private readonly api = inject(ApiService);
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+  private readonly route = inject(ActivatedRoute);
+
+  /** Per Deeplink angesprungene Technologie (Query-Param ?focus=) — Tab + Highlight + Scroll. */
+  protected readonly focusType = signal<string | null>(null);
+  private focusHandled = false;
 
   private readonly data = signal<ResearchResponse | null>(null);
   protected readonly loading = signal(true);
@@ -307,6 +316,10 @@ export class ResearchComponent {
   });
 
   constructor() {
+    const focus = this.route.snapshot.queryParamMap.get('focus');
+    if (focus) {
+      this.focusType.set(focus);
+    }
     effect(() => {
       this.state.researchVersion(); // bei Forschungs-Fertigstellung automatisch neu laden
       this.load();
@@ -319,9 +332,25 @@ export class ResearchComponent {
       next: (res) => {
         this.data.set(res);
         this.loading.set(false);
+        this.applyFocus();
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  /** Deeplink vom Dashboard: zur laufenden Forschung springen (Tab + Scroll + Flash), einmalig. */
+  private applyFocus(): void {
+    const ft = this.focusType();
+    if (this.focusHandled || !ft) {
+      return;
+    }
+    this.focusHandled = true;
+    const grp = this.groups().find((g) => g.rows.some((r) => r.type === ft));
+    if (grp) {
+      this.activeTab.set(grp.key);
+    }
+    scrollToTile(ft);
+    setTimeout(() => this.focusType.set(null), 4500); // Highlight danach wieder loesen
   }
 
   canStart(t: ResearchRow): boolean {
