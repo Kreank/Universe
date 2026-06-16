@@ -113,6 +113,15 @@ export class GameStateService {
     }
   }
 
+  /** Aktualisiert den Anzeigenamen eines Planeten in der Liste + (falls aktiv) im Detail. */
+  updatePlanetName(planetId: string, name: string): void {
+    this.planets.update((list) => list.map((p) => (p.id === planetId ? { ...p, name } : p)));
+    const ap = this.activePlanet();
+    if (ap && ap.id === planetId) {
+      this.activePlanet.set({ ...ap, name });
+    }
+  }
+
   async selectPlanet(planetId: string): Promise<void> {
     this.activePlanetId.set(planetId);
     this.ws.subscribePlanet(planetId);

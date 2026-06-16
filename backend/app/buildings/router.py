@@ -22,7 +22,13 @@ from app.buildings.schemas import (
     ShipyardResponse,
     UpgradeResponse,
 )
-from app.buildings.service import building_options, cancel_upgrade, demolish_building, start_upgrade
+from app.buildings.service import (
+    building_options,
+    cancel_upgrade,
+    complete_overdue_builds,
+    demolish_building,
+    start_upgrade,
+)
 from app.buildings.shipyard import cancel_queue_item, queue_build, shipyard_view
 from app.platform.db import get_session
 from app.platform.models import Building, Planet, Player
@@ -45,6 +51,9 @@ async def get_buildings(
     session: AsyncSession = Depends(get_session),
 ) -> BuildingsResponse:
     planet = await _owned_planet(session, player, planet_id)
+    # Self-Heal: ueberfaellige Ausbauten abschliessen (verwaiste Jobs nach Neustart/Abbruch-Fehler),
+    # damit ein haengender 'fertig'-Zustand sich beim Laden von selbst aufloest. get_session committet.
+    await complete_overdue_builds(session, planet)
     rows = (await session.execute(
         select(Building).where(Building.planet_id == planet.id)
     )).scalars().all()

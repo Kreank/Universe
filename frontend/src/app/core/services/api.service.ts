@@ -64,6 +64,11 @@ export class ApiService {
     return this.http.get<PlanetDetail>(`/api/planets/${planetId}`);
   }
 
+  /** Benennt einen eigenen Planeten/Mond um (Anzeigename). */
+  renamePlanet(planetId: string, name: string): Observable<Planet> {
+    return this.http.patch<Planet>(`/api/planets/${planetId}`, { name });
+  }
+
   // --- Gebaeude ---
   getBuildings(planetId: string): Observable<BuildingsResponse> {
     return this.http.get<BuildingsResponse>(`/api/planets/${planetId}/buildings`);

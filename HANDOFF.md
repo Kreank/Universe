@@ -1,11 +1,17 @@
-# 🛰️ Handoff — Universe (Stand 2026-06-13)
+# 🛰️ Handoff — Universe (Stand 2026-06-16)
 
 > Übergabe für die nächste Session. Projekt: browserbasiertes Weltraum-Aufbau-MMO
 > *Universe* (OGame-Tradition + persistentes Universum + KI-Crews als USP).
-> Server-Pfad: `/srv/storage/projects/universe` · Branch: `master`.
+> Server-Pfad: `/srv/storage/projects/universe` · Branch: `main` (Remote `github.com:Kreank/Universe`).
 > Live: `universe.tech-artist.de` · lokal Frontend `:4200`, API `:8100→8000`.
-> ✅ **Working tree SAUBER** (Stand 2026-06-13, letzter Commit `6eca7b7` — Audit Runde 1/2). 1 echter Account
-> (`sascha-richter@hotmail.com`), Test-Account `uitest@example.com` / `Test1234!`.
+> ⚠️ **TESTPHASE: externe Tester aktiv (seit 2026-06-16).** Feedback läuft über den In-Game-Feedback-Button
+> → DB-Tabelle `feedback` + Telegram-Push via Bot `@feedback_universe_bot` (Token in `infra/.env`, nicht im Repo).
+> ⚠️ **Working tree NICHT sauber** (Stand 2026-06-16): letzte Commits `5d6199c`, `288201b`, `eba7cbd`;
+> DANACH noch UNCOMMITTET & live (warten auf Sascha-Freigabe zum Commit): Planeten-Umbenennen,
+> Galaxie-Spielernamen, Verteidigungs-Anzeige, Bugfix Bau-Abbruch/„fertig"-Hänger, Bugfix Fähigkeit-Verlernen.
+> Accounts: `sascha-richter@hotmail.com` (Kreank) + mehrere Tester; Test-Account `uitest@example.com` / `Test1234!`.
+> **Arbeitsweise (WICHTIG, s. Memory `feedback_universe_discuss_ideas_first`):** Feature-IDEEN aus dem Feedback
+> ERST mit Sascha besprechen + Freigabe abwarten; nur klare BUGS proaktiv beheben.
 > ⚠️ Diese Session lief teils PARALLEL zu einem zweiten Agenten (Asteroidenfelder, Reise-Treibstoff/
 > Reichweite, Temperatur-Streuung, UI-Icons) — dessen Arbeit ist mit in den Commits. Alles committet & live.
 >
@@ -21,6 +27,62 @@
 > - **Deploy:** Code-Änderung → `build game-server` + `up -d game-server` (lädt Image + gemountete balance neu); reine balance.json-Änderung → nur `up -d game-server` (restart) reicht. Frontend-balance ist gebacken → `build frontend` + `up -d frontend`. **`frontend/src/assets/balance.json` ist ein manueller Mirror von `shared/balance.json` → nach jeder balance-Änderung `cp shared/balance.json frontend/src/assets/balance.json`.**
 > - **DB-Schreibzugriff + `docker exec … psql`/Seeden sind Auto-Mode-gesperrt** → Test-Daten nur über API/Spiel. Read-only `docker exec game-server python -c "…"` (ohne rm/cp) ist erlaubt.
 > - **NEU — Lint-Guard:** `ruff check backend/app --select F` fängt Undefined-Name/Use-before-Assignment (F821/F823) in <1 s — genau die Klasse der Loop-Breaker, die die Tests NICHT abdecken. Verdrahtet als versionierter pre-commit-Hook (`.githooks/`, aktiv via `core.hooksPath`) + GitHub-Actions (`.github/workflows/lint.yml`). ruff lokal im user-site (`python3 -m ruff`).
+
+---
+
+## 🗓️ Session 2026-06-16 — Testphase-Start: Feedback-Loop, Schutz, Rangliste-Ausbau, UX + Bugfixes
+
+> Erste Tester sind live. Vieles aus Tester-Feedback gebaut (mit Sascha-Freigabe). **Commits dieser
+> Session:** `5d6199c`, `288201b`, `eba7cbd`. **Danach noch UNCOMMITTET & live** (Freigabe ausstehend):
+> Planeten-Umbenennen, Galaxie-Spielernamen, Verteidigungs-Anzeige, 2 Bugfixes (s. u.).
+
+### 🆕 Features (gebaut, getestet, live)
+- **Feedback-Button (Testphase):** global sichtbarer „📣 Feedback"-Button (`shared/components/feedback-button.component.ts`,
+  in `app.ts` gemountet, nur eingeloggt). `POST /api/feedback` → DB-Tabelle `feedback` + best-effort Telegram-Push
+  an den Entwickler (`backend/app/feedback/`, Bot `@feedback_universe_bot`, ENV `FEEDBACK_TELEGRAM_*` in `infra/.env`).
+- **Spieler-Schutz (`backend/app/platform/protection.py`, `balance.json -> protection`, Tests `test_protection.py`):**
+  A = REIN punkte-relativer Neulingsschutz (geschützt solange Imperiumswert < `newbie_avg_factor` 0.30 × Punkteschnitt
+  der Spieler mit Punkten>0; KEIN Floor/Zeit; Graduierung einmalig im `score_tick`; 0-Punkte-Cold-Start-Schutz;
+  Angreifen verwirkt Schutz). B = Anti-Bashing-Band (Angreifer ≥ `bash_min_attacker_score` darf kein Ziel
+  < eigene Punkte/`bash_band_factor` 5 angreifen). Vorher war `newbie_days`/`newbie_score_threshold` TOTE Config.
+- **Stationierung auf EIGENEM Planeten = landen + Fracht gutschreiben** (`fleet/stationing.py`): Schiffe werden
+  Garnison, komplette Fracht eingebucht (vorher: Metall/Kristall verworfen, Schiffe gesperrt → Bug). Vorgeschobene
+  Stationen behalten Nicht-Treibstoff-Fracht (neue Spalte `stationed_fleets.cargo`), Rückruf liefert sie zurück.
+- **OGame-Rangliste** (`ranking/{service,schemas,router}.py`, `features/ranking/`): Reiter Spieler/Allianzen +
+  5 Kategorie-Wertungen (Gesamt/Gebäude/Forschung/Flotte/Verteidigung) mit eigenem Rang je Kategorie; „Dein Platz"
+  (`my_ranks`); Allianz-Board = Summe Mitglieder-Punkte. `GET /api/ranking?board=&category=` → `RankBoardResponse`.
+  **Altes `RankingEntry/Response` entfernt; `dashboard` nutzt `me.total`/`r.total`.** Details: Memory `project_universe_ranking`.
+- **Nachrichten direkt anschreiben:** ✉-Button in der Rangliste (Galaxie hatte ihn schon). Nutzt vorhandene
+  `MessageComposeComponent` + `POST /api/messages` → Postfach des Empfängers.
+- **Dashboard-Deeplinks:** laufende Bau/Forschung/Werft-Zeilen sind klickbar → Zielscreen, richtiger Reiter,
+  Kachel hervorgehoben (neuer `build-tile [focused]`-Flash, `?focus=` Query, `shared/focus-scroll.ts`). Self-Heal
+  beim Lesen (s. u.) deckt das mit ab.
+- **Kolonisierung mit Fracht:** Frachtfeld jetzt auch bei Mission „Kolonisieren" (`showCargo` erweitert); Backend
+  (`resolve_colonize`) bucht die Fracht in die neue Kolonie (war schon da).
+- **Planeten/Monde umbenennen:** `PATCH /api/planets/{id}` (`rename_planet`, max 40 Z., leer→422) + ✏️-Inline-Edit
+  im Dashboard (`GameState.updatePlanetName`). *(uncommittet)*
+- **Echte Spielernamen in der Galaxie:** `occupantLabel` zeigt „👤 <Name>" (eigene „👤 Du"); `player_name` kam
+  schon vom Backend. *(uncommittet)*
+- **Verteidigungs-Anzeige im Dashboard:** Panel mit Anzahl je Verteidigungs-Typ + Gesamt (aus `activePlanet().defenses`).
+  *(uncommittet — Tester-Idee, von Sascha freigegeben)*
+
+### 🐞 Bugfixes (uncommittet, live)
+- **Bau-Abbruch crashte → „fertig"-Hänger (spielbrechend):** `UpgradeResponse.upgrade_finishes_at` war Pflicht-
+  `datetime`; cancel gab `None` → ValidationError → 500 → DB-Rollback, ABER `cancel_job` (nicht-transaktional)
+  hatte den Completion-Job schon gelöscht → Bau hing für immer auf „fertig", blockierte neue Bauten. Fix:
+  (1) Feld optional; (2) **Self-Heal `complete_overdue_builds`** in `GET /buildings` schließt überfällige Bauten
+  beim Laden ab (robust gegen verwaiste Jobs nach Neustart/Abbruch). Naboo (Pflanzenextrakt) repariert.
+- **Fähigkeit verlernen erstattete 0 SP:** `int(round(1×1×0.5))` = 0 (Pythons Banker's Rounding) → Skillpunkt
+  weg, sah aus wie Fehlschlag. Fix: round-half-up `int(spent*ratio+0.5)` (`commander/router.py`). ⚠️ Vesna Calder
+  (Pflanzenextrakt) hat 1 SP verloren — Wiedergutmachung (manuelles +1) bei Bedarf offen.
+
+### 💬 Tester-Ideen — NOCH ZU BESPRECHEN (NICHT bauen ohne Sascha-Freigabe!)
+- **Ingame-Währung 💰:** für Handel + Eskort-Bezahlung, eintauschbar bei NPC-Händlern. Tiefgreifend (berührt
+  Handel/Eskorte/NPC-Tausch/Balance) → erst Konzept besprechen.
+- **Questsystem 📜:** NPCs stellen Aufgaben rein, Spieler arbeitet sie ab + wird bezahlt (evtl. mit der Währung).
+  Tiefgreifend (Aufgaben-Struktur, Belohnungen) → erst Konzept besprechen.
+- Bereits umgesetzte Tester-Ideen: Nachrichten-Feature, Dashboard-Deeplinks, Kolonie-mit-Fracht, Verteidigungs-Anzeige,
+  Planeten-Umbenennen, Galaxie-Spielernamen.
 
 ---
 

@@ -10,6 +10,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { GameStateService } from '../../core/services/game-state.service';
 import { ApiService } from '../../core/services/api.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { JumpGateDialogComponent } from '../../shared/components/jump-gate-dialog.component';
@@ -84,7 +85,16 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
     @if (planet(); as p) {
       <p class="muted sub">
-        {{ p.name }} · <app-btn-icon [src]="planetIcon(p.planet_type ?? 'normal')" [glyph]="planetType(p.planet_type).glyph" [size]="14" /> {{ planetType(p.planet_type).label }} ·
+        @if (editingName()) {
+          <input class="rename-inp" #ni [value]="p.name" maxlength="40"
+            (keyup.enter)="saveRename(p.id, ni.value)" (keyup.escape)="editingName.set(false)" />
+          <button class="name-btn ok" type="button" (click)="saveRename(p.id, ni.value)" title="Speichern">✓</button>
+          <button class="name-btn" type="button" (click)="editingName.set(false)" title="Abbrechen">✕</button>
+        } @else {
+          <span class="planet-name">{{ p.name }}</span>
+          <button class="name-btn" type="button" (click)="startRename()" title="Planet umbenennen">✏️</button>
+        }
+        · <app-btn-icon [src]="planetIcon(p.planet_type ?? 'normal')" [glyph]="planetType(p.planet_type).glyph" [size]="14" /> {{ planetType(p.planet_type).label }} ·
         Koordinaten [{{ p.galaxy }}:{{ p.system }}:{{ p.position }}] ·
         {{ p.temp_max }}°C · Felder {{ p.fields_used }}/{{ p.fields_max }}
         @if (moon(); as m) {
@@ -161,6 +171,25 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
             }
           } @else {
             <p class="muted small">Noch keine Commander. <a routerLink="/commanders">Kommandozentrale →</a></p>
+          }
+        </section>
+
+        <!-- Verteidigung auf diesem Planeten (genaue Anzahl je Typ) -->
+        <section class="card">
+          <div class="panel-title"><app-btn-icon [src]="statIcon('shield')" glyph="🛡️" [size]="16" /> Verteidigung</div>
+          @if (defenses().length) {
+            @for (d of defenses(); track d.type) {
+              <div class="def-row">
+                <span class="def-name"><app-btn-icon [src]="defenseIcon(d.type)" [glyph]="d.glyph" [size]="14" /> {{ d.label }}</span>
+                <span class="def-count mono">{{ d.count }}</span>
+              </div>
+            }
+            <div class="def-row def-total">
+              <span class="def-name faint">Gesamt</span>
+              <span class="def-count mono">{{ defenseTotal() }}</span>
+            </div>
+          } @else {
+            <p class="muted small">Keine Verteidigungsanlagen. <a routerLink="/shipyard">Bauen →</a></p>
           }
         </section>
        </div>
@@ -304,6 +333,35 @@ export class DashboardComponent {
   protected readonly state = inject(GameStateService);
   private readonly api = inject(ApiService);
   private readonly balance = inject(BalanceService);
+  private readonly notify = inject(NotificationService);
+
+  /** Inline-Umbenennung des aktiven Planeten/Mondes. */
+  protected readonly editingName = signal(false);
+
+  protected startRename(): void {
+    this.editingName.set(true);
+    setTimeout(() => {
+      const inp = document.querySelector('.rename-inp') as HTMLInputElement | null;
+      inp?.focus();
+      inp?.select();
+    }, 0);
+  }
+
+  protected saveRename(planetId: string, value: string): void {
+    const name = value.trim();
+    if (!name) {
+      this.editingName.set(false);
+      return;
+    }
+    this.api.renamePlanet(planetId, name).subscribe({
+      next: (p) => {
+        this.state.updatePlanetName(planetId, p.name);
+        this.editingName.set(false);
+        this.notify.success('Umbenannt', `Heißt jetzt „${p.name}".`);
+      },
+      error: () => this.notify.warning('Fehlgeschlagen', 'Planet konnte nicht umbenannt werden.'),
+    });
+  }
 
   /** Asset-Pfad-Helfer fuers Template (Glyph-Fallback via app-btn-icon). */
   protected readonly navIcon = navIcon;
@@ -344,6 +402,17 @@ export class DashboardComponent {
 
   /** Ist der aktive Kontext ein Mond? */
   protected readonly isMoon = computed(() => this.planet()?.planet_type === 'moon');
+
+  /** Verteidigungsanlagen des aktiven Planeten, je Typ mit Label/Icon, größte Anzahl zuerst. */
+  protected readonly defenses = computed(() =>
+    (this.planet()?.defenses ?? [])
+      .filter((d) => d.count > 0)
+      .map((d) => ({ type: d.type, count: d.count, ...metaFor(DEFENSE_META, d.type) }))
+      .sort((a, b) => b.count - a.count),
+  );
+  protected readonly defenseTotal = computed(() =>
+    this.defenses().reduce((sum, d) => sum + d.count, 0),
+  );
 
   /** Mutterplanet, wenn der aktive Kontext ein Mond ist (Koordinaten-Match). */
   protected readonly parentPlanet = computed(() => {

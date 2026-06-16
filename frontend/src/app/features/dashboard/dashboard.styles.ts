@@ -1,5 +1,20 @@
 export const dashboardStyles = `
   .sub { margin-top: calc(-1 * var(--sp-1)); font-size: var(--fs-sm); }
+  .planet-name { color: var(--text); font-weight: 600; }
+  /* Inline-Umbenennung des Planeten */
+  .rename-inp {
+    font: inherit; color: var(--text); width: min(220px, 50vw);
+    background: var(--surface-1); border: 1px solid var(--accent); border-radius: var(--r-sm);
+    padding: 1px var(--sp-2);
+  }
+  .rename-inp:focus { outline: none; box-shadow: var(--glow-soft); }
+  .name-btn {
+    font: inherit; cursor: pointer; color: var(--text-faint);
+    background: none; border: none; padding: 0 4px; line-height: 1;
+    transition: color var(--motion-fast) var(--ease-out);
+  }
+  .name-btn:hover { color: var(--accent); }
+  .name-btn.ok:hover { color: var(--ok); }
   .moon-chip {
     font: inherit; cursor: pointer;
     color: var(--accent); background: var(--accent-soft);
@@ -139,6 +154,17 @@ export const dashboardStyles = `
   hr { border: none; border-top: 1px solid var(--border); margin: var(--sp-2) 0; }
 
   .cmd-row { text-decoration: none; color: var(--text); }
+
+  /* Verteidigungs-Übersicht (Anzahl je Typ) */
+  .def-row {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+    padding: var(--sp-1) 0; font-size: var(--fs-sm);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .def-name { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+  .def-count { color: var(--text); font-weight: 600; }
+  .def-row.def-total { border-bottom: none; border-top: 1px solid var(--border-strong); margin-top: 2px; }
+  .def-row.def-total .def-count { color: var(--accent); }
 
   /* Laufender Prozess als Deeplink (Dashboard -> Forschung/Gebaeude/Werft mit Highlight). */
   .queue-row.link {

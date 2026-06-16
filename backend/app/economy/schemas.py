@@ -4,7 +4,11 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class RenamePlanetRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
 
 
 class PlanetOut(BaseModel):

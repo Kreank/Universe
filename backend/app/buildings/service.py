@@ -291,3 +291,38 @@ async def complete_building(planet_id: str, building_type: str) -> None:
         "level": new_level,
     })
     log.info("Gebaeude fertig: %s lvl %s auf %s", building_type, new_level, planet_id)
+
+
+async def complete_overdue_builds(session: AsyncSession, planet: Planet) -> bool:
+    """Self-Heal: schliesst auf ``planet`` alle Ausbauten ab, deren Timer bereits abgelaufen ist.
+
+    Faengt verwaiste Scheduler-Jobs ab (Server-Neustart loescht den MemoryJobStore; ein
+    Abbruch-Fehler konnte den Job entfernen, ohne die DB zu aktualisieren). Wird beim Lesen
+    der Gebaeude aufgerufen -> ein haengender 'fertig'-Zustand loest sich beim naechsten Abruf
+    von selbst. Liefert True, wenn etwas abgeschlossen wurde."""
+    now = dt.datetime.now(dt.timezone.utc)
+    rows = (await session.execute(
+        select(Building).where(
+            Building.planet_id == planet.id, Building.upgrade_finishes_at.is_not(None)
+        )
+    )).scalars().all()
+    changed = False
+    for row in rows:
+        fin = row.upgrade_finishes_at
+        if fin.tzinfo is None:
+            fin = fin.replace(tzinfo=dt.timezone.utc)
+        if fin > now:
+            continue
+        await refresh_resources(session, planet)
+        row.level += 1
+        row.upgrade_finishes_at = None
+        planet.fields_used += 1
+        if planet.planet_type == "moon" and row.type == "moon_base":
+            bal = get_balance()
+            planet.fields_max = int(bal.data["moon"]["base_fields"]) + row.level * int(
+                bal.buildings["moon_base"].get("moon_fields_per_level", 3)
+            )
+        await refresh_resources(session, planet)
+        changed = True
+        log.info("Self-Heal: ueberfaelliger Ausbau %s -> Stufe %d auf %s", row.type, row.level, planet.id)
+    return changed

@@ -53,7 +53,9 @@ class BuildingsResponse(BaseModel):
 class UpgradeResponse(BaseModel):
     type: str
     level: int
-    upgrade_finishes_at: dt.datetime
+    # None nach einem Abbruch (kein laufender Ausbau mehr) — sonst scheitert die Antwort-
+    # Serialisierung des cancel-Endpunkts (Befund: ValidationError -> verwaister Build-Job).
+    upgrade_finishes_at: dt.datetime | None = None
 
 
 class DemolishResponse(BaseModel):

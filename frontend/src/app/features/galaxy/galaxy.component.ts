@@ -534,7 +534,7 @@ export class GalaxyComponent {
       case 'empty':
         return 'leer';
       case 'player':
-        return '👤 Spieler';
+        return this.isOwn(c) ? '👤 Du' : '👤 ' + (c.player_name ?? 'Spieler');
       case 'npc':
         return '🤖 NPC-Imperium';
       case 'debris':

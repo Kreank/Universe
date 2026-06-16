@@ -12,6 +12,7 @@ from app.economy.schemas import (
     CountOut,
     PlanetDetailOut,
     PlanetOut,
+    RenamePlanetRequest,
 )
 from app.economy.service import refresh_resources
 from app.platform.db import get_session
@@ -37,6 +38,24 @@ async def list_planets(
         select(Planet).where(Planet.player_id == player.id).order_by(Planet.created_at)
     )).scalars().all()
     return list(rows)
+
+
+@router.patch("/planets/{planet_id}", response_model=PlanetOut)
+async def rename_planet(
+    planet_id: uuid.UUID,
+    body: RenamePlanetRequest,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> Planet:
+    """Benennt einen eigenen Planeten/Mond um (Anzeigename, reine Kosmetik)."""
+    planet = await _load_owned_planet(session, player, planet_id)
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Name darf nicht leer sein")
+    planet.name = name[:40]
+    await session.commit()
+    await session.refresh(planet)
+    return planet
 
 
 @router.get("/planets/{planet_id}", response_model=PlanetDetailOut)

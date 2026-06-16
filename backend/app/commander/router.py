@@ -113,7 +113,11 @@ async def forget_ability(
     bal = get_balance()
     ab = ability_def(key, bal) or {"sp_cost": 1}
     refund_ratio = float(bal.commander["ability_progression"].get("unlearn_refund", 0.5))
-    refund = int(round(cur * int(ab.get("sp_cost", 1)) * refund_ratio))
+    # Kaufmaennisch aufrunden (int(x + 0.5)): Pythons round() nutzt Banker's Rounding, dort gibt
+    # round(0.5) == 0 -> eine Stufe-1-Faehigkeit (sp_cost 1, ratio 0.5) haette 0 SP erstattet
+    # ("Skillpunkt kommt nicht zurueck"-Bug). So bekommt man bei ratio>0 mindestens 1 SP zurueck.
+    spent = cur * int(ab.get("sp_cost", 1))
+    refund = int(spent * refund_ratio + 0.5)
     c.skill_points = int(c.skill_points or 0) + refund
     c.abilities = [a for a in (c.abilities or []) if a.get("key") != key]
     await session.commit()
