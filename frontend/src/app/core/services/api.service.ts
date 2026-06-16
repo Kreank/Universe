@@ -13,6 +13,7 @@ import {
   DecisionResponse,
   FeedbackRequest,
   Fleet,
+  GameEvent,
   IncomingAttack,
   FleetSendRequest,
   GalaxyResponse,
@@ -353,6 +354,19 @@ export class ApiService {
   // --- Feedback (Testphase) ---
   submitFeedback(body: FeedbackRequest): Observable<{ ok: boolean }> {
     return this.http.post<{ ok: boolean }>('/api/feedback', body);
+  }
+
+  // --- Game-Events ---
+  getEvents(): Observable<GameEvent[]> {
+    return this.http.get<GameEvent[]>('/api/events');
+  }
+
+  /** Offline-sichere Event-Entscheidung (z. B. Minen-Streik: bestechen/niederschlagen/aussitzen). */
+  decideEvent(transmissionId: string, choice: string): Observable<{ ok: boolean; message: string }> {
+    return this.http.post<{ ok: boolean; message: string }>('/api/events/decide', {
+      transmission_id: transmissionId,
+      choice,
+    });
   }
 
   // --- Routinen (automatisierte Farm-Routen) ---

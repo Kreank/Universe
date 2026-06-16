@@ -158,26 +158,44 @@ interface SpyIntelView {
             }
 
             @if (t.requires_decision) {
-              <div class="decision">
-                <span class="muted small">Forderung — deine Entscheidung:</span>
-                <div class="dec-buttons">
-                  <button
-                    class="btn btn-sm btn-primary"
-                    [disabled]="deciding() === t.id"
-                    (click)="decide(t, 'accept')"
-                  >Erfuellen</button>
-                  <button
-                    class="btn btn-sm btn-ghost"
-                    [disabled]="deciding() === t.id"
-                    (click)="decide(t, 'negotiate')"
-                  >Verhandeln</button>
-                  <button
-                    class="btn btn-sm btn-danger"
-                    [disabled]="deciding() === t.id"
-                    (click)="decide(t, 'reject')"
-                  >Ablehnen</button>
+              @if (isEventDecision(t)) {
+                <div class="decision">
+                  <span class="muted small">Ereignis — deine Entscheidung:</span>
+                  <div class="dec-buttons">
+                    @for (c of eventChoices(t); track c.key) {
+                      <button
+                        class="btn btn-sm"
+                        [class.btn-primary]="c.tone === 'primary'"
+                        [class.btn-danger]="c.tone === 'danger'"
+                        [class.btn-ghost]="c.tone === 'ghost'"
+                        [disabled]="deciding() === t.id"
+                        (click)="decideEvent(t, c.key)"
+                      >{{ c.label }}</button>
+                    }
+                  </div>
                 </div>
-              </div>
+              } @else {
+                <div class="decision">
+                  <span class="muted small">Forderung — deine Entscheidung:</span>
+                  <div class="dec-buttons">
+                    <button
+                      class="btn btn-sm btn-primary"
+                      [disabled]="deciding() === t.id"
+                      (click)="decide(t, 'accept')"
+                    >Erfuellen</button>
+                    <button
+                      class="btn btn-sm btn-ghost"
+                      [disabled]="deciding() === t.id"
+                      (click)="decide(t, 'negotiate')"
+                    >Verhandeln</button>
+                    <button
+                      class="btn btn-sm btn-danger"
+                      [disabled]="deciding() === t.id"
+                      (click)="decide(t, 'reject')"
+                    >Ablehnen</button>
+                  </div>
+                </div>
+              }
             } @else {
               <div class="msg-actions">
                 @if (reportId(t); as rid) {
@@ -273,6 +291,43 @@ export class TransmissionsComponent {
         this.notify.success('Entscheidung getroffen', `${res.message} (Moral ${sign}${res.morale_delta})`);
         this.state.upsertTransmission({ ...t, read: true, requires_decision: false });
         void this.state.reloadCommanders();
+      },
+      error: (err) => {
+        this.deciding.set(null);
+        this.notify.warning('Fehler', err?.error?.detail ?? 'Entscheidung fehlgeschlagen.');
+      },
+    });
+  }
+
+  /** Ist dies eine Event-Entscheidung (vs. Kommandeur-Forderung)? */
+  isEventDecision(t: Transmission): boolean {
+    const p = t.decision_payload as Record<string, unknown> | null;
+    return !!p && typeof p === 'object' && p['kind'] === 'event';
+  }
+
+  /** Auswahl-Buttons für eine Event-Entscheidung (Label + Farbton je nach Wahl). */
+  eventChoices(t: Transmission): { key: string; label: string; tone: string }[] {
+    const p = t.decision_payload as Record<string, unknown> | null;
+    const choices = (p?.['choices'] as string[]) ?? [];
+    const meta: Record<string, { label: string; tone: string }> = {
+      bribe: { label: 'Deuterium zahlen', tone: 'primary' },
+      force: { label: 'Gewaltsam beenden', tone: 'danger' },
+      wait: { label: 'Aussitzen', tone: 'ghost' },
+      board: { label: 'Entern', tone: 'primary' },
+      ignore: { label: 'Ignorieren', tone: 'ghost' },
+      help: { label: 'Helfen', tone: 'primary' },
+    };
+    return choices.map((c) => ({ key: c, label: meta[c]?.label ?? c, tone: meta[c]?.tone ?? 'ghost' }));
+  }
+
+  decideEvent(t: Transmission, choice: string): void {
+    this.deciding.set(t.id);
+    this.api.decideEvent(t.id, choice).subscribe({
+      next: (res) => {
+        this.deciding.set(null);
+        this.notify.success('Entscheidung getroffen', res.message ?? 'Erledigt.');
+        this.state.upsertTransmission({ ...t, read: true, requires_decision: false });
+        void this.state.reloadActivePlanet();
       },
       error: (err) => {
         this.deciding.set(null);

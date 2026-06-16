@@ -117,6 +117,9 @@ interface DispatchCtx {
                   @if (c.mining_fleet; as mf) {
                     <span class="chip rock tip" [attr.data-tip]="mf.mine ? ('Deine Bergbauflotte schürft hier (' + mf.ships_total + ' Schiffe)') : ('Fremde Bergbauflotte von ' + (mf.owner ?? 'Spieler') + ' schürft hier — angreifbar, Fracht erbeutbar (' + mf.ships_total + ' Schiffe)')"><app-btn-icon [src]="missionIcon('mine')" glyph="⛏" [size]="14" /> Flotte{{ mf.mine ? '' : ' [' + (mf.owner ?? '?') + ']' }}</span>
                   }
+                  @if (c.event; as ev) {
+                    <span class="chip event tip" [attr.data-tip]="eventTip(ev)">{{ eventGlyph(ev.event_type) }} {{ eventLabel(ev.event_type) }} · {{ eventCountdown(ev.expires_at) }}</span>
+                  }
                 </div>
                 @if (c.asteroid) {
                   <div class="acts">
@@ -546,5 +549,36 @@ export class GalaxyComponent {
       default:
         return c.occupant_type;
     }
+  }
+
+  // -- Game-Events auf der Karte -------------------------------------------
+  private readonly EVENT_META: Record<string, { glyph: string; label: string; tip: string }> = {
+    wandering_comet: { glyph: '☄️', label: 'Wandernder Komet', tip: 'Riesiger Vorrat an Kristall/Deuterium — schick Schürf-/Recycler-Flotten (Mining-Mission), bevor er weiterzieht!' },
+    cosmic_anomaly: { glyph: '🌀', label: 'Kosmische Anomalie', tip: 'Schick eine Spionagesonde hin (Spionage-Mission) → temporärer Forschungstempo-Buff (kleines Risiko).' },
+    black_market: { glyph: '🏴', label: 'Schwarzmarkt', tip: 'Temporäres Händlerschiff mit Sonderkursen — handeln per Transport/Handel.' },
+    solar_storm: { glyph: '⚡', label: 'Sonnensturm', tip: 'In diesem System fallen Phalanx & Spionage aus — Flottenbewegungen sind unsichtbar.' },
+    super_freighter_wreck: { glyph: '⚓', label: 'Frachter-Wrack', tip: 'Von Drohnen bewacht — erst Kampfschiffe schicken, dann ausschlachten.' },
+    utopia_shipyard: { glyph: '⚙️', label: 'Utopia-Werft', tip: 'Liefer Ressourcen per Transport — Top-Lieferer bekommen ein einzigartiges Schiff.' },
+    refugee_flotilla: { glyph: '🚢', label: 'Flüchtlinge', tip: 'Deuterium spenden → Moral-/Bau-Boost. Aber Verfolger greifen an!' },
+    black_hole: { glyph: '🕳️', label: 'Schwarzes Loch', tip: 'Kurze, riskante Expedition mit dreifachem Ertrag — aber hohe Verlustchance.' },
+  };
+
+  eventGlyph(type: string): string {
+    return this.EVENT_META[type]?.glyph ?? '✨';
+  }
+  eventLabel(type: string): string {
+    return this.EVENT_META[type]?.label ?? type;
+  }
+  eventTip(ev: NonNullable<GalaxyCell['event']>): string {
+    return `${this.eventLabel(ev.event_type)}\n${this.EVENT_META[ev.event_type]?.tip ?? ''}\nEndet in ${this.eventCountdown(ev.expires_at)}`;
+  }
+  eventCountdown(expiresAt: string): string {
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    if (diff <= 0) {
+      return 'gleich';
+    }
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 }

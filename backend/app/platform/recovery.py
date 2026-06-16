@@ -10,6 +10,7 @@ Date-Trigger sofort (misfire_grace_time=None) — der Abschluss wird nachgeholt.
 Schliesst die vom Backend-Review markierte Robustheits-Luecke (ADR-002/§6 Zeit-Modell)."""
 from __future__ import annotations
 
+import datetime as dt
 import logging
 
 from sqlalchemy import select
@@ -113,6 +114,45 @@ async def recover_pending_jobs() -> None:
                 atk.arrive_at, resolve_npc_attack, str(atk.id),
                 job_id=f"npc-attack:{atk.id}",
             )
+            recovered += 1
+
+        # -- Game-Events: Ablauf-Jobs + Sonnensturm-Aktivierung -------------
+        from app.events.service import activate_solar_storm, resolve_event
+        from app.platform.models import CosmicEvent, Transmission
+        now = dt.datetime.now(dt.timezone.utc)
+        ev_rows = (await session.execute(
+            select(CosmicEvent).where(CosmicEvent.status == "active")
+        )).scalars().all()
+        for ev in ev_rows:
+            schedule_at(ev.expires_at, resolve_event, str(ev.id), job_id=f"event:{ev.id}")
+            recovered += 1
+            if ev.event_type == "solar_storm":
+                starts = (ev.data or {}).get("starts_at")
+                if starts:
+                    try:
+                        starts_at = dt.datetime.fromisoformat(starts)
+                    except ValueError:
+                        starts_at = now
+                    schedule_at(starts_at, activate_solar_storm, str(ev.id), job_id=f"event-storm:{ev.id}")
+                    recovered += 1
+
+        # -- Offene Event-Entscheidungen: Timeout-Default neu planen --------
+        from app.events.decisions import apply_event_default
+        dec_rows = (await session.execute(
+            select(Transmission).where(Transmission.requires_decision.is_(True))
+        )).scalars().all()
+        for t in dec_rows:
+            payload = t.decision_payload or {}
+            if payload.get("kind") != "event":
+                continue
+            ts = payload.get("timeout_at")
+            if not ts:
+                continue
+            try:
+                timeout_at = dt.datetime.fromisoformat(ts)
+            except ValueError:
+                continue
+            schedule_at(timeout_at, apply_event_default, str(t.id), job_id=f"event-decide:{t.id}")
             recovered += 1
 
     log.info("Startup-Recovery: %d offene Timer neu eingeplant", recovered)

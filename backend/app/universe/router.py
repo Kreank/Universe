@@ -27,6 +27,7 @@ class CellOut(BaseModel):
     moon: dict | None = None  # Mond am Ort {name, player_id, player_name, own} — eigenes Angriffs-/Spionageziel
     station: dict | None = None  # Allianz-Station am Ort {alliance_id, tag, mine, status, hp, max_hp, hp_pct}
     mining_fleet: dict | None = None  # geparkte Schuerf-Flotte am Ort {owner, mine, ships_total} — fremde sind angreifbar
+    event: dict | None = None  # Game-Event am Ort {event_type, data, expires_at} — Komet/Anomalie/Schwarzmarkt/...
 
 
 class ZoneOut(BaseModel):
@@ -146,6 +147,26 @@ async def galaxy_view(
             "crystal_max": round(field.crystal_max, 0),
         }
 
+    # Game-Events sind ein OVERLAY (Komet/Anomalie/Schwarzmarkt/Wrack/Werft) -> per Koordinate laden.
+    import datetime as _dt
+
+    from app.platform.models import CosmicEvent as _CosmicEvent
+    _now_ev = _dt.datetime.now(_dt.timezone.utc)
+    ev_rows = (await session.execute(
+        select(_CosmicEvent).where(
+            _CosmicEvent.galaxy == galaxy, _CosmicEvent.system == system,
+            _CosmicEvent.status == "active", _CosmicEvent.expires_at > _now_ev,
+            _CosmicEvent.position.is_not(None),
+        )
+    )).scalars().all()
+
+    def _event_overlay(pos: int) -> dict | None:
+        ev = next((e for e in ev_rows if e.position == pos), None)
+        if not ev:
+            return None
+        public = {k: v for k, v in (ev.data or {}).items() if k not in ("npc_id",)}
+        return {"event_type": ev.event_type, "data": public, "expires_at": ev.expires_at.isoformat()}
+
     # Monde sind ein OVERLAY (teilen die Position des Planeten) -> eigenes Angriffs-/Spionageziel.
     moon_rows = (await session.execute(
         select(Planet).where(
@@ -234,7 +255,8 @@ async def galaxy_view(
             }
         if cell is None or cell.occupant_type == "empty":
             cells.append(CellOut(position=pos, occupant_type="empty", asteroid=asteroid,
-                                 moon=moon, station=station_info, mining_fleet=mining_info))
+                                 moon=moon, station=station_info, mining_fleet=mining_info,
+                                 event=_event_overlay(pos)))
             continue
         name = None
         player_id = None
@@ -274,6 +296,7 @@ async def galaxy_view(
             moon=moon,
             station=station_info,
             mining_fleet=mining_info,
+            event=_event_overlay(pos),
         ))
 
     # Galaktische Weiten: synthetischer Deep-Space-Slot (nur per Expedition erreichbar).

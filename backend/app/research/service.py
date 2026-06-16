@@ -191,7 +191,9 @@ async def start_research(session: AsyncSession, planet: Planet, tech_type: str) 
     lab_lvl = await effective_lab_level(session, planet.player_id, network_level)
     from app.megastructure.service import effect_mult
     nexus = await effect_mult(session, planet.player_id, "research_speed")
-    secs = max(1, int(round(research_seconds(cost, lab_lvl) / nexus)))
+    from app.events.buffs import buff_mult as _buff_mult
+    event_speed = await _buff_mult(session, "research_speed", player_id=planet.player_id)
+    secs = max(1, int(round(research_seconds(cost, lab_lvl) / (nexus * event_speed))))
     finish = _now() + dt.timedelta(seconds=secs)
     row.finishes_at = finish
     await session.flush()

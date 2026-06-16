@@ -310,6 +310,45 @@ _STATEMENTS: list[str] = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC)",
+    # -- Feature: Game-Events / Quests (dynamische Welt-/Karten-Events) --------
+    """
+    CREATE TABLE IF NOT EXISTS cosmic_events (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_type  TEXT NOT NULL,
+        scope       TEXT NOT NULL DEFAULT 'global',   -- global | system | personal
+        galaxy      INT,
+        system      INT,
+        position    INT,
+        player_id   UUID REFERENCES players(id) ON DELETE CASCADE,
+        data        JSONB NOT NULL DEFAULT '{}'::jsonb,
+        status      TEXT NOT NULL DEFAULT 'active',    -- active | resolved | expired
+        spawned_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at  TIMESTAMPTZ NOT NULL,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_cosmic_events_active ON cosmic_events(status, expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_cosmic_events_coords ON cosmic_events(galaxy, system, position)",
+    "CREATE INDEX IF NOT EXISTS idx_cosmic_events_player ON cosmic_events(player_id)",
+    """
+    CREATE TABLE IF NOT EXISTS event_buffs (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        source_event_id UUID REFERENCES cosmic_events(id) ON DELETE CASCADE,
+        scope           TEXT NOT NULL,                -- player | planet | system
+        player_id       UUID REFERENCES players(id) ON DELETE CASCADE,
+        planet_id       UUID REFERENCES planets(id) ON DELETE CASCADE,
+        galaxy          INT,
+        system          INT,
+        buff_type       TEXT NOT NULL,                -- production | build_speed | research_speed | morale_adjust | scan_block | spionage_block
+        magnitude       DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+        expires_at      TIMESTAMPTZ NOT NULL,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_event_buffs_lookup ON event_buffs(buff_type, scope, expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_event_buffs_player ON event_buffs(player_id)",
+    "CREATE INDEX IF NOT EXISTS idx_event_buffs_planet ON event_buffs(planet_id)",
+    "CREATE INDEX IF NOT EXISTS idx_event_buffs_system ON event_buffs(galaxy, system)",
 ]
 
 

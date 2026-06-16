@@ -385,6 +385,21 @@ export interface GalaxyCell {
     mine: boolean;
     ships_total: number;
   } | null;
+  /** Dynamisches Game-Event am Ort (Komet/Anomalie/Schwarzmarkt/Wrack/...). */
+  event?: { event_type: string; data: Record<string, unknown>; expires_at: string } | null;
+}
+
+/** Ein laufendes Welt-/Karten-Event (GET /api/events). */
+export interface GameEvent {
+  id: string;
+  event_type: string;
+  scope: string;
+  galaxy: number | null;
+  system: number | null;
+  position: number | null;
+  coords: string | null;
+  data: Record<string, unknown>;
+  expires_at: string;
 }
 
 export interface AllianceZone {

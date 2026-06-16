@@ -178,6 +178,33 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
     rlevels = await get_research_levels(session, fleet.player_id)
     spy_tech = int(rlevels.get("spy_tech", 0))
 
+    # Sonnensturm-Event: Zielsystem geblendet -> Spionage scheitert an Interferenz.
+    from app.events.buffs import is_blocked as _is_blocked
+    if await _is_blocked(session, "spionage_block", galaxy=fleet.target_galaxy, system=fleet.target_system):
+        await create_system_transmission(
+            session,
+            player_id=fleet.player_id,
+            subject=f"Spionage blockiert ({coords})",
+            body=f"Die Sonden erreichten {coords}, doch ein Sonnensturm schirmt das System "
+                 f"durch ionosphaerische Stoerungen ab. Kein Aufklaerungsergebnis.",
+            ttype="spy_report",
+        )
+        log.info("Spionage blockiert (Sonnensturm): player=%s coords=%s", fleet.player_id, coords)
+        return
+
+    # Kosmische Anomalie am Ziel? -> Sonde sichert Forschungstempo-Buff (statt normaler Spionage).
+    from app.events.service import try_anomaly_probe
+    anomaly_msg = await try_anomaly_probe(
+        session, fleet.player_id, fleet.target_galaxy, fleet.target_system, fleet.target_position
+    )
+    if anomaly_msg is not None:
+        await create_system_transmission(
+            session, player_id=fleet.player_id,
+            subject=f"🌀 Anomalie vermessen ({coords})", body=anomaly_msg, ttype="spy_report",
+        )
+        log.info("Anomalie-Sonde: player=%s coords=%s", fleet.player_id, coords)
+        return
+
     target_moon = (fleet.mission_data or {}).get("target_type") == "moon"
     target = await _gather_target(
         session, fleet.target_galaxy, fleet.target_system, fleet.target_position, target_moon

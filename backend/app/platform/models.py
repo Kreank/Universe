@@ -568,3 +568,57 @@ class Feedback(Base):
     page: Mapped[str | None] = mapped_column(Text, nullable=True)        # Route, auf der gemeldet wurde
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)  # Browser/Geraet (gekuerzt)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class CosmicEvent(Base):
+    """Dynamisches Welt-/Karten-Event mit Lebensdauer (Komet, Anomalie, Schwarzmarkt, Wrack,
+    Utopia-Werft, Sonnensturm, Flüchtlinge, Schwarzes Loch ...) ODER ein persönliches Event
+    (Piraten-Razzia, Minen-Streik) als Tracking-Eintrag.
+
+    Karten-Events liegen als OVERLAY auf einer Galaxie-Koordinate (blockieren die Zelle NICHT,
+    Vorbild: AsteroidField). ``data`` traegt event-spezifische Felder (Vorrat, Belohnung, Beitraege,
+    Drohnen ...). ``status`` = active | resolved | expired."""
+    __tablename__ = "cosmic_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_type: Mapped[str] = mapped_column(Text, nullable=False)        # 'wandering_comet' | ...
+    scope: Mapped[str] = mapped_column(Text, nullable=False, default="global")  # global|system|personal
+    galaxy: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    system: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    position: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    player_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), nullable=True
+    )
+    data: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="active")
+    spawned_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class EventBuff(Base):
+    """Generischer temporärer Buff/Debuff aus einem Event. Multiplikativ (production/build_speed/
+    research_speed), additiv (morale_adjust) oder reiner Schalter (scan_block/spionage_block).
+
+    ``scope`` = 'player' | 'planet' | 'system'. Je nach Scope sind player_id ODER planet_id ODER
+    (galaxy, system) gesetzt. Ablauf rein zeitlich (``expires_at``) — kein Job noetig, die Abfragen
+    filtern ``expires_at > now``. Ein periodischer Tick raeumt nur abgelaufene Zeilen weg."""
+    __tablename__ = "event_buffs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cosmic_events.id", ondelete="CASCADE"), nullable=True
+    )
+    scope: Mapped[str] = mapped_column(Text, nullable=False)             # player|planet|system
+    player_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), nullable=True
+    )
+    planet_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("planets.id", ondelete="CASCADE"), nullable=True
+    )
+    galaxy: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    system: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    buff_type: Mapped[str] = mapped_column(Text, nullable=False)         # production|build_speed|...
+    magnitude: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)

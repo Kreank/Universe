@@ -836,6 +836,29 @@
     "_note": "A (Neulingsschutz, Grundsystem): REIN punkte-relativ. Geschuetzt, solange Imperiumswert < newbie_avg_factor * Durchschnitt aller Spieler mit Punkten>0 (nicht im Urlaub). KEIN Zeitlimit, KEIN fester Floor -> die Schwelle ergibt sich nur aus dem Punkteschnitt und waechst mit dem Universum mit. Spieler mit 0 Punkten graduieren nie (Cold-Start-Schutz). Graduierung einmalig (nur an->aus); eigenes Angreifen verwirkt den Schutz sofort. Kein Permadeath/Plunder unter Schutz. B (Bashing-Schutz, Zusatz): ein Angreifer mit >= bash_min_attacker_score Punkten darf KEIN Ziel mit weniger als (eigene Punkte / bash_band_factor) angreifen -> Platz 1 kann Platz 500 nicht wegsnacken."
   },
 
+  "events": {
+    "_note": "Dynamische Welt-/Karten-Events + persoenliche Events. Default: SELTEN & BESONDERS. spawn_chance je Event je events-Tick (tick_interval_seconds). Zeiten in Stunden, Mengen absolut. Alles hier fein justierbar.",
+    "tick_interval_seconds": 900,
+    "buff_cleanup_interval_seconds": 3600,
+    "max_active_map_events": 6,
+    "min_player_score": 50,
+    "global": {
+      "wandering_comet":      { "enabled": true, "spawn_chance": 0.15, "lifetime_hours": 48, "crystal": [400000, 900000], "deuterium": [600000, 1400000], "richness_mult": 2.5 },
+      "cosmic_anomaly":       { "enabled": true, "spawn_chance": 0.12, "lifetime_hours": 24, "research_speed_buff": 1.25, "buff_hours": 12, "damage_chance": 0.15 },
+      "black_market":         { "enabled": true, "spawn_chance": 0.10, "lifetime_hours": 24, "rate_bonus": 1.5 },
+      "solar_storm":          { "enabled": true, "spawn_chance": 0.08, "warning_hours": 12, "lifetime_hours": 24 },
+      "super_freighter_wreck":{ "enabled": true, "spawn_chance": 0.06, "lifetime_hours": 72, "drone_power_vs_top": 0.6, "metal": [2000000, 5000000], "crystal": [1500000, 3500000] },
+      "utopia_shipyard":      { "enabled": true, "spawn_chance": 0.04, "lifetime_hours": 48, "reward_ship": "battleship", "reward_count": 5, "top_n": 3 },
+      "refugee_flotilla":     { "enabled": true, "spawn_chance": 0.08, "lifetime_hours": 12, "deuterium_cost": 50000, "morale_bonus": 12, "build_speed_buff": 1.5, "buff_hours": 24, "pursuer_power_vs_player": 0.5, "keep_ships": { "large_cargo": 5 } },
+      "black_hole":           { "enabled": true, "spawn_chance": 0.05, "lifetime_hours": 24, "yield_mult": 3.0, "wipe_chance": 0.18 }
+    },
+    "personal": {
+      "pirate_raid":  { "enabled": true, "spawn_chance_per_player": 0.05, "warning_minutes": 150, "power_vs_player": 0.45 },
+      "mine_strike":  { "enabled": true, "spawn_chance_per_player": 0.04, "production_mult": 0.5, "duration_hours": 12, "bribe_deuterium": 30000, "force_morale_penalty": 10, "decision_timeout_hours": 12 },
+      "breakthrough": { "enabled": true, "spawn_chance_per_player": 0.04, "free_level_chance": 0.5 }
+    }
+  },
+
   "decay": {
     "inactive_days_before_decay": 14,
     "production_decay_per_day": 0.05,

@@ -19,6 +19,7 @@ from app.combat.router import router as combat_router
 from app.commander.router import router as commander_router
 from app.commander.service import morale_drift_tick
 from app.economy.router import router as economy_router
+from app.events.router import router as events_router
 from app.feedback.router import router as feedback_router
 from app.fleet.router import router as fleet_router
 from app.fleet.stationing import station_fuel_tick
@@ -116,6 +117,17 @@ async def lifespan(app: FastAPI):
         seconds=get_balance().data["asteroids"]["seed_tick_interval_seconds"],
         job_id="asteroid-seed",
     )
+    # Game-Events: Spawner-Tick (Welt-/persoenliche Events) + Buff-Cleanup.
+    from app.events.buffs import cleanup_expired_buffs
+    from app.events.service import events_tick
+    _ev_cfg = get_balance().events
+    schedule_interval(
+        events_tick, seconds=int(_ev_cfg.get("tick_interval_seconds", 900)), job_id="events-spawn",
+    )
+    schedule_interval(
+        cleanup_expired_buffs,
+        seconds=int(_ev_cfg.get("buff_cleanup_interval_seconds", 3600)), job_id="events-buff-cleanup",
+    )
     try:
         yield
     finally:
@@ -150,6 +162,7 @@ for r in (
     megastructure_router,
     alliance_router,
     feedback_router,
+    events_router,
 ):
     app.include_router(r, prefix="/api")
 

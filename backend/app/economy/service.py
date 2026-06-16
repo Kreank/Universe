@@ -304,6 +304,10 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
         gov = await session.get(_Commander, planet.governor_commander_id)
         gov_mult = governor_production_mult(gov, get_balance())
 
+    # Event-Debuff/Buff auf die Produktion dieses Planeten (z. B. Minen-Streik 0.5).
+    from app.events.buffs import buff_mult as _buff_mult
+    gov_mult *= await _buff_mult(session, "production", planet_id=planet.id)
+
     new_rates, energy, capacities = compute_rates(
         buildings, planet.temp_max, energy_tech,
         research.get("mining_efficiency", 0), research.get("storage_tech", 0),

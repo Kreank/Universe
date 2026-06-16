@@ -99,6 +99,10 @@ class Balance:
         return self.data["protection"]
 
     @property
+    def events(self) -> dict[str, Any]:
+        return self.data.get("events", {})
+
+    @property
     def npc(self) -> dict[str, Any]:
         return self.data["npc"]
 

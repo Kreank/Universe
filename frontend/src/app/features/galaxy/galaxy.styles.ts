@@ -136,6 +136,13 @@ export const galaxyStyles = `
   .chip.moon { color: var(--text-dim); border-color: var(--border-strong); background: rgba(255,255,255,0.04); cursor: help; margin-right: var(--sp-1); }
   .chip.station { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); cursor: help; margin-right: var(--sp-1); }
   .chip.station.mine { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); }
+  .chip.event {
+    color: #ffd27d; border-color: color-mix(in srgb, #ffae3b 60%, transparent);
+    background: color-mix(in srgb, #ffae3b 14%, transparent); cursor: help; margin-right: var(--sp-1);
+    font-weight: 600; animation: chipEventGlow 1.8s ease-in-out infinite;
+  }
+  @keyframes chipEventGlow { 0%, 100% { box-shadow: 0 0 0 transparent; } 50% { box-shadow: 0 0 10px color-mix(in srgb, #ffae3b 45%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .chip.event { animation: none; } }
 
   /* --- Ziel-Verzeichnis (kompakt, OGame-artig) --- */
   .tgt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

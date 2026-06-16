@@ -70,6 +70,10 @@ async def phalanx_scan(
             break
     if scanner is None:
         raise ValueError("Kein Sensorphalanx in Reichweite dieses Ziels")
+    # Sonnensturm-Event: Zielsystem geblendet -> Phalanx faellt aus.
+    from app.events.buffs import is_blocked as _is_blocked
+    if await _is_blocked(session, "scan_block", galaxy=galaxy, system=system):
+        raise ValueError("Sonnensturm: Die Sensorphalanx ist in diesem System geblendet")
     # Eigenes System ohne Bewegung zu scannen ist sinnlos, aber erlaubt.
 
     # -- Deuterium-Kosten am Scanner-Planeten abziehen --

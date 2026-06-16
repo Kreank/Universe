@@ -194,6 +194,11 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
         raise RuntimeError("Nicht genug Ressourcen")
 
     secs = build_seconds(cost, levels.get("robot_factory", 0), levels.get("nanite_factory", 0))
+    # Event-Bonus auf die Baugeschwindigkeit (z. B. Fluechtlinge +50 %) — Spieler- ODER Planeten-Buff.
+    from app.events.buffs import buff_mult as _buff_mult
+    speed = await _buff_mult(session, "build_speed", player_id=planet.player_id, planet_id=planet.id)
+    if speed > 0:
+        secs = max(1, int(round(secs / speed)))
     finish = _now() + dt.timedelta(seconds=secs)
     row.upgrade_finishes_at = finish
     await session.flush()

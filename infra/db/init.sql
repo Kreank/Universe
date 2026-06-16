@@ -439,3 +439,41 @@ CREATE TABLE feedback (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_feedback_created ON feedback(created_at DESC);
+
+-- Game-Events / Quests: dynamische Welt-/Karten-Events (Overlay auf Galaxie-Koordinaten).
+CREATE TABLE cosmic_events (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type  TEXT NOT NULL,
+    scope       TEXT NOT NULL DEFAULT 'global',
+    galaxy      INT,
+    system      INT,
+    position    INT,
+    player_id   UUID REFERENCES players(id) ON DELETE CASCADE,
+    data        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    status      TEXT NOT NULL DEFAULT 'active',
+    spawned_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at  TIMESTAMPTZ NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_cosmic_events_active ON cosmic_events(status, expires_at);
+CREATE INDEX idx_cosmic_events_coords ON cosmic_events(galaxy, system, position);
+CREATE INDEX idx_cosmic_events_player ON cosmic_events(player_id);
+
+-- Generische temporäre Buffs/Debuffs aus Events.
+CREATE TABLE event_buffs (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_event_id UUID REFERENCES cosmic_events(id) ON DELETE CASCADE,
+    scope           TEXT NOT NULL,
+    player_id       UUID REFERENCES players(id) ON DELETE CASCADE,
+    planet_id       UUID REFERENCES planets(id) ON DELETE CASCADE,
+    galaxy          INT,
+    system          INT,
+    buff_type       TEXT NOT NULL,
+    magnitude       DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+    expires_at      TIMESTAMPTZ NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_event_buffs_lookup ON event_buffs(buff_type, scope, expires_at);
+CREATE INDEX idx_event_buffs_player ON event_buffs(player_id);
+CREATE INDEX idx_event_buffs_planet ON event_buffs(planet_id);
+CREATE INDEX idx_event_buffs_system ON event_buffs(galaxy, system);
