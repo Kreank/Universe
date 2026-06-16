@@ -137,6 +137,49 @@ async def _resolve_pirate_attack(attack_id: str) -> None:
     await resolve_npc_attack(attack_id)
 
 
+async def spawn_pursuer_attack(
+    session: AsyncSession, player_id, galaxy: int, system: int, power_ratio: float
+) -> bool:
+    """Flüchtlings-Verfolger: skalierter NPC-Angriff auf den Planeten des Helfers im System.
+    Reused vom Refugee-Event (resolve)."""
+    bal = get_balance()
+    planet = (await session.execute(
+        select(Planet).where(
+            Planet.player_id == player_id, Planet.galaxy == galaxy, Planet.system == system,
+            Planet.planet_type != "moon",
+        )
+    )).scalars().first()
+    if planet is None:
+        return False
+    npc = (await session.execute(
+        select(NpcEmpire).where(NpcEmpire.behavior_profile != "trade_center").limit(1)
+    )).scalars().first()
+    if npc is None:
+        return False
+    budget = power_ratio * max(await _defender_power(session, planet, bal), 50.0)
+    roster = [t for t in ["light_fighter", "heavy_fighter", "cruiser"] if t in bal.ships]
+    per = budget / max(1, len(roster))
+    fleet = {t: int(per // max(1.0, _ship_attack(bal.ships, t))) for t in roster}
+    fleet = {t: n for t, n in fleet.items() if n > 0} or {roster[0]: 3}
+    arrive = _now() + dt.timedelta(minutes=10)
+    atk = NpcAttack(
+        npc_id=npc.id, target_player_id=player_id, target_planet_id=planet.id,
+        target_galaxy=planet.galaxy, target_system=planet.system, target_position=planet.position,
+        fleet=fleet, status="incoming", arrive_at=arrive,
+    )
+    session.add(atk)
+    await session.flush()
+    schedule_at(arrive, _resolve_pirate_attack, str(atk.id), job_id=f"npc-attack:{atk.id}")
+    await create_system_transmission(
+        session, player_id=player_id,
+        subject=f"👾 Verfolger der Flüchtlinge ({planet.galaxy}:{planet.system}:{planet.position})",
+        body=f"Die Verfolger der Flüchtlinge haben dich eingeholt und greifen {planet.name} mit "
+             f"{sum(fleet.values())} Schiffen an. Wehr sie ab! (Verteidigung kämpft automatisch.)",
+        ttype="system",
+    )
+    return True
+
+
 # -- Minen-Streik ------------------------------------------------------------
 
 async def trigger_mine_strike(session: AsyncSession, player: Player, planet: Planet, cfg: dict) -> bool:

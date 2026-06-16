@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.combat.engine import simulate_battle
 from app.platform.balance import get_balance
-from app.platform.models import Fleet, Ship
+from app.platform.models import Fleet, Research, Ship
 
 log = logging.getLogger("universe.expedition")
 
@@ -140,6 +140,16 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
 
     rng = random.Random(random.randrange(1, 2 ** 62))
     scaled = scale_outcomes(outcomes, hours, cfg)
+    # Expeditions-Doktrin (offline-sicher, pro Flotte vorab gewaehlt): biegt Risiko + Ertrag.
+    doctrine = (fleet.mission_data or {}).get("doctrine")
+    dcfg = cfg.get("doctrine", {}).get(doctrine, {}) if doctrine in ("cautious", "bold") else {}
+    risk_mult = float(dcfg.get("risk_mult", 1.0))
+    doc_yield = float(dcfg.get("yield_mult", 1.0))
+    if risk_mult != 1.0:
+        scaled = [
+            {**o, "weight": float(o.get("weight", 0)) * (risk_mult if o.get("risky") else 1.0)}
+            for o in scaled
+        ]
     total_w = sum(float(o.get("weight", 0)) for o in scaled)
     outcome = pick_outcome(scaled, rng.random() * total_w)
     otype = outcome.get("type", "nothing")
@@ -148,14 +158,51 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
         "outcome": otype,
     }
 
+    if doctrine in ("cautious", "bold"):
+        result["doctrine"] = doctrine
+
     if otype == "resources":
-        mult = yield_mult(research.get("expedition_tech", 0), hours, cfg)
+        mult = yield_mult(research.get("expedition_tech", 0), hours, cfg) * doc_yield
         gain = {k: int(round(_rand_range(rng, outcome.get(k, 0)) * mult)) for k in ("metal", "crystal", "deuterium")}
         cargo = dict(fleet.cargo or {})
         for k in ("metal", "crystal", "deuterium"):
             cargo[k] = round(cargo.get(k, 0) + gain[k], 1)
         fleet.cargo = cargo
         result["found"] = gain
+
+    elif otype == "ghost_ship":
+        # Geisterschiff — die Doktrin entscheidet OFFLINE-sicher (kein Live-Popup):
+        # vorsichtig/None = sicher ausschlachten (Ressourcen); risikofreudig = Computerkern hacken
+        # (Chance auf Gratis-Technologie, sonst Drohnen-Falle = Kampf).
+        if doctrine == "bold":
+            if rng.random() < float(outcome.get("hack_success", 0.5)):
+                techs = list(bal.techs.keys())
+                if techs:
+                    tech = rng.choice(techs)
+                    row = (await session.execute(
+                        select(Research).where(
+                            Research.player_id == fleet.player_id, Research.type == tech
+                        )
+                    )).scalar_one_or_none()
+                    if row is None:
+                        row = Research(player_id=fleet.player_id, type=tech, level=0)
+                        session.add(row)
+                        await session.flush()
+                    row.level += 1
+                    result["ghost"] = "hacked_tech"
+                    result["found_tech"] = {tech: row.level}
+            else:
+                result["ghost"] = "trap"
+                await _resolve_encounter(session, fleet, "aliens", research, result)
+        else:
+            mult = yield_mult(research.get("expedition_tech", 0), hours, cfg) * (doc_yield or 1.0)
+            gain = {k: int(round(_rand_range(rng, outcome.get(k, 0)) * mult)) for k in ("metal", "crystal")}
+            cargo = dict(fleet.cargo or {})
+            for k in ("metal", "crystal"):
+                cargo[k] = round(cargo.get(k, 0) + gain[k], 1)
+            fleet.cargo = cargo
+            result["ghost"] = "salvage"
+            result["found"] = gain
 
     elif otype == "ships":
         ship_type = outcome.get("ship", "light_fighter")

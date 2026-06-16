@@ -217,6 +217,17 @@ type CargoKey = (typeof CARGO_KEYS)[number];
             </div>
           }
 
+          @if (missionSig() === 'expedition') {
+            <div class="field">
+              <label class="tip" data-tip="Offline-sicher: legt vorab fest, wie deine Expedition auf Ereignisse (z.B. ein Geisterschiff) reagiert. Vorsichtig = weniger Risiko & Ertrag; Risikofreudig = mehr Risiko, mehr Ertrag, hackt den Geisterschiff-Kern.">Expeditions-Doktrin</label>
+              <div class="doctrine-row">
+                <button type="button" class="btn btn-sm" [class.btn-primary]="expeditionDoctrine() === 'cautious'" [class.btn-ghost]="expeditionDoctrine() !== 'cautious'" (click)="expeditionDoctrine.set('cautious')">🛡️ Vorsichtig</button>
+                <button type="button" class="btn btn-sm" [class.btn-primary]="expeditionDoctrine() === 'neutral'" [class.btn-ghost]="expeditionDoctrine() !== 'neutral'" (click)="expeditionDoctrine.set('neutral')">⚖️ Neutral</button>
+                <button type="button" class="btn btn-sm" [class.btn-primary]="expeditionDoctrine() === 'bold'" [class.btn-ghost]="expeditionDoctrine() !== 'bold'" (click)="expeditionDoctrine.set('bold')">🔥 Risikofreudig</button>
+              </div>
+            </div>
+          }
+
           <div class="field">
             <label class="tip" data-tip="Langsamer = weniger Sprit">Tempo {{ speed() }}%</label>
             <input type="range" min="10" max="100" step="10" [ngModel]="speed()" (ngModelChange)="speed.set($event)" />
@@ -376,6 +387,8 @@ export class FleetComponent {
   protected readonly speed = signal(100);
   protected readonly interceptRadius = signal(0);
   protected readonly escortRadius = signal(5);
+  /** Expeditions-Doktrin (offline-sichere Vorab-Wahl). */
+  protected readonly expeditionDoctrine = signal<'cautious' | 'neutral' | 'bold'>('neutral');
   protected readonly escortFeePct = signal(2); // Prozent (0..10), Backend deckelt
   protected readonly sending = signal(false);
 
@@ -623,6 +636,10 @@ export class FleetComponent {
         radius: this.missionSig() === 'intercept' ? this.interceptRadius() : undefined,
         escort_radius: this.missionSig() === 'escort' ? this.escortRadius() : undefined,
         escort_fee_pct: this.missionSig() === 'escort' ? this.escortFeePct() / 100 : undefined,
+        expedition_doctrine:
+          this.missionSig() === 'expedition' && this.expeditionDoctrine() !== 'neutral'
+            ? (this.expeditionDoctrine() as 'cautious' | 'bold')
+            : undefined,
       })
       .subscribe({
         next: () => {

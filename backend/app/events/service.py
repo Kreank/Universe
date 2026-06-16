@@ -11,7 +11,7 @@ import logging
 import random
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.events.buffs import apply_buff
@@ -33,6 +33,7 @@ MAP_EVENT_TYPES = (
     "cosmic_anomaly",
     "solar_storm",
     "black_market",
+    "refugee_flotilla",
 )
 
 
@@ -224,11 +225,61 @@ async def _spawn_black_market(session: AsyncSession, bal, cfg: dict) -> CosmicEv
     return ev
 
 
+async def _spawn_refugee_flotilla(session: AsyncSession, bal, cfg: dict) -> CosmicEvent | None:
+    # Flüchtlinge springen in ein bewohntes System (es muss Spieler geben, denen sie andocken).
+    planet = (await session.execute(
+        select(Planet).where(Planet.planet_type != "moon").order_by(func.random()).limit(1)
+    )).scalars().first()
+    if planet is None:
+        return None
+    g, s = planet.galaxy, planet.system
+    lifetime = float(cfg.get("lifetime_hours", 12))
+    ev = CosmicEvent(
+        event_type="refugee_flotilla", scope="system", galaxy=g, system=s, position=None,
+        data={
+            "deuterium_cost": int(cfg.get("deuterium_cost", 50000)),
+            "morale_bonus": int(cfg.get("morale_bonus", 12)),
+            "build_speed_buff": float(cfg.get("build_speed_buff", 1.5)),
+            "buff_hours": float(cfg.get("buff_hours", 24)),
+            "pursuer_power_vs_player": float(cfg.get("pursuer_power_vs_player", 0.5)),
+            "keep_ships": cfg.get("keep_ships", {"large_cargo": 5}),
+            "helpers": [],  # player_ids, die geholfen haben -> Verfolger-Welle bei Ablauf
+        },
+        expires_at=_now() + dt.timedelta(hours=lifetime),
+    )
+    session.add(ev)
+    await session.flush()
+    # Jedem Spieler mit Planet im System eine Hilfe-Entscheidung schicken (offline-sicher).
+    from app.events.decisions import create_event_decision
+    sys_players = (await session.execute(
+        select(Planet.player_id).where(
+            Planet.galaxy == g, Planet.system == s, Planet.planet_type != "moon"
+        ).distinct()
+    )).scalars().all()
+    cost = int(cfg.get("deuterium_cost", 50000))
+    for pid in sys_players:
+        await create_event_decision(
+            session, player_id=pid, event=ev,
+            subject=f"🚢 Flüchtlings-Flottille ({g}:{s})",
+            body=f"Ein Konvoi ziviler Schiffe ist erschöpft in System {g}:{s} gesprungen — auf der "
+                 f"Flucht vor einer Alien-Invasion. Sie brauchen {cost} Deuterium und Schutz. Hilfst "
+                 f"du, bekommst du einen Moral- + Baugeschwindigkeits-Boost und einige Zivilschiffe — "
+                 f"ABER nach {int(lifetime)} h holen ihre Verfolger dich ein und greifen an. (Hilfst du "
+                 f"nicht, ziehen sie weiter.)",
+            choices=["help", "wait"],
+            default_choice="wait",
+            timeout_hours=lifetime,
+        )
+    log.info("Flüchtlings-Flottille @ %s:%s, %d Spieler im System", g, s, len(sys_players))
+    return ev
+
+
 _SPAWNERS = {
     "wandering_comet": _spawn_wandering_comet,
     "cosmic_anomaly": _spawn_cosmic_anomaly,
     "solar_storm": _spawn_solar_storm,
     "black_market": _spawn_black_market,
+    "refugee_flotilla": _spawn_refugee_flotilla,
 }
 
 
@@ -251,6 +302,15 @@ async def resolve_event(event_id: str) -> None:
             )).scalar_one_or_none()
             if field is not None:
                 await session.delete(field)
+        # Flüchtlinge: bei Ablauf greifen die Verfolger jeden Helfer an.
+        if ev.event_type == "refugee_flotilla":
+            from app.events.personal import spawn_pursuer_attack
+            ratio = float(data.get("pursuer_power_vs_player", 0.5))
+            for pid_str in (data.get("helpers") or []):
+                try:
+                    await spawn_pursuer_attack(session, uuid.UUID(pid_str), ev.galaxy, ev.system, ratio)
+                except Exception:  # noqa: BLE001
+                    log.exception("Verfolger-Welle fehlgeschlagen für %s", pid_str)
         # Schwarzmarkt: NPC + Zelle freigeben.
         if ev.event_type == "black_market" and data.get("npc_id"):
             from app.universe.service import vacate_cell

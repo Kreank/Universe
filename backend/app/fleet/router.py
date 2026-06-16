@@ -61,6 +61,8 @@ async def send(
         mission_data["ability_keys"] = body.ability_keys
     if body.mission == "expedition" and body.expedition_hours is not None:
         mission_data["expedition_hours"] = body.expedition_hours
+    if body.mission == "expedition" and body.expedition_doctrine in ("cautious", "bold"):
+        mission_data["doctrine"] = body.expedition_doctrine
     if body.mission == "intercept" and body.radius is not None:
         mission_data["radius"] = body.radius
     if body.mission == "escort":

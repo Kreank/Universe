@@ -455,6 +455,11 @@
       "yield_bonus_per_hour": 0.06,
       "risk_bonus_per_hour": 0.05
     },
+    "doctrine": {
+      "_note": "Expeditions-Doktrin pro Flotte VOR dem Start waehlbar (offline-sicher): vorsichtig = weniger Risiko + etwas weniger Ertrag, risikofreudig = mehr Risiko + mehr Ertrag. Steuert die risky-Gewichte, den Ertrag UND die automatische Geisterschiff-Wahl (vorsichtig=ausschlachten, risikofreudig=Kern hacken).",
+      "cautious": { "risk_mult": 0.5, "yield_mult": 0.95 },
+      "bold": { "risk_mult": 1.6, "yield_mult": 1.25 }
+    },
     "outcomes": [
       { "weight": 30, "type": "resources", "metal": [2000, 25000], "crystal": [1000, 12000], "deuterium": [0, 6000] },
       { "weight": 15, "type": "ships", "ship": "light_fighter", "count": [2, 15] },
@@ -464,7 +469,8 @@
       { "weight": 4,  "type": "delay", "risky": true, "extra_hours": [1, 6] },
       { "weight": 2,  "type": "blackhole", "risky": true },
       { "weight": 3,  "type": "dark_matter", "amount": [50, 400] },
-      { "weight": 2,  "type": "antimatter", "amount": [30, 250] }
+      { "weight": 2,  "type": "antimatter", "amount": [30, 250] },
+      { "weight": 8,  "type": "ghost_ship", "risky": true, "metal": [3000, 18000], "crystal": [2000, 12000], "hack_success": 0.5 }
     ],
     "encounters": {
       "_note": "Piraten/Aliens = generierte Gegnerflotte, durch die echte Kampf-Engine. power_ratio x Expeditions-Kampfwert (Summe Schiff-attack) = Gegner-Budget, verteilt ueber roster (guenstigstes zuerst, zyklisch). tech = Waffen-/Schild-/Panzer-Stufe der Gegner. Bei Sieg: loot_ratio x (Metall+Kristall der zerstoerten Gegner, via Schiffskosten) als Beute in die Fracht.",

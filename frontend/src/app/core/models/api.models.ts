@@ -315,6 +315,8 @@ export interface FleetSendRequest {
   ability_keys?: string[];
   /** Expedition (mission == 'expedition'): gewuenschte Verweildauer in Stunden (1..max). */
   expedition_hours?: number;
+  /** Expeditions-Doktrin (offline-sichere Vorab-Wahl): 'cautious' | 'bold'. */
+  expedition_doctrine?: 'cautious' | 'bold';
   /** Ziel-Typ: 'moon' greift/spioniert den Mond, 'station' belagert die Allianz-Station,
    *  'mining_fleet' greift die am Feld schuerfende Flotte an. */
   target_type?: 'moon' | 'station' | 'mining_fleet';

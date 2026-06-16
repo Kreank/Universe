@@ -99,6 +99,49 @@ async def _resolve_choice(session: AsyncSession, t: Transmission, choice: str, b
         # wait / default: nichts tun, Debuff läuft aus.
         return "Du lässt den Streik aussitzen — der Produktions-Einbruch läuft mit der Zeit aus."
 
+    if etype == "refugee_flotilla":
+        data = (ev.data if ev else {}) or {}
+        if choice != "help":
+            return "Du lässt die Flüchtlinge weiterziehen."
+        from app.economy.service import spend_resources
+        from app.platform.models import Commander, Planet, Ship
+        planet = (await session.execute(
+            select(Planet).where(
+                Planet.player_id == t.player_id, Planet.galaxy == (ev.galaxy if ev else None),
+                Planet.system == (ev.system if ev else None), Planet.planet_type != "moon",
+            )
+        )).scalars().first()
+        cost = int(data.get("deuterium_cost", 50000))
+        if planet is None or not await spend_resources(session, planet, {"deuterium": cost}):
+            return "Nicht genug Deuterium am Planeten im System — du konntest nicht helfen."
+        from app.events.buffs import apply_buff
+        await apply_buff(
+            session, buff_type="build_speed", magnitude=float(data.get("build_speed_buff", 1.5)),
+            duration_hours=float(data.get("buff_hours", 24)), scope="player",
+            player_id=t.player_id, source_event_id=ev.id if ev else None,
+        )
+        bonus = int(data.get("morale_bonus", 12))
+        for c in (await session.execute(
+            select(Commander).where(Commander.player_id == t.player_id)
+        )).scalars().all():
+            c.morale = min(100, int(c.morale) + bonus)
+        for stype, n in (data.get("keep_ships", {}) or {}).items():
+            existing = (await session.execute(
+                select(Ship).where(Ship.planet_id == planet.id, Ship.fleet_id.is_(None), Ship.type == stype)
+            )).scalars().first()
+            if existing:
+                existing.count += int(n)
+            else:
+                session.add(Ship(planet_id=planet.id, fleet_id=None, type=stype, count=int(n)))
+        if ev is not None:
+            helpers = list((ev.data or {}).get("helpers", []))
+            if str(t.player_id) not in helpers:
+                helpers.append(str(t.player_id))
+            ev.data = {**(ev.data or {}), "helpers": helpers}
+        keep_txt = ", ".join(f"{int(n)}× {s}" for s, n in (data.get("keep_ships", {}) or {}).items())
+        return (f"Du hast geholfen ({cost} Deuterium): +{bonus} Crew-Moral, schnelleres Bauen "
+                f"und {keep_txt or 'einige Zivilschiffe'} sind dir beigetreten. Halte dich für ihre Verfolger bereit!")
+
     # Unbekannter Event-Typ: einfach abschließen.
     return "Entscheidung verbucht."
 
