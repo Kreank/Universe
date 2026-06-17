@@ -97,31 +97,12 @@ def _cargo_capacity(ships: dict[str, int]) -> float:
     return cap
 
 
-async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
-    """Foerdert Erz aus dem Asteroidenfeld am Zielort in die Flotten-Fracht.
-    Liefert eine kurze Zusammenfassung (oder None ohne Bergbauschiffe)."""
-    bal = get_balance()
-    cfg = bal.data.get("mining", {})
-    ship_type = cfg.get("ship_type", "miner")
-    location = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+def _now() -> dt.datetime:
+    return dt.datetime.now(UTC)
 
-    ships = {
-        r.type: r.count
-        for r in (await session.execute(select(Ship).where(Ship.fleet_id == fleet.id))).scalars().all()
-        if r.count > 0
-    }
-    # Mining-faehig = Bergbauschiffe ODER ein Ernte-Titan (roster.harvester). Beide sind nur die
-    # VORAUSSETZUNG; der Ertrag haengt am Frachtraum (Modell 'fuelle deinen Frachtraum'), NICHT an
-    # der Schiffszahl -> kein harvester_yield_mult mehr. Der Ernte-Titan zieht seine Staerke aus
-    # seinem riesigen eigenen Laderaum (ships.harvest_titan.cargo).
-    roster = bal.combat_roster
-    miners = int(ships.get(ship_type, 0)) + sum(
-        c for t, c in ships.items() if (roster.get(t) or {}).get("harvester")
-    )
-    if miners <= 0:
-        return None
 
-    field = (await session.execute(
+async def _field_at(session: AsyncSession, fleet: Fleet) -> AsteroidField | None:
+    return (await session.execute(
         select(AsteroidField).where(
             AsteroidField.galaxy == fleet.target_galaxy,
             AsteroidField.system == fleet.target_system,
@@ -129,8 +110,36 @@ async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
         )
     )).scalar_one_or_none()
 
+
+def _mine_miners(ships: dict[str, int], bal) -> int:
+    cfg = bal.data.get("mining", {})
+    roster = bal.combat_roster
+    return int(ships.get(cfg.get("ship_type", "miner"), 0)) + sum(
+        c for t, c in ships.items() if (roster.get(t) or {}).get("harvester")
+    )
+
+
+async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
+    """Startet eine ZEITBASIERTE Schuerf-Session am Asteroidenfeld (Doku 03c, 2026-06-17).
+
+    Es wird hier NICHTS sofort gefoerdert — der Frachtraum fuellt sich anteilig ueber die
+    Verweildauer. Real gefoerdert (Feld abgebaut + Fracht gutgeschrieben) wird erst beim
+    VERLASSEN des Feldes via ``settle_mining``: bei Rueckkehr die volle Ausbeute, bei einem
+    frueheren Abfang nur der bis dahin geschuerfte Anteil (kein Instant-Voll-Exploit mehr)."""
+    bal = get_balance()
+    location = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+
+    ships = {
+        r.type: r.count
+        for r in (await session.execute(select(Ship).where(Ship.fleet_id == fleet.id))).scalars().all()
+        if r.count > 0
+    }
+    if _mine_miners(ships, bal) <= 0:
+        return None
+
+    field = await _field_at(session, fleet)
     if field is None:
-        log.info("Mining @ %s -> kein Asteroidenfeld (%d Bergbauschiffe leer zurueck)", location, miners)
+        log.info("Mining @ %s -> kein Asteroidenfeld (Flotte leer zurueck)", location)
         await create_system_transmission(
             session, player_id=fleet.player_id,
             subject=f"Bergbau: kein Asteroidenfeld ({location})",
@@ -140,57 +149,72 @@ async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
         )
         return {"location": location, "mined": {"metal": 0.0, "crystal": 0.0}, "note": "kein_asteroidenfeld"}
 
-    # Lazy-Regeneration vor der Foerderung anwenden.
-    regen_field(field)
+    # Schuerf-Session anlegen: Startzeit + zu fuellende Kapazitaet. Foerderung erfolgt bei settle.
+    md = dict(fleet.mission_data or {})
+    md["mine_active"] = True
+    md["mine_start"] = _now().isoformat()
+    md["mine_cap"] = _cargo_capacity(ships)
+    fleet.mission_data = md
 
-    # Modell 'fuelle deinen Frachtraum': die Flotte holt so viel, wie ihr Frachtraum fasst,
-    # gedeckelt durch den Feld-Restvorrat. miners/Ernte-Titan sind nur die Voraussetzung (>0 oben).
-    gained, new_metal, new_crystal = mine_from_field(
-        field.metal_remaining, field.crystal_remaining, _cargo_capacity(ships),
+    hold_until = _parse_iso(md.get("hold_until"))
+    hrs = max(0.0, (hold_until - _now()).total_seconds() / 3600.0) if hold_until else 0.0
+    await create_system_transmission(
+        session, player_id=fleet.player_id,
+        subject=f"Bergbau begonnen ({location})",
+        body=(f"Deine Bergbauflotte schuerft am Asteroidenfeld {location} ({field.richness}). Der "
+              f"Frachtraum fuellt sich ueber ~{hrs:.1f} Std und wird bei der Rueckkehr dem Heimatplaneten "
+              f"gutgeschrieben. ACHTUNG: Waehrend des Schuerfens ist die Flotte am Feld angreifbar — bei "
+              f"einem Abfang erbeutet der Gegner NUR das bis dahin Gefoerderte; der Rest bleibt im Feld."),
     )
-    field.metal_remaining = new_metal
-    field.crystal_remaining = new_crystal
+    return {"location": location, "richness": field.richness, "started": True}
 
-    # Allianz-Bonus „Foerderquote" (Zone-Kontext): Effizienz-Extra auf den Ertrag, OHNE das Feld
-    # zusaetzlich zu erschoepfen (Doppel-Dip-Schutz: greift nur in der Stations-Einflusszone).
-    from app.alliance.bonus import alliance_bonus
-    from app.platform.models import Player
-    owner = await session.get(Player, fleet.player_id)
-    zone_bonus = await alliance_bonus(
-        session, owner, "mining_yield_zone",
-        galaxy=fleet.target_galaxy, system=fleet.target_system,
-    )
-    if zone_bonus > 0:
-        gained = {
-            "metal": round(gained["metal"] * (1 + zone_bonus), 1),
-            "crystal": round(gained["crystal"] * (1 + zone_bonus), 1),
-        }
+
+async def settle_mining(session: AsyncSession, fleet: Fleet, now: dt.datetime | None = None) -> dict | None:
+    """Beendet die Schuerf-Session: foerdert das bis ``now`` ANTEILIG (verstrichene Verweilzeit)
+    Geschuerfte real aus dem Feld in ``fleet.cargo`` und markiert die Session als erledigt.
+
+    Rueckkehr (now >= hold_until) -> voller Frachtraum; Abfang davor -> nur der Zeit-Anteil.
+    Liefert das Gefoerderte ``{metal, crystal}`` oder None, wenn keine aktive Session lief."""
+    md = dict(fleet.mission_data or {})
+    if not md.get("mine_active"):
+        return None
+    now = now or _now()
+    start = _parse_iso(md.get("mine_start")) or now
+    hold_until = _parse_iso(md.get("hold_until"))
+    if hold_until and hold_until > start:
+        span = (hold_until - start).total_seconds()
+        progress = min(1.0, max(0.0, (now - start).total_seconds() / span))
+    else:
+        progress = 1.0
+    cap = float(md.get("mine_cap", 0.0)) * progress
+
+    gained = {"metal": 0.0, "crystal": 0.0}
+    if cap > 0:
+        field = await _field_at(session, fleet)
+        if field is not None:
+            regen_field(field)  # Lazy-Regen vor der Foerderung
+            g, new_metal, new_crystal = mine_from_field(field.metal_remaining, field.crystal_remaining, cap)
+            field.metal_remaining = new_metal
+            field.crystal_remaining = new_crystal
+            # Allianz-Zonen-Bonus (Effizienz, ohne Feld extra zu erschoepfen).
+            from app.alliance.bonus import alliance_bonus
+            from app.platform.models import Player
+            owner = await session.get(Player, fleet.player_id)
+            zb = await alliance_bonus(
+                session, owner, "mining_yield_zone",
+                galaxy=fleet.target_galaxy, system=fleet.target_system,
+            )
+            gained = {
+                "metal": round(g["metal"] * (1 + zb), 1),
+                "crystal": round(g["crystal"] * (1 + zb), 1),
+            } if zb > 0 else g
 
     cargo = dict(fleet.cargo or {})
     cargo["metal"] = round(cargo.get("metal", 0) + gained["metal"], 1)
     cargo["crystal"] = round(cargo.get("crystal", 0) + gained["crystal"], 1)
     fleet.cargo = cargo
-
-    log.info("Mining @ %s [%s] -> %s (%d Bergbauschiffe, Rest m=%.0f k=%.0f)",
-             location, field.richness, gained, miners, new_metal, new_crystal)
-
-    total = gained["metal"] + gained["crystal"]
-    if total > 0:
-        subject = f"Bergbau erfolgreich ({location})"
-        body = (f"Deine Bergbauschiffe foerderten am Asteroidenfeld {location} ({field.richness}): "
-                f"{int(gained['metal'])} Metall + {int(gained['crystal'])} Kristall. Die Flotte kehrt mit der "
-                f"Fracht zurueck (wird bei Ankunft dem Heimatplaneten gutgeschrieben). "
-                f"Feld-Restvorrat: {int(new_metal)} Metall, {int(new_crystal)} Kristall.")
-    else:
-        subject = f"Bergbau: Feld erschoepft ({location})"
-        body = (f"Das Asteroidenfeld {location} ({field.richness}) ist derzeit erschoepft — es wurde nichts "
-                f"gefoerdert. Asteroidenfelder regenerieren mit der Zeit; spaeter erneut versuchen.")
-    await create_system_transmission(
-        session, player_id=fleet.player_id, subject=subject, body=body,
-    )
-    return {
-        "location": location,
-        "richness": field.richness,
-        "mined": gained,
-        "remaining": {"metal": round(new_metal, 1), "crystal": round(new_crystal, 1)},
-    }
+    md["mine_active"] = False
+    fleet.mission_data = md
+    log.info("Mining settle @ %d:%d:%d -> progress=%.2f gained=%s",
+             fleet.target_galaxy, fleet.target_system, fleet.target_position, progress, gained)
+    return gained

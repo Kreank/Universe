@@ -1042,6 +1042,22 @@ async def fleet_return(fleet_id: str) -> None:
             select(Ship).where(Ship.fleet_id == fleet.id)
         )).scalars().all()
 
+        # Zeitbasiertes Schuerfen: bei der Rueckkehr (Verweildauer rum) die volle Ausbeute real
+        # foerdern + in die Fracht legen, BEVOR sie dem Heimatplaneten gutgeschrieben wird.
+        if fleet.mission == "mine" and (fleet.mission_data or {}).get("mine_active"):
+            from app.fleet.mining import settle_mining
+            from app.messaging.service import create_system_transmission
+            _mined = await settle_mining(session, fleet)
+            if _mined and (_mined.get("metal", 0) + _mined.get("crystal", 0)) > 0:
+                _loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+                await create_system_transmission(
+                    session, player_id=fleet.player_id,
+                    subject=f"Bergbau abgeschlossen ({_loc})",
+                    body=(f"Deine Bergbauflotte foerderte {int(_mined['metal'])} Metall + "
+                          f"{int(_mined['crystal'])} Kristall und kehrt heim — wird dem Heimatplaneten "
+                          f"gutgeschrieben."),
+                )
+
         if origin is not None:
             # Schiffe in den Planetenbestand zurueckfuehren. Es kann mehrere
             # Bestands-Zeilen je Typ geben (kein DB-Unique); robust zusammenfuehren.

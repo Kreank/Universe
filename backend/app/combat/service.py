@@ -743,6 +743,10 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
                 # Geparkte Bergbauflotte: Schiffsverluste anwenden; bei Angreifer-Sieg die Fracht
                 # (Erz + Exoten) bis zur Angreifer-Kapazitaet pluendern. Wiped -> Flotte erledigt.
                 f = src["obj"]
+                # Zeitbasiertes Schuerfen: vor dem Pluendern nur den bis JETZT geschuerften Anteil
+                # in die Fracht foerdern (kein Instant-Voll-Klau); der Rest bleibt im Feld.
+                from app.fleet.mining import settle_mining
+                await settle_mining(session, f, now=now_combat)
                 for row in src["rows"]:
                     s = surv.get(row.type, 0)
                     if s <= 0:
@@ -773,6 +777,10 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
                 )
             elif src["kind"] == "fleet":
                 f = src["obj"]
+                # Heimkehrende Bergbauflotte im Flug abgefangen: erst die (volle) Ausbeute real
+                # foerdern, damit sie korrekt erbeutet wird (kein Verlust ins Leere).
+                from app.fleet.mining import settle_mining
+                await settle_mining(session, f, now=now_combat)
                 for row in src["rows"]:
                     s = surv.get(row.type, 0)
                     if s <= 0:
