@@ -346,6 +346,14 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
                     >
                       Radius ausbauen
                     </button>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      [disabled]="busy() || !canResearch(s, a)"
+                      (click)="researchTech(s)"
+                    >
+                      🔬 Verteidigungs-Tech ({{ s.stats?.tech_level ?? 1 }}/{{ s.stats?.max_tech ?? 12 }})
+                    </button>
                     @if (s.status === 'active') {
                       <button class="btn btn-ghost btn-sm" type="button" [disabled]="busy()" (click)="toggleReloc(s)">
                         🛰 Umstationieren
@@ -356,6 +364,12 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
                     <div class="upgrade-cost">
                       <span class="uc-label small muted">Ausbau auf Radius-Stufe {{ s.radius_level + 1 }} (aus dem Pool):</span>
                       <app-cost-line [cost]="a.station_config.radius_upgrade_cost" [available]="poolAvail(a)" />
+                    </div>
+                  }
+                  @if (s.stats?.next_tech_cost; as tc) {
+                    <div class="upgrade-cost">
+                      <span class="uc-label small muted">Verteidigungs-Tech auf Stufe {{ (s.stats?.tech_level ?? 1) + 1 }} erforschen (hebt Angriff/Schild/Hülle aller Geschütze):</span>
+                      <app-cost-line [cost]="tc" [available]="poolAvail(a)" />
                     </div>
                   }
 
@@ -1280,6 +1294,16 @@ export class AllianceComponent implements OnInit {
 
   upgrade(s: AllianceStation): void {
     this.run(this.api.upgradeStation(s.id), 'Ausgebaut', `Zonen-Radius von [${s.coords}] erweitert.`);
+  }
+
+  /** Kann die Station-Forschung gestartet werden (nicht am Cap + Pool reicht)? */
+  canResearch(s: AllianceStation, a: AllianceOverview): boolean {
+    const cost = s.stats?.next_tech_cost;
+    return !!cost && this.canAfford(cost, a);
+  }
+
+  researchTech(s: AllianceStation): void {
+    this.run(this.api.researchStation(s.id), 'Erforscht', `Verteidigungs-Tech der Station [${s.coords}] erhöht.`);
   }
 
   buildStation(): void {

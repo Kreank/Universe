@@ -967,6 +967,10 @@ export interface AllianceStationStats {
   max_hp: number;
   zone_radius: number;
   defense_tech: Record<string, number>;
+  /** Stations-Forschung: aktuelle Verteidigungs-Tech-Stufe, Cap + Kosten der nächsten Stufe. */
+  tech_level?: number;
+  max_tech?: number;
+  next_tech_cost?: ResourceCost | null;
   modules?: Record<string, number>;
   slots?: number;
   slots_used?: number;

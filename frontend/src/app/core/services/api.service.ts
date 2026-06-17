@@ -500,6 +500,11 @@ export class ApiService {
     return this.http.post(`/api/alliance/station/${id}/upgrade`, {});
   }
 
+  /** Stations-Forschung: hebt die Verteidigungs-Tech der Station um 1 (bis max_tech). */
+  researchStation(id: string): Observable<unknown> {
+    return this.http.post(`/api/alliance/station/${id}/research`, {});
+  }
+
   relocateStation(id: string, body: {
     galaxy: number;
     system: number;

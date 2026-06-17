@@ -425,6 +425,9 @@ class AllianceStation(Base):
     system: Mapped[int] = mapped_column(Integer, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     research_radius_level: Mapped[int] = mapped_column(Integer, default=0)
+    # Verteidigungs-Tech der Station (eigene „Stations-Forschung"): startet bei 1, aufwertbar bis
+    # max_tech (12). Hebt Angriff/Schild/Huelle der Abwehrbatterien (Abfang + Belagerung).
+    defense_tech_level: Mapped[int] = mapped_column(Integer, default=1)
     fuel: Mapped[float] = mapped_column(Float, default=0.0)
     hp: Mapped[float] = mapped_column(Float, default=0.0)
     status: Mapped[str] = mapped_column(Text, default="active")  # active | inactive | transit | destroyed

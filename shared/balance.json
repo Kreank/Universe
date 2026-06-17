@@ -1055,7 +1055,9 @@
       "regen_quiet_seconds": 7200,
       "defense_tech": { "weapons_tech": 1, "shield_tech": 1, "armor_tech": 1 },
       "max_tech": 12,
-      "_defense_base_note": "Grundbestueckung beim Bau (Stufe 0, 2026-06-17 Redesign): eine FRISCHE Station ist bewusst nur etwa so stark wie EIN Zerstoerer (~2000 effektiver Angriff bei Tech 1). Sie waechst dann durch Investition: Radius-Ausbau (defense_per_radius addiert Geschuetze + vergroessert die Zone) und Module (turret/shield_generator/armor_plating heben die Abwehr-Tech von Stufe 1 bis zum Cap max_tech=12; hull_reinforcement gibt HP; thruster Transit-Tempo). Tech ist auf max_tech gedeckelt.",
+      "tech_upgrade_cost": { "metal": 30000, "crystal": 20000, "deuterium": 10000 },
+      "_tech_note": "Stations-Forschung (Verteidigungs-Tech, defense_tech_level): startet bei 1, aufwertbar Stufe fuer Stufe bis max_tech=12. Hebt Angriff/Schild/Huelle ALLER Abwehrbatterien (Abfang + Belagerung). Kosten je Stufe = tech_upgrade_cost * aktuelle Stufe (steigend), aus dem Allianz-Pool. Getrennt von den Modulen (die liefern konkrete Geschuetze/Schild/HP).",
+      "_defense_base_note": "Grundbestueckung beim Bau (Stufe 0, 2026-06-17 Redesign): eine FRISCHE Station ist bewusst nur etwa so stark wie EIN Zerstoerer (~2000 effektiver Angriff bei Tech 1). Sie waechst durch Investition: Radius-Ausbau (defense_per_radius addiert Geschuetze + vergroessert die Zone), Module (Geschuetzturm->Geschuetze, Schildgenerator->Schild, Panzerplatte/Huellenverstaerker->HP, Schubtriebwerk->Transit-Tempo) UND Stations-Forschung (Tech 1->12).",
       "defense_base": { "gauss_cannon": 1, "heavy_laser": 3 },
       "defense_per_radius": { "gauss_cannon": 1, "heavy_laser": 4 },
       "transit_combat_strength": 0.4,
@@ -1074,9 +1076,9 @@
         "unmount_refund_pct": 0.5,
         "thruster_speed_cap": 0.5,
         "catalog": {
-          "turret":             { "label": "Geschuetzturm",      "weapons_tech": 2, "cost": { "metal": 30000, "crystal": 15000, "deuterium": 5000 } },
-          "shield_generator":   { "label": "Schildgenerator",    "shield_tech": 2,  "cost": { "metal": 15000, "crystal": 30000, "deuterium": 5000 } },
-          "armor_plating":      { "label": "Panzerplatte",       "armor_tech": 2,   "cost": { "metal": 40000, "crystal": 5000,  "deuterium": 5000 } },
+          "turret":             { "label": "Geschuetzturm",      "defense": { "gauss_cannon": 2 },      "cost": { "metal": 30000, "crystal": 15000, "deuterium": 5000 } },
+          "shield_generator":   { "label": "Schildgenerator",    "defense": { "large_shield_dome": 1 }, "cost": { "metal": 15000, "crystal": 30000, "deuterium": 5000 } },
+          "armor_plating":      { "label": "Panzerplatte",       "max_hp": 40000,   "cost": { "metal": 40000, "crystal": 5000,  "deuterium": 5000 } },
           "hull_reinforcement": { "label": "Huellenverstaerker", "max_hp": 100000,  "cost": { "metal": 50000, "crystal": 30000, "deuterium": 10000 } },
           "thruster":           { "label": "Schubtriebwerk",     "relocate_speed_pct": 0.15, "cost": { "metal": 20000, "crystal": 20000, "deuterium": 20000 } }
         }

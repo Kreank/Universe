@@ -77,19 +77,28 @@ def module_tech_bonus(station: AllianceStation) -> dict[str, int]:
 
 
 def effective_defense_tech(station: AllianceStation) -> dict[str, int]:
-    """Abwehr-Tech der Station: Basis-Stufe (frisch = 1) + Modul-Boni, GEDECKELT auf max_tech (12).
-    Eine frische Station kaempft mit Tech 1; Geschuetzturm/Schildgenerator/Panzerplatte heben
-    weapons_/shield_/armor_tech bis zum Cap (= 'Tech bis 12 durch Stations-Ausbau')."""
+    """Abwehr-Tech der Station: ausschliesslich aus der STATIONS-FORSCHUNG (defense_tech_level,
+    frisch = 1, aufwertbar bis max_tech = 12). Hebt Angriff/Schild/Huelle ALLER Abwehrbatterien.
+    (Module liefern dagegen konkrete Geschuetze/Schild/HP, keine Tech — siehe module_defense_bonus.)"""
     cfg = _scfg()
     cap = int(cfg.get("max_tech", 12))
-    tech = dict(cfg.get("defense_tech", {}))
-    for key, bonus in module_tech_bonus(station).items():
-        tech[key] = int(tech.get(key, 0)) + int(bonus)
-    return {k: max(0, min(cap, int(v))) for k, v in tech.items()}
+    lvl = max(1, min(cap, int(getattr(station, "defense_tech_level", 1) or 1)))
+    return {k: lvl for k in _TECH_MODULE_KEYS}
+
+
+def module_defense_bonus(station: AllianceStation) -> dict[str, int]:
+    """Zusatz-Abwehrbatterien aus Modulen: Geschuetzturm -> Geschuetze, Schildgenerator -> Schild.
+    (catalog[typ].defense = {einheit: anzahl}). Konkrete Feuerkraft/Schild, getrennt von der Tech."""
+    cat = _mcfg().get("catalog", {})
+    out: dict[str, int] = {}
+    for typ, count in station_modules(station).items():
+        for unit, n in (cat.get(typ, {}).get("defense", {}) or {}).items():
+            out[unit] = out.get(unit, 0) + int(n) * int(count)
+    return out
 
 
 def station_max_hp(station: AllianceStation) -> float:
-    """Maximale HP = Basis (balance.station.hp) + Summe der hull_reinforcement-Module."""
+    """Maximale HP = Basis (balance.station.hp) + Summe der hull_reinforcement/armor-Module (max_hp)."""
     base = float(_scfg().get("hp", 0))
     cat = _mcfg().get("catalog", {})
     extra = 0.0
@@ -173,6 +182,9 @@ def station_defenses(station: AllianceStation, cfg: dict | None = None) -> dict[
         v = int(n) + int(per.get(t, 0)) * lvl
         if v > 0:
             out[t] = v
+    # Module-Geschuetze/Schild oben drauf (Geschuetzturm, Schildgenerator, ...).
+    for unit, n in module_defense_bonus(station).items():
+        out[unit] = out.get(unit, 0) + int(n)
     return out
 
 
@@ -351,6 +363,33 @@ async def upgrade_radius(session: AsyncSession, player, station_id: uuid.UUID) -
     return station
 
 
+async def upgrade_defense_tech(session: AsyncSession, player, station_id: uuid.UUID) -> AllianceStation:
+    """Stations-Forschung: hebt die Verteidigungs-Tech um 1 (bis max_tech). Kosten skalieren mit der
+    aktuellen Stufe (tech_upgrade_cost * Stufe), aus dem Allianz-Pool."""
+    m = await _require_role(session, player, _acfg().get("min_role_for_spend", "officer"))
+    cfg = _scfg()
+    al = (await session.execute(
+        select(Alliance).where(Alliance.id == m.alliance_id).with_for_update()
+    )).scalar_one()
+    station = await session.get(AllianceStation, station_id)
+    if station is None or station.alliance_id != al.id or station.status == "destroyed":
+        raise ValueError("Station nicht gefunden.")
+    cap = int(cfg.get("max_tech", 12))
+    cur = max(1, int(station.defense_tech_level or 1))
+    if cur >= cap:
+        raise ValueError(f"Maximale Verteidigungs-Tech erreicht (Stufe {cap}).")
+    base_cost = cfg.get("tech_upgrade_cost", {})
+    cost = {k: float(base_cost.get(k, 0)) * cur for k in RES_KEYS}
+    pool = dict(al.pool or {})
+    if not all(float(pool.get(k, 0)) >= cost[k] for k in RES_KEYS):
+        raise ValueError("Der Allianz-Pool hat nicht genug Ressourcen fuer die Stations-Forschung.")
+    for k in RES_KEYS:
+        pool[k] = round(float(pool.get(k, 0)) - cost[k], 2)
+    al.pool = pool
+    station.defense_tech_level = cur + 1
+    return station
+
+
 async def upgrade_slots(session: AsyncSession, player, station_id: uuid.UUID) -> AllianceStation:
     """Schaltet einen weiteren Modul-Slot frei (eigener Ausbau, getrennt vom Radius). Pool-Kosten."""
     m = await _require_role(session, player, _acfg().get("min_role_for_spend", "officer"))
@@ -463,9 +502,8 @@ def station_combat_stats(station: AllianceStation) -> dict:
     defenses = station_defenses(station, cfg)
     cat = bal.defenses
     tb = bal.data.get("tech_bonus", {})
-    # Effektive Tech = Basis-Stufe + Modul-Boni, gedeckelt auf max_tech (12).
+    # Effektive Tech = Stations-Forschung (defense_tech_level), gedeckelt auf max_tech (12).
     eff_tech = effective_defense_tech(station)
-    mods_tech = module_tech_bonus(station)
     w = 1.0 + float(tb.get("weapons_per_level", 0)) * eff_tech.get("weapons_tech", 0)
     s = 1.0 + float(tb.get("shield_per_level", 0)) * eff_tech.get("shield_tech", 0)
     attack = shield = 0.0
@@ -473,6 +511,14 @@ def station_combat_stats(station: AllianceStation) -> dict:
         d = cat.get(t, {}) if isinstance(cat.get(t), dict) else {}
         attack += float(d.get("attack", 0)) * int(n)
         shield += float(d.get("shield", 0)) * int(n)
+    # Stations-Forschung: aktuelle Tech-Stufe, Cap + Kosten der naechsten Stufe (= base * Stufe).
+    cap = int(cfg.get("max_tech", 12))
+    tech_level = max(1, min(cap, int(getattr(station, "defense_tech_level", 1) or 1)))
+    base_cost = cfg.get("tech_upgrade_cost", {})
+    next_tech_cost = (
+        {k: int(float(base_cost.get(k, 0)) * tech_level) for k in ("metal", "crystal", "deuterium")}
+        if tech_level < cap else None
+    )
     return {
         "defenses": defenses,
         "attack_total": round(attack * w, 1),
@@ -480,10 +526,12 @@ def station_combat_stats(station: AllianceStation) -> dict:
         "max_hp": station_max_hp(station),
         "zone_radius": zone_radius(station),
         "defense_tech": eff_tech,
+        "tech_level": tech_level,
+        "max_tech": cap,
+        "next_tech_cost": next_tech_cost,
         "modules": station_modules(station),
         "slots": station_slots(station),
         "slots_used": slots_used(station),
-        "module_tech_bonus": mods_tech,
         "relocate_speed_mult": relocate_speed_mult(station),
     }
 

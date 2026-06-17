@@ -302,6 +302,20 @@ async def upgrade_station(
     return {"id": str(st.id), "radius_level": st.research_radius_level}
 
 
+@router.post("/alliance/station/{station_id}/research")
+async def research_station(
+    station_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Stations-Forschung: hebt die Verteidigungs-Tech der Station um 1 (bis max_tech)."""
+    try:
+        st = await station_mod.upgrade_defense_tech(session, player, station_id)
+    except (ValueError, PermissionError) as exc:
+        raise _err(exc) from exc
+    return {"id": str(st.id), "defense_tech_level": st.defense_tech_level}
+
+
 class RelocateIn(BaseModel):
     galaxy: int
     system: int
