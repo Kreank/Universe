@@ -222,8 +222,14 @@ async def cancel_upgrade(session: AsyncSession, planet: Planet, building_type: s
     row = (await session.execute(
         select(Building).where(Building.planet_id == planet.id, Building.type == building_type)
     )).scalar_one_or_none()
-    if row is None or row.upgrade_finishes_at is None:
+    if row is None:
         raise RuntimeError("Kein laufender Ausbau dieses Gebaeudes")
+    if row.upgrade_finishes_at is None:
+        # Idempotent: Der Bau wurde inzwischen fertig (Race zwischen Scheduler-Abschluss
+        # und Abbruch-Klick). Kein Fehler, kein Refund — der aktuelle Stand wird gemeldet,
+        # damit das Frontend den stehengebliebenen "fertig"-Zustand aufraeumen kann.
+        cancel_job(f"build:{planet.id}:{building_type}")
+        return row
     # Voller Refund der investierten Kosten (cost_for_level der NOCH aktuellen Stufe).
     await add_resources(session, planet, cost_for_level(building_type, row.level))
     row.upgrade_finishes_at = None

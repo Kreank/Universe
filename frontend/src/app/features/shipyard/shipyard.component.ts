@@ -103,10 +103,21 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
         <div class="panel-title"><app-btn-icon [src]="navIcon('shipyard')" glyph="🛠️" [size]="16" /> Bauschleife</div>
         @if (d.queue.length) {
           @for (q of d.queue; track q.id; let first = $first) {
-            <div class="queue-row" [class.building]="first">
-              <span class="q-unit"><app-icon-tile class="q-ico" [glyph]="unitMeta(q.type, q.category).glyph" [src]="unitIcon(q.type, q.category)" [size]="22" variant="muted" />{{ q.count }}× {{ unitMeta(q.type, q.category).label }}</span>
+            <div class="queue-row" [class.building]="first" [class.waiting]="!first">
+              <span class="q-unit">
+                <app-icon-tile class="q-ico" [glyph]="unitMeta(q.type, q.category).glyph" [src]="unitIcon(q.type, q.category)" [size]="22" variant="muted" />{{ q.count }}× {{ unitMeta(q.type, q.category).label }}
+                @if (first) {
+                  <span class="q-status active">⏳ Im Bau</span>
+                } @else {
+                  <span class="q-status wait">⏸ wartet</span>
+                }
+              </span>
               <div class="q-right">
-                <app-countdown [target]="q.finishes_at" />
+                @if (first) {
+                  <app-countdown [target]="q.finishes_at" />
+                } @else {
+                  <span class="q-eta muted tip" data-tip="Startet erst, wenn die vorherigen Aufträge fertig sind (serielle Werft).">fertig <app-countdown [target]="q.finishes_at" /></span>
+                }
                 <button
                   class="btn btn-ghost btn-sm q-cancel"
                   type="button"
@@ -242,6 +253,15 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
       @media (prefers-reduced-motion: reduce) { .queue-row.building::before { animation: none; opacity: 0.7; } }
       .q-unit { display: inline-flex; align-items: center; gap: var(--sp-2); }
       .q-ico { flex: 0 0 auto; }
+      /* Status-Chip: aktiv bauender vs. wartender Auftrag (macht die serielle Schlange klar). */
+      .q-status {
+        flex: 0 0 auto; font-size: var(--fs-xs); font-weight: 600;
+        padding: 1px var(--sp-2); border-radius: var(--r-pill); white-space: nowrap;
+      }
+      .q-status.active { color: #04201d; background: var(--accent); }
+      .q-status.wait { color: var(--text-dim); background: rgba(255,255,255,0.06); border: 1px solid var(--border-strong); }
+      .queue-row.waiting { opacity: 0.7; }
+      .q-eta { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); cursor: help; }
 
       .small { font-size: var(--fs-xs); }
 

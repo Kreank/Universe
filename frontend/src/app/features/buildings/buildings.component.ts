@@ -429,6 +429,9 @@ export class BuildingsComponent {
       error: (err) => {
         this.pending.set(null);
         this.notify.warning('Abbruch fehlgeschlagen', err?.error?.detail ?? 'Fehler.');
+        // Stale "fertig"-Zustand aufraeumen, falls ein WS-Event verpasst wurde.
+        this.load(planetId);
+        void this.state.reloadActivePlanet();
       },
     });
   }
