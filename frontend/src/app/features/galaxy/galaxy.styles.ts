@@ -170,6 +170,12 @@ export const galaxyStyles = `
     /* Touch-Targets >= 44px auf Mobile. */
     .ic { width: 44px; height: 44px; }
     .coordbox input { min-height: 44px; }
+    /* Mobile: Name + Chips bekommen die volle Breite (Chips duerfen umbrechen), die
+       Aktions-Buttons rutschen auf eine eigene Zeile darunter -> kein Zeilen-Ueberlauf
+       mehr durch den Truemmerfeld-Chip + Recycler-Button. */
+    .row { grid-template-columns: 26px 34px 1fr; }
+    .info { flex-wrap: wrap; row-gap: 2px; }
+    .acts { grid-column: 1 / -1; justify-content: flex-start; margin-top: var(--sp-1); }
   }
   .zone-banner { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: var(--sp-1) 0 var(--sp-2); }
   .zone-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px;
