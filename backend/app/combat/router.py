@@ -13,7 +13,7 @@ from app.combat.service import _debris
 from app.economy.service import get_research_levels
 from app.platform.balance import get_balance
 from app.platform.db import get_session
-from app.platform.models import CombatReport, Player
+from app.platform.models import CombatReport, Commander, Player
 from app.platform.security import get_current_player
 
 router = APIRouter(tags=["combat"])
@@ -67,9 +67,12 @@ class CombatSimRequest(BaseModel):
     attacker_ships: dict[str, int]
     defender_ships: dict[str, int] = {}
     defender_defenses: dict[str, int] = {}
-    # Optionale Verteidiger-Forschung (weapons_/shield_/armor_tech). Default 0 = unerforschter
-    # Gegner (abwaertskompatibel); gesetzt erlaubt "gegen Tech-N simulieren" (Befund #14).
+    # Optionale Verteidiger-Forschung (volles Tech-Dict: weapons_/shield_/armor_tech + Meisterschaften).
+    # Default leer = unerforschter Gegner (Tech 0); gesetzt erlaubt "gegen Tech-N simulieren".
     defender_tech: dict[str, int] = {}
+    # Optionaler eigener Commander (UUID): rechnet Moral-Band + Schiffsboni des Commanders in die
+    # Angreifer-Seite ein (wie der echte Kampf). Default None = ohne Commander.
+    commander_id: str | None = None
     seed: int | None = None
 
 
@@ -135,26 +138,82 @@ async def simulate_combat(
         bal.ships, bal.defenses,
     )
 
-    # Angreifer-Tech = echte Forschung des Spielers, Gegner-Tech = 0.
+    # Angreifer-Tech = VOLLE echte Forschung des Spielers (wie der echte Kampf, resolve_attack):
+    # nicht nur Waffen/Schild/Panzerung, sondern auch die Meisterschaften und forschungs-
+    # skalierten Kampf-Techs. Plus die imperiumsweite Antimaterie-Schmiede (Megastruktur).
+    # Vorher gingen nur 3 Stufen rein -> der Simulator rechnete die eigene Flotte zu schwach.
     research = await get_research_levels(session, player.id)
-    atk_tech = {
-        "weapons_tech": research.get("weapons_tech", 0),
-        "shield_tech": research.get("shield_tech", 0),
-        "armor_tech": research.get("armor_tech", 0),
-    }
-    # Verteidiger-Tech: Default 0, mit optional uebergebenen Stufen ueberschrieben (nur die
-    # drei Kampf-Stufen, defensiv gegen Negativwerte geklemmt).
-    def_tech = {"weapons_tech": 0, "shield_tech": 0, "armor_tech": 0}
-    for _k in def_tech:
-        _v = body.defender_tech.get(_k)
+    atk_tech = dict(research)
+    from app.megastructure.service import megastructure_levels
+    atk_tech["antimatter_forge"] = (
+        await megastructure_levels(session, player.id)
+    ).get("antimatter_forge", 0)
+
+    # Angreifer-Multiplikatoren wie im echten Kampf (resolve_attack):
+    #  - Doktrin (Spieler-Eigenschaft) und Flaggschiff-Kampf-Aura (Flotten-Eigenschaft) gelten IMMER.
+    #  - Commander (optional): Moral-Band-Multiplikator + schiffsklassen-spezifische Boni.
+    # (Bewusst NICHT abgebildet: Allianz-Koop und einmalige aktive Faehigkeiten — situativ, kein
+    # Bestandteil einer Was-waere-wenn-Stichprobe.)
+    from app.combat.service import _combat_aura_mult, _commander_mods
+    from app.platform.doctrine import combat_attack_mult
+    doctrine_mult = combat_attack_mult(player.doctrine)
+    aura_mult = _combat_aura_mult(attacker_ships)
+    attack_mult = doctrine_mult * aura_mult
+    ship_bonuses: dict[str, dict[str, float]] = {}
+    commander_meta: dict | None = None
+    if body.commander_id:
+        try:
+            cid = uuid.UUID(body.commander_id)
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail="Ungueltige Commander-ID.")
+        commander = await session.get(Commander, cid)
+        if commander is None or commander.player_id != player.id:
+            raise HTTPException(status_code=404, detail="Commander nicht gefunden.")
+        if commander.status != "active":
+            raise HTTPException(status_code=400, detail="Dieser Commander ist nicht einsatzbereit (im Training/verwundet).")
+        cmd_mult = _commander_mods(commander, len(attacker_ships))
+        attack_mult *= cmd_mult
+        from app.commander.bonuses import base_bonuses, resolve_ship_bonuses
+        focus = (commander.persona or {}).get("focus")
+        cmd_bonuses = base_bonuses(
+            commander.specialization, commander.rank, commander.traits or [], focus,
+            commander.grade or "C",
+        )
+        ship_bonuses, _spd = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(attacker_ships.keys()))
+        commander_meta = {
+            "name": commander.name, "morale": commander.morale,
+            "specialization": commander.specialization, "grade": commander.grade,
+            "attack_mult": round(cmd_mult, 3),
+        }
+
+    # Verteidiger-Tech: volles Dict (Default leer = Tech 0), Negativwerte geklemmt, sane Cap.
+    def_tech: dict[str, int] = {}
+    for _k, _v in (body.defender_tech or {}).items():
         if isinstance(_v, int) and not isinstance(_v, bool) and _v > 0:
-            def_tech[_k] = _v
+            def_tech[_k] = min(_v, 1000)
 
     seed = body.seed if body.seed is not None else random.randrange(1, 2 ** 62)
-    attacker = {"ships": attacker_ships, "tech": atk_tech, "attack_mult": 1.0, "ship_bonuses": {}}
+    attacker = {"ships": attacker_ships, "tech": atk_tech, "attack_mult": attack_mult, "ship_bonuses": ship_bonuses}
     defender = {"ships": defender_ships, "defenses": defender_defenses, "tech": def_tech, "attack_mult": 1.0}
 
     result = simulate_battle(attacker, defender, seed, bal.data)
+
+    def _tech_summary(t: dict) -> dict:
+        return {k: int(t.get(k, 0)) for k in (
+            "weapons_tech", "shield_tech", "armor_tech",
+            "weapons_mastery", "shield_mastery", "armor_mastery",
+        )}
+    sim_meta = {
+        "attacker": {
+            "tech": _tech_summary(atk_tech),
+            "antimatter_forge": int(atk_tech.get("antimatter_forge", 0)),
+            "doctrine": player.doctrine,
+            "doctrine_mult": round(doctrine_mult, 3),
+            "aura_mult": round(aura_mult, 3),
+            "commander": commander_meta,
+        },
+        "defender": {"tech": _tech_summary(def_tech)},
+    }
 
     debris_a = _debris(result["attacker_losses"])
     debris_d = _debris(result["defender_losses"])
@@ -170,6 +229,7 @@ async def simulate_combat(
         "defender_drive_disabled": result.get("defender_drive_disabled", {}),
         "defender_defense_disabled": result.get("defender_defense_disabled", {}),
         "defender_defense_rebuilt": {},  # Simulation persistiert nichts -> kein Wiederaufbau
+        "sim_meta": sim_meta,  # transparente Tech/Commander-Annahmen fuer die Kopfzeile
         "loot": {"metal": 0, "crystal": 0, "deuterium": 0},
         "debris": {"metal": round(debris_a["metal"] + debris_d["metal"], 1),
                    "crystal": round(debris_a["crystal"] + debris_d["crystal"], 1)},

@@ -335,6 +335,8 @@ export class ApiService {
     attacker_ships: Record<string, number>;
     defender_ships: Record<string, number>;
     defender_defenses: Record<string, number>;
+    defender_tech?: Record<string, number>;
+    commander_id?: string | null;
     seed?: number | null;
   }): Observable<CombatReport> {
     return this.http.post<CombatReport>('/api/combat/simulate', body);

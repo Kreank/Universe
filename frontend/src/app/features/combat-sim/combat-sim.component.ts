@@ -9,7 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
-import { CombatReport } from '../../core/models/api.models';
+import { CombatReport, Commander } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { navIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import { CombatReportComponent } from '../transmissions/combat-report.component';
@@ -112,8 +112,44 @@ interface PickRow {
                 />
               </label>
             }
+
+            <div class="sub-head">Forschung des Gegners</div>
+            <p class="tech-hint faint">Leer = Stufe 0 (unerforscht). Bestimmt Angriff/Schild/Hülle des Gegners.</p>
+            <div class="tech-grid">
+              @for (t of enemyTechFields; track t.key) {
+                <label class="tech-row">
+                  <span class="tech-label">{{ t.label }}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    class="tech-num"
+                    [ngModel]="enemyTech()[t.key] ?? null"
+                    (ngModelChange)="setEnemyTech(t.key, $event)"
+                    placeholder="0"
+                  />
+                </label>
+              }
+            </div>
           </div>
         </div>
+
+        <!-- Optionaler eigener Commander (Moral-Bonus + Schiffsboni wie im echten Kampf) -->
+        @if (commanders().length) {
+          <div class="card cmd-box">
+            <label class="cmd-toggle">
+              <input type="checkbox" [ngModel]="useCommander()" (ngModelChange)="useCommander.set($event)" />
+              <span><app-btn-icon [src]="navIcon('commanders')" glyph="🎖" [size]="16" /> Mit Commander rechnen</span>
+            </label>
+            @if (useCommander()) {
+              <select class="cmd-select" [ngModel]="selectedCommanderId()" (ngModelChange)="selectedCommanderId.set($event)">
+                @for (c of commanders(); track c.id) {
+                  <option [value]="c.id">{{ c.name }} · {{ c.specialization }} · Moral {{ c.morale }}</option>
+                }
+              </select>
+              <p class="tech-hint faint">Rechnet Moral-Band + schiffsklassen-spezifische Boni des Commanders auf deine Flotte.</p>
+            }
+          </div>
+        }
 
         <div class="actions">
           <button
@@ -194,6 +230,26 @@ interface PickRow {
       position: sticky; bottom: 0; padding-top: var(--sp-2); margin-top: var(--sp-2); }
     .err { color: var(--danger); font-size: var(--fs-sm); }
 
+    /* Gegner-Forschung: kompaktes Label-+-Zahl-Raster. */
+    .tech-hint { font-size: var(--fs-xs); margin: 0 0 var(--sp-2); }
+    .tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-1) var(--sp-3); }
+    .tech-row { display: grid; grid-template-columns: 1fr 4rem; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-1); border-radius: var(--r-sm); }
+    .tech-label { font-size: var(--fs-sm); color: var(--text-dim); }
+    .tech-num { width: 100%; text-align: right;
+      font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+    /* Commander-Box (volle Breite unter den beiden Spalten). */
+    .cmd-box { display: flex; flex-direction: column; gap: var(--sp-2); border-top: 2px solid var(--accent); }
+    .cmd-toggle { display: flex; align-items: center; gap: var(--sp-2); cursor: pointer;
+      font-size: var(--fs-base); color: var(--text); }
+    .cmd-toggle input { width: 18px; height: 18px; flex: 0 0 auto; }
+    .cmd-select { max-width: 360px; min-height: 40px; }
+
+    @media (max-width: 700px) {
+      .tech-grid { grid-template-columns: 1fr; }
+    }
+
     @media (max-width: 700px) {
       .cols { grid-template-columns: 1fr; }
       .row { grid-template-columns: 40px 1fr 4.5rem; }
@@ -220,9 +276,39 @@ export class CombatSimComponent {
   protected readonly enemyShipCounts = signal<Record<string, number>>({});
   protected readonly enemyDefCounts = signal<Record<string, number>>({});
 
+  /** Gegner-Forschung (Default 0 = unerforscht). Schlüssel = Tech-Keys der Engine. */
+  protected readonly enemyTech = signal<Record<string, number>>({});
+
+  /** Eigene Commander (nur einsatzbereite) für den optionalen Commander-Bonus. */
+  protected readonly commanders = signal<Commander[]>([]);
+  protected readonly useCommander = signal(false);
+  protected readonly selectedCommanderId = signal<string | null>(null);
+
   protected readonly result = signal<CombatReport | null>(null);
   protected readonly pending = signal(false);
   protected readonly error = signal<string | null>(null);
+
+  /** Einstellbare Gegner-Forschung (Kern-Kampftech + optionale Meisterschaften). */
+  protected readonly enemyTechFields: { key: string; label: string }[] = [
+    { key: 'weapons_tech', label: 'Waffentechnik' },
+    { key: 'shield_tech', label: 'Schildtechnik' },
+    { key: 'armor_tech', label: 'Panzerung' },
+    { key: 'weapons_mastery', label: 'Waffen-Meisterschaft' },
+    { key: 'shield_mastery', label: 'Schild-Meisterschaft' },
+    { key: 'armor_mastery', label: 'Panzer-Meisterschaft' },
+  ];
+
+  constructor() {
+    // Einsatzbereite eigene Commander laden (für den optionalen Commander-Bonus im Sim).
+    this.api.getCommanders().subscribe({
+      next: (list) => {
+        const active = (list ?? []).filter((c) => c.status === 'active');
+        this.commanders.set(active);
+        this.selectedCommanderId.set(active[0]?.id ?? null);
+      },
+      error: () => this.commanders.set([]),
+    });
+  }
 
   protected readonly balanceLoaded = computed(() => this.balance.value !== null);
 
@@ -289,12 +375,19 @@ export class CombatSimComponent {
     this.ownCounts.set(next);
   }
 
-  /** Setzt beide Seiten zurück. */
+  /** Setzt beide Seiten (inkl. Gegner-Tech) zurück. */
   clearAll(): void {
     this.ownCounts.set({});
     this.enemyShipCounts.set({});
     this.enemyDefCounts.set({});
+    this.enemyTech.set({});
     this.result.set(null);
+  }
+
+  /** Gegner-Forschungsstufe setzen (negatives/leeres -> 0). */
+  setEnemyTech(key: string, value: unknown): void {
+    const n = Math.max(0, Math.floor(Number(value) || 0));
+    this.enemyTech.update((m) => ({ ...m, [key]: n }));
   }
 
   /** Number-Input -> Signal (negatives/leeres wird zu 0). */
@@ -311,11 +404,14 @@ export class CombatSimComponent {
     }
     this.pending.set(true);
     this.error.set(null);
+    const commanderId = this.useCommander() ? this.selectedCommanderId() : null;
     this.api
       .simulateCombat({
         attacker_ships: prune(this.ownCounts()),
         defender_ships: prune(this.enemyShipCounts()),
         defender_defenses: prune(this.enemyDefCounts()),
+        defender_tech: prune(this.enemyTech()),
+        commander_id: commanderId,
       })
       .subscribe({
         next: (r) => {

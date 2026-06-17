@@ -654,6 +654,35 @@ export interface CombatRound {
   ambush?: boolean;
 }
 
+/** Kampf-Tech einer Seite (für die Simulator-Transparenz). */
+export interface CombatSimTech {
+  weapons_tech: number;
+  shield_tech: number;
+  armor_tech: number;
+  weapons_mastery: number;
+  shield_mastery: number;
+  armor_mastery: number;
+}
+
+/** Transparente Annahmen, mit denen der Simulator gerechnet hat (Tech, Doktrin, Commander). */
+export interface CombatSimMeta {
+  attacker: {
+    tech: CombatSimTech;
+    antimatter_forge: number;
+    doctrine: string | null;
+    doctrine_mult: number;
+    aura_mult: number;
+    commander: {
+      name: string;
+      morale: number;
+      specialization: string;
+      grade?: string;
+      attack_mult: number;
+    } | null;
+  };
+  defender: { tech: CombatSimTech };
+}
+
 export interface CombatReport {
   id: string;
   location: string;
@@ -678,6 +707,8 @@ export interface CombatReport {
   defender_defense_disabled?: Record<string, number>;
   /** Nach dem Kampf automatisch reparierte Verteidigung (70 % der zerstörten). */
   defender_defense_rebuilt?: Record<string, number>;
+  /** Nur im Kampf-Simulator: transparente Tech/Commander-Annahmen beider Seiten. */
+  sim_meta?: CombatSimMeta | null;
   loot: Partial<ResourceCost>;
   debris: Partial<ResourceCost>;
   created_at: string;

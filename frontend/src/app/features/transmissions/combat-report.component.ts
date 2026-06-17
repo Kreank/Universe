@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
-import { CombatReport, CombatRound } from '../../core/models/api.models';
+import { CombatReport, CombatRound, CombatSimTech } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { rangeIcon, resourceIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
@@ -93,6 +93,20 @@ const BAND_META: Record<string, { key: string; label: string; glyph: string }> =
             <span class="b-icon"><app-btn-icon [src]="resultIconSrc()" [glyph]="resultIcon()" [size]="24" /></span>
             <span class="b-text">{{ resultText() }}</span>
           </div>
+
+          @if (simMeta(); as m) {
+            <div class="sim-meta">
+              <div class="sm-title">Simulation — gerechnet mit:</div>
+              <div class="sm-row">
+                <span class="sm-tag you">DU</span>
+                <span class="sm-txt">{{ techLine(m.attacker.tech) }}@if (m.attacker.antimatter_forge) {<span> · Antimaterie-Schmiede {{ m.attacker.antimatter_forge }}</span>}@if (m.attacker.doctrine) {<span> · Doktrin: {{ m.attacker.doctrine }}</span>}@if (m.attacker.commander; as c) {<span class="sm-cmd"> · 🎖 {{ c.name }} (Moral {{ c.morale }})</span>} @else {<span class="faint"> · ohne Commander</span>}</span>
+              </div>
+              <div class="sm-row">
+                <span class="sm-tag foe">GEGNER</span>
+                <span class="sm-txt">{{ techLine(m.defender.tech) }}</span>
+              </div>
+            </div>
+          }
 
           <!-- Zwei Seiten: Du vs. Gegner ----------------------------------- -->
           <div class="sides">
@@ -251,6 +265,21 @@ const BAND_META: Record<string, { key: string; label: string; glyph: string }> =
     .b-win { background: rgba(70, 224, 138, 0.14); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); color: var(--ok); }
     .b-loss { background: rgba(255, 77, 125, 0.14); border: 1px solid var(--danger-dim); color: var(--danger); }
     .b-draw { background: rgba(150, 172, 214, 0.10); border: 1px solid var(--border-strong); color: var(--text-dim); }
+
+    /* Simulator-Transparenz: Tech/Commander-Annahmen direkt unter dem Ergebnis-Banner. */
+    .sim-meta { margin: calc(-1 * var(--sp-3)) 0 var(--sp-5); padding: var(--sp-2) var(--sp-3);
+      border: 1px solid var(--border); border-radius: var(--r-md); background: rgba(255,255,255,0.03); }
+    .sm-title { font-family: var(--font-display); font-size: var(--fs-xs); text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: var(--sp-1); }
+    .sm-row { display: flex; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-sm);
+      color: var(--text-dim); margin-top: 2px; }
+    .sm-txt { min-width: 0; }
+    .sm-cmd { color: var(--accent); }
+    .sm-tag { flex: 0 0 auto; font-family: var(--font-display); font-size: var(--fs-xs); font-weight: 700;
+      letter-spacing: 0.06em; padding: 1px var(--sp-2); border-radius: var(--r-sm); }
+    .sm-tag.you { background: var(--accent); color: #04201d; }
+    .sm-tag.foe { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger);
+      border: 1px solid var(--danger-dim); }
 
     .sides { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); margin-bottom: var(--sp-5); }
     .side { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); }
@@ -479,6 +508,18 @@ export class CombatReportComponent {
 
   protected readonly lootRows = computed(() => resRows(this.reportData()?.loot));
   protected readonly debrisRows = computed(() => resRows(this.reportData()?.debris));
+
+  /** Simulator-Transparenz: mit welcher Tech/Commander gerechnet wurde (nur im Sim gesetzt). */
+  protected readonly simMeta = computed(() => this.reportData()?.sim_meta ?? null);
+
+  /** Kompakte Tech-Zeile: Kern-Kampftech + Meisterschaften (nur wenn > 0). */
+  protected techLine(t: CombatSimTech): string {
+    const parts = [`Waffen ${t.weapons_tech}`, `Schild ${t.shield_tech}`, `Panzerung ${t.armor_tech}`];
+    if (t.weapons_mastery) { parts.push(`Waffen-M. ${t.weapons_mastery}`); }
+    if (t.shield_mastery) { parts.push(`Schild-M. ${t.shield_mastery}`); }
+    if (t.armor_mastery) { parts.push(`Panzer-M. ${t.armor_mastery}`); }
+    return parts.join(' · ');
+  }
 
   fmt(n: number): string {
     return Math.round(n).toLocaleString('de-DE');
