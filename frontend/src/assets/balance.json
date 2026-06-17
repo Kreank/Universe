@@ -635,32 +635,88 @@
       "concurrent_slots_per_level": 1
     },
     "grades": {
-      "_note": "Gueteklasse F..SSS (Doku 05a). Angeborenes Potenzial, orthogonal zum Rang. potency skaliert Schiffsboni/Span. Bestands-Commander = C (Baseline). Ausbildungs-Tiers verschieben die Verteilung nach oben; SSS nur Experimentell (max 5%). Gewichte werden normalisiert (Summe egal). F-D-Bucket aus 05a §3.1 gleichmaessig auf F/E/D verteilt.",
+      "_note": "Gueteklasse E..S (6 Stufen). Angeborenes Potenzial, orthogonal zum Rang. potency skaliert Schiffsboni/Span. Neue Commander default = C (Baseline). Ausbildungs-Programme bilden eine glatte Leiter (Standard E/D -> gehoben D/C -> Elite C/B/A -> experimentell A/S). aliases bilden Alt-Grade (F/SS/SSS) auf das neue Schema ab, ohne DB-Write. Gewichte werden normalisiert (Summe egal).",
       "default": "C",
-      "order": ["F", "E", "D", "C", "B", "A", "S", "SS", "SSS"],
+      "order": ["E", "D", "C", "B", "A", "S"],
       "potency": {
-        "F": 0.60, "E": 0.75, "D": 0.90, "C": 1.00, "B": 1.15,
-        "A": 1.30, "S": 1.50, "SS": 1.75, "SSS": 2.00
+        "E": 0.80, "D": 0.90, "C": 1.00, "B": 1.15, "A": 1.32, "S": 1.50
       },
+      "aliases": { "F": "E", "SS": "S", "SSS": "S" },
       "training_base_cost": { "metal": 2000, "crystal": 1500, "deuterium": 500 },
       "training_tiers": [
         {
           "key": "standard", "label": "Standard", "cost_mult": 1,
-          "weights": { "F": 28.33, "E": 28.33, "D": 28.34, "C": 12, "B": 3, "A": 0, "S": 0, "SS": 0, "SSS": 0 }
+          "weights": { "E": 70, "D": 30 }
         },
         {
           "key": "gehoben", "label": "Gehoben", "cost_mult": 3,
-          "weights": { "F": 15, "E": 15, "D": 15, "C": 30, "B": 18, "A": 6, "S": 1, "SS": 0, "SSS": 0 }
+          "weights": { "D": 55, "C": 45 }
         },
         {
           "key": "elite", "label": "Elite", "cost_mult": 8,
-          "weights": { "F": 8.33, "E": 8.33, "D": 8.34, "C": 20, "B": 30, "A": 21.5, "S": 3, "SS": 0.5, "SSS": 0 }
+          "weights": { "C": 30, "B": 45, "A": 25 }
         },
         {
           "key": "experimentell", "label": "Experimentell", "cost_mult": 20,
-          "weights": { "F": 1.67, "E": 1.67, "D": 1.66, "C": 15, "B": 30, "A": 30, "S": 12, "SS": 3, "SSS": 5 }
+          "weights": { "A": 65, "S": 35 }
         }
       ]
+    },
+    "equipment": {
+      "_note": "Kommandeurs-Ausruestung: 4 Slots (head/hands/chest/shoes). Item-bonuses in der Form {stat,target,pct} wie commander.combat_bonuses -> fliessen (moral-skaliert) in die Schiffsboni ein. rarity multipliziert die Item-pct (NICHT die Set-Boni). 4er-Sets geben bei 2/4 getragenen Teilen Zusatzboni. Quellen: Quests/Expeditionen/globale Events (Drops) + Akademie-Fertigung (craft). P2W-frei: nur erspielt.",
+      "slots": ["head", "hands", "chest", "shoes"],
+      "slot_labels": { "head": "Kopf", "hands": "Haende", "chest": "Brust", "shoes": "Schuhe" },
+      "rarities": {
+        "common": { "label": "Gewoehnlich", "mult": 1.0 },
+        "rare":   { "label": "Selten",      "mult": 1.35 },
+        "epic":   { "label": "Episch",      "mult": 1.8 }
+      },
+      "sets": {
+        "fighter": { "label": "Jaeger-Schwarm", "ship_class": "fighter",
+          "bonus": { "2": [{ "stat": "speed", "target": "all", "pct": 0.05 }],
+                     "4": [{ "stat": "attack", "target": "fighter", "pct": 0.12 }] } },
+        "cruiser": { "label": "Kreuzer-Bataillon", "ship_class": "cruiser",
+          "bonus": { "2": [{ "stat": "shield", "target": "cruiser", "pct": 0.06 }],
+                     "4": [{ "stat": "attack", "target": "cruiser", "pct": 0.10 }] } },
+        "capital": { "label": "Schlachtlinie", "ship_class": "capital",
+          "bonus": { "2": [{ "stat": "shield", "target": "capital", "pct": 0.08 }],
+                     "4": [{ "stat": "attack", "target": "capital", "pct": 0.12 }] } },
+        "civil": { "label": "Bergungs-Montur", "ship_class": "civil",
+          "bonus": { "2": [{ "stat": "speed", "target": "all", "pct": 0.06 }],
+                     "4": [{ "stat": "shield", "target": "civil", "pct": 0.12 }] } }
+      },
+      "items": {
+        "fighter_helm":      { "slot": "head",  "set": "fighter", "label": "Jaeger-Helm",        "bonuses": [{ "stat": "attack", "target": "fighter", "pct": 0.06 }] },
+        "fighter_gloves":    { "slot": "hands", "set": "fighter", "label": "Jaeger-Handschuhe",  "bonuses": [{ "stat": "attack", "target": "fighter", "pct": 0.05 }] },
+        "fighter_vest":      { "slot": "chest", "set": "fighter", "label": "Jaeger-Flugweste",   "bonuses": [{ "stat": "shield", "target": "fighter", "pct": 0.06 }] },
+        "fighter_boots":     { "slot": "shoes", "set": "fighter", "label": "Jaeger-Schubstiefel","bonuses": [{ "stat": "speed",  "target": "all",     "pct": 0.08 }] },
+        "cruiser_helm":      { "slot": "head",  "set": "cruiser", "label": "Taktik-Helm",        "bonuses": [{ "stat": "attack", "target": "cruiser", "pct": 0.06 }] },
+        "cruiser_gloves":    { "slot": "hands", "set": "cruiser", "label": "Taktik-Handschuhe",  "bonuses": [{ "stat": "attack", "target": "cruiser", "pct": 0.05 }] },
+        "cruiser_plate":     { "slot": "chest", "set": "cruiser", "label": "Kreuzer-Panzer",     "bonuses": [{ "stat": "shield", "target": "cruiser", "pct": 0.08 }] },
+        "cruiser_boots":     { "slot": "shoes", "set": "cruiser", "label": "Einsatzstiefel",     "bonuses": [{ "stat": "speed",  "target": "all",     "pct": 0.05 }] },
+        "capital_helm":      { "slot": "head",  "set": "capital", "label": "Kommandanten-Helm",  "bonuses": [{ "stat": "attack", "target": "capital", "pct": 0.06 }] },
+        "capital_gauntlets": { "slot": "hands", "set": "capital", "label": "Panzerhandschuhe",   "bonuses": [{ "stat": "attack", "target": "capital", "pct": 0.06 }] },
+        "capital_cuirass":   { "slot": "chest", "set": "capital", "label": "Schlacht-Kuerass",   "bonuses": [{ "stat": "shield", "target": "capital", "pct": 0.10 }] },
+        "capital_greaves":   { "slot": "shoes", "set": "capital", "label": "Panzerstiefel",      "bonuses": [{ "stat": "shield", "target": "capital", "pct": 0.06 }] },
+        "salvage_visor":     { "slot": "head",  "set": "civil",   "label": "Bergungs-Visier",    "bonuses": [{ "stat": "shield", "target": "civil",   "pct": 0.08 }] },
+        "salvage_gloves":    { "slot": "hands", "set": "civil",   "label": "Arbeitshandschuhe",  "bonuses": [{ "stat": "speed",  "target": "all",     "pct": 0.05 }] },
+        "salvage_rig":       { "slot": "chest", "set": "civil",   "label": "Bergungs-Rig",       "bonuses": [{ "stat": "shield", "target": "civil",   "pct": 0.08 }] },
+        "salvage_boots":     { "slot": "shoes", "set": "civil",   "label": "Magnetstiefel",      "bonuses": [{ "stat": "speed",  "target": "all",     "pct": 0.10 }] }
+      },
+      "craft": {
+        "_note": "Akademie-Fertigung: jedes Katalog-Item gegen Ressourcen herstellbar (rarity=common). academy_min = benoetigte Akademie-Stufe.",
+        "academy_min": 2,
+        "cost": { "metal": 8000, "crystal": 6000, "deuterium": 2000 }
+      },
+      "drops": {
+        "_note": "Drop-Chance je Quelle (pro Belohnungs-Event) + Raritaets-Gewichte. grant_item waehlt ein zufaelliges Katalog-Item + Raritaet.",
+        "chance": { "quest": 0.18, "expedition": 0.08, "global_event": 0.45 },
+        "rarity_weights": {
+          "quest":        { "common": 70, "rare": 27, "epic": 3 },
+          "expedition":   { "common": 55, "rare": 35, "epic": 10 },
+          "global_event": { "common": 40, "rare": 42, "epic": 18 }
+        }
+      }
     }
   },
 
@@ -999,7 +1055,28 @@
       "regen_quiet_seconds": 7200,
       "defense_tech": { "weapons_tech": 12, "shield_tech": 12, "armor_tech": 12 },
       "defense_base": { "plasma_turret": 60, "gauss_cannon": 80, "heavy_laser": 200, "large_shield_dome": 1 },
-      "defense_per_radius": { "plasma_turret": 20, "gauss_cannon": 25, "heavy_laser": 60 }
+      "defense_per_radius": { "plasma_turret": 20, "gauss_cannon": 25, "heavy_laser": 60 },
+      "_relocate_note": "Umstationieren (2026-06-17): Station kann auf einen freien Slot DERSELBEN Galaxie umziehen. Reisezeit = max(min_seconds, Distanz * seconds_per_distance) — bewusst SEHR langsam (Stunden). Deuterium-Kosten aus dem Pool = max(min_deuterium, Distanz * deuterium_per_distance). Waehrend des Transits ist die Einflusszone AUS (status='transit'), und die Station reist wie eine langsame Flotte: feindliche Abfang-Patrouillen auf der galaxie-internen Route koennen sie stellen. Im Abfang verteidigt sie mit ihren Abwehrbatterien (+ optionaler Eskorte); verliert sie das Gefecht, ist die Station ZERSTOERT. Ziel bei Ankunft belegt -> Rueckkehr zum Start (erneute Reisezeit).",
+      "relocate": {
+        "seconds_per_distance": 3,
+        "min_seconds": 7200,
+        "deuterium_per_distance": 5,
+        "min_deuterium": 5000
+      },
+      "_modules_note": "Stations-Module (Slots, 2026-06-17): begrenzte Slots = base_slots + slots_per_radius_level * Ausbau-Stufe. In jeden Slot wird ein Modul montiert (aus dem Allianz-Pool). Module wirken ueber die bestehende Kampf-Engine: turret/shield_generator/armor_plating heben die effektive weapons_tech/shield_tech/armor_tech der Abwehrbatterien (mehr Angriff/Schild/Huelle im Gefecht — Abfang UND Belagerung). hull_reinforcement hebt die max-HP (Belagerungs-Puffer). thruster senkt die Umstationierungs-Reisezeit (relocate_speed_pct, kumulativ, gedeckelt thruster_speed_cap). Abbau erstattet unmount_refund_pct der Kosten.",
+      "modules": {
+        "base_slots": 2,
+        "slots_per_radius_level": 1,
+        "unmount_refund_pct": 0.5,
+        "thruster_speed_cap": 0.5,
+        "catalog": {
+          "turret":             { "label": "Geschuetzturm",      "weapons_tech": 2, "cost": { "metal": 30000, "crystal": 15000, "deuterium": 5000 } },
+          "shield_generator":   { "label": "Schildgenerator",    "shield_tech": 2,  "cost": { "metal": 15000, "crystal": 30000, "deuterium": 5000 } },
+          "armor_plating":      { "label": "Panzerplatte",       "armor_tech": 2,   "cost": { "metal": 40000, "crystal": 5000,  "deuterium": 5000 } },
+          "hull_reinforcement": { "label": "Huellenverstaerker", "max_hp": 100000,  "cost": { "metal": 50000, "crystal": 30000, "deuterium": 10000 } },
+          "thruster":           { "label": "Schubtriebwerk",     "relocate_speed_pct": 0.15, "cost": { "metal": 20000, "crystal": 20000, "deuterium": 20000 } }
+        }
+      }
     }
   }
 }

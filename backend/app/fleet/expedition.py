@@ -261,6 +261,13 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
     except Exception:  # noqa: BLE001 — Flavor darf die Expedition nie stoeren
         pass
 
+    # Expeditions-Drop: Chance auf ein Kommandeurs-Ausruestungsstueck (nicht bei Totalverlust).
+    if not result.get("wiped"):
+        from app.commander.equipment import maybe_grant_item
+        dropped = await maybe_grant_item(session, fleet.player_id, "expedition", rng)
+        if dropped is not None:
+            result["found_equipment"] = dropped.item_key
+
     log.info("Expedition @ %s [%dh] -> %s", result["location"], hours, otype)
     return result
 

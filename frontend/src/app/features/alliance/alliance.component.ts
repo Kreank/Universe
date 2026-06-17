@@ -29,7 +29,10 @@ import { CostLineComponent } from '../../shared/components/cost-line.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { TabBarComponent, TabDef } from '../../shared/components/tab-bar.component';
-import { navIcon, resourceIcon, statIcon, techIcon, uiIcon } from '../../core/models/icon-assets';
+import { CountdownComponent } from '../../shared/components/countdown.component';
+import { navIcon, resourceIcon, statIcon, techIcon, uiIcon, defenseIcon, shipIcon } from '../../core/models/icon-assets';
+import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
+import { PlanetUnit } from '../../core/models/api.models';
 
 /** Lesbare Label + Glyph der vier Forschungs-Zweige (Reihenfolge = Anzeige). */
 const TREE_ORDER = ['piracy', 'economy', 'trade', 'protection'] as const;
@@ -57,7 +60,7 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
 @Component({
   selector: 'app-alliance',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ConfirmDialogComponent, CostLineComponent, IconTileComponent, BtnIconComponent, TabBarComponent],
+  imports: [FormsModule, ConfirmDialogComponent, CostLineComponent, IconTileComponent, BtnIconComponent, TabBarComponent, CountdownComponent],
   template: `
     <section class="alliance">
       <header class="page-head">
@@ -286,9 +289,41 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
                 </div>
                 <div class="station-meta small muted">
                   Zonen-Radius {{ zoneRadius(a, s) }} Sys (Stufe {{ s.radius_level }}) ·
-                  <app-btn-icon [src]="statIcon('fuel')" glyph="⛽" [size]="14" /> {{ s.fuel }} Deut · <app-btn-icon [src]="statIcon('hull')" glyph="❤" [size]="14" /> {{ s.hp }} HP
+                  <app-btn-icon [src]="statIcon('fuel')" glyph="⛽" [size]="14" /> {{ s.fuel }} Deut ·
+                  <app-btn-icon [src]="statIcon('hull')" glyph="❤" [size]="14" /> {{ s.hp }}{{ s.stats ? ' / ' + s.stats.max_hp : '' }} HP
                 </div>
-                @if (isOfficerPlus() && s.status !== 'destroyed') {
+
+                <!-- Kampfwerte (Abwehrbatterien + Summen) -->
+                @if (s.stats; as st) {
+                  <div class="station-stats small">
+                    <span class="ss"><app-btn-icon [src]="statIcon('attack')" glyph="⚔" [size]="13" /> {{ st.attack_total }} Angriff</span>
+                    <span class="ss"><app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="13" /> {{ st.shield_total }} Schild</span>
+                    @if (st.slots !== undefined) {
+                      <span class="ss muted">Slots {{ st.slots_used ?? 0 }}/{{ st.slots }}</span>
+                    }
+                    <span class="ss muted">Batterien:</span>
+                    @for (b of battList(st.defenses); track b.type) {
+                      <span class="batt"><app-btn-icon [src]="defenseIcon(b.type)" glyph="🔫" [size]="13" /> {{ b.count }}× {{ b.label }}</span>
+                    }
+                    @if (mountedModules(a, s).length) {
+                      <span class="ss muted">Module:</span>
+                      @for (mo of mountedModules(a, s); track mo.type) {
+                        <span class="batt">⚙ {{ mo.count }}× {{ mo.label }}</span>
+                      }
+                    }
+                  </div>
+                }
+
+                <!-- Transit-Status -->
+                @if (s.status === 'transit' && s.transit; as tr) {
+                  <div class="transit-banner small">
+                    🛰 {{ tr.returning ? 'Rückkehr zum Ausgangsort' : ('Unterwegs nach ' + (tr.target ? tr.target[0] + ':' + tr.target[1] + ':' + tr.target[2] : '?')) }}
+                    · Ankunft @if (tr.arrive_at) { <app-countdown [target]="tr.arrive_at" /> }
+                    <div class="muted">Einflusszone INAKTIV · unterwegs verwundbar (Abfang)</div>
+                  </div>
+                }
+
+                @if (isOfficerPlus() && (s.status === 'active' || s.status === 'inactive')) {
                   <div class="station-act">
                     <span class="refuel">
                       <input
@@ -311,6 +346,11 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
                     >
                       Radius ausbauen
                     </button>
+                    @if (s.status === 'active') {
+                      <button class="btn btn-ghost btn-sm" type="button" [disabled]="busy()" (click)="toggleReloc(s)">
+                        🛰 Umstationieren
+                      </button>
+                    }
                   </div>
                   @if (s.radius_level < a.station_config.max_radius) {
                     <div class="upgrade-cost">
@@ -318,6 +358,66 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
                       <app-cost-line [cost]="a.station_config.radius_upgrade_cost" [available]="poolAvail(a)" />
                     </div>
                   }
+
+                  <!-- Umstationieren-Formular -->
+                  @if (relocOpen() === s.id) {
+                    <div class="reloc-form">
+                      <div class="small muted">Ziel (gleiche Galaxie {{ s.galaxy }}), freier Slot:</div>
+                      <div class="coord-row">
+                        <span class="mono muted">{{ s.galaxy }}</span><span class="sep">:</span>
+                        <input class="mini" type="number" min="1" [ngModel]="relocS()" (ngModelChange)="relocS.set(+$event || 1)" placeholder="Sys" />
+                        <span class="sep">:</span>
+                        <input class="mini" type="number" min="1" [ngModel]="relocP()" (ngModelChange)="relocP.set(+$event || 1)" placeholder="Pos" />
+                      </div>
+                      @if (escortShips().length) {
+                        <div class="small muted">Eskorte vom aktiven Planeten ({{ activePlanet()?.name }}) — reist mit & kämpft im Abfang:</div>
+                        <div class="escort-grid">
+                          @for (e of escortShips(); track e.type) {
+                            <span class="escort-row">
+                              <app-btn-icon [src]="shipIcon(e.type)" glyph="🚀" [size]="13" /> {{ e.label }}
+                              <input class="mini" type="number" min="0" [max]="e.count" [ngModel]="escortCounts()[e.type] || 0" (ngModelChange)="setEscort(e.type, +$event || 0)" />
+                              <span class="muted small">/{{ e.count }}</span>
+                            </span>
+                          }
+                        </div>
+                      } @else {
+                        <div class="small muted">Kein aktiver Planet mit Schiffen für eine Eskorte — die Station reist ungeschützt.</div>
+                      }
+                      <button class="btn btn-primary btn-sm" type="button" [disabled]="busy()" (click)="askRelocate(a, s)">
+                        Reise starten
+                      </button>
+                    </div>
+                  }
+
+                  <!-- Module montieren / abbauen -->
+                  <div class="module-mgmt">
+                    <div class="small muted">
+                      Module ({{ s.stats?.slots_used ?? 0 }}/{{ s.stats?.slots ?? 0 }} Slots · aus dem Pool · mehr Slots via Radius-Ausbau):
+                    </div>
+                    @if (mountedModules(a, s).length) {
+                      <div class="module-row">
+                        @for (mo of mountedModules(a, s); track mo.type) {
+                          <span class="mod-chip">
+                            ⚙ {{ mo.count }}× {{ mo.label }}
+                            <button class="btn btn-ghost btn-xs" type="button" [disabled]="busy()" title="Eines abbauen (Teil-Refund)" (click)="unmountMod(s, mo.type)">−</button>
+                          </span>
+                        }
+                      </div>
+                    }
+                    <div class="module-catalog">
+                      @for (mc of moduleCatalog(a); track mc.type) {
+                        <button
+                          class="btn btn-ghost btn-sm mod-add"
+                          type="button"
+                          [disabled]="busy() || (s.stats?.slots_used ?? 0) >= (s.stats?.slots ?? 0) || !canAfford(mc.cost, a)"
+                          [title]="mc.cost.metal + ' M · ' + mc.cost.crystal + ' K · ' + mc.cost.deuterium + ' D'"
+                          (click)="mountMod(s, mc.type)"
+                        >
+                          + {{ mc.label }}
+                        </button>
+                      }
+                    </div>
+                  </div>
                 }
                 </div>
               </div>
@@ -688,6 +788,83 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
         color: var(--danger);
         background: rgba(255, 77, 125, 0.12);
       }
+      .st-transit {
+        color: var(--bg-deep);
+        background: var(--info, #6db3ff);
+      }
+
+      /* Kampfwerte */
+      .station-stats {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sp-1) var(--sp-3);
+        margin: var(--sp-1) 0;
+      }
+      .station-stats .ss { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; }
+      .station-stats .batt { display: inline-flex; align-items: center; gap: 3px; color: var(--text-dim); }
+
+      /* Transit-Banner */
+      .transit-banner {
+        margin: var(--sp-2) 0;
+        padding: var(--sp-2) var(--sp-3);
+        border-radius: var(--r-md, 8px);
+        border: 1px solid var(--border-strong);
+        background: rgba(109, 179, 255, 0.08);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sp-1) var(--sp-2);
+      }
+
+      /* Umstationieren-Formular */
+      .reloc-form {
+        margin-top: var(--sp-2);
+        padding: var(--sp-2) var(--sp-3);
+        border-radius: var(--r-md, 8px);
+        border: 1px dashed var(--border-strong);
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-2);
+      }
+      .escort-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--sp-1) var(--sp-3);
+      }
+      .escort-row { display: inline-flex; align-items: center; gap: 4px; }
+      .escort-row .mini { width: 56px; }
+
+      /* Modul-Verwaltung */
+      .module-mgmt {
+        margin-top: var(--sp-2);
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-1);
+      }
+      .module-row, .module-catalog {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--sp-1) var(--sp-2);
+        align-items: center;
+      }
+      .mod-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 1px var(--sp-2);
+        border-radius: var(--r-pill);
+        border: 1px solid var(--border-strong);
+        font-size: var(--fs-xs);
+      }
+      .mod-chip .btn-xs {
+        min-width: 18px;
+        padding: 0 5px;
+        line-height: 1.4;
+        color: var(--text-faint);
+      }
+      .mod-chip .btn-xs:hover:not(:disabled) { color: var(--danger); }
+      .mod-add { white-space: nowrap; }
 
       .coord-row {
         display: flex;
@@ -747,6 +924,16 @@ export class AllianceComponent implements OnInit {
   protected readonly stS = signal(1);
   protected readonly stP = signal(1);
   protected readonly refuelAmt = signal<Record<string, number>>({});
+
+  // Station umstationieren (Transit)
+  protected readonly defenseIcon = defenseIcon;
+  protected readonly activePlanet = this.state.activePlanet;
+  /** Welche Station gerade das Umstationieren-Formular offen hat (null = keins). */
+  protected readonly relocOpen = signal<string | null>(null);
+  protected readonly relocS = signal(1);
+  protected readonly relocP = signal(1);
+  /** Eskort-Stückzahlen je Schiffstyp (vom aktiven Planeten). */
+  protected readonly escortCounts = signal<Record<string, number>>({});
 
   protected readonly myId = computed(() => this.auth.player()?.id ?? null);
   protected readonly isFounder = computed(() => this.alliance()?.my_role === 'founder');
@@ -845,7 +1032,10 @@ export class AllianceComponent implements OnInit {
   }
 
   stationStatus(status: string): string {
-    return status === 'active' ? 'Aktiv' : status === 'inactive' ? 'Inaktiv' : 'Zerstört';
+    return status === 'active' ? 'Aktiv'
+      : status === 'inactive' ? 'Inaktiv'
+      : status === 'transit' ? 'Unterwegs'
+      : 'Zerstört';
   }
 
   poolCost(a: AllianceOverview): ResourceCost {
@@ -1082,5 +1272,127 @@ export class AllianceComponent implements OnInit {
       'Errichtet',
       `Station bei [${this.stG()}:${this.stS()}:${this.stP()}] gebaut.`,
     );
+  }
+
+  // -- Umstationieren -----------------------------------------------------------
+
+  /** Öffnet/schließt das Umstationieren-Formular für eine Station. */
+  toggleReloc(s: AllianceStation): void {
+    this.relocOpen.set(this.relocOpen() === s.id ? null : s.id);
+    this.relocS.set(s.system);
+    this.relocP.set(s.position);
+    this.escortCounts.set({});
+  }
+
+  setEscort(type: string, val: number): void {
+    this.escortCounts.update((m) => ({ ...m, [type]: Math.max(0, Math.floor(val || 0)) }));
+  }
+
+  /** Abwehrbatterien einer Station als Liste mit Klarnamen (für die Werte-Anzeige). */
+  battList(defenses: Record<string, number>): { type: string; count: number; label: string }[] {
+    return Object.entries(defenses || {}).map(([type, count]) => ({
+      type, count, label: metaFor(DEFENSE_META, type).label,
+    }));
+  }
+
+  /** Schiffe des aktiven Planeten (für die Eskort-Auswahl), nur Typen mit Bestand. */
+  escortShips(): { type: string; count: number; label: string }[] {
+    const ships: PlanetUnit[] = this.activePlanet()?.ships ?? [];
+    return ships
+      .filter((u) => u.count > 0)
+      .map((u) => ({ type: u.type, count: u.count, label: metaFor(SHIP_META, u.type).label }));
+  }
+
+  protected readonly shipIcon = shipIcon;
+
+  /** Eskort-Dict (nur Typen mit Stückzahl > 0). */
+  protected readonly relocEscort = computed<Record<string, number>>(() => {
+    const out: Record<string, number> = {};
+    for (const [t, n] of Object.entries(this.escortCounts())) {
+      if (n > 0) out[t] = n;
+    }
+    return out;
+  });
+
+  /** Reisezeit-Schätzung (Sekunden) für die Bestätigung (spiegelt das Backend). */
+  private relocTravelSeconds(a: AllianceOverview, s: AllianceStation): number {
+    const rc = (a.station_config['relocate'] as Record<string, number>) || {};
+    const dist = this.relocDistance(s);
+    return Math.max(rc['min_seconds'] ?? 7200, Math.round(dist * (rc['seconds_per_distance'] ?? 3)));
+  }
+
+  /** OGame-Distanz innerhalb der Galaxie (System + Position) — gespiegelt für die Anzeige. */
+  private relocDistance(s: AllianceStation): number {
+    const ds = Math.abs(this.relocS() - s.system);
+    const dp = Math.abs(this.relocP() - s.position);
+    if (ds > 0) return 2700 + 95 * ds;
+    if (dp > 0) return 1000 + 5 * dp;
+    return 5;
+  }
+
+  askRelocate(a: AllianceOverview, s: AllianceStation): void {
+    const tg = s.galaxy, ts = this.relocS(), tp = this.relocP();
+    if (ts === s.system && tp === s.position) {
+      this.notify.warning('Kein Ziel', 'Die Station steht bereits an dieser Position.');
+      return;
+    }
+    const secs = this.relocTravelSeconds(a, s);
+    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+    const rc = (a.station_config['relocate'] as Record<string, number>) || {};
+    const deut = Math.max(rc['min_deuterium'] ?? 5000, Math.round(this.relocDistance(s) * (rc['deuterium_per_distance'] ?? 5)));
+    const escortN = Object.values(this.relocEscort()).reduce((x, y) => x + y, 0);
+    this.confirmReq.set({
+      title: 'Station umstationieren?',
+      message:
+        `Die Station reist nach ${tg}:${ts}:${tp} (~${h}h ${m}min, ${deut} Deuterium aus dem Pool). ` +
+        `Während der Reise ist die Einflusszone AUS und die Station kann unterwegs abgefangen werden — ` +
+        `verliert sie ein Gefecht, ist sie ZERSTÖRT. ` +
+        (escortN > 0 ? `Eskorte: ${escortN} Schiffe vom aktiven Planeten reisen mit.` : `Ohne Eskorte = hohes Risiko.`),
+      confirmLabel: '🛰 Umstationieren',
+      action: () => this.relocate(s),
+    });
+  }
+
+  private relocate(s: AllianceStation): void {
+    const escort = this.relocEscort();
+    const planetId = this.activePlanet()?.id ?? null;
+    this.run(
+      this.api.relocateStation(s.id, {
+        galaxy: s.galaxy, system: this.relocS(), position: this.relocP(),
+        escort: Object.keys(escort).length ? escort : undefined,
+        escort_planet_id: Object.keys(escort).length ? planetId : undefined,
+      }),
+      'Umstationiert',
+      `Station [${s.coords}] hat den Anker gelöst und reist los.`,
+    );
+    this.relocOpen.set(null);
+  }
+
+  // -- Module (Slots) -----------------------------------------------------------
+
+  /** Modul-Katalog der Station (aus station_config) als Liste mit Kosten. */
+  moduleCatalog(a: AllianceOverview): { type: string; label: string; cost: ResourceCost }[] {
+    const mods = (a.station_config['modules'] as Record<string, unknown>) || {};
+    const cat = (mods['catalog'] as Record<string, { label: string; cost: ResourceCost }>) || {};
+    return Object.entries(cat).map(([type, spec]) => ({ type, label: spec.label, cost: spec.cost }));
+  }
+
+  moduleLabel(a: AllianceOverview, type: string): string {
+    const cat = (((a.station_config['modules'] as Record<string, unknown>) || {})['catalog'] as Record<string, { label: string }>) || {};
+    return cat[type]?.label ?? type;
+  }
+
+  /** Montierte Module einer Station als Liste mit Klarnamen. */
+  mountedModules(a: AllianceOverview, s: AllianceStation): { type: string; count: number; label: string }[] {
+    const mods = s.stats?.modules ?? {};
+    return Object.entries(mods).map(([type, count]) => ({ type, count, label: this.moduleLabel(a, type) }));
+  }
+
+  mountMod(s: AllianceStation, type: string): void {
+    this.run(this.api.mountStationModule(s.id, type), 'Modul montiert', `${this.moduleLabel(this.alliance()!, type)} an Station [${s.coords}] montiert.`);
+  }
+
+  unmountMod(s: AllianceStation, type: string): void {
+    this.run(this.api.unmountStationModule(s.id, type), 'Modul abgebaut', `${this.moduleLabel(this.alliance()!, type)} von Station [${s.coords}] abgebaut.`);
   }
 }

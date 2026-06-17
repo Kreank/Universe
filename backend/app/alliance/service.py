@@ -243,6 +243,12 @@ async def deposit(session: AsyncSession, player: Player, planet_id: uuid.UUID, r
 
 # -- Serialisierung -------------------------------------------------------------
 
+def _station_stats(s: AllianceStation) -> dict:
+    """Kampfwerte einer Station fuer die Anzeige (lazy import wegen Zirkularitaet)."""
+    from app.alliance.station import station_combat_stats
+    return station_combat_stats(s)
+
+
 async def overview(session: AsyncSession, alliance: Alliance) -> dict:
     members = await _members(session, alliance.id)
     out_members = []
@@ -274,6 +280,17 @@ async def overview(session: AsyncSession, alliance: Alliance) -> dict:
                 "galaxy": s.galaxy, "system": s.system, "position": s.position,
                 "radius_level": s.research_radius_level,
                 "fuel": s.fuel, "hp": s.hp, "status": s.status,
+                # Kampfwerte (Anzeige): Abwehrbatterien + Angriff/Schild/HP-Summen + Zonen-Radius.
+                "stats": _station_stats(s),
+                # Transit-Status (Umstationieren): Ziel + ETA, sonst None.
+                "transit": (
+                    {
+                        "target": (s.transit or {}).get("leg_to"),
+                        "arrive_at": (s.transit or {}).get("arrive_at"),
+                        "returning": (s.transit or {}).get("returning", False),
+                    }
+                    if s.status == "transit" and (s.transit or {}).get("leg_to") else None
+                ),
             }
             for s in stations
         ],

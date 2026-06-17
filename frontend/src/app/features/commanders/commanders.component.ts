@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { CommanderBonus } from '../../core/models/api.models';
+import { CommanderBonus, EquipmentCatalog, EquipmentItem } from '../../core/models/api.models';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { BalanceService } from '../../core/services/balance.service';
@@ -15,7 +15,7 @@ import {
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
-import { navIcon, rankIcon, specIcon, statIcon, statusIcon, traitIcon } from '../../core/models/icon-assets';
+import { equipmentItemIcon, navIcon, rankIcon, specIcon, statIcon, statusIcon, traitIcon } from '../../core/models/icon-assets';
 import { commanderStyles } from './commander.styles';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
@@ -46,15 +46,61 @@ interface GradesConfig {
         <h1>Kommandozentrale</h1>
         <p class="muted sub">Deine Crew ist das Herz des Imperiums. Fuehre sie gut.</p>
       </div>
-      <button
-        class="btn btn-primary"
-        type="button"
-        [disabled]="!canTrain()"
-        (click)="toggleTrain()"
-      >
-        <app-btn-icon [src]="rankIcon('cadet')" glyph="🎖️" /> {{ showTrain() ? 'Abbrechen' : 'Kadett ausbilden' }}
-      </button>
+      <div class="head-actions">
+        <button class="btn btn-ghost" type="button" (click)="toggleHelp()">
+          ❓ {{ showHelp() ? 'Hilfe schließen' : 'Was sind Kommandeure?' }}
+        </button>
+        <button
+          class="btn btn-primary"
+          type="button"
+          [disabled]="!canTrain()"
+          (click)="toggleTrain()"
+        >
+          <app-btn-icon [src]="rankIcon('cadet')" glyph="🎖️" /> {{ showTrain() ? 'Abbrechen' : 'Kadett ausbilden' }}
+        </button>
+      </div>
     </div>
+
+    @if (showHelp()) {
+      <div class="card help-panel">
+        <div class="panel-title">🧭 Was sind Kommandeure?</div>
+        <div class="help-grid">
+          <div class="help-block">
+            <h4>Wozu?</h4>
+            <p class="small">Kommandeure <strong>führen deine Flotten</strong> und geben dabei Kampfboni — aus
+              Spezialisierung, Rang, Güteklasse und <strong>Ausrüstung</strong>. Statt einer Flotte können sie
+              als <strong>Gouverneur</strong> einen Planeten verwalten und dessen Produktion steigern.</p>
+          </div>
+          <div class="help-block">
+            <h4>Wie verbessern?</h4>
+            <ul class="small">
+              <li><strong>Rang</strong> steigt durch XP/Einsätze.</li>
+              <li><strong>Skillpunkte</strong> → Fähigkeiten (beim Rang-Aufstieg).</li>
+              <li><strong>Charakter-Zucht</strong> formt die Traits.</li>
+              <li><strong>Ausrüstung &amp; Sets</strong> füllen 4 Slots mit Extra-Boni.</li>
+              <li><strong>Bessere Güteklasse</strong> über das Ausbildungs-Programm.</li>
+            </ul>
+          </div>
+          <div class="help-block">
+            <h4>Güteklassen</h4>
+            <p class="small"><strong>E &lt; D &lt; C &lt; B &lt; A &lt; S</strong> — E schwach, S Spitze.
+              Höhere Klasse = stärkere Boni. Programme:</p>
+            <ul class="small">
+              <li>Standard → E/D</li>
+              <li>Gehoben → D/C</li>
+              <li>Elite → C/B/A</li>
+              <li>Experimentell → A/S</li>
+            </ul>
+          </div>
+          <div class="help-block">
+            <h4>Neue bekommen?</h4>
+            <p class="small">Kommandeure bildest du an der <strong>Kommando-Akademie</strong> aus.
+              <strong>Ausrüstung</strong> bekommst du zusätzlich aus Quests, Expeditionen, globalen Events
+              oder per <strong>Akademie-Fertigung</strong> (siehe Arsenal unten).</p>
+          </div>
+        </div>
+      </div>
+    }
 
     @if (showTrain()) {
       <div class="card train-panel">
@@ -100,8 +146,9 @@ interface GradesConfig {
                 </button>
               }
             </div>
-            <p class="faint small">Hoehere Stufe = bessere Grad-Chancen. SSS bleibt selten
-              (max 5%, nur Experimentell) — ein echtes Prestige-Ereignis.</p>
+            <p class="faint small">Glatte Leiter E → D → C → B → A → S (E schwach, S Spitze).
+              Höhere Stufe = bessere Grad-Chancen: Standard (E/D), Gehoben (D/C),
+              Elite (C/B/A), Experimentell (A/S). Ein S-Kommandeur bleibt ein echtes Prestige-Ereignis.</p>
           </div>
         }
 
@@ -138,6 +185,55 @@ interface GradesConfig {
         </div>
       </div>
     }
+
+    <div class="card arsenal">
+      <div class="panel-title">🎽 Arsenal — Ausrüstung &amp; Akademie-Fertigung</div>
+      @if (craftError(); as err) {
+        <p class="faint small warn-text">{{ err }}</p>
+      }
+
+      <div class="craft-row">
+        <label class="field">
+          <span>An der Akademie fertigen</span>
+          <select [ngModel]="craftKey()" (ngModelChange)="craftKey.set($event)">
+            <option [ngValue]="''">— Item wählen —</option>
+            @for (it of craftOptions(); track it.key) {
+              <option [ngValue]="it.key">{{ it.label }} ({{ slotLabel(it.slot) }})</option>
+            }
+          </select>
+        </label>
+        <button class="btn btn-primary" type="button" [disabled]="!craftKey() || crafting() || !canTrain()" (click)="craft()">
+          {{ crafting() ? 'Fertigt…' : 'Fertigen' }}
+        </button>
+      </div>
+      @if (craftCost(); as cost) {
+        <p class="faint small craft-cost">Kosten je Teil: <app-cost-line [cost]="cost" /> · benötigt Kommando-Akademie Stufe {{ craftMin() }}.</p>
+      }
+
+      <div class="bonus-head faint small inv-title">Inventar ({{ inventory().length }})</div>
+      @if (inventory().length) {
+        <ul class="inv-list">
+          @for (it of inventory(); track it.id) {
+            <li class="inv-item">
+              <span class="inv-ico">
+                <img [src]="itemIcon(it.item_key)" alt="" (error)="onIcoError($event)" />
+                <span class="inv-glyph-fb">🎽</span>
+              </span>
+              <span class="inv-name">{{ it.label }}</span>
+              <span class="rar-tag" [class]="'rar-' + it.rarity">{{ it.rarity_label }}</span>
+              <span class="faint small">{{ slotLabel(it.slot) }}</span>
+              @if (it.equipped_commander_id) {
+                <span class="chip worn">getragen</span>
+              } @else {
+                <span class="faint small">frei</span>
+              }
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="faint small">Noch keine Ausrüstung. Fertige Teile an der Akademie oder finde sie in Quests, Expeditionen und Events.</p>
+      }
+    </div>
 
     @if (commanders().length) {
       <div class="grid roster">
@@ -222,6 +318,29 @@ export class CommandersComponent {
   protected readonly span = this.state.span;
   protected readonly training = signal(false);
 
+  // Hilfe-/Onboarding-Panel.
+  protected readonly showHelp = signal(false);
+
+  // Arsenal: Inventar + Akademie-Fertigung.
+  protected readonly inventory = signal<EquipmentItem[]>([]);
+  protected readonly equipCatalog = signal<EquipmentCatalog | null>(null);
+  protected readonly craftKey = signal<string>('');
+  protected readonly crafting = signal(false);
+  protected readonly craftError = signal<string | null>(null);
+  protected readonly itemIcon = equipmentItemIcon;
+
+  /** Fertigbare Items (Key, Label, Slot) aus dem Equipment-Katalog. */
+  protected readonly craftOptions = computed(() => {
+    const items = this.equipCatalog()?.items ?? {};
+    return Object.entries(items)
+      .map(([key, def]) => ({ key, label: def.label, slot: def.slot }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
+  protected readonly craftCost = computed(() => this.equipCatalog()?.craft?.cost ?? null);
+  protected readonly craftMin = computed(() => this.equipCatalog()?.craft?.academy_min ?? 2);
+
+  slotLabel = (slot: string) => this.equipCatalog()?.slot_labels?.[slot] ?? slot;
+
   // Ausbildungs-Auswahl.
   protected readonly showTrain = signal(false);
   protected readonly selSpec = signal('combat');
@@ -244,15 +363,13 @@ export class CommandersComponent {
     return grades.training_tiers.map((t) => {
       const mult = Number(t.cost_mult ?? 1);
       const weights = t.weights ?? {};
-      const total = order.reduce((s, k) => s + (Number(weights[k]) || 0), 0);
-      let best = 'C';
-      for (const k of order) {
-        if ((Number(weights[k]) || 0) > 0) {
-          best = k;
-        }
-      }
-      const sss = total > 0 ? Math.round(((Number(weights['SSS']) || 0) / total) * 100) : 0;
-      const hint = sss > 0 ? `bis ${best} · SSS bis ${sss}%` : `bis ${best}`;
+      // Niedrigste und hoechste erreichbare Gueteklasse dieser Stufe (E..S-Leiter).
+      const reachable = order.filter((k) => (Number(weights[k]) || 0) > 0);
+      const hint = reachable.length
+        ? reachable.length > 1
+          ? `${reachable[0]}–${reachable[reachable.length - 1]}`
+          : reachable[0]
+        : '—';
       return {
         key: t.key,
         label: t.label,
@@ -270,6 +387,50 @@ export class CommandersComponent {
 
   constructor() {
     void this.state.reloadCommanders();
+    this.api.getEquipmentCatalog().subscribe((c) => this.equipCatalog.set(c));
+    this.loadInventory();
+  }
+
+  toggleHelp(): void {
+    this.showHelp.update((v) => !v);
+  }
+
+  private loadInventory(): void {
+    this.api.getInventory().subscribe({
+      next: (inv) => this.inventory.set(inv),
+      error: () => this.inventory.set([]),
+    });
+  }
+
+  craft(): void {
+    const planetId = this.state.activePlanetId();
+    const key = this.craftKey();
+    if (!planetId || !key) {
+      return;
+    }
+    this.crafting.set(true);
+    this.craftError.set(null);
+    this.api.craftItem(planetId, key).subscribe({
+      next: (item) => {
+        this.crafting.set(false);
+        this.notify.success('Gefertigt', `${item.label} (${item.rarity_label}) liegt im Arsenal.`);
+        this.loadInventory();
+      },
+      error: (err) => {
+        this.crafting.set(false);
+        this.craftError.set(err?.error?.detail ?? 'Fertigung fehlgeschlagen.');
+      },
+    });
+  }
+
+  /** Item-Icon nicht ladbar -> Glyph-Fallback (Geschwister-Span) einblenden. */
+  onIcoError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
+    const fb = img.nextElementSibling as HTMLElement | null;
+    if (fb) {
+      fb.style.display = 'inline';
+    }
   }
 
   toggleTrain(): void {

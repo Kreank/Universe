@@ -16,6 +16,14 @@ from app.commander.schemas import (
     TrainRequest,
     TrainResponse,
 )
+from app.commander.equipment import (
+    craft_item,
+    equip_item,
+    equipment_cfg,
+    equipment_view,
+    inventory_view,
+    unequip_slot,
+)
 from app.commander.service import commander_to_dict, compute_span, start_training
 from app.platform.balance import get_balance
 from app.messaging.service import transmission_to_dict
@@ -277,6 +285,42 @@ async def bonus_preview(
     return base_bonuses(spec, rk, [], foc, grd)
 
 
+@router.get("/commanders/equipment-catalog")
+async def equipment_catalog(player: Player = Depends(get_current_player)) -> dict:
+    """Statischer Equipment-Katalog (Slots, Items, Sets, Raritaeten, Fertigungskosten) fuers UI.
+    Muss VOR /commanders/{commander_id} stehen, sonst matcht der Pfad-Parameter."""
+    cfg = dict(equipment_cfg())
+    cfg.pop("_note", None)
+    return cfg
+
+
+@router.get("/player/inventory")
+async def get_inventory(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    return await inventory_view(session, player.id)
+
+
+@router.post("/commanders/craft", status_code=201)
+async def craft_equipment(
+    body: dict,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Akademie-Fertigung: stellt ein Katalog-Item gegen Ressourcen her (rarity=common).
+    Body: {planet_id, item_key}. Muss VOR /commanders/{commander_id} stehen."""
+    planet = await session.get(Planet, uuid.UUID(str(body.get("planet_id"))))
+    if planet is None or planet.player_id != player.id:
+        raise HTTPException(status_code=404, detail="Planet nicht gefunden")
+    try:
+        item = await craft_item(session, player.id, planet, str(body.get("item_key")))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    from app.commander.equipment import item_to_dict
+    return item_to_dict(item)
+
+
 @router.get("/commanders/{commander_id}", response_model=CommanderDetailOut)
 async def get_commander(
     commander_id: uuid.UUID,
@@ -313,3 +357,50 @@ async def train_commander(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     data = await commander_to_dict(session, commander)
     return TrainResponse(commander=CommanderOut(**data))
+
+
+async def _owned_commander(session: AsyncSession, player: Player, commander_id: uuid.UUID) -> Commander:
+    c = await session.get(Commander, commander_id)
+    if c is None or c.player_id != player.id:
+        raise HTTPException(status_code=404, detail="Commander nicht gefunden")
+    return c
+
+
+@router.get("/commanders/{commander_id}/equipment")
+async def get_equipment(
+    commander_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    c = await _owned_commander(session, player, commander_id)
+    return await equipment_view(session, c)
+
+
+@router.post("/commanders/{commander_id}/equip")
+async def equip(
+    commander_id: uuid.UUID,
+    body: dict,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Ruestet ein Inventar-Item (Body: {item_id}) in seinen Slot; vorheriges Item des Slots
+    wandert zurueck ins Inventar."""
+    c = await _owned_commander(session, player, commander_id)
+    try:
+        await equip_item(session, c, uuid.UUID(str(body.get("item_id"))))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return await equipment_view(session, c)
+
+
+@router.post("/commanders/{commander_id}/unequip")
+async def unequip(
+    commander_id: uuid.UUID,
+    body: dict,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Legt das Item eines Slots (Body: {slot}) ab — zurueck ins Inventar."""
+    c = await _owned_commander(session, player, commander_id)
+    await unequip_slot(session, c, str(body.get("slot")))
+    return await equipment_view(session, c)

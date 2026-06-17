@@ -281,12 +281,14 @@ async def resolve_interception(fleet_id: str, station_id: str) -> None:
         if commander is not None:
             from app.combat.service import _commander_mods
             from app.commander.bonuses import base_bonuses, resolve_ship_bonuses
+            from app.commander.equipment import equipment_bonuses_for
             def_attack_mult = _commander_mods(commander, len(fleet_ships))
             focus = (commander.persona or {}).get("focus")
             cmd_bonuses = base_bonuses(
                 commander.specialization, commander.rank, commander.traits or [], focus,
                 commander.grade or "C",
             )
+            cmd_bonuses = cmd_bonuses + await equipment_bonuses_for(session, commander.id)
             ship_bonuses, _spd = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(fleet_ships.keys()))
 
         seed = random.randrange(1, 2 ** 62)

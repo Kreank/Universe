@@ -762,19 +762,22 @@ export const RANK_META: Record<string, DisplayMeta> = {
 };
 
 /**
- * Gueteklassen F..SSS (Doku 05a). `glyph` haelt die CSS-Klasse fuer die
- * Farbcodierung des Grad-Badges (F-D grau, C-B blau, A-S cyan, SS-SSS magenta/gold).
+ * Gueteklassen E..S (6 Stufen). `glyph` haelt die CSS-Klasse fuer die
+ * Farbcodierung des Grad-Badges (E/D grau, C/B blau, A/S cyan).
+ * Alt-Grade (F/SS/SSS) sind Aliasse und werden als ihr effektives Pendant
+ * angezeigt (F->E, SS/SSS->S), passend zur Backend-Normalisierung (kein DB-Write).
  */
 export const GRADE_META: Record<string, DisplayMeta> = {
-  F: { label: 'F', glyph: 'grade-low' },
   E: { label: 'E', glyph: 'grade-low' },
   D: { label: 'D', glyph: 'grade-low' },
   C: { label: 'C', glyph: 'grade-mid' },
   B: { label: 'B', glyph: 'grade-mid' },
   A: { label: 'A', glyph: 'grade-high' },
   S: { label: 'S', glyph: 'grade-high' },
-  SS: { label: 'SS', glyph: 'grade-elite' },
-  SSS: { label: 'SSS', glyph: 'grade-elite' },
+  // Alt-Grade (Bestandsdaten) -> effektives Pendant.
+  F: { label: 'E', glyph: 'grade-low' },
+  SS: { label: 'S', glyph: 'grade-high' },
+  SSS: { label: 'S', glyph: 'grade-high' },
 };
 
 /** CSS-Klassenname fuer das Grad-Badge (Farbcodierung). Fallback: blau (mid). */

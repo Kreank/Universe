@@ -300,3 +300,69 @@ async def upgrade_station(
     except (ValueError, PermissionError) as exc:
         raise _err(exc) from exc
     return {"id": str(st.id), "radius_level": st.research_radius_level}
+
+
+class RelocateIn(BaseModel):
+    galaxy: int
+    system: int
+    position: int
+    escort: dict[str, int] = {}
+    escort_planet_id: uuid.UUID | None = None
+
+
+@router.post("/alliance/station/{station_id}/relocate")
+async def relocate_station(
+    station_id: uuid.UUID,
+    body: RelocateIn,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        st = await station_mod.relocate_station(
+            session, player, station_id, body.galaxy, body.system, body.position,
+            escort=body.escort, escort_planet_id=body.escort_planet_id,
+        )
+    except (ValueError, PermissionError) as exc:
+        raise _err(exc) from exc
+    tr = st.transit or {}
+    return {
+        "id": str(st.id), "status": st.status,
+        "transit": {
+            "target": tr.get("leg_to"),
+            "arrive_at": tr.get("arrive_at"),
+            "returning": tr.get("returning", False),
+        },
+    }
+
+
+class ModuleIn(BaseModel):
+    module_type: str
+    count: int = 1
+
+
+@router.post("/alliance/station/{station_id}/module/mount")
+async def mount_module(
+    station_id: uuid.UUID,
+    body: ModuleIn,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        st = await station_mod.mount_module(session, player, station_id, body.module_type, body.count)
+    except (ValueError, PermissionError) as exc:
+        raise _err(exc) from exc
+    return {"id": str(st.id), "modules": st.modules or {}}
+
+
+@router.post("/alliance/station/{station_id}/module/unmount")
+async def unmount_module(
+    station_id: uuid.UUID,
+    body: ModuleIn,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        st = await station_mod.unmount_module(session, player, station_id, body.module_type, body.count)
+    except (ValueError, PermissionError) as exc:
+        raise _err(exc) from exc
+    return {"id": str(st.id), "modules": st.modules or {}}

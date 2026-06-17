@@ -510,12 +510,70 @@ export interface Commander {
   morale_band: MoraleBand;
   focus: string | null;
   bonuses: CommanderBonus[];
+  /** Anteil der Boni, der aus getragener Ausruestung stammt (separat ausgewiesen). */
+  equipment_bonuses?: CommanderBonus[];
+  /** Getragene Set-Teile je Set (z.B. {key:'fighter',count:2}). */
+  equipment_sets?: { key: string; count: number }[];
   assigned_fleet_id: string | null;
   training_finishes_at: string | null;
 }
 
 export interface CommanderDetail extends Commander {
   history: Transmission[];
+}
+
+// --- Commander-Ausruestung (Equipment-System) ---------------------------
+
+/** Eine konkrete Item-Instanz im Spieler-Inventar bzw. in einem Slot. */
+export interface EquipmentItem {
+  id: string;
+  item_key: string;
+  slot: string; // head | hands | chest | shoes
+  rarity: string; // common | rare | epic
+  rarity_label: string;
+  label: string;
+  set: string; // fighter | cruiser | capital | civil
+  equipped_commander_id: string | null;
+  bonuses: CommanderBonus[];
+}
+
+/** Ein Ausruestungs-Slot mit (optional) belegtem Item. */
+export interface EquipmentSlotView {
+  slot: string;
+  label: string;
+  item: EquipmentItem | null;
+}
+
+/** Set-Fortschritt eines Kommandeurs (getragene Teile + aktive Schwellen). */
+export interface EquipmentSet {
+  key: string;
+  label: string;
+  count: number;
+  active_thresholds: number[];
+}
+
+/** Vollstaendiger Ausruestungs-Zustand eines Kommandeurs. */
+export interface EquipmentState {
+  slots: EquipmentSlotView[];
+  sets: EquipmentSet[];
+  bonuses: CommanderBonus[];
+}
+
+/** Statischer Katalog (Slots, Raritaeten, Sets, Items, Fertigung). */
+export interface EquipmentCatalog {
+  slots: string[];
+  slot_labels: Record<string, string>;
+  rarities: Record<string, { label: string; mult: number }>;
+  sets: Record<
+    string,
+    { label: string; ship_class: string; bonus: Record<string, CommanderBonus[]> }
+  >;
+  items: Record<
+    string,
+    { slot: string; set: string; label: string; bonuses: CommanderBonus[] }
+  >;
+  craft: { academy_min: number; cost: { metal: number; crystal: number; deuterium: number } };
+  drops: Record<string, unknown>;
 }
 
 export interface CommanderTrainResponse {
@@ -902,6 +960,26 @@ export interface AllianceMember {
   joined_at: string;
 }
 
+export interface AllianceStationStats {
+  defenses: Record<string, number>;
+  attack_total: number;
+  shield_total: number;
+  max_hp: number;
+  zone_radius: number;
+  defense_tech: Record<string, number>;
+  modules?: Record<string, number>;
+  slots?: number;
+  slots_used?: number;
+  module_tech_bonus?: Record<string, number>;
+  relocate_speed_mult?: number;
+}
+
+export interface AllianceStationTransit {
+  target: [number, number, number] | null;
+  arrive_at: string | null;
+  returning: boolean;
+}
+
 export interface AllianceStation {
   id: string;
   coords: string;
@@ -911,7 +989,9 @@ export interface AllianceStation {
   radius_level: number;
   fuel: number;
   hp: number;
-  status: 'active' | 'inactive' | 'destroyed';
+  status: 'active' | 'inactive' | 'transit' | 'destroyed';
+  stats?: AllianceStationStats;
+  transit?: AllianceStationTransit | null;
 }
 
 /** Kontext eines Forschungs-Knotens: bestimmt die Wirkungs-Reichweite. */

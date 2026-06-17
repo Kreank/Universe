@@ -6,7 +6,15 @@ import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { AbilityCatalog, CommanderDetail, Planet } from '../../core/models/api.models';
+import {
+  AbilityCatalog,
+  CommanderBonus,
+  CommanderDetail,
+  EquipmentCatalog,
+  EquipmentItem,
+  EquipmentState,
+  Planet,
+} from '../../core/models/api.models';
 import {
   RANK_META,
   SPECIALIZATION_META,
@@ -16,7 +24,18 @@ import {
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
-import { abilityCategoryIcon, rankIcon, specIcon, statIcon, statusIcon, traitIcon, uiIcon } from '../../core/models/icon-assets';
+import {
+  abilityCategoryIcon,
+  equipmentItemIcon,
+  equipmentSetIcon,
+  equipmentSlotIcon,
+  rankIcon,
+  specIcon,
+  statIcon,
+  statusIcon,
+  traitIcon,
+  uiIcon,
+} from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { commanderDetailStyles } from './commander-detail.styles';
@@ -63,6 +82,9 @@ import { commanderDetailStyles } from './commander-detail.styles';
                 }
               </div>
               <p class="faint small">Wachsen mit Rang/Güteklasse + Moral (nicht über Skillpunkte). Wirken automatisch im Kampf/Tempo.</p>
+              @if (c.equipment_bonuses?.length) {
+                <p class="faint small">Davon aus Ausrüstung: {{ equipmentBonusSummary(c) }}</p>
+              }
             </div>
           }
 
@@ -175,6 +197,96 @@ import { commanderDetailStyles } from './commander-detail.styles';
             <p class="faint small">Skillpunkte gibt's beim Rang-Aufstieg. Erlernte Fähigkeiten schaltest du beim Flottenversand scharf (bis Slots).</p>
           </div>
 
+          <!-- Ausruestung (Equipment-System) -->
+          <div class="equip-panel">
+            <div class="panel-title"><app-btn-icon [src]="uiIcon('equipment')" glyph="🎽" [size]="16" /> Ausrüstung</div>
+            @if (equipError(); as err) {
+              <p class="faint small warn-text">{{ err }}</p>
+            }
+
+            <div class="slot-grid">
+              @for (s of equipSlots(); track s.slot) {
+                <div class="equip-slot" [class.filled]="!!s.item" [class.open]="openSlot() === s.slot">
+                  <button class="slot-btn" type="button" (click)="toggleSlot(s.slot)">
+                    <span class="slot-ico">
+                      <img [src]="s.item ? itemIcon(s.item.item_key) : slotIcon(s.slot)" alt="" (error)="onCatIcoError($event)" />
+                      <span class="slot-glyph-fb">{{ slotGlyph(s.slot) }}</span>
+                    </span>
+                    <span class="slot-meta">
+                      <span class="slot-label">{{ s.label }}</span>
+                      @if (s.item; as it) {
+                        <span class="item-label rar" [class]="rarityClass(it.rarity)">{{ it.label }}</span>
+                        <span class="rar-tag" [class]="rarityClass(it.rarity)">{{ it.rarity_label }}</span>
+                      } @else {
+                        <span class="faint small">leer</span>
+                      }
+                    </span>
+                  </button>
+
+                  @if (s.item; as it) {
+                    <div class="item-bonus">
+                      @for (b of it.bonuses; track b.stat + b.target) {
+                        <span class="chip bonus"><app-btn-icon [src]="statIcon(b.stat)" [glyph]="statGlyph(b.stat)" [size]="12" /> {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}</span>
+                      }
+                    </div>
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="unequip(s.slot)">Ablegen</button>
+                  }
+
+                  @if (openSlot() === s.slot) {
+                    <div class="inv-picker">
+                      @for (it of inventoryForSlot(s.slot); track it.id) {
+                        <button class="inv-opt rar" [class]="rarityClass(it.rarity)" type="button" (click)="equip(it.id)">
+                          <span class="slot-ico sm">
+                            <img [src]="itemIcon(it.item_key)" alt="" (error)="onCatIcoError($event)" />
+                            <span class="slot-glyph-fb">{{ slotGlyph(it.slot) }}</span>
+                          </span>
+                          <span class="inv-opt-meta">
+                            <span class="item-label">{{ it.label }}</span>
+                            <span class="faint small">{{ it.rarity_label }} · {{ setLabel(it.set) }}</span>
+                          </span>
+                        </button>
+                      } @empty {
+                        <p class="faint small">Kein passendes Teil im Inventar. Fertige Ausrüstung an der Akademie oder finde sie in Quests / Expeditionen / Events.</p>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- Set-Fortschritt -->
+            @if (equipment()?.sets?.length) {
+              <div class="set-progress">
+                <div class="bonus-head faint small">Set-Boni</div>
+                @for (set of equipment()!.sets; track set.key) {
+                  <div class="set-row">
+                    <span class="set-ico">
+                      <img [src]="setIcon(set.key)" alt="" (error)="onCatIcoError($event)" />
+                      <span class="slot-glyph-fb">{{ setGlyph(set.key) }}</span>
+                    </span>
+                    <div class="set-body">
+                      <div class="set-head">
+                        <strong>{{ set.label }}</strong>
+                        <span class="mono">{{ set.count }}/4</span>
+                      </div>
+                      <div class="set-thresholds">
+                        @for (t of setThresholds(set.key); track t.n) {
+                          <div class="set-th" [class.active]="t.active">
+                            <span class="th-n">{{ t.n }}er</span>
+                            @for (b of t.bonuses; track b.stat + b.target) {
+                              <span class="chip bonus" [class.off]="!t.active">{{ signedPct(b.pct) }} {{ statLabel(b.stat) }} {{ targetLabel(b.target) }}</span>
+                            }
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+            <p class="faint small">Ausrüstung füllt 4 Slots (Kopf/Hände/Brust/Schuhe) und gibt zusätzliche Boni. Vier Teile desselben Sets schalten starke Set-Boni frei.</p>
+          </div>
+
           <div class="persona">
             <div class="panel-title">Persona</div>
             <p class="small">{{ c.persona.background }}</p>
@@ -227,6 +339,112 @@ export class CommanderDetailComponent {
   protected readonly planets = this.state.planets;
   protected readonly govPlanet = signal<string | null>(null);
   protected readonly abilityCatalog = signal<AbilityCatalog | null>(null);
+
+  // -- Ausruestung (Equipment) --
+  protected readonly equipment = signal<EquipmentState | null>(null);
+  protected readonly inventory = signal<EquipmentItem[]>([]);
+  protected readonly equipCatalog = signal<EquipmentCatalog | null>(null);
+  protected readonly openSlot = signal<string | null>(null);
+  protected readonly equipError = signal<string | null>(null);
+  protected readonly equipSlots = computed(() => this.equipment()?.slots ?? []);
+
+  protected readonly slotIcon = equipmentSlotIcon;
+  protected readonly itemIcon = equipmentItemIcon;
+  protected readonly setIcon = equipmentSetIcon;
+
+  private readonly SLOT_GLYPH: Record<string, string> = { head: '⛑️', hands: '🧤', chest: '🦺', shoes: '🥾' };
+  private readonly SET_GLYPH: Record<string, string> = { fighter: '🛩️', cruiser: '🚀', capital: '🔱', civil: '📦' };
+  private readonly SET_LABEL: Record<string, string> = {
+    fighter: 'Jäger-Set', cruiser: 'Kreuzer-Set', capital: 'Großkampf-Set', civil: 'Zivil-Set',
+  };
+  slotGlyph = (s: string) => this.SLOT_GLYPH[s] ?? '📦';
+  setGlyph = (s: string) => this.SET_GLYPH[s] ?? '✦';
+  setLabel = (s: string) => this.SET_LABEL[s] ?? s;
+  rarityClass = (r: string) => `rar-${r}`;
+
+  /** Items im Inventar, die in diesen Slot passen und aktuell von niemandem getragen werden. */
+  inventoryForSlot(slot: string): EquipmentItem[] {
+    return this.inventory().filter((it) => it.slot === slot && !it.equipped_commander_id);
+  }
+
+  /** Set-Schwellen (2er/4er) mit Boni-Texten und Aktiv-Flag aus dem Katalog. */
+  setThresholds(setKey: string): { n: number; active: boolean; bonuses: CommanderBonus[] }[] {
+    const cat = this.equipCatalog()?.sets?.[setKey];
+    if (!cat) {
+      return [];
+    }
+    const set = this.equipment()?.sets.find((s) => s.key === setKey);
+    const active = set?.active_thresholds ?? [];
+    return Object.keys(cat.bonus)
+      .map((k) => Number(k))
+      .sort((a, b) => a - b)
+      .map((n) => ({ n, active: active.includes(n), bonuses: cat.bonus[String(n)] ?? [] }));
+  }
+
+  /** Kurztext, welcher Boni-Anteil aus getragener Ausruestung stammt. */
+  equipmentBonusSummary(c: CommanderDetail): string {
+    return (c.equipment_bonuses ?? [])
+      .map((b) => `${this.signedPct(b.pct)} ${this.statLabel(b.stat)}${b.target === 'all' ? '' : ' ' + this.classLabel(b.target)}`)
+      .join(', ');
+  }
+
+  toggleSlot(slot: string): void {
+    this.equipError.set(null);
+    this.openSlot.update((s) => (s === slot ? null : slot));
+  }
+
+  equip(itemId: string): void {
+    const c = this.commander();
+    if (!c) {
+      return;
+    }
+    this.api.equipItem(c.id, itemId).subscribe({
+      next: (state) => {
+        this.equipment.set(state);
+        this.openSlot.set(null);
+        this.refreshAfterEquip();
+      },
+      error: (e) => this.equipError.set(e?.error?.detail ?? 'Anlegen fehlgeschlagen.'),
+    });
+  }
+
+  unequip(slot: string): void {
+    const c = this.commander();
+    if (!c) {
+      return;
+    }
+    this.api.unequipItem(c.id, slot).subscribe({
+      next: (state) => {
+        this.equipment.set(state);
+        this.refreshAfterEquip();
+      },
+      error: (e) => this.equipError.set(e?.error?.detail ?? 'Ablegen fehlgeschlagen.'),
+    });
+  }
+
+  /** Nach equip/unequip: Boni (Commander) und Inventar-Trage-Status auffrischen. */
+  private refreshAfterEquip(): void {
+    const c = this.commander();
+    if (!c) {
+      return;
+    }
+    this.api.getCommander(c.id).subscribe((u) => this.commander.set(u));
+    this.api.getInventory().subscribe((inv) => this.inventory.set(inv));
+    void this.state.reloadCommanders();
+  }
+
+  private loadEquipment(id: string): void {
+    this.openSlot.set(null);
+    this.equipError.set(null);
+    this.api.getEquipment(id).subscribe({
+      next: (e) => this.equipment.set(e),
+      error: () => this.equipment.set(null),
+    });
+    this.api.getInventory().subscribe({
+      next: (inv) => this.inventory.set(inv),
+      error: () => this.inventory.set([]),
+    });
+  }
 
   /** Katalog als sortierte Liste mit aktueller Stufe des Kommandeurs. */
   protected readonly abilityList = computed(() => {
@@ -291,6 +509,7 @@ export class CommanderDetailComponent {
     all: 'alle Schiffe', fighter: 'Jaeger', cruiser: 'Kreuzer', capital: 'Grosskampfschiffe', civil: 'zivile Schiffe',
   };
   statGlyph = (s: string) => this.STAT_GLYPH[s] ?? '•';
+  statLabel = (s: string) => this.STAT_LABEL[s] ?? s;
   classLabel = (t: string) => this.CLASS_LABEL[t] ?? t;
   targetLabel = (t: string) => (t === 'all' ? '' : '· ' + this.classLabel(t));
   signedPct = (p: number) => (p > 0 ? '+' : '') + Math.round(p * 100) + '%';
@@ -369,6 +588,7 @@ export class CommanderDetailComponent {
     // Reagiert auf den ueber die Route gebundenen :id-Parameter.
     effect(() => this.load(this.id()));
     this.api.getAbilityCatalog().subscribe((c) => this.abilityCatalog.set(c));
+    this.api.getEquipmentCatalog().subscribe((c) => this.equipCatalog.set(c));
   }
 
   assignGovernor(): void {
@@ -400,6 +620,7 @@ export class CommanderDetailComponent {
       next: (c) => {
         this.commander.set(c);
         this.loading.set(false);
+        this.loadEquipment(id);
       },
       error: () => this.loading.set(false),
     });

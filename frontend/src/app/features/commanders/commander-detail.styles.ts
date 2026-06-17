@@ -111,4 +111,77 @@ export const commanderDetailStyles = `
     font-size: var(--fs-xs);
   }
   .chip.bonus.neg { border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 8%, transparent); }
+
+  /* --- Ausruestungs-Panel --- */
+  .equip-panel { margin-top: var(--sp-4); }
+  .equip-panel .panel-title { padding-bottom: var(--sp-2); margin-bottom: var(--sp-2); }
+  .warn-text { color: var(--warn); }
+  .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-2); }
+  .equip-slot {
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    background: rgba(255,255,255,0.02); padding: var(--sp-2);
+    display: flex; flex-direction: column; gap: var(--sp-1);
+  }
+  .equip-slot.filled { border-color: var(--accent-dim); background: var(--accent-soft); }
+  .equip-slot.open { border-color: var(--accent); box-shadow: var(--glow); }
+  .slot-btn {
+    display: flex; align-items: center; gap: var(--sp-2); text-align: left;
+    background: none; border: none; color: var(--text); cursor: pointer; padding: 0; width: 100%;
+  }
+  .slot-ico {
+    position: relative; width: 38px; height: 38px; flex: 0 0 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--border); font-size: var(--fs-lg);
+  }
+  .slot-ico.sm { width: 28px; height: 28px; flex: 0 0 28px; font-size: var(--fs-md); }
+  .slot-ico img { width: 26px; height: 26px; object-fit: contain; }
+  .slot-ico.sm img { width: 20px; height: 20px; }
+  .slot-glyph-fb { display: none; position: absolute; }
+  .slot-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .slot-label {
+    font-family: var(--font-display); font-size: var(--fs-xs); text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-dim);
+  }
+  .item-label { font-size: var(--fs-sm); font-weight: 600; line-height: 1.1; }
+  .rar-tag { font-size: var(--fs-xs); }
+  /* Raritaets-Farbcodierung (common grau, rare blau, epic violett/gold). */
+  .rar.rar-common, .item-label.rar-common, .rar-tag.rar-common { color: var(--text-dim); }
+  .rar.rar-rare, .item-label.rar-rare, .rar-tag.rar-rare { color: var(--info); }
+  .rar.rar-epic, .item-label.rar-epic, .rar-tag.rar-epic { color: var(--energy); }
+  .inv-opt.rar-rare { border-color: color-mix(in srgb, var(--info) 60%, var(--border)); }
+  .inv-opt.rar-epic { border-color: color-mix(in srgb, var(--energy) 60%, var(--border)); }
+  .item-bonus { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+  .equip-slot .btn-sm { align-self: flex-start; }
+
+  .inv-picker {
+    display: flex; flex-direction: column; gap: var(--sp-1);
+    border-top: 1px dashed var(--border); margin-top: var(--sp-1); padding-top: var(--sp-1);
+  }
+  .inv-opt {
+    display: flex; align-items: center; gap: var(--sp-2); text-align: left; width: 100%;
+    padding: var(--sp-1) var(--sp-2); border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: rgba(255,255,255,0.02); color: var(--text); cursor: pointer;
+  }
+  .inv-opt:hover { border-color: var(--accent); }
+  .inv-opt-meta { display: flex; flex-direction: column; min-width: 0; }
+
+  .set-progress { display: flex; flex-direction: column; gap: var(--sp-2); margin: var(--sp-3) 0; }
+  .set-row { display: flex; gap: var(--sp-2); align-items: flex-start; }
+  .set-ico {
+    position: relative; width: 32px; height: 32px; flex: 0 0 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--border); font-size: var(--fs-md);
+  }
+  .set-ico img { width: 22px; height: 22px; object-fit: contain; }
+  .set-body { flex: 1; min-width: 0; }
+  .set-head { display: flex; gap: var(--sp-2); align-items: baseline; }
+  .set-thresholds { display: flex; flex-direction: column; gap: var(--sp-1); margin-top: var(--sp-1); }
+  .set-th { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); opacity: 0.5; }
+  .set-th.active { opacity: 1; }
+  .set-th .th-n {
+    font-family: var(--mono); font-size: var(--fs-xs);
+    padding: 1px var(--sp-1); border-radius: var(--r-sm); border: 1px solid var(--border); color: var(--text-dim);
+  }
+  .set-th.active .th-n { border-color: var(--accent); color: var(--accent); }
+  .chip.bonus.off { border-color: var(--border); color: var(--text-dim); background: transparent; }
 `;

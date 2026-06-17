@@ -138,9 +138,14 @@ async def _resolve_choice(session: AsyncSession, t: Transmission, choice: str, b
             if str(t.player_id) not in helpers:
                 helpers.append(str(t.player_id))
             ev.data = {**(ev.data or {}), "helpers": helpers}
+        # Globale-Event-Belohnung: Chance auf ein Kommandeurs-Ausruestungsstueck.
+        from app.commander.equipment import maybe_grant_item
+        dropped = await maybe_grant_item(session, t.player_id, "global_event")
         keep_txt = ", ".join(f"{int(n)}× {s}" for s, n in (data.get("keep_ships", {}) or {}).items())
+        gear_txt = " Unter ihrer Fracht fand sich Kommandeurs-Ausrüstung!" if dropped else ""
         return (f"Du hast geholfen ({cost} Deuterium): +{bonus} Crew-Moral, schnelleres Bauen "
-                f"und {keep_txt or 'einige Zivilschiffe'} sind dir beigetreten. Halte dich für ihre Verfolger bereit!")
+                f"und {keep_txt or 'einige Zivilschiffe'} sind dir beigetreten.{gear_txt} "
+                f"Halte dich für ihre Verfolger bereit!")
 
     # Unbekannter Event-Typ: einfach abschließen.
     return "Entscheidung verbucht."

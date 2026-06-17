@@ -134,6 +134,51 @@ export const commanderStyles = `
 
   .cmd-foot { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 
+  .head-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+  .warn-text { color: var(--warn); }
+
+  /* Hilfe-/Onboarding-Panel. */
+  .help-panel { margin-bottom: var(--sp-5); }
+  .help-panel .panel-title { padding-bottom: var(--sp-2); margin-bottom: var(--sp-3); }
+  .help-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-4); }
+  .help-block h4 {
+    font-family: var(--font-display); font-size: var(--fs-sm); margin: 0 0 var(--sp-1);
+    color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .help-block p { margin: 0; }
+  .help-block ul { margin: 0; padding-left: var(--sp-4); display: flex; flex-direction: column; gap: 2px; }
+
+  /* Arsenal (Inventar + Akademie-Fertigung). */
+  .arsenal { margin-bottom: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
+  .arsenal .panel-title { padding-bottom: var(--sp-2); margin-bottom: 0; }
+  .craft-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sp-3); }
+  .craft-row .field { display: flex; flex-direction: column; gap: var(--sp-1); margin-bottom: 0; flex: 1 1 220px; }
+  .craft-row .field > span {
+    font-family: var(--font-display);
+    font-size: var(--fs-xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim);
+  }
+  .craft-cost app-cost-line { display: inline; }
+  .inv-title { margin-top: var(--sp-2); }
+  .inv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+  .inv-item {
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-2); border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+  }
+  .inv-ico {
+    position: relative; width: 26px; height: 26px; flex: 0 0 26px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--r-sm); background: var(--surface-3); border: 1px solid var(--border);
+  }
+  .inv-ico img { width: 20px; height: 20px; object-fit: contain; }
+  .inv-glyph-fb { display: none; }
+  .inv-name { font-weight: 600; font-size: var(--fs-sm); flex: 1; min-width: 0; }
+  .rar-tag { font-size: var(--fs-xs); }
+  .rar-tag.rar-common { color: var(--text-dim); }
+  .rar-tag.rar-rare { color: var(--info); }
+  .rar-tag.rar-epic { color: var(--energy); }
+  .chip.worn { border-color: var(--accent-dim); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: var(--fs-xs); }
+
   @media (max-width: 520px) {
     .cmd-card { flex-direction: column; }
     .portrait { width: 100%; flex: 0 0 auto; height: 120px; }

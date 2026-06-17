@@ -349,6 +349,27 @@ _STATEMENTS: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_event_buffs_player ON event_buffs(player_id)",
     "CREATE INDEX IF NOT EXISTS idx_event_buffs_planet ON event_buffs(planet_id)",
     "CREATE INDEX IF NOT EXISTS idx_event_buffs_system ON event_buffs(galaxy, system)",
+    # -- Feature: Stations-Umstationieren (2026-06-17) --
+    # Transit-Status der Allianz-Station {origin,target,depart_at,arrive_at,returning,escort,...}.
+    "ALTER TABLE alliance_stations ADD COLUMN IF NOT EXISTS transit JSONB NOT NULL DEFAULT '{}'::jsonb",
+    # Montierte Stations-Module {module_type: count} (Slots).
+    "ALTER TABLE alliance_stations ADD COLUMN IF NOT EXISTS modules JSONB NOT NULL DEFAULT '{}'::jsonb",
+    # -- Feature: Kommandeurs-Equipment (2026-06-17) --
+    # Item-Instanzen im Spieler-Inventar; equipped_commander_id != NULL => auf einem
+    # Kommandeur in seinem Slot getragen (SET NULL => faellt bei Kommandeur-Tod ins Inventar).
+    """
+    CREATE TABLE IF NOT EXISTS commander_items (
+        id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        player_id             UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        item_key              TEXT NOT NULL,
+        slot                  TEXT NOT NULL,                   -- head | hands | chest | shoes
+        rarity                TEXT NOT NULL DEFAULT 'common',  -- common | rare | epic
+        equipped_commander_id UUID REFERENCES commanders(id) ON DELETE SET NULL,
+        acquired_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_commander_items_player ON commander_items(player_id)",
+    "CREATE INDEX IF NOT EXISTS idx_commander_items_equipped ON commander_items(equipped_commander_id)",
 ]
 
 

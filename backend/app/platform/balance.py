@@ -160,9 +160,22 @@ class Balance:
     def grades(self) -> dict[str, Any]:
         return self.commander["grades"]
 
+    def normalize_grade(self, grade: str | None) -> str:
+        """Bildet einen (ggf. veralteten) Grad auf das aktuelle Schema E..S ab.
+
+        Alt-Grade (F/SS/SSS) werden via ``aliases`` umgesetzt; Unbekanntes faellt auf
+        den ``default`` (C). So bleiben Bestands-Commander ohne DB-Write korrekt gewertet."""
+        g = grade or self.grades.get("default", "C")
+        if g in self.grades["potency"]:
+            return g
+        aliased = self.grades.get("aliases", {}).get(g)
+        if aliased in self.grades["potency"]:
+            return aliased
+        return self.grades.get("default", "C")
+
     def grade_potency(self, grade: str) -> float:
-        """Potenz-Faktor einer Gueteklasse (C = 1.00 Baseline). Unbekannt -> 1.0."""
-        return float(self.grades["potency"].get(grade, 1.0))
+        """Potenz-Faktor einer Gueteklasse (C = 1.00 Baseline). Alt-Grade via Alias."""
+        return float(self.grades["potency"].get(self.normalize_grade(grade), 1.0))
 
     def training_tier(self, key: str) -> dict[str, Any]:
         """Investitions-Stufe der Akademie-Ausbildung (Fallback: erste Stufe)."""

@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.commander.bonuses import base_bonuses
+from app.commander.equipment import equipment_bonuses, equipped_items, set_progress
 from app.economy.service import get_building_levels, get_research_levels, spend_resources
 from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
@@ -148,12 +149,33 @@ async def assigned_fleet_id(session: AsyncSession, commander_id: uuid.UUID) -> u
     return fleet.id if fleet else None
 
 
+def _merge_bonuses(*lists: list[dict]) -> list[dict]:
+    """Fasst mehrere {stat,target,pct}-Listen zu einer zusammen (gleiche Achse summiert)."""
+    merged: dict[tuple[str, str], float] = {}
+    order: list[tuple[str, str]] = []
+    for lst in lists:
+        for b in lst:
+            key = (b["stat"], b["target"])
+            if key not in merged:
+                order.append(key)
+            merged[key] = merged.get(key, 0.0) + float(b["pct"])
+    return [
+        {"stat": st, "target": tg, "pct": round(merged[(st, tg)], 4)}
+        for (st, tg) in order
+        if abs(merged[(st, tg)]) > 1e-9
+    ]
+
+
 async def commander_to_dict(session: AsyncSession, c: Commander) -> dict:
     bal = get_balance()
     band = bal.morale_band(c.morale)
     focus = (c.persona or {}).get("focus")
     grade = c.grade or "C"
-    bonuses = base_bonuses(c.specialization, c.rank, c.traits or [], focus, grade)
+    intrinsic = base_bonuses(c.specialization, c.rank, c.traits or [], focus, grade)
+    # Equipment-Boni des Kommandeurs mit ausweisen (Gesamtwirkung im Roster sichtbar).
+    items = await equipped_items(session, c.id)
+    eq_bonuses = equipment_bonuses(items)
+    bonuses = _merge_bonuses(intrinsic, eq_bonuses)
     return {
         "id": c.id,
         "name": c.name,
@@ -174,6 +196,8 @@ async def commander_to_dict(session: AsyncSession, c: Commander) -> dict:
         "morale_band": {"label": band["label"], "combat_mod": band["combat_mod"]},
         "focus": focus,
         "bonuses": bonuses,
+        "equipment_bonuses": eq_bonuses,
+        "equipment_sets": [{"key": s, "count": n} for s, n in set_progress(items).items()],
         "assigned_fleet_id": await assigned_fleet_id(session, c.id),
         "training_finishes_at": c.training_finishes_at,
     }
@@ -386,7 +410,8 @@ def commander_unrest_gain_per_hour(c: Commander, sat: dict, potency: dict) -> fl
     """Reiner Unmut-Stundenzuwachs (ohne Idle) = base/24 * rank_mult * grade_potency * trait_mult."""
     gain = float(sat["base_gain_per_day"]) / 24.0
     gain *= float(sat["rank_mult"].get(c.rank, 1.0))
-    gain *= float(potency.get(c.grade, 1.0))
+    # Alt-Grade (F/SS/SSS) via Balance-Normalisierung auf E..S abbilden.
+    gain *= float(get_balance().grade_potency(c.grade))
     tmult = 1.0
     for tr in (c.traits or []):
         tmult *= float(sat["trait_mult"].get(tr, 1.0))

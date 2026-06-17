@@ -38,6 +38,9 @@ class CommanderOut(BaseModel):
     morale_band: MoraleBandOut
     focus: str | None = None
     bonuses: list[BonusOut] = []
+    # Equipment-Anteil separat ausgewiesen (Items + Set-Boni) + getragene Set-Teile.
+    equipment_bonuses: list[BonusOut] = []
+    equipment_sets: list[dict] = []
     assigned_fleet_id: uuid.UUID | None = None
     training_finishes_at: dt.datetime | None = None
 

@@ -170,6 +170,63 @@ def test_station_defender_shape():
     assert d["attack_mult"] == 1.0
 
 
+# -- Umstationieren (Transit) ---------------------------------------------------
+
+def test_covers_false_during_transit():
+    # Waehrend des Transits ist die Zone aus (status != 'active').
+    assert S.covers(_station(status="transit"), 1, 50) is False
+
+
+def test_station_combat_stats_shape_and_totals():
+    cfg = get_balance().data["alliance"]["station"]
+    stats = S.station_combat_stats(_station(research_radius_level=0))
+    assert set(stats) >= {"defenses", "attack_total", "shield_total", "max_hp", "zone_radius"}
+    assert stats["max_hp"] == cfg["hp"]
+    assert stats["attack_total"] > 0  # Batterien tragen Angriff bei
+    assert stats["shield_total"] > 0
+
+
+def test_relocate_balance_block():
+    rc = get_balance().data["alliance"]["station"]["relocate"]
+    for k in ("seconds_per_distance", "min_seconds", "deuterium_per_distance", "min_deuterium"):
+        assert k in rc
+    assert rc["min_seconds"] > 0 and rc["seconds_per_distance"] > 0
+
+
+# -- Stations-Module (Slots) ----------------------------------------------------
+
+def test_station_slots_scale_with_radius():
+    mc = get_balance().data["alliance"]["station"]["modules"]
+    base, per = mc["base_slots"], mc["slots_per_radius_level"]
+    assert S.station_slots(_station(research_radius_level=0)) == base
+    assert S.station_slots(_station(research_radius_level=3)) == base + 3 * per
+
+
+def test_turret_module_raises_attack():
+    bare = S.station_combat_stats(_station())
+    armed = S.station_combat_stats(_station(modules={"turret": 2}))
+    assert armed["attack_total"] > bare["attack_total"]
+    assert armed["slots_used"] == 2
+    # Modul-Tech wird in die Verteidiger-Tech der Engine eingespeist.
+    assert S.station_defender(_station(modules={"turret": 2}))["tech"]["weapons_tech"] > \
+        S.station_defender(_station())["tech"]["weapons_tech"]
+
+
+def test_hull_module_raises_max_hp():
+    cfg = get_balance().data["alliance"]["station"]
+    base_hp = cfg["hp"]
+    per = cfg["modules"]["catalog"]["hull_reinforcement"]["max_hp"]
+    assert S.station_max_hp(_station(modules={"hull_reinforcement": 2})) == base_hp + 2 * per
+
+
+def test_thruster_module_speeds_relocation():
+    mult = S.relocate_speed_mult(_station(modules={"thruster": 2}))
+    assert 0.0 < mult < 1.0  # schneller als ohne (1.0)
+    # Cap greift bei vielen Triebwerken.
+    cap = get_balance().data["alliance"]["station"]["modules"]["thruster_speed_cap"]
+    assert S.relocate_speed_mult(_station(modules={"thruster": 99})) == round(1.0 - cap, 10)
+
+
 def test_siege_requires_min_distinct_attackers():
     now = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
     st = _station(hp=1000.0, position=8, siege={})

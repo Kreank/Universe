@@ -254,6 +254,9 @@ async def trigger_breakthrough(session: AsyncSession, player: Player, planet: Pl
         body=f"Deine Forscher hatten im Labor eine unerwartete Entdeckung bei '{tech}'. {gift}",
         ttype="big_moment",
     )
+    # Quest-/Event-Belohnung: Chance auf ein Kommandeurs-Ausruestungsstueck.
+    from app.commander.equipment import maybe_grant_item
+    await maybe_grant_item(session, player.id, "quest")
     log.info("Durchbruch: player=%s tech=%s free_level=%s", player.id, tech, free_level)
     return True
 

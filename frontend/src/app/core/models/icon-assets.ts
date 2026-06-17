@@ -92,6 +92,30 @@ export function missionIcon(type: string): string | null {
 }
 
 /**
+ * Equipment-Slot-Platzhalter (Kopf/Haende/Brust/Schuhe).
+ * Dateien unter assets/img/equipment/slot_<slot>.png; Glyph-Fallback im Aufrufer.
+ */
+export function equipmentSlotIcon(slot: string): string {
+  return `assets/img/equipment/slot_${slot}.png`;
+}
+
+/**
+ * Equipment-Item-Icon (z.B. fighter_helm.png).
+ * Dateien unter assets/img/equipment/<itemKey>.png; Glyph-Fallback im Aufrufer.
+ */
+export function equipmentItemIcon(itemKey: string): string {
+  return `assets/img/equipment/${itemKey}.png`;
+}
+
+/**
+ * Set-Emblem (set_fighter/set_cruiser/set_capital/set_civil).
+ * Dateien unter assets/img/equipment/set_<setKey>.png; Glyph-Fallback im Aufrufer.
+ */
+export function equipmentSetIcon(setKey: string): string {
+  return `assets/img/equipment/set_${setKey}.png`;
+}
+
+/**
  * Stat-Icon fuers Detail-Popup (Angriff/Schild/Fracht/Speed/Treibstoff/Energie).
  * Dateien unter assets/img/icons/spec/stat_<key>.png; Glyph-Fallback im Aufrufer.
  */

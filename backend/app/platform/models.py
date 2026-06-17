@@ -198,6 +198,22 @@ class CommanderLink(Base):
     subordinate_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="CASCADE"), primary_key=True)
 
 
+class CommanderItem(Base):
+    """Ausruestungs-Item im Spieler-Inventar. Genau ein Item je Slot/Kommandeur,
+    wenn ``equipped_commander_id`` gesetzt ist; sonst frei im Inventar."""
+    __tablename__ = "commander_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"))
+    item_key: Mapped[str] = mapped_column(Text, nullable=False)
+    slot: Mapped[str] = mapped_column(Text, nullable=False)  # head | hands | chest | shoes
+    rarity: Mapped[str] = mapped_column(Text, default="common")  # common | rare | epic
+    equipped_commander_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="SET NULL"), nullable=True
+    )
+    acquired_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class Fleet(Base):
     __tablename__ = "fleets"
 
@@ -411,11 +427,18 @@ class AllianceStation(Base):
     research_radius_level: Mapped[int] = mapped_column(Integer, default=0)
     fuel: Mapped[float] = mapped_column(Float, default=0.0)
     hp: Mapped[float] = mapped_column(Float, default=0.0)
-    status: Mapped[str] = mapped_column(Text, default="active")  # active | inactive | destroyed
+    status: Mapped[str] = mapped_column(Text, default="active")  # active | inactive | transit | destroyed
     built_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
     last_upkeep_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
     # Belagerungs-Status (Phase 2): {"attackers": {player_id: {"damage": float, "at": iso}}, "last_attack_at": iso}.
     siege: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Transit-Status (Umstationieren, 2026-06-17): waehrend status='transit' gesetzt. Enthaelt
+    # {origin:[g,s,p], target:[g,s,p], depart_at, arrive_at, returning:bool, escort:{type:count},
+    # escort_planet_id, escort_owner_id, deuterium}. Leer {} wenn die Station ortsfest ist.
+    transit: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Montierte Stations-Module (Slots, 2026-06-17): {module_type: count}, Summe <= Slot-Zahl
+    # (base_slots + slots_per_radius_level * Ausbau-Stufe). Heben Kampfwerte/HP/Transit-Tempo.
+    modules: Mapped[dict] = mapped_column(JSONB, default=dict)
 
 
 class AllianceInvite(Base):

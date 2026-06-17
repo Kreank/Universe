@@ -9,6 +9,9 @@ import {
   CommanderBonus,
   CommanderDetail,
   CommanderTrainResponse,
+  EquipmentCatalog,
+  EquipmentItem,
+  EquipmentState,
   DecisionChoice,
   DecisionResponse,
   FeedbackRequest,
@@ -291,6 +294,34 @@ export class ApiService {
     });
   }
 
+  // --- Commander-Ausruestung (Equipment) ---
+  getEquipmentCatalog(): Observable<EquipmentCatalog> {
+    return this.http.get<EquipmentCatalog>('/api/commanders/equipment-catalog');
+  }
+
+  getInventory(): Observable<EquipmentItem[]> {
+    return this.http.get<EquipmentItem[]>('/api/player/inventory');
+  }
+
+  getEquipment(commanderId: string): Observable<EquipmentState> {
+    return this.http.get<EquipmentState>(`/api/commanders/${commanderId}/equipment`);
+  }
+
+  equipItem(commanderId: string, itemId: string): Observable<EquipmentState> {
+    return this.http.post<EquipmentState>(`/api/commanders/${commanderId}/equip`, { item_id: itemId });
+  }
+
+  unequipItem(commanderId: string, slot: string): Observable<EquipmentState> {
+    return this.http.post<EquipmentState>(`/api/commanders/${commanderId}/unequip`, { slot });
+  }
+
+  craftItem(planetId: string, itemKey: string): Observable<EquipmentItem> {
+    return this.http.post<EquipmentItem>('/api/commanders/craft', {
+      planet_id: planetId,
+      item_key: itemKey,
+    });
+  }
+
   /** Gouverneur eines Planeten setzen (commanderId) oder entfernen (null). */
   setGovernor(planetId: string, commanderId: string | null): Observable<{ ok: boolean }> {
     return this.http.put<{ ok: boolean }>(`/api/planets/${planetId}/governor`, {
@@ -467,5 +498,23 @@ export class ApiService {
 
   upgradeStation(id: string): Observable<unknown> {
     return this.http.post(`/api/alliance/station/${id}/upgrade`, {});
+  }
+
+  relocateStation(id: string, body: {
+    galaxy: number;
+    system: number;
+    position: number;
+    escort?: Record<string, number>;
+    escort_planet_id?: string | null;
+  }): Observable<unknown> {
+    return this.http.post(`/api/alliance/station/${id}/relocate`, body);
+  }
+
+  mountStationModule(id: string, moduleType: string, count = 1): Observable<unknown> {
+    return this.http.post(`/api/alliance/station/${id}/module/mount`, { module_type: moduleType, count });
+  }
+
+  unmountStationModule(id: string, moduleType: string, count = 1): Observable<unknown> {
+    return this.http.post(`/api/alliance/station/${id}/module/unmount`, { module_type: moduleType, count });
   }
 }

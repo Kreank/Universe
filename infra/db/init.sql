@@ -128,6 +128,20 @@ CREATE TABLE commander_links (
     PRIMARY KEY (superior_id, subordinate_id)
 );
 
+-- Kommandeurs-Equipment: Item-Instanzen im Spieler-Inventar (Kopf/Haende/Brust/Schuhe).
+-- equipped_commander_id != NULL => auf einem Kommandeur getragen; SET NULL bei dessen Tod.
+CREATE TABLE commander_items (
+    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    player_id             UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    item_key              TEXT NOT NULL,
+    slot                  TEXT NOT NULL,                   -- head | hands | chest | shoes
+    rarity                TEXT NOT NULL DEFAULT 'common',  -- common | rare | epic
+    equipped_commander_id UUID REFERENCES commanders(id) ON DELETE SET NULL,
+    acquired_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_commander_items_player ON commander_items(player_id);
+CREATE INDEX idx_commander_items_equipped ON commander_items(equipped_commander_id);
+
 -- ---------------------------------------------------------------------
 --  Flotten & Schiffe
 -- ---------------------------------------------------------------------

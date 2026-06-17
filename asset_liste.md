@@ -566,6 +566,72 @@ Es gibt **zwei** Asset-Wurzeln:
 
 ---
 
+## 🎖️ Kommandeurs-Equipment (2026-06-17 — Feature in Umsetzung)
+
+> **Neu:** Kommandeure können mit **Ausrüstung** in 4 Slots (Kopf/Hände/Brust/Schuhe) bestückt werden;
+> Ausrüstung gibt **Schiffsklassen-Boni** (Angriff/Schild/Tempo auf `fighter`/`cruiser`/`capital`/`civil`)
+> und bildet **4er-Sets** (Set-Bonus bei 2/4 Teilen). Items kommen aus Quests/Expeditionen/globalen
+> Events/Akademie-Fertigung. Code referenziert die Pfade bereits → bis zur Lieferung Emoji/CSS-Fallback.
+>
+> **NEUER Ordner `equipment/`** — Master `assets/icons/equipment/`, Frontend-Spiegel
+> `frontend/src/assets/img/equipment/` (Achtung: im Spiegel OHNE `icons/`-Segment, referenziert als
+> `assets/img/equipment/<name>.png`). **Gemeinsamer Stil-Brief (alle Equipment-Assets):** Sci-Fi-UI,
+> PNG transparent, **256×256**, EIN klar lesbares Objekt/Symbol mittig, cyan `#2fe3d2` Akzentlicht,
+> dunkel-metallische Anmutung passend zum bestehenden UI (`#080d18`), KEIN Text, KEIN Rahmen (außer
+> Slot-Platzhalter/Set-Emblem wie unten), auch ~24–32px klein klar erkennbar. Raritäts-Färbung macht
+> später CSS — die Icons selbst neutral halten.
+
+### Slot-Platzhalter (leerer Slot) — referenziert als `assets/img/equipment/slot_<name>.png`
+
+> Schlichtes, gedämpftes Linien-Icon, das einen **leeren** Ausrüstungs-Slot markiert (wird hinter dem
+> Item halbtransparent angezeigt). Klar als Körperzone lesbar, dezent (nicht ablenkend), monochrom-cyan.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | slot_head | `icons/equipment/slot_head.png` | PNG transparent, 256×256 | Leerer **Kopf**-Slot: schlichte Helm-/Kopf-Silhouette als Umriss, gedämpft cyan, dezent. |
+| ⬜ | slot_hands | `icons/equipment/slot_hands.png` | PNG transparent, 256×256 | Leerer **Hände**-Slot: Handschuh-/Hand-Umriss, gedämpft cyan, dezent. |
+| ⬜ | slot_chest | `icons/equipment/slot_chest.png` | PNG transparent, 256×256 | Leerer **Brust**-Slot: Brustpanzer-/Westen-Umriss, gedämpft cyan, dezent. |
+| ⬜ | slot_shoes | `icons/equipment/slot_shoes.png` | PNG transparent, 256×256 | Leerer **Schuhe**-Slot: Stiefel-/Fuß-Umriss, gedämpft cyan, dezent. |
+
+### Item-Icons (16) — 4 Sets × 4 Slots — referenziert als `assets/img/equipment/<key>.png`
+
+> Je ein **plastisch gerendertes Ausrüstungsstück** (kein flaches Clipart). Pro Set eine erkennbare
+> gemeinsame Designsprache/Farbakzent, damit Set-Zugehörigkeit auf einen Blick sichtbar ist. Jeweils
+> Kopf/Hände/Brust/Schuhe einer Sci-Fi-Kommandeurs-Montur. Stil-Konsistenz untereinander wichtig.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | fighter_helm | `icons/equipment/fighter_helm.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm** (Schiffsklasse `fighter`, agil/offensiv, scharfe Kanten, cyan): **Kopf** — leichter aerodynamischer Pilotenhelm mit Visier. |
+| ⬜ | fighter_gloves | `icons/equipment/fighter_gloves.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Hände** — schlanke Pilotenhandschuhe mit Steuer-/Sensor-Akzenten. |
+| ⬜ | fighter_vest | `icons/equipment/fighter_vest.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Brust** — leichte Flugweste/Exo-Geschirr, beweglich, cyan Linien. |
+| ⬜ | fighter_boots | `icons/equipment/fighter_boots.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Schuhe** — leichte Schub-/Manöver-Stiefel mit kleinen Düsen. |
+| ⬜ | cruiser_helm | `icons/equipment/cruiser_helm.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon** (Schiffsklasse `cruiser`, ausgewogen/taktisch, blau-cyan): **Kopf** — taktischer Offiziershelm mit Comm-Headset. |
+| ⬜ | cruiser_gloves | `icons/equipment/cruiser_gloves.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Hände** — verstärkte Taktik-Handschuhe. |
+| ⬜ | cruiser_plate | `icons/equipment/cruiser_plate.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Brust** — mittlerer Brustpanzer mit Schulterplatten, taktisch. |
+| ⬜ | cruiser_boots | `icons/equipment/cruiser_boots.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Schuhe** — robuste Einsatzstiefel. |
+| ⬜ | capital_helm | `icons/equipment/capital_helm.png` | PNG transparent, 256×256 | Set **Schlachtlinie** (Schiffsklasse `capital`, wuchtig/schwer gepanzert, martialisch): **Kopf** — massiver gepanzerter Kommandanten-Helm. |
+| ⬜ | capital_gauntlets | `icons/equipment/capital_gauntlets.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Hände** — schwere Panzerhandschuhe (Gauntlets). |
+| ⬜ | capital_cuirass | `icons/equipment/capital_cuirass.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Brust** — schwerer Panzer-Kürass mit Verstärkungsplatten, imposant. |
+| ⬜ | capital_greaves | `icons/equipment/capital_greaves.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Schuhe** — schwere Panzerstiefel (Greaves). |
+| ⬜ | salvage_visor | `icons/equipment/salvage_visor.png` | PNG transparent, 256×256 | Set **Bergungs-Montur** (Schiffsklasse `civil`, Transporter/Miner, industriell, warm-cyan): **Kopf** — Bergmanns-/Industrie-Visier mit Stirnlampe. |
+| ⬜ | salvage_gloves | `icons/equipment/salvage_gloves.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Hände** — schwere Arbeitshandschuhe mit Greifverstärkung. |
+| ⬜ | salvage_rig | `icons/equipment/salvage_rig.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Brust** — Industrie-Exo-Geschirr/Werkzeug-Rig mit Bergungs-Modulen. |
+| ⬜ | salvage_boots | `icons/equipment/salvage_boots.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Schuhe** — schwere Magnet-/Greifstiefel. |
+
+### Set-Embleme (4) — referenziert als `assets/img/equipment/set_<class>.png`
+
+> Rundes, plastisch gerendertes **Set-Emblem** (Stil-Anker: `tech/*.png` Medaillon-Look), zeigt im UI
+> den Set-Fortschritt (z.B. „Jäger-Schwarm 2/4"). Soll die Set-Identität/Schiffsklasse sofort lesbar machen.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ⬜ | set_fighter | `icons/equipment/set_fighter.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Jäger-Schwarm**: agiles Jäger-/Schwarm-Motiv (mehrere kleine Jäger-Silhouetten/Pfeilspitze), cyan. |
+| ⬜ | set_cruiser | `icons/equipment/set_cruiser.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Kreuzer-Bataillon**: taktisches Kreuzer-/Bataillons-Wappen, blau-cyan. |
+| ⬜ | set_capital | `icons/equipment/set_capital.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Schlachtlinie**: wuchtiges Schlachtschiff-/Linien-Wappen, martialisch, cyan + dezent magenta `#ff4d7d`. |
+| ⬜ | set_civil | `icons/equipment/set_civil.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Bergungs-Montur**: Industrie-/Bergungs-Motiv (Zahnrad + Frachter/Bohrer), warm-cyan. |
+
+---
+
 ## 🗒️ Notizen für Codex
 
 - Optional/später (noch NICHT verdrahtet, daher keine aktive Anforderung): Regions-Hintergründe

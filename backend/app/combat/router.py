@@ -191,11 +191,13 @@ async def simulate_combat(
         cmd_mult = _commander_mods(commander, len(player_ships))
         attack_mult *= cmd_mult
         from app.commander.bonuses import base_bonuses, resolve_ship_bonuses
+        from app.commander.equipment import equipment_bonuses_for
         focus = (commander.persona or {}).get("focus")
         cmd_bonuses = base_bonuses(
             commander.specialization, commander.rank, commander.traits or [], focus,
             commander.grade or "C",
         )
+        cmd_bonuses = cmd_bonuses + await equipment_bonuses_for(session, commander.id)
         ship_bonuses, _spd = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(player_ships.keys()))
         commander_meta = {
             "name": commander.name, "morale": commander.morale,

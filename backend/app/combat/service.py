@@ -292,11 +292,14 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
     ship_bonuses: dict[str, dict[str, float]] = {}
     if commander is not None:
         from app.commander.bonuses import base_bonuses, resolve_ship_bonuses
+        from app.commander.equipment import equipment_bonuses_for
         focus = (commander.persona or {}).get("focus")
         cmd_bonuses = base_bonuses(
             commander.specialization, commander.rank, commander.traits or [], focus,
             commander.grade or "C",
         )
+        # Equipment-Boni (Items + Set-Boni) des Kommandeurs mit einfliessen lassen.
+        cmd_bonuses = cmd_bonuses + await equipment_bonuses_for(session, commander.id)
         ship_bonuses, _speed = resolve_ship_bonuses(
             cmd_bonuses, commander.morale, list(attacker_ships.keys())
         )
