@@ -88,17 +88,23 @@ def mine_from_field(
 
 # -- DB: Regeneration eines Feldes ----------------------------------------------
 
-def regen_field(field: AsteroidField) -> None:
-    """Wendet die seit ``last_regen_at`` aufgelaufene Regeneration an (in-place)."""
+def projected_remaining(field: AsteroidField) -> tuple[float, float]:
+    """Aktueller Vorrat inkl. der seit ``last_regen_at`` aufgelaufenen Regeneration — OHNE das
+    Feld zu mutieren. Fuer die Galaxie-Anzeige, damit man das Feld wirklich nachwachsen sieht."""
     last = field.last_regen_at or _now()
     if last.tzinfo is None:
         last = last.replace(tzinfo=dt.timezone.utc)
     hours = max(0.0, (_now() - last).total_seconds() / 3600.0)
     ratio = float(_cfg().get("regen_ratio_per_hour", 0.0))
-    field.metal_remaining, field.crystal_remaining = apply_regen(
+    return apply_regen(
         field.metal_remaining, field.crystal_remaining,
         field.metal_max, field.crystal_max, hours, ratio,
     )
+
+
+def regen_field(field: AsteroidField) -> None:
+    """Wendet die seit ``last_regen_at`` aufgelaufene Regeneration an (in-place)."""
+    field.metal_remaining, field.crystal_remaining = projected_remaining(field)
     field.last_regen_at = _now()
 
 

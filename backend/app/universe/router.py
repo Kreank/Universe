@@ -139,11 +139,15 @@ async def galaxy_view(
         field = next((f for f in ast_rows if f.position == pos), None)
         if not field:
             return None
+        # Vorrat inkl. aufgelaufener Regeneration projizieren (ohne Mutation) -> das Feld waechst
+        # sichtbar nach. Beim Abbau wird dieselbe Regen-Formel real angewandt.
+        from app.universe.asteroids import projected_remaining
+        metal_now, crystal_now = projected_remaining(field)
         return {
             "richness": field.richness,
             "mult": round(field.mult, 2),
-            "metal": round(field.metal_remaining, 0),
-            "crystal": round(field.crystal_remaining, 0),
+            "metal": round(metal_now, 0),
+            "crystal": round(crystal_now, 0),
             "metal_max": round(field.metal_max, 0),
             "crystal_max": round(field.crystal_max, 0),
         }
