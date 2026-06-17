@@ -666,7 +666,8 @@ export interface CombatSimTech {
 
 /** Transparente Annahmen, mit denen der Simulator gerechnet hat (Tech, Doktrin, Commander). */
 export interface CombatSimMeta {
-  attacker: {
+  /** DEINE Seite (volle Forschung + Doktrin + optionaler Commander) — unabhängig von der Rolle. */
+  you: {
     tech: CombatSimTech;
     antimatter_forge: number;
     doctrine: string | null;
@@ -680,7 +681,10 @@ export interface CombatSimMeta {
       attack_mult: number;
     } | null;
   };
-  defender: { tech: CombatSimTech };
+  /** Die eingestellte Gegner-Forschung. */
+  enemy: { tech: CombatSimTech };
+  /** Deine Rolle im simulierten Kampf. */
+  role: 'attacker' | 'defender';
 }
 
 export interface CombatReport {

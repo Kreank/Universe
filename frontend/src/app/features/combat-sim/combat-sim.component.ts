@@ -49,15 +49,28 @@ interface PickRow {
       @if (!balanceLoaded()) {
         <p class="state">Balance lädt …</p>
       } @else {
+        <!-- Kampfrichtung: greife ich an oder verteidige ich? -->
+        <div class="mode-switch" role="tablist">
+          <button type="button" class="ms-btn" [class.active]="mode() === 'attack'" (click)="setMode('attack')">🗡 Ich greife an</button>
+          <button type="button" class="ms-btn" [class.active]="mode() === 'defense'" (click)="setMode('defense')">🛡 Ich verteidige mich</button>
+        </div>
+        <p class="faint small mode-hint">
+          {{ mode() === 'defense'
+            ? 'Du wirst angegriffen: stelle deine verteidigenden Schiffe + Verteidigungsanlagen ein, der Gegner greift mit seiner Flotte an.'
+            : 'Du greifst an: stelle deine Angriffsflotte ein, der Gegner verteidigt mit Schiffen + Verteidigung.' }}
+        </p>
+
         <div class="cols">
-          <!-- Eigene Flotte: nur Kampf-Schiffe -->
+          <!-- DEINE Seite: Schiffe (+ Verteidigung im Verteidigungs-Modus) -->
           <div class="card col side-own">
             <div class="panel-title">
-              <app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="16" /> Deine Flotte
+              <app-btn-icon [src]="statIcon('shield')" glyph="🛡" [size]="16" /> {{ mode() === 'defense' ? 'Deine Verteidigung' : 'Deine Flotte' }}
               @if (ownTotal()) { <span class="ptotal mono">{{ ownTotal() }}</span> }
               <button class="mini" type="button" [disabled]="!garrisonCombat().length"
                 title="Schiffe vom aktiven Planeten übernehmen" (click)="fillOwnFromFleet()"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" /> Meine Flotte</button>
             </div>
+
+            @if (mode() === 'defense') { <div class="sub-head">Schiffe (Garnison)</div> }
             @for (s of combatShips(); track s.type) {
               <label class="row">
                 <app-icon-tile class="r-ico" [glyph]="s.glyph" [src]="s.icon" [size]="36" variant="accent" />
@@ -72,12 +85,34 @@ interface PickRow {
                 />
               </label>
             }
+
+            @if (mode() === 'defense') {
+              <div class="sub-head">
+                Verteidigung
+                <button class="mini" type="button" [disabled]="!garrisonDefense().length"
+                  title="Verteidigung vom aktiven Planeten übernehmen" (click)="fillOwnDefFromPlanet()"><app-btn-icon [src]="navIcon('defense')" glyph="🛡" /> Meine Verteidigung</button>
+              </div>
+              @for (d of defenses(); track d.type) {
+                <label class="row">
+                  <app-icon-tile class="r-ico" [glyph]="d.glyph" [src]="d.icon" [size]="36" variant="accent" />
+                  <span class="r-label">{{ d.label }}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    class="r-num"
+                    [ngModel]="ownDefCounts()[d.type] ?? null"
+                    (ngModelChange)="setCount('ownDef', d.type, $event)"
+                    placeholder="0"
+                  />
+                </label>
+              }
+            }
           </div>
 
-          <!-- Gegner: Schiffe + Verteidigung -->
+          <!-- GEGNER-Seite: Schiffe (+ Verteidigung nur wenn du angreifst) + Tech -->
           <div class="card col side-enemy">
             <div class="panel-title">
-              <app-btn-icon [src]="statusIcon('attack')" glyph="⚔" [size]="16" /> Gegner
+              <app-btn-icon [src]="statusIcon('attack')" glyph="⚔" [size]="16" /> {{ mode() === 'defense' ? 'Angreifer' : 'Gegner' }}
               @if (enemyTotal()) { <span class="ptotal mono">{{ enemyTotal() }}</span> }
             </div>
 
@@ -97,23 +132,25 @@ interface PickRow {
               </label>
             }
 
-            <div class="sub-head">Verteidigung</div>
-            @for (d of defenses(); track d.type) {
-              <label class="row">
-                <app-icon-tile class="r-ico" [glyph]="d.glyph" [src]="d.icon" [size]="36" variant="magenta" />
-                <span class="r-label">{{ d.label }}</span>
-                <input
-                  type="number"
-                  min="0"
-                  class="r-num"
-                  [ngModel]="enemyDefCounts()[d.type] ?? null"
-                  (ngModelChange)="setCount('enemyDef', d.type, $event)"
-                  placeholder="0"
-                />
-              </label>
+            @if (mode() === 'attack') {
+              <div class="sub-head">Verteidigung</div>
+              @for (d of defenses(); track d.type) {
+                <label class="row">
+                  <app-icon-tile class="r-ico" [glyph]="d.glyph" [src]="d.icon" [size]="36" variant="magenta" />
+                  <span class="r-label">{{ d.label }}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    class="r-num"
+                    [ngModel]="enemyDefCounts()[d.type] ?? null"
+                    (ngModelChange)="setCount('enemyDef', d.type, $event)"
+                    placeholder="0"
+                  />
+                </label>
+              }
             }
 
-            <div class="sub-head">Forschung des Gegners</div>
+            <div class="sub-head">Forschung des {{ mode() === 'defense' ? 'Angreifers' : 'Gegners' }}</div>
             <p class="tech-hint faint">Leer = Stufe 0 (unerforscht). Bestimmt Angriff/Schild/Hülle des Gegners.</p>
             <div class="tech-grid">
               @for (t of enemyTechFields; track t.key) {
@@ -176,6 +213,17 @@ interface PickRow {
     .sim-head h1 { font-family: var(--font-display); }
     .small { font-size: var(--fs-sm); }
     .state { color: var(--text-dim); padding: var(--sp-5) 0; }
+
+    /* Kampfrichtung-Umschalter (segmentiert). */
+    .mode-switch { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--r-md);
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
+    .ms-btn { padding: var(--sp-2) var(--sp-4); min-height: 40px; border: none; cursor: pointer;
+      border-radius: var(--r-sm); background: transparent; color: var(--text-dim);
+      font-family: var(--font); font-size: var(--fs-sm); font-weight: 600;
+      transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out); }
+    .ms-btn:hover { color: var(--text); }
+    .ms-btn.active { background: var(--accent); color: #04201d; }
+    .mode-hint { margin: var(--sp-2) 0 0; }
 
     .cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); align-items: start; }
     .col { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
@@ -272,7 +320,12 @@ export class CombatSimComponent {
   protected readonly statIcon = statIcon;
   protected readonly statusIcon = statusIcon;
 
+  /** Kampfrichtung: greife ich an, oder werde ich angegriffen (verteidige ich)? */
+  protected readonly mode = signal<'attack' | 'defense'>('attack');
+
   protected readonly ownCounts = signal<Record<string, number>>({});
+  /** Eigene Verteidigungsanlagen — nur im Verteidigungs-Modus relevant. */
+  protected readonly ownDefCounts = signal<Record<string, number>>({});
   protected readonly enemyShipCounts = signal<Record<string, number>>({});
   protected readonly enemyDefCounts = signal<Record<string, number>>({});
 
@@ -349,15 +402,19 @@ export class CombatSimComponent {
   });
 
   protected readonly canSimulate = computed(() => {
-    const own = hasUnit(this.ownCounts());
-    const enemy = hasUnit(this.enemyShipCounts()) || hasUnit(this.enemyDefCounts());
+    const defending = this.mode() === 'defense';
+    const own = hasUnit(this.ownCounts()) || (defending && hasUnit(this.ownDefCounts()));
+    // Im Verteidigungs-Modus bringt der Angreifer keine Verteidigung mit.
+    const enemy = hasUnit(this.enemyShipCounts()) || (!defending && hasUnit(this.enemyDefCounts()));
     return own && enemy;
   });
 
   /** Summe ausgewählter Einheiten je Seite (für die Spalten-Überschrift). */
-  protected readonly ownTotal = computed(() => sumCounts(this.ownCounts()));
+  protected readonly ownTotal = computed(
+    () => sumCounts(this.ownCounts()) + (this.mode() === 'defense' ? sumCounts(this.ownDefCounts()) : 0),
+  );
   protected readonly enemyTotal = computed(
-    () => sumCounts(this.enemyShipCounts()) + sumCounts(this.enemyDefCounts()),
+    () => sumCounts(this.enemyShipCounts()) + (this.mode() === 'attack' ? sumCounts(this.enemyDefCounts()) : 0),
   );
 
   /** Kampf-Schiffe der aktiven Garnison (für „Meine Flotte übernehmen"). */
@@ -375,9 +432,31 @@ export class CombatSimComponent {
     this.ownCounts.set(next);
   }
 
+  /** Verteidigungsanlagen des aktiven Planeten (für „Meine Verteidigung übernehmen"). */
+  protected readonly garrisonDefense = computed(() => {
+    const valid = new Set(this.defenses().map((d) => d.type));
+    return (this.state.activePlanet()?.defenses ?? []).filter((d) => d.count > 0 && valid.has(d.type));
+  });
+
+  /** Übernimmt die Planeten-Verteidigung als „Deine Verteidigung" (Verteidigungs-Modus). */
+  fillOwnDefFromPlanet(): void {
+    const next: Record<string, number> = {};
+    for (const d of this.garrisonDefense()) {
+      next[d.type] = d.count;
+    }
+    this.ownDefCounts.set(next);
+  }
+
+  /** Kampfrichtung umschalten; vorhandenes Ergebnis verwerfen (sonst irreführend). */
+  setMode(m: 'attack' | 'defense'): void {
+    this.mode.set(m);
+    this.result.set(null);
+  }
+
   /** Setzt beide Seiten (inkl. Gegner-Tech) zurück. */
   clearAll(): void {
     this.ownCounts.set({});
+    this.ownDefCounts.set({});
     this.enemyShipCounts.set({});
     this.enemyDefCounts.set({});
     this.enemyTech.set({});
@@ -391,10 +470,13 @@ export class CombatSimComponent {
   }
 
   /** Number-Input -> Signal (negatives/leeres wird zu 0). */
-  setCount(side: 'own' | 'enemyShip' | 'enemyDef', type: string, value: unknown): void {
+  setCount(side: 'own' | 'ownDef' | 'enemyShip' | 'enemyDef', type: string, value: unknown): void {
     const n = Math.max(0, Math.floor(Number(value) || 0));
     const target =
-      side === 'own' ? this.ownCounts : side === 'enemyShip' ? this.enemyShipCounts : this.enemyDefCounts;
+      side === 'own' ? this.ownCounts
+      : side === 'ownDef' ? this.ownDefCounts
+      : side === 'enemyShip' ? this.enemyShipCounts
+      : this.enemyDefCounts;
     target.update((m) => ({ ...m, [type]: n }));
   }
 
@@ -405,13 +487,16 @@ export class CombatSimComponent {
     this.pending.set(true);
     this.error.set(null);
     const commanderId = this.useCommander() ? this.selectedCommanderId() : null;
+    const defending = this.mode() === 'defense';
     this.api
       .simulateCombat({
-        attacker_ships: prune(this.ownCounts()),
-        defender_ships: prune(this.enemyShipCounts()),
-        defender_defenses: prune(this.enemyDefCounts()),
+        attacker_ships: prune(this.ownCounts()),                       // immer DEINE Schiffe
+        own_defenses: defending ? prune(this.ownDefCounts()) : {},     // nur beim Verteidigen
+        defender_ships: prune(this.enemyShipCounts()),                 // immer GEGNER-Schiffe
+        defender_defenses: defending ? {} : prune(this.enemyDefCounts()), // Angreifer bringt keine
         defender_tech: prune(this.enemyTech()),
         commander_id: commanderId,
+        mode: this.mode(),
       })
       .subscribe({
         next: (r) => {

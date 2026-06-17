@@ -56,15 +56,17 @@ def test_engine_result_has_expected_shape():
 
 def test_prepare_sim_input_cleans_and_validates():
     """0-Eintraege fallen raus, gueltige Typen bleiben erhalten."""
-    a, d_ships, d_def = _prepare_sim_input(
+    o_ships, o_def, e_ships, e_def = _prepare_sim_input(
         {"cruiser": 5, "light_fighter": 0},
+        {},
         {"light_fighter": 20},
         {"rocket_launcher": 0, "light_laser": 3},
         BALANCE["ships"], BALANCE["defenses"],
     )
-    assert a == {"cruiser": 5}
-    assert d_ships == {"light_fighter": 20}
-    assert d_def == {"light_laser": 3}  # 0-Eintrag entfernt
+    assert o_ships == {"cruiser": 5}
+    assert o_def == {}
+    assert e_ships == {"light_fighter": 20}
+    assert e_def == {"light_laser": 3}  # 0-Eintrag entfernt
 
 
 def test_prepare_sim_input_rejects_cap_and_unknown_and_empty():
@@ -72,7 +74,7 @@ def test_prepare_sim_input_rejects_cap_and_unknown_and_empty():
     # Cap: Summe > MAX_SIM_UNITS.
     with pytest.raises(HTTPException) as exc:
         _prepare_sim_input(
-            {"light_fighter": MAX_SIM_UNITS}, {"light_fighter": 1}, {},
+            {"light_fighter": MAX_SIM_UNITS}, {}, {"light_fighter": 1}, {},
             BALANCE["ships"], BALANCE["defenses"],
         )
     assert exc.value.status_code == 400
@@ -80,15 +82,15 @@ def test_prepare_sim_input_rejects_cap_and_unknown_and_empty():
     # Unbekannter Schiffstyp.
     with pytest.raises(HTTPException) as exc:
         _prepare_sim_input(
-            {"flux_kanone": 1}, {"light_fighter": 1}, {},
+            {"flux_kanone": 1}, {}, {"light_fighter": 1}, {},
             BALANCE["ships"], BALANCE["defenses"],
         )
     assert exc.value.status_code == 400
 
-    # Kein Verteidiger -> beide Seiten brauchen eine Einheit.
+    # Kein Gegner -> beide Seiten brauchen eine Einheit.
     with pytest.raises(HTTPException) as exc:
         _prepare_sim_input(
-            {"cruiser": 1}, {}, {},
+            {"cruiser": 1}, {}, {}, {},
             BALANCE["ships"], BALANCE["defenses"],
         )
     assert exc.value.status_code == 400

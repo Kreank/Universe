@@ -333,10 +333,12 @@ export class ApiService {
   /** Was-waere-wenn-Schlacht: simuliert ohne Spielstand-Effekt (nutzt eigene Forschung). */
   simulateCombat(body: {
     attacker_ships: Record<string, number>;
+    own_defenses?: Record<string, number>;
     defender_ships: Record<string, number>;
     defender_defenses: Record<string, number>;
     defender_tech?: Record<string, number>;
     commander_id?: string | null;
+    mode?: 'attack' | 'defense';
     seed?: number | null;
   }): Observable<CombatReport> {
     return this.http.post<CombatReport>('/api/combat/simulate', body);

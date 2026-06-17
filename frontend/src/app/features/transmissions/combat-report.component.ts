@@ -96,14 +96,14 @@ const BAND_META: Record<string, { key: string; label: string; glyph: string }> =
 
           @if (simMeta(); as m) {
             <div class="sim-meta">
-              <div class="sm-title">Simulation — gerechnet mit:</div>
+              <div class="sm-title">Simulation ({{ m.role === 'defender' ? 'du verteidigst' : 'du greifst an' }}) — gerechnet mit:</div>
               <div class="sm-row">
                 <span class="sm-tag you">DU</span>
-                <span class="sm-txt">{{ techLine(m.attacker.tech) }}@if (m.attacker.antimatter_forge) {<span> · Antimaterie-Schmiede {{ m.attacker.antimatter_forge }}</span>}@if (m.attacker.doctrine) {<span> · Doktrin: {{ m.attacker.doctrine }}</span>}@if (m.attacker.commander; as c) {<span class="sm-cmd"> · 🎖 {{ c.name }} (Moral {{ c.morale }})</span>} @else {<span class="faint"> · ohne Commander</span>}</span>
+                <span class="sm-txt">{{ techLine(m.you.tech) }}@if (m.you.antimatter_forge) {<span> · Antimaterie-Schmiede {{ m.you.antimatter_forge }}</span>}@if (m.you.doctrine) {<span> · Doktrin: {{ m.you.doctrine }}</span>}@if (m.you.commander; as c) {<span class="sm-cmd"> · 🎖 {{ c.name }} (Moral {{ c.morale }})</span>} @else {<span class="faint"> · ohne Commander</span>}</span>
               </div>
               <div class="sm-row">
                 <span class="sm-tag foe">GEGNER</span>
-                <span class="sm-txt">{{ techLine(m.defender.tech) }}</span>
+                <span class="sm-txt">{{ techLine(m.enemy.tech) }}</span>
               </div>
             </div>
           }

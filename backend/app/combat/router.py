@@ -63,10 +63,21 @@ def serialize_combat_report(report: CombatReport, viewer_id: uuid.UUID) -> dict:
 
 
 class CombatSimRequest(BaseModel):
-    """Eingabe fuer den Kampf-Simulator (rein hypothetisch, kein Spielstand)."""
+    """Eingabe fuer den Kampf-Simulator (rein hypothetisch, kein Spielstand).
+
+    ``attacker_ships``/``defender_ships`` tragen IMMER die Schiffe DEINER bzw. der GEGNER-Seite.
+    ``mode`` legt fest, welche Rolle DU im Kampf hast:
+      - "attack"  (Default): du bist der Angreifer (nur Schiffe), der Gegner verteidigt
+        (``defender_defenses``).
+      - "defense": du wirst angegriffen — deine Seite verteidigt mit Schiffen + ``own_defenses``,
+        der Gegner greift mit Schiffen an (keine Planetenverteidigung).
+    Deine volle Forschung + optionaler Commander wirken stets auf DEINE Seite, egal welche Rolle.
+    """
     attacker_ships: dict[str, int]
     defender_ships: dict[str, int] = {}
     defender_defenses: dict[str, int] = {}
+    own_defenses: dict[str, int] = {}
+    mode: str = "attack"
     # Optionale Verteidiger-Forschung (volles Tech-Dict: weapons_/shield_/armor_tech + Meisterschaften).
     # Default leer = unerforschter Gegner (Tech 0); gesetzt erlaubt "gegen Tech-N simulieren".
     defender_tech: dict[str, int] = {}
@@ -76,47 +87,50 @@ class CombatSimRequest(BaseModel):
     seed: int | None = None
 
 
+def _clean_units(raw: dict[str, int], catalog: dict, kind: str) -> dict[str, int]:
+    """Bereinigt ein {typ:anzahl}-Dict: ganze Zahlen >= 0, 0-Eintraege raus, Typ muss im Katalog
+    als echte Konfiguration (dict) existieren. Reine Funktion (nur ``HTTPException``)."""
+    out: dict[str, int] = {}
+    for typ, count in raw.items():
+        # bool ist Subklasse von int -> explizit ausschliessen.
+        if isinstance(count, bool) or not isinstance(count, int):
+            raise HTTPException(status_code=400, detail=f"Ungueltige Stueckzahl fuer '{typ}'.")
+        if count < 0:
+            raise HTTPException(status_code=400, detail=f"Stueckzahl fuer '{typ}' darf nicht negativ sein.")
+        if count == 0:
+            continue
+        if not isinstance(catalog.get(typ), dict):
+            raise HTTPException(status_code=400, detail=f"Unbekannter {kind}: '{typ}'.")
+        out[typ] = count
+    return out
+
+
 def _prepare_sim_input(
-    attacker_ships: dict[str, int],
-    defender_ships: dict[str, int],
-    defender_defenses: dict[str, int],
+    own_ships: dict[str, int],
+    own_defenses: dict[str, int],
+    enemy_ships: dict[str, int],
+    enemy_defenses: dict[str, int],
     ship_catalog: dict,
     defense_catalog: dict,
-) -> tuple[dict[str, int], dict[str, int], dict[str, int]]:
-    """Validiert + bereinigt die Sim-Eingabe. Reine Funktion (nur ``HTTPException``,
-    keine DB/FastAPI-Abhaengigkeit) -> direkt testbar.
+) -> tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]:
+    """Validiert + bereinigt die (rollen-neutrale) Sim-Eingabe. Reine Funktion -> direkt testbar.
 
-    - Counts muessen ganze Zahlen >= 0 sein; 0-Eintraege werden entfernt.
-    - Jeder Typ muss im jeweiligen Katalog als echte Konfiguration (dict) existieren.
-    - Beide Seiten brauchen >= 1 Einheit; Gesamtsumme <= ``MAX_SIM_UNITS``.
+    - Jede Seite (DU / GEGNER) braucht >= 1 Einheit (Schiff ODER Verteidigung).
+    - Gesamtsumme <= ``MAX_SIM_UNITS``.
     """
-    def clean(raw: dict[str, int], catalog: dict, kind: str) -> dict[str, int]:
-        out: dict[str, int] = {}
-        for typ, count in raw.items():
-            # bool ist Subklasse von int -> explizit ausschliessen.
-            if isinstance(count, bool) or not isinstance(count, int):
-                raise HTTPException(status_code=400, detail=f"Ungueltige Stueckzahl fuer '{typ}'.")
-            if count < 0:
-                raise HTTPException(status_code=400, detail=f"Stueckzahl fuer '{typ}' darf nicht negativ sein.")
-            if count == 0:
-                continue
-            if not isinstance(catalog.get(typ), dict):
-                raise HTTPException(status_code=400, detail=f"Unbekannter {kind}: '{typ}'.")
-            out[typ] = count
-        return out
+    o_ships = _clean_units(own_ships, ship_catalog, "Schiffstyp")
+    o_def = _clean_units(own_defenses, defense_catalog, "Verteidigungstyp")
+    e_ships = _clean_units(enemy_ships, ship_catalog, "Schiffstyp")
+    e_def = _clean_units(enemy_defenses, defense_catalog, "Verteidigungstyp")
 
-    a_ships = clean(attacker_ships, ship_catalog, "Schiffstyp")
-    d_ships = clean(defender_ships, ship_catalog, "Schiffstyp")
-    d_def = clean(defender_defenses, defense_catalog, "Verteidigungstyp")
-
-    if not a_ships or (not d_ships and not d_def):
+    if not (o_ships or o_def) or not (e_ships or e_def):
         raise HTTPException(status_code=400, detail="Beide Seiten brauchen mindestens eine Einheit.")
 
-    total = sum(a_ships.values()) + sum(d_ships.values()) + sum(d_def.values())
+    total = sum(o_ships.values()) + sum(o_def.values()) + sum(e_ships.values()) + sum(e_def.values())
     if total > MAX_SIM_UNITS:
         raise HTTPException(status_code=400, detail="Zu viele Einheiten fuer die Simulation (max. 50.000).")
 
-    return a_ships, d_ships, d_def
+    return o_ships, o_def, e_ships, e_def
 
 
 @router.post("/combat/simulate")
@@ -133,12 +147,15 @@ async def simulate_combat(
     sie direkt rendert.
     """
     bal = get_balance()
-    attacker_ships, defender_ships, defender_defenses = _prepare_sim_input(
-        body.attacker_ships, body.defender_ships, body.defender_defenses,
+    mode = "defense" if body.mode == "defense" else "attack"
+    # Rollen-neutral: ``attacker_ships``/``own_defenses`` = DEINE Einheiten, ``defender_*`` = GEGNER.
+    player_ships, player_defenses, enemy_ships, enemy_defenses = _prepare_sim_input(
+        body.attacker_ships, body.own_defenses,
+        body.defender_ships, body.defender_defenses,
         bal.ships, bal.defenses,
     )
 
-    # Angreifer-Tech = VOLLE echte Forschung des Spielers (wie der echte Kampf, resolve_attack):
+    # DEINE Tech = VOLLE echte Forschung des Spielers (wie der echte Kampf, resolve_attack):
     # nicht nur Waffen/Schild/Panzerung, sondern auch die Meisterschaften und forschungs-
     # skalierten Kampf-Techs. Plus die imperiumsweite Antimaterie-Schmiede (Megastruktur).
     # Vorher gingen nur 3 Stufen rein -> der Simulator rechnete die eigene Flotte zu schwach.
@@ -157,7 +174,7 @@ async def simulate_combat(
     from app.combat.service import _combat_aura_mult, _commander_mods
     from app.platform.doctrine import combat_attack_mult
     doctrine_mult = combat_attack_mult(player.doctrine)
-    aura_mult = _combat_aura_mult(attacker_ships)
+    aura_mult = _combat_aura_mult(player_ships)
     attack_mult = doctrine_mult * aura_mult
     ship_bonuses: dict[str, dict[str, float]] = {}
     commander_meta: dict | None = None
@@ -171,7 +188,7 @@ async def simulate_combat(
             raise HTTPException(status_code=404, detail="Commander nicht gefunden.")
         if commander.status != "active":
             raise HTTPException(status_code=400, detail="Dieser Commander ist nicht einsatzbereit (im Training/verwundet).")
-        cmd_mult = _commander_mods(commander, len(attacker_ships))
+        cmd_mult = _commander_mods(commander, len(player_ships))
         attack_mult *= cmd_mult
         from app.commander.bonuses import base_bonuses, resolve_ship_bonuses
         focus = (commander.persona or {}).get("focus")
@@ -179,22 +196,31 @@ async def simulate_combat(
             commander.specialization, commander.rank, commander.traits or [], focus,
             commander.grade or "C",
         )
-        ship_bonuses, _spd = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(attacker_ships.keys()))
+        ship_bonuses, _spd = resolve_ship_bonuses(cmd_bonuses, commander.morale, list(player_ships.keys()))
         commander_meta = {
             "name": commander.name, "morale": commander.morale,
             "specialization": commander.specialization, "grade": commander.grade,
             "attack_mult": round(cmd_mult, 3),
         }
 
-    # Verteidiger-Tech: volles Dict (Default leer = Tech 0), Negativwerte geklemmt, sane Cap.
+    # Gegner-Tech: volles Dict (Default leer = Tech 0), Negativwerte geklemmt, sane Cap.
     def_tech: dict[str, int] = {}
     for _k, _v in (body.defender_tech or {}).items():
         if isinstance(_v, int) and not isinstance(_v, bool) and _v > 0:
             def_tech[_k] = min(_v, 1000)
 
     seed = body.seed if body.seed is not None else random.randrange(1, 2 ** 62)
-    attacker = {"ships": attacker_ships, "tech": atk_tech, "attack_mult": attack_mult, "ship_bonuses": ship_bonuses}
-    defender = {"ships": defender_ships, "defenses": defender_defenses, "tech": def_tech, "attack_mult": 1.0}
+    # DEINE Seite traegt volle Forschung + Commander-Boni; der Gegner die eingestellte Tech.
+    your_side = {"ships": player_ships, "defenses": player_defenses, "tech": atk_tech,
+                 "attack_mult": attack_mult, "ship_bonuses": ship_bonuses}
+    enemy_side = {"ships": enemy_ships, "defenses": enemy_defenses, "tech": def_tech,
+                  "attack_mult": 1.0, "ship_bonuses": {}}
+    # ``mode`` legt die Rolle fest. Die Engine ignoriert Verteidigung auf der Angreifer-Seite
+    # (ein Angreifer bringt keine Planetenverteidigung mit) -> Defenses zaehlen nur beim Verteidiger.
+    if mode == "defense":
+        attacker, defender, role = enemy_side, your_side, "defender"
+    else:
+        attacker, defender, role = your_side, enemy_side, "attacker"
 
     result = simulate_battle(attacker, defender, seed, bal.data)
 
@@ -203,8 +229,9 @@ async def simulate_combat(
             "weapons_tech", "shield_tech", "armor_tech",
             "weapons_mastery", "shield_mastery", "armor_mastery",
         )}
+    # Rollen-neutral (DU/GEGNER), damit der "gerechnet mit"-Block in beiden Modi stimmt.
     sim_meta = {
-        "attacker": {
+        "you": {
             "tech": _tech_summary(atk_tech),
             "antimatter_forge": int(atk_tech.get("antimatter_forge", 0)),
             "doctrine": player.doctrine,
@@ -212,13 +239,14 @@ async def simulate_combat(
             "aura_mult": round(aura_mult, 3),
             "commander": commander_meta,
         },
-        "defender": {"tech": _tech_summary(def_tech)},
+        "enemy": {"tech": _tech_summary(def_tech)},
+        "role": role,
     }
 
     debris_a = _debris(result["attacker_losses"])
     debris_d = _debris(result["defender_losses"])
     return {
-        "id": "sim", "location": "Simulation", "role": "attacker", "npc_name": None,
+        "id": "sim", "location": "Simulation", "role": role, "npc_name": None,
         "attacker": result["attacker_initial"], "defender": result["defender_initial"],
         "rounds": result["rounds"], "winner": result["winner"],
         "attacker_survivors": result["attacker_survivors"], "defender_survivors": result["defender_survivors"],
