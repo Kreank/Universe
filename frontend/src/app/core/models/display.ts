@@ -697,10 +697,24 @@ export const WEAPON_META: Record<string, { label: string; glyph: string; vs: str
 };
 
 /** Reichweiten-Baender (Farbsemantik konsistent zum Kampfbericht-Viewer). */
-export const RANGE_META: Record<string, { label: string; dot: string }> = {
-  near: { label: 'Nah', dot: '🔴' },
-  medium: { label: 'Mittel', dot: '🟡' },
-  far: { label: 'Fern', dot: '🔵' },
+/**
+ * Reichweiten-Bänder (Kampf-Distanz schließt sich pro Runde: Runde 1 = Fern, Runde 2 = Mittel,
+ * ab Runde 3 = Nah). ``phase`` = ab wann die Einheit überhaupt feuern kann; ``tip`` = der
+ * taktische Sinn fürs Flottenbauen (sichtbar im Detail-Popup, nicht nur als Hover).
+ */
+export const RANGE_META: Record<string, { label: string; dot: string; phase: string; tip: string }> = {
+  near: {
+    label: 'Nah', dot: '🔴', phase: 'feuert ab der Nahkampf-Phase (ab Runde 3)',
+    tip: 'Nahkämpfer: schießt erst, wenn die Distanz geschlossen ist — dann mit voller Wucht, ohne Strafe. Steht zu Beginn unter Beschuss, bevor er zurückschlagen kann. Will Masse und schnell rankommen.',
+  },
+  medium: {
+    label: 'Mittel', dot: '🟡', phase: 'feuert ab der mittleren Phase (ab Runde 2)',
+    tip: 'Mittlere Reichweite: steigt eine Phase früher ein als Nahkämpfer, im Nahkampf nur leichte Wirkungs-Einbuße (×0,5). Solider Allrounder als Rückgrat der Flotte.',
+  },
+  far: {
+    label: 'Fern', dot: '🔵', phase: 'feuert ab der ersten Runde (Distanz)',
+    tip: 'Artillerie: eröffnet sofort aus der Distanz und hält am liebsten Abstand. Je näher der Kampf, desto schwächer (×0,5 auf Mittel, nur ×0,25 im Nahkampf). Stark zum Eröffnen — alle Verteidigungsanlagen feuern stationär ohne diese Strafe.',
+  },
 };
 
 /** Planetentypen (aus der Position abgeleitet, Doku 06a). */

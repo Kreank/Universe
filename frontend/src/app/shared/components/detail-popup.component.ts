@@ -14,6 +14,7 @@ import { GameStateService } from '../../core/services/game-state.service';
 import {
   BUILDING_META,
   DEFENSE_META,
+  RANGE_META,
   SHIP_META,
   TECH_META,
   metaFor,
@@ -107,6 +108,13 @@ interface RapidFireRow {
 
         @if (description(); as d) {
           <p class="story">{{ d }}</p>
+        }
+
+        @if (rangeBand(); as rb) {
+          <div class="range-info">
+            <div class="ri-head"><span class="ri-dot">{{ rb.dot }}</span> Reichweite: <strong>{{ rb.label }}</strong> · {{ rb.phase }}</div>
+            <p class="ri-tip">{{ rb.tip }}</p>
+          </div>
         }
 
         @if (!techEffect() && effect(); as e) {
@@ -360,6 +368,14 @@ interface RapidFireRow {
         background: var(--accent-soft); border: 1px solid var(--border);
         border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3);
       }
+      .range-info {
+        margin-top: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md);
+        padding: var(--sp-2) var(--sp-3); background: rgba(255,255,255,0.03);
+      }
+      .ri-head { font-size: var(--fs-sm); color: var(--text); }
+      .ri-head strong { color: var(--accent); }
+      .ri-dot { margin-right: 0.2em; }
+      .ri-tip { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--text-dim); line-height: 1.5; }
 
       .stat-grid {
         display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -475,6 +491,24 @@ export class DetailPopupComponent {
   protected readonly meta = computed(() => metaFor(this.metaMap(), this.type()));
 
   protected readonly description = computed(() => this.metaMap()[this.type()]?.desc ?? null);
+
+  /**
+   * Reichweite/Gefechtsphase der Einheit (Nah/Mittel/Fern) für die taktische Aufschlüsselung —
+   * direkt aus ``combat_roster``. Nur für bewaffnete Schiffe + Verteidigung; unbewaffnete
+   * Einheiten (Frachter, Sonde) nehmen nicht am Feuergefecht teil, daher kein Band.
+   */
+  protected readonly rangeBand = computed<{ label: string; dot: string; phase: string; tip: string } | null>(() => {
+    if (this.kind() !== 'ship' && this.kind() !== 'defense') {
+      return null;
+    }
+    const e = this.entry();
+    if (this.kind() === 'ship' && !(typeof e?.['attack'] === 'number' && (e['attack'] as number) > 0)) {
+      return null; // unbewaffnetes Schiff -> kein Gefechts-Band
+    }
+    const roster = (this.balance.value as { combat_roster?: Record<string, { range?: string }> } | null)?.combat_roster;
+    const key = roster?.[this.type()]?.range ?? (this.kind() === 'defense' ? 'far' : 'near');
+    return RANGE_META[key] ?? null;
+  });
 
   protected readonly kindLabel = computed(() => {
     switch (this.kind()) {
