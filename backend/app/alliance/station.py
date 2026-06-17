@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.alliance.service import RES_KEYS, _acfg, _require_role
 from app.platform.db import session_scope
-from app.platform.models import Alliance, AllianceStation
+from app.platform.models import Alliance, AllianceStation, Planet, UniverseCell
 from app.platform.scheduler import schedule_at
 
 log = logging.getLogger("universe.alliance.station")
@@ -173,6 +173,24 @@ async def build_station(
     active = [s for s in existing if s.status != "destroyed"]
     if len(active) >= int(cfg.get("max_per_alliance", 1)):
         raise ValueError("Maximale Stationszahl erreicht (Vorposten kommen in einer spaeteren Ausbaustufe).")
+
+    # Station nur auf einem FREIEN Slot errichten: sonst koennte sie sich mit einem Planeten
+    # ueberlagern und waere durch ihn nie direkt angreifbar (Unzerstoerbar-Exploit). Planet,
+    # belegte Zelle (NPC/Asteroid) und eine bereits vorhandene Station blockieren den Slot.
+    g, sy, ps = int(galaxy), int(system), int(position)
+    if (await session.execute(
+        select(Planet).where(Planet.galaxy == g, Planet.system == sy, Planet.position == ps)
+    )).scalar_one_or_none() is not None:
+        raise ValueError("Auf dieser Position steht ein Planet — eine Station braucht einen freien Slot.")
+    cell = (await session.execute(
+        select(UniverseCell).where(
+            UniverseCell.galaxy == g, UniverseCell.system == sy, UniverseCell.position == ps
+        )
+    )).scalar_one_or_none()
+    if cell is not None and cell.occupant_type not in (None, "empty"):
+        raise ValueError("Diese Position ist belegt — eine Station braucht einen freien Slot.")
+    if await station_at(session, g, sy, ps) is not None:
+        raise ValueError("Hier steht bereits eine Station.")
 
     cost = cfg.get("build_cost", {})
     pool = dict(al.pool or {})

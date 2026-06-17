@@ -74,6 +74,13 @@ async def resolve_colonize(session: AsyncSession, fleet: Fleet) -> dict | None:
     per_level = int(reff.get("astrophysics_colonies_per_level", 1))
     colonies = min(max_colonies, base_colonies + per_level * int(research.get("astrophysics", 0)))
     max_planets = 1 + colonies
+    # Auf einem Slot mit Allianz-Station kann nicht kolonisiert werden (Gegenstueck zum
+    # Stations-Bau-Schutz): Station und Planet duerfen sich nie ueberlagern.
+    from app.alliance.station import station_at
+    if await station_at(session, g, s, p) is not None:
+        log.info("Kolonisierung @ %d:%d:%d abgelehnt: station_hier", g, s, p)
+        return {"ok": False, "reason": "station_hier", "location": f"{g}:{s}:{p}"}
+
     ok, reason = colonize_check(occupant, int(planet_count), max_planets, colony_ships)
     if not ok:
         log.info("Kolonisierung @ %d:%d:%d abgelehnt: %s", g, s, p, reason)
