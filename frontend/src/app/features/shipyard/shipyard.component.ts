@@ -116,7 +116,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
                 @if (first) {
                   <app-countdown [target]="q.finishes_at" />
                 } @else {
-                  <span class="q-eta muted tip" data-tip="Startet erst, wenn die vorherigen Aufträge fertig sind (serielle Werft).">fertig <app-countdown [target]="q.finishes_at" /></span>
+                  <span class="q-eta muted tip" data-tip="Startet erst, wenn die vorherigen Aufträge fertig sind (serielle Werft). Eine Bauzeit läuft hier noch nicht.">in Warteschlange</span>
                 }
                 <button
                   class="btn btn-ghost btn-sm q-cancel"

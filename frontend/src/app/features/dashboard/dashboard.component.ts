@@ -241,8 +241,6 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
                   </span>
                   @if (first) {
                     <app-countdown [target]="q.finishes_at" />
-                  } @else {
-                    <span class="muted small">fertig <app-countdown [target]="q.finishes_at" /></span>
                   }
                 </a>
               }
