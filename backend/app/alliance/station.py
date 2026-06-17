@@ -76,6 +76,18 @@ def module_tech_bonus(station: AllianceStation) -> dict[str, int]:
     return out
 
 
+def effective_defense_tech(station: AllianceStation) -> dict[str, int]:
+    """Abwehr-Tech der Station: Basis-Stufe (frisch = 1) + Modul-Boni, GEDECKELT auf max_tech (12).
+    Eine frische Station kaempft mit Tech 1; Geschuetzturm/Schildgenerator/Panzerplatte heben
+    weapons_/shield_/armor_tech bis zum Cap (= 'Tech bis 12 durch Stations-Ausbau')."""
+    cfg = _scfg()
+    cap = int(cfg.get("max_tech", 12))
+    tech = dict(cfg.get("defense_tech", {}))
+    for key, bonus in module_tech_bonus(station).items():
+        tech[key] = int(tech.get(key, 0)) + int(bonus)
+    return {k: max(0, min(cap, int(v))) for k, v in tech.items()}
+
+
 def station_max_hp(station: AllianceStation) -> float:
     """Maximale HP = Basis (balance.station.hp) + Summe der hull_reinforcement-Module."""
     base = float(_scfg().get("hp", 0))
@@ -168,13 +180,10 @@ def station_defender(station: AllianceStation) -> dict:
     """Verteidiger-Dict fuer die Kampf-Engine: Abwehrbatterien + feste Tech, keine Schiffe.
     Montierte Module heben die effektive Tech (turret/shield_generator/armor_plating)."""
     cfg = _scfg()
-    tech = dict(cfg.get("defense_tech", {}))
-    for key, bonus in module_tech_bonus(station).items():
-        tech[key] = int(tech.get(key, 0)) + int(bonus)
     return {
         "ships": {},
         "defenses": station_defenses(station, cfg),
-        "tech": tech,
+        "tech": effective_defense_tech(station),
         "attack_mult": 1.0,
     }
 
@@ -454,11 +463,9 @@ def station_combat_stats(station: AllianceStation) -> dict:
     defenses = station_defenses(station, cfg)
     cat = bal.defenses
     tb = bal.data.get("tech_bonus", {})
-    # Effektive Tech = feste Abwehr-Tech + Modul-Boni.
-    eff_tech = dict(cfg.get("defense_tech", {}))
+    # Effektive Tech = Basis-Stufe + Modul-Boni, gedeckelt auf max_tech (12).
+    eff_tech = effective_defense_tech(station)
     mods_tech = module_tech_bonus(station)
-    for k, v in mods_tech.items():
-        eff_tech[k] = int(eff_tech.get(k, 0)) + int(v)
     w = 1.0 + float(tb.get("weapons_per_level", 0)) * eff_tech.get("weapons_tech", 0)
     s = 1.0 + float(tb.get("shield_per_level", 0)) * eff_tech.get("shield_tech", 0)
     attack = shield = 0.0
