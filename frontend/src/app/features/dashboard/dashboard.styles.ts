@@ -174,6 +174,14 @@ export const dashboardStyles = `
     transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
   }
   .queue-row.link:hover { background: rgba(255,255,255,0.05); color: var(--accent); }
+  /* Serielle Werft-Schlange: aktiver vs. wartender Auftrag klar markieren. */
+  .queue-row.q-waiting { opacity: 0.65; }
+  .q-tag {
+    font-size: var(--fs-xs); font-weight: 600; padding: 0 var(--sp-2); border-radius: var(--r-pill);
+    margin-left: var(--sp-1); white-space: nowrap;
+  }
+  .q-tag.build { color: #04201d; background: var(--accent); }
+  .q-tag.wait { color: var(--text-dim); background: rgba(255,255,255,0.06); border: 1px solid var(--border-strong); }
   .cmd-row:hover { background: rgba(255,255,255,0.04); border-radius: var(--r-sm); }
   .cmd-name { font-size: var(--fs-base); }
   .cmd-morale {

@@ -232,11 +232,18 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
           <div class="ops-block">
             <div class="ops-label"><app-btn-icon [src]="navIcon('shipyard')" glyph="🛠️" [size]="16" /> Werft</div>
             @if (shipyardQueue().length) {
-              @for (q of shipyardQueue(); track $index) {
-                <a class="queue-row link" routerLink="/shipyard" [queryParams]="{ focus: q.type }"
-                  title="Zur Werft springen">
-                  <span><app-btn-icon [src]="q.category === 'defense' ? defenseIcon(q.type) : shipIcon(q.type)" [glyph]="metaShip(q).glyph" [size]="14" /> {{ q.count }}× {{ metaShip(q).label }}</span>
-                  <app-countdown [target]="q.finishes_at" />
+              @for (q of shipyardQueue(); track $index; let first = $first) {
+                <a class="queue-row link" [class.q-waiting]="!first" routerLink="/shipyard" [queryParams]="{ focus: q.type }"
+                  [title]="first ? 'Wird gerade gebaut — zur Werft springen' : 'Wartet, bis die vorherigen Aufträge fertig sind (serielle Werft)'">
+                  <span>
+                    <app-btn-icon [src]="q.category === 'defense' ? defenseIcon(q.type) : shipIcon(q.type)" [glyph]="metaShip(q).glyph" [size]="14" /> {{ q.count }}× {{ metaShip(q).label }}
+                    @if (first) { <span class="q-tag build">⏳ Im Bau</span> } @else { <span class="q-tag wait">⏸ wartet</span> }
+                  </span>
+                  @if (first) {
+                    <app-countdown [target]="q.finishes_at" />
+                  } @else {
+                    <span class="muted small">fertig <app-countdown [target]="q.finishes_at" /></span>
+                  }
                 </a>
               }
             } @else {
