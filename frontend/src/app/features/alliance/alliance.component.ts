@@ -26,6 +26,7 @@ import {
   ConfirmRequest,
 } from '../../shared/components/confirm-dialog.component';
 import { CostLineComponent } from '../../shared/components/cost-line.component';
+import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { TabBarComponent, TabDef } from '../../shared/components/tab-bar.component';
@@ -60,7 +61,7 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
 @Component({
   selector: 'app-alliance',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ConfirmDialogComponent, CostLineComponent, IconTileComponent, BtnIconComponent, TabBarComponent, CountdownComponent],
+  imports: [FormsModule, ConfirmDialogComponent, CostLineComponent, IconTileComponent, BtnIconComponent, TabBarComponent, CountdownComponent, ShortNumberPipe],
   template: `
     <section class="alliance">
       <header class="page-head">
@@ -433,10 +434,11 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
                           class="btn btn-ghost btn-sm mod-add"
                           type="button"
                           [disabled]="busy() || (s.stats?.slots_used ?? 0) >= (s.stats?.slots ?? 0) || !canAfford(mc.cost, a)"
-                          [title]="mc.cost.metal + ' M · ' + mc.cost.crystal + ' K · ' + mc.cost.deuterium + ' D'"
+                          [title]="mc.cost.metal + ' Metall · ' + mc.cost.crystal + ' Kristall · ' + mc.cost.deuterium + ' Deuterium (aus dem Pool)'"
                           (click)="mountMod(s, mc.type)"
                         >
                           + {{ mc.label }}
+                          <span class="mod-cost">{{ mc.cost.metal | shortNumber }} / {{ mc.cost.crystal | shortNumber }} / {{ mc.cost.deuterium | shortNumber }}</span>
                         </button>
                       }
                     </div>
@@ -894,7 +896,8 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
         color: var(--text-faint);
       }
       .mod-chip .btn-xs:hover:not(:disabled) { color: var(--danger); }
-      .mod-add { white-space: nowrap; }
+      .mod-add { display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.2; gap: 1px; }
+      .mod-cost { font-size: var(--fs-xs); color: var(--text-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
       .coord-row {
         display: flex;
