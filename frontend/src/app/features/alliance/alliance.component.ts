@@ -312,6 +312,12 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
                       Radius ausbauen
                     </button>
                   </div>
+                  @if (s.radius_level < a.station_config.max_radius) {
+                    <div class="upgrade-cost">
+                      <span class="uc-label small muted">Ausbau auf Radius-Stufe {{ s.radius_level + 1 }} (aus dem Pool):</span>
+                      <app-cost-line [cost]="a.station_config.radius_upgrade_cost" [available]="poolAvail(a)" />
+                    </div>
+                  }
                 }
                 </div>
               </div>
@@ -656,6 +662,13 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
         display: inline-flex;
         align-items: center;
         gap: var(--sp-1);
+      }
+      .upgrade-cost {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sp-1) var(--sp-2);
+        margin-top: var(--sp-1);
       }
       .status-badge {
         font-size: var(--fs-xs);
