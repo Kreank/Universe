@@ -389,6 +389,8 @@ export interface GalaxyCell {
   } | null;
   /** Dynamisches Game-Event am Ort (Komet/Anomalie/Schwarzmarkt/Wrack/...). */
   event?: { event_type: string; data: Record<string, unknown>; expires_at: string } | null;
+  /** Trümmerfeld am Ort (nach Kämpfen) — mit Recyclern abbaubar. */
+  debris?: { metal: number; crystal: number } | null;
 }
 
 /** Ein laufendes Welt-/Karten-Event (GET /api/events). */

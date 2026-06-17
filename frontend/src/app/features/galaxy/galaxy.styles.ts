@@ -136,6 +136,10 @@ export const galaxyStyles = `
   .chip.moon { color: var(--text-dim); border-color: var(--border-strong); background: rgba(255,255,255,0.04); cursor: help; margin-right: var(--sp-1); }
   .chip.station { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); cursor: help; margin-right: var(--sp-1); }
   .chip.station.mine { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); }
+  .chip.debris {
+    color: #ff9d6e; border-color: color-mix(in srgb, #ff7a45 55%, transparent);
+    background: color-mix(in srgb, #ff7a45 12%, transparent); cursor: help; margin-right: var(--sp-1);
+  }
   .chip.event {
     color: #ffd27d; border-color: color-mix(in srgb, #ffae3b 60%, transparent);
     background: color-mix(in srgb, #ffae3b 14%, transparent); cursor: help; margin-right: var(--sp-1);

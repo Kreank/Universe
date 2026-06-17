@@ -28,6 +28,7 @@ class CellOut(BaseModel):
     station: dict | None = None  # Allianz-Station am Ort {alliance_id, tag, mine, status, hp, max_hp, hp_pct}
     mining_fleet: dict | None = None  # geparkte Schuerf-Flotte am Ort {owner, mine, ships_total} — fremde sind angreifbar
     event: dict | None = None  # Game-Event am Ort {event_type, data, expires_at} — Komet/Anomalie/Schwarzmarkt/...
+    debris: dict | None = None  # Truemmerfeld am Ort {metal, crystal} (nach Kaempfen) — mit Recyclern abbaubar
 
 
 class ZoneOut(BaseModel):
@@ -167,6 +168,16 @@ async def galaxy_view(
         public = {k: v for k, v in (ev.data or {}).items() if k not in ("npc_id",)}
         return {"event_type": ev.event_type, "data": public, "expires_at": ev.expires_at.isoformat()}
 
+    # Truemmerfeld ist ein OVERLAY (UniverseCell.debris_field, nach Kaempfen) -> mit Recyclern abbaubar.
+    def _debris_overlay(pos: int) -> dict | None:
+        c = by_pos.get(pos)
+        df = (c.debris_field if c is not None else None) or {}
+        metal = float(df.get("metal", 0) or 0)
+        crystal = float(df.get("crystal", 0) or 0)
+        if metal + crystal <= 0:
+            return None
+        return {"metal": round(metal, 0), "crystal": round(crystal, 0)}
+
     # Monde sind ein OVERLAY (teilen die Position des Planeten) -> eigenes Angriffs-/Spionageziel.
     moon_rows = (await session.execute(
         select(Planet).where(
@@ -256,7 +267,7 @@ async def galaxy_view(
         if cell is None or cell.occupant_type == "empty":
             cells.append(CellOut(position=pos, occupant_type="empty", asteroid=asteroid,
                                  moon=moon, station=station_info, mining_fleet=mining_info,
-                                 event=_event_overlay(pos)))
+                                 event=_event_overlay(pos), debris=_debris_overlay(pos)))
             continue
         name = None
         player_id = None
@@ -297,6 +308,7 @@ async def galaxy_view(
             station=station_info,
             mining_fleet=mining_info,
             event=_event_overlay(pos),
+            debris=_debris_overlay(pos),
         ))
 
     # Galaktische Weiten: synthetischer Deep-Space-Slot (nur per Expedition erreichbar).

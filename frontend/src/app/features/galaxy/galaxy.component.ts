@@ -108,6 +108,9 @@ interface DispatchCtx {
                   @if (c.asteroid; as a) {
                     <span class="chip rock tip" [attr.data-tip]="asteroidTip(a)"><app-btn-icon [src]="missionIcon('mine')" glyph="⛏" [size]="14" /> {{ a.metal | shortNumber }}M / {{ a.crystal | shortNumber }}K</span>
                   }
+                  @if (c.debris; as dbr) {
+                    <span class="chip debris tip" [attr.data-tip]="'Trümmerfeld (nach Kämpfen) — mit Recyclern abbaubar: ' + (dbr.metal | shortNumber) + ' Metall / ' + (dbr.crystal | shortNumber) + ' Kristall'">💥 {{ dbr.metal | shortNumber }}M / {{ dbr.crystal | shortNumber }}K</span>
+                  }
                   @if (c.moon; as m) {
                     <span class="chip moon tip" [attr.data-tip]="m.own ? 'Dein Mond' : ('Mond von ' + (m.player_name ?? 'Spieler') + ' — angreifbar/spionierbar')"><app-btn-icon [src]="'assets/img/backgrounds/moon.png'" glyph="🌙" [size]="14" /> {{ m.name }}</span>
                   }
@@ -124,6 +127,11 @@ interface DispatchCtx {
                 @if (c.asteroid) {
                   <div class="acts">
                     <button class="ic mine" type="button" (click)="openDispatch(cellCoord(c), 'Asteroidenfeld', 'mine')" title="Hier Erz abbauen (Bergbauschiff nötig)"><app-btn-icon [src]="missionIcon('mine')" glyph="⛏" [size]="18" /></button>
+                  </div>
+                }
+                @if (c.debris) {
+                  <div class="acts">
+                    <button class="ic recycle" type="button" (click)="openDispatch(cellCoord(c), 'Trümmerfeld', 'recycle')" title="Trümmerfeld abbauen (Recycler nötig)"><app-btn-icon [src]="missionIcon('recycle')" glyph="♻" [size]="18" /></button>
                   </div>
                 }
                 @if (c.event; as ev) {
