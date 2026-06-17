@@ -656,6 +656,11 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
         if any(v > 0 for v in loot.values()):
             _distribute_attacker_loot(attacker_sources, loot)
 
+    # Nach dem Kampf automatisch wieder aufgebaute Verteidigung (defense_regen_ratio) je Typ
+    # -> fuer den Kampfbericht ("repariert"), damit der Verteidiger nachvollziehen kann, was
+    # zerstoert wurde und was die Truemmer-Crew direkt wieder instandgesetzt hat.
+    defense_rebuilt: dict[str, int] = {}
+
     # NPC aktualisieren: Schiffe = Ueberlebende, Verteidigung mit 70 % Regen.
     if npc is not None:
         regen = bal.combat["defense_regen_ratio"]
@@ -664,6 +669,8 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
             lost = def_losses.get(typ, 0)
             kept = init - lost
             regenerated = math.floor(lost * regen)
+            if regenerated > 0:
+                defense_rebuilt[typ] = defense_rebuilt.get(typ, 0) + regenerated
             new_def[typ] = max(0, kept + regenerated)
         npc.defenses = new_def
         npc_fleet = {t: c for t, c in result["defender_survivors"].items() if t in (npc.fleet or {})}
@@ -711,7 +718,10 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
         for row in def_rows:
             lost = def_losses.get(row.type, 0)
             kept = row.count - lost
-            row.count = max(0, kept + math.floor(lost * regen))
+            regenerated = math.floor(lost * regen)
+            if regenerated > 0:
+                defense_rebuilt[row.type] = defense_rebuilt.get(row.type, 0) + regenerated
+            row.count = max(0, kept + regenerated)
     elif interception_sources or mining_sources:
         # Abfangen + geparkte Schuerf-Flotten: Verluste greedy auf alle Verteidiger-Quellen verteilen.
         from app.fleet.stationing import distribute_losses
@@ -877,6 +887,8 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
     outcome_json = dict(result)
     outcome_json["situation"] = situation
     outcome_json["commander_outcome"] = commander_outcome
+    # Verteidigung nach dem Kampf wieder aufgebaut (70 % der zerstoerten) -> Bericht "repariert".
+    outcome_json["defender_defense_rebuilt"] = defense_rebuilt
     if def_player is not None:
         outcome_json["defender_kind"] = "player"
         outcome_json["defender_name"] = def_player.display_name

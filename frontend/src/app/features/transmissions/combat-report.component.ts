@@ -34,8 +34,15 @@ interface SideView {
   captured: UnitRow[];
   fled: UnitRow[];
   stranded: UnitRow[];
+  /** Verteidigung, die durch Ionen lahmgelegt wurde (überlebt, feuert aber nicht mehr). */
+  defenseDisabled: UnitRow[];
+  /** Verteidigung, die nach dem Kampf automatisch repariert wurde (70 % der zerstörten). */
+  defenseRebuilt: UnitRow[];
   initialTotal: number;
   lossTotal: number;
+  /** Aufschlüsselung des Bestands in Schiffe vs. Verteidigungsanlagen (für die Kopfzeile). */
+  shipCount: number;
+  defenseCount: number;
 }
 
 /** Distanz-Band -> Label + Glyph (Doku 03b §6.1). */
@@ -96,7 +103,9 @@ const BAND_META: Record<string, { key: string; label: string; glyph: string }> =
                   @if (s.isYou) { <span class="you-chip">DU</span> }
                 </div>
                 <div class="side-stat">
-                  <span><span class="num">{{ s.initialTotal }}</span> Schiffe</span>
+                  <span>
+                    <span class="num">{{ s.shipCount }}</span> Schiffe@if (s.defenseCount > 0) { · <span class="num">{{ s.defenseCount }}</span> Verteidigung}
+                  </span>
                   <span class="loss"><span class="num">−{{ s.lossTotal }}</span> verloren</span>
                 </div>
 
@@ -115,6 +124,22 @@ const BAND_META: Record<string, { key: string; label: string; glyph: string }> =
                   <div class="sub-block losses">
                     <span class="sb-label"><app-btn-icon [src]="statusIcon('losses')" glyph="💥" [size]="16" /> Verluste</span>
                     @for (u of s.losses; track u.label) {
+                      <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
+                    }
+                  </div>
+                }
+                @if (s.defenseDisabled.length) {
+                  <div class="sub-block disabled">
+                    <span class="sb-label"><app-btn-icon [src]="statusIcon('disabled')" glyph="⚡" [size]="16" /> Lahmgelegt (Ionen) — feuert nicht mehr</span>
+                    @for (u of s.defenseDisabled; track u.label) {
+                      <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
+                    }
+                  </div>
+                }
+                @if (s.defenseRebuilt.length) {
+                  <div class="sub-block rebuilt">
+                    <span class="sb-label"><app-btn-icon [src]="statusIcon('repair')" glyph="🔧" [size]="16" /> Nach dem Kampf repariert</span>
+                    @for (u of s.defenseRebuilt; track u.label) {
                       <span class="unit"><app-icon-tile class="u-ico-sm" [glyph]="u.glyph" [src]="u.icon" [size]="18" variant="muted" /> {{ u.count }}× {{ u.label }}</span>
                     }
                   </div>
@@ -252,6 +277,8 @@ const BAND_META: Record<string, { key: string; label: string; glyph: string }> =
     .sub-block.captured .unit { color: var(--crystal); }
     .sub-block.stranded .unit { color: var(--warn); }
     .sub-block.losses .unit { color: var(--danger); }
+    .sub-block.disabled .unit { color: var(--deuterium); }
+    .sub-block.rebuilt .unit { color: var(--ok); }
 
     .rounds { margin-bottom: var(--sp-5); }
     .rounds h3, .spoils .sb-label { font-family: var(--font-display); font-size: var(--fs-base); }
@@ -377,6 +404,8 @@ export class CombatReportComponent {
     if (!r) {
       return [];
     }
+    const atkSplit = splitShipDefense(r.attacker);
+    const defSplit = splitShipDefense(r.defender);
     const atk: SideView = {
       title: 'Angreifer',
       isYou: r.role === 'attacker',
@@ -386,8 +415,12 @@ export class CombatReportComponent {
       captured: rows(r.defender_captured), // vom Verteidiger gekaperte Angreifer-Schiffe
       fled: rows(r.attacker_fled),
       stranded: rows(r.attacker_drive_disabled),
+      defenseDisabled: [],
+      defenseRebuilt: [],
       initialTotal: total(r.attacker),
       lossTotal: total(r.attacker_losses),
+      shipCount: atkSplit.ships,
+      defenseCount: atkSplit.defenses,
     };
     const def: SideView = {
       title: 'Verteidiger',
@@ -398,8 +431,12 @@ export class CombatReportComponent {
       captured: rows(r.attacker_captured), // vom Angreifer gekaperte Verteidiger-Schiffe
       fled: rows(r.defender_fled),
       stranded: rows(r.defender_drive_disabled),
+      defenseDisabled: rows(r.defender_defense_disabled), // durch Ionen lahmgelegt
+      defenseRebuilt: rows(r.defender_defense_rebuilt),   // nach dem Kampf repariert
       initialTotal: total(r.defender),
       lossTotal: total(r.defender_losses),
+      shipCount: defSplit.ships,
+      defenseCount: defSplit.defenses,
     };
     // Eigene Seite zuerst anzeigen.
     return r.role === 'defender' ? [def, atk] : [atk, def];
@@ -472,6 +509,26 @@ function total(map: Record<string, number> | undefined | null): number {
     return 0;
   }
   return Object.values(map).reduce((s, v) => s + (Number(v) || 0), 0);
+}
+
+/** Trennt einen {typ:anzahl}-Bestand in Schiffe vs. Verteidigungsanlagen (für die Kopf-Zeile). */
+function splitShipDefense(map: Record<string, number> | undefined | null): { ships: number; defenses: number } {
+  const out = { ships: 0, defenses: 0 };
+  if (!map) {
+    return out;
+  }
+  for (const [key, value] of Object.entries(map)) {
+    const n = Number(value) || 0;
+    if (n <= 0) {
+      continue;
+    }
+    if (SHIP_META[key]) {
+      out.ships += n;
+    } else {
+      out.defenses += n;
+    }
+  }
+  return out;
 }
 
 const RES_META: Record<string, { label: string; glyph: string }> = {

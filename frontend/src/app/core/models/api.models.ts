@@ -674,6 +674,10 @@ export interface CombatReport {
   defender_captured: Record<string, number>;
   attacker_drive_disabled: Record<string, number>;
   defender_drive_disabled: Record<string, number>;
+  /** Durch Ionen lahmgelegte (überlebende) Verteidigung — feuert für den Rest der Schlacht nicht. */
+  defender_defense_disabled?: Record<string, number>;
+  /** Nach dem Kampf automatisch reparierte Verteidigung (70 % der zerstörten). */
+  defender_defense_rebuilt?: Record<string, number>;
   loot: Partial<ResourceCost>;
   debris: Partial<ResourceCost>;
   created_at: string;

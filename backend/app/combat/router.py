@@ -52,6 +52,10 @@ def serialize_combat_report(report: CombatReport, viewer_id: uuid.UUID) -> dict:
         "defender_captured": outcome.get("defender_captured", {}),
         "attacker_drive_disabled": outcome.get("attacker_drive_disabled", {}),
         "defender_drive_disabled": outcome.get("defender_drive_disabled", {}),
+        # Verteidigungs-Nachvollzug: durch Ionen lahmgelegte Geschuetze (feuern nicht mehr)
+        # und nach dem Kampf automatisch reparierte (70 % der zerstoerten) Verteidigung.
+        "defender_defense_disabled": outcome.get("defender_defense_disabled", {}),
+        "defender_defense_rebuilt": outcome.get("defender_defense_rebuilt", {}),
         "loot": report.loot,
         "debris": report.debris,
         "created_at": report.created_at.isoformat() if report.created_at else None,
@@ -164,6 +168,8 @@ async def simulate_combat(
         "attacker_captured": result.get("attacker_captured", {}), "defender_captured": result.get("defender_captured", {}),
         "attacker_drive_disabled": result.get("attacker_drive_disabled", {}),
         "defender_drive_disabled": result.get("defender_drive_disabled", {}),
+        "defender_defense_disabled": result.get("defender_defense_disabled", {}),
+        "defender_defense_rebuilt": {},  # Simulation persistiert nichts -> kein Wiederaufbau
         "loot": {"metal": 0, "crystal": 0, "deuterium": 0},
         "debris": {"metal": round(debris_a["metal"] + debris_d["metal"], 1),
                    "crystal": round(debris_a["crystal"] + debris_d["crystal"], 1)},
