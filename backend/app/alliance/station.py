@@ -47,9 +47,10 @@ _TECH_MODULE_KEYS = ("weapons_tech", "shield_tech", "armor_tech")
 
 
 def station_slots(station: AllianceStation) -> int:
-    """Verfuegbare Modul-Slots = base_slots + slots_per_radius_level * Ausbau-Stufe."""
+    """Verfuegbare Modul-Slots = base_slots + slot_level (eigener Ausbau, getrennt vom Radius)."""
     cfg = _mcfg()
-    return int(cfg.get("base_slots", 0)) + int(cfg.get("slots_per_radius_level", 0)) * int(station.research_radius_level or 0)
+    total = int(cfg.get("base_slots", 0)) + int(station.slot_level or 0)
+    return min(int(cfg.get("max_slots", total)), total)
 
 
 def station_modules(station: AllianceStation) -> dict[str, int]:
@@ -338,6 +339,30 @@ async def upgrade_radius(session: AsyncSession, player, station_id: uuid.UUID) -
         pool[k] = round(float(pool.get(k, 0)) - float(cost.get(k, 0)), 2)
     al.pool = pool
     station.research_radius_level = int(station.research_radius_level or 0) + 1
+    return station
+
+
+async def upgrade_slots(session: AsyncSession, player, station_id: uuid.UUID) -> AllianceStation:
+    """Schaltet einen weiteren Modul-Slot frei (eigener Ausbau, getrennt vom Radius). Pool-Kosten."""
+    m = await _require_role(session, player, _acfg().get("min_role_for_spend", "officer"))
+    cfg = _mcfg()
+    al = (await session.execute(
+        select(Alliance).where(Alliance.id == m.alliance_id).with_for_update()
+    )).scalar_one()
+    station = await session.get(AllianceStation, station_id)
+    if station is None or station.alliance_id != al.id or station.status == "destroyed":
+        raise ValueError("Station nicht gefunden.")
+    max_extra = int(cfg.get("max_slots", 0)) - int(cfg.get("base_slots", 0))
+    if int(station.slot_level or 0) >= max_extra:
+        raise ValueError("Maximale Slot-Zahl erreicht.")
+    cost = cfg.get("slot_upgrade_cost", {})
+    pool = dict(al.pool or {})
+    if not all(float(pool.get(k, 0)) >= float(cost.get(k, 0)) for k in RES_KEYS):
+        raise ValueError("Der Allianz-Pool hat nicht genug Ressourcen für einen Slot.")
+    for k in RES_KEYS:
+        pool[k] = round(float(pool.get(k, 0)) - float(cost.get(k, 0)), 2)
+    al.pool = pool
+    station.slot_level = int(station.slot_level or 0) + 1
     return station
 
 
@@ -825,7 +850,10 @@ async def resolve_station_interception(station_id: str, patrol_id: str) -> None:
 
         # -- Gefecht: Patrouille = Angreifer; Station (Batterien + Eskorte) = Verteidiger (kein Fliehen) --
         atk_research = await get_research_levels(session, patrol.owner_id)
-        defenses = station_defenses(station)
+        # Transit-Malus: unterwegs (nicht verankert) feuern die Batterien nur mit transit_combat_strength
+        # -> Umstationieren ist real verwundbar. Module-Tech wirkt weiter ueber station_defender().tech.
+        strength = float(_scfg().get("transit_combat_strength", 1.0))
+        defenses = {t: max(1, int(round(n * strength))) for t, n in station_defenses(station).items()}
         attacker = {
             "ships": patrol_ships,
             "tech": dict(atk_research),
@@ -835,7 +863,7 @@ async def resolve_station_interception(station_id: str, patrol_id: str) -> None:
         defender = {
             "ships": escort,
             "defenses": defenses,
-            "tech": dict(_scfg().get("defense_tech", {})),
+            "tech": station_defender(station)["tech"],  # inkl. Modul-Tech-Boni
             "attack_mult": 1.0,
             "allow_disengage": False,
         }

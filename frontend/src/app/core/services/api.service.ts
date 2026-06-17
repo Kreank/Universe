@@ -510,6 +510,10 @@ export class ApiService {
     return this.http.post(`/api/alliance/station/${id}/relocate`, body);
   }
 
+  upgradeStationSlots(id: string): Observable<unknown> {
+    return this.http.post(`/api/alliance/station/${id}/slot/upgrade`, {});
+  }
+
   mountStationModule(id: string, moduleType: string, count = 1): Observable<unknown> {
     return this.http.post(`/api/alliance/station/${id}/module/mount`, { module_type: moduleType, count });
   }

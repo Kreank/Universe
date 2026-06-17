@@ -335,6 +335,19 @@ async def relocate_station(
     }
 
 
+@router.post("/alliance/station/{station_id}/slot/upgrade")
+async def upgrade_slots(
+    station_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    try:
+        st = await station_mod.upgrade_slots(session, player, station_id)
+    except (ValueError, PermissionError) as exc:
+        raise _err(exc) from exc
+    return {"id": str(st.id), "slot_level": st.slot_level}
+
+
 class ModuleIn(BaseModel):
     module_type: str
     count: int = 1

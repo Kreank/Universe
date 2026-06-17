@@ -195,11 +195,23 @@ def test_relocate_balance_block():
 
 # -- Stations-Module (Slots) ----------------------------------------------------
 
-def test_station_slots_scale_with_radius():
+def test_station_slots_from_slot_level_not_radius():
     mc = get_balance().data["alliance"]["station"]["modules"]
-    base, per = mc["base_slots"], mc["slots_per_radius_level"]
-    assert S.station_slots(_station(research_radius_level=0)) == base
-    assert S.station_slots(_station(research_radius_level=3)) == base + 3 * per
+    base, cap = mc["base_slots"], mc["max_slots"]
+    # Slots haengen am EIGENEN slot_level, NICHT am Radius.
+    assert S.station_slots(_station(slot_level=0, research_radius_level=5)) == base
+    assert S.station_slots(_station(slot_level=3)) == base + 3
+    # Cap bei max_slots.
+    assert S.station_slots(_station(slot_level=99)) == cap
+
+
+def test_transit_combat_strength_and_slot_config():
+    st = get_balance().data["alliance"]["station"]
+    assert 0.0 < st["transit_combat_strength"] < 1.0  # im Transit geschwaecht
+    mc = st["modules"]
+    assert mc["max_slots"] > mc["base_slots"]
+    assert "slot_upgrade_cost" in mc
+    assert "slots_per_radius_level" not in mc  # entkoppelt vom Radius
 
 
 def test_turret_module_raises_attack():

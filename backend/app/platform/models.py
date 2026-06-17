@@ -436,9 +436,11 @@ class AllianceStation(Base):
     # {origin:[g,s,p], target:[g,s,p], depart_at, arrive_at, returning:bool, escort:{type:count},
     # escort_planet_id, escort_owner_id, deuterium}. Leer {} wenn die Station ortsfest ist.
     transit: Mapped[dict] = mapped_column(JSONB, default=dict)
-    # Montierte Stations-Module (Slots, 2026-06-17): {module_type: count}, Summe <= Slot-Zahl
-    # (base_slots + slots_per_radius_level * Ausbau-Stufe). Heben Kampfwerte/HP/Transit-Tempo.
+    # Montierte Stations-Module (Slots, 2026-06-17): {module_type: count}, Summe <= Slot-Zahl.
+    # Heben Kampfwerte/HP/Transit-Tempo.
     modules: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Slot-Ausbaustufe (eigener Pfad, getrennt vom Radius): Slots = base_slots + slot_level.
+    slot_level: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class AllianceInvite(Base):

@@ -391,8 +391,17 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
 
                   <!-- Module montieren / abbauen -->
                   <div class="module-mgmt">
-                    <div class="small muted">
-                      Module ({{ s.stats?.slots_used ?? 0 }}/{{ s.stats?.slots ?? 0 }} Slots · aus dem Pool · mehr Slots via Radius-Ausbau):
+                    <div class="slot-head small muted">
+                      <span>Module ({{ s.stats?.slots_used ?? 0 }}/{{ s.stats?.slots ?? 0 }} Slots · aus dem Pool):</span>
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        type="button"
+                        [disabled]="busy() || (s.stats?.slots ?? 0) >= maxSlots(a) || !canAfford(slotUpgradeCost(a), a)"
+                        [title]="'Slot freischalten: ' + slotUpgradeCost(a).metal + ' M · ' + slotUpgradeCost(a).crystal + ' K · ' + slotUpgradeCost(a).deuterium + ' D'"
+                        (click)="upgradeSlots(s)"
+                      >
+                        @if ((s.stats?.slots ?? 0) >= maxSlots(a)) { Max. Slots } @else { + Slot ausbauen }
+                      </button>
                     </div>
                     @if (mountedModules(a, s).length) {
                       <div class="module-row">
@@ -841,6 +850,13 @@ const CONTEXT_LABEL: Record<AllianceResearchContext, string> = {
         display: flex;
         flex-direction: column;
         gap: var(--sp-1);
+      }
+      .slot-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sp-2);
       }
       .module-row, .module-catalog {
         display: flex;
@@ -1386,6 +1402,21 @@ export class AllianceComponent implements OnInit {
   mountedModules(a: AllianceOverview, s: AllianceStation): { type: string; count: number; label: string }[] {
     const mods = s.stats?.modules ?? {};
     return Object.entries(mods).map(([type, count]) => ({ type, count, label: this.moduleLabel(a, type) }));
+  }
+
+  /** Maximale Slots aus der Config (für den Ausbau-Button). */
+  maxSlots(a: AllianceOverview): number {
+    return ((a.station_config['modules'] as Record<string, number>) || {})['max_slots'] ?? 0;
+  }
+
+  /** Kosten des nächsten Slot-Ausbaus. */
+  slotUpgradeCost(a: AllianceOverview): ResourceCost {
+    return (((a.station_config['modules'] as Record<string, unknown>) || {})['slot_upgrade_cost'] as ResourceCost)
+      ?? { metal: 0, crystal: 0, deuterium: 0 };
+  }
+
+  upgradeSlots(s: AllianceStation): void {
+    this.run(this.api.upgradeStationSlots(s.id), 'Slot freigeschaltet', `Station [${s.coords}] hat einen weiteren Modul-Slot.`);
   }
 
   mountMod(s: AllianceStation, type: string): void {
