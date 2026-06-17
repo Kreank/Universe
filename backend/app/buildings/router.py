@@ -151,6 +151,8 @@ def _to_ship_options(items: list[dict]) -> list[ShipOptionOut]:
             drive=o.get("drive"),
             range=o.get("range"),
             capstone=CapstoneInfoOut(**o["capstone"]) if o.get("capstone") else None,
+            max_per_planet=o.get("max_per_planet"),
+            planet_owned=o.get("planet_owned"),
         )
         for o in items
     ]

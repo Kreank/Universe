@@ -226,6 +226,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     research: { path: '/research', label: 'Forschung', glyph: '🔬', icon: 'assets/img/nav/research.png' },
     techtree: { path: '/techtree', label: 'Techbaum', glyph: '🌳', icon: 'assets/img/tech/techtree.png' },
     shipyard: { path: '/shipyard', label: 'Werft', glyph: '🛠️', icon: 'assets/img/nav/shipyard.png' },
+    defense: { path: '/defense', label: 'Verteidigung', glyph: '🛡️', icon: 'assets/img/nav/defense.png' },
     megastructures: { path: '/megastructures', label: 'Megastrukturen', glyph: '🌌', icon: 'assets/img/nav/megastructures.png' },
     fleet: { path: '/fleet', label: 'Flotte', glyph: '🚀', icon: 'assets/img/nav/fleet.png' },
     combat: { path: '/combat-sim', label: 'Simulator', glyph: '⚔️', icon: 'assets/img/nav/simulator.png' },
@@ -239,7 +240,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   };
 
   protected readonly navGroups: NavGroup[] = [
-    { label: 'Imperium', items: [ShellComponent.ITEMS['dashboard'], ShellComponent.ITEMS['buildings'], ShellComponent.ITEMS['research'], ShellComponent.ITEMS['techtree'], ShellComponent.ITEMS['shipyard'], ShellComponent.ITEMS['megastructures']] },
+    { label: 'Imperium', items: [ShellComponent.ITEMS['dashboard'], ShellComponent.ITEMS['buildings'], ShellComponent.ITEMS['research'], ShellComponent.ITEMS['techtree'], ShellComponent.ITEMS['shipyard'], ShellComponent.ITEMS['defense'], ShellComponent.ITEMS['megastructures']] },
     { label: 'Militaer', items: [ShellComponent.ITEMS['fleet'], ShellComponent.ITEMS['combat'], ShellComponent.ITEMS['galaxy'], ShellComponent.ITEMS['routines']] },
     { label: 'Reich & Sozial', items: [ShellComponent.ITEMS['trade'], ShellComponent.ITEMS['commanders'], ShellComponent.ITEMS['alliance'], ShellComponent.ITEMS['transmissions'], ShellComponent.ITEMS['ranking']] },
   ];

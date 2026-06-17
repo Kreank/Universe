@@ -36,7 +36,7 @@ interface BuildingGroup {
 const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string | null; types: string[] }[] = [
   { key: 'resource', label: 'Rohstoff-Gebaeude', glyph: '⛏️', icon: missionIcon('mine'), types: ['metal_mine', 'crystal_mine', 'deuterium_synth'] },
   { key: 'energy', label: 'Energie', glyph: '⚡', icon: resourceIcon('energy'), types: ['solar_plant', 'fusion_reactor'] },
-  { key: 'facility', label: 'Anlagen', glyph: '🏭', icon: navIcon('buildings'), types: ['robot_factory', 'shipyard', 'research_lab', 'nanite_factory'] },
+  { key: 'facility', label: 'Anlagen', glyph: '🏭', icon: navIcon('buildings'), types: ['robot_factory', 'shipyard', 'defense_factory', 'research_lab', 'nanite_factory'] },
   { key: 'storage', label: 'Lager', glyph: '📦', icon: statIcon('cargo'), types: ['metal_storage', 'crystal_storage', 'deuterium_tank'] },
   { key: 'command', label: 'Kommando', glyph: '🎖️', icon: navIcon('command'), types: ['command_academy', 'command_center'] },
   { key: 'exotic', label: 'Exotisch', glyph: '🌌', icon: navIcon('megastructures'), types: ['antimatter_collector', 'dark_matter_condenser'] },

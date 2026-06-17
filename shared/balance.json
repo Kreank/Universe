@@ -48,6 +48,7 @@
     "fusion_reactor":    { "cost": { "metal": 900, "crystal": 360, "deuterium": 180 }, "factor": 1.8, "energy_prod_base": 30, "deut_cost_base": 10, "deut_cost_growth": 1.1 },
     "robot_factory":     { "cost": { "metal": 400, "crystal": 120, "deuterium": 200 }, "factor": 2.0 },
     "shipyard":          { "cost": { "metal": 400, "crystal": 200, "deuterium": 100 }, "factor": 2.0 },
+    "defense_factory":   { "cost": { "metal": 300, "crystal": 150, "deuterium": 50 },  "factor": 2.0, "_note": "Verteidigungsfabrik: eigenstaendiges Gebaeude fuer den Bau planetarer Verteidigung (aus der Werft herausgeloest, 2026-06-17). Hoehere Stufe = schnellere Verteidigungs-Bauzeit (analog zur Werft fuer Schiffe). Verteidigung wird NICHT mehr in der Werft gebaut." },
     "research_lab":      { "cost": { "metal": 200, "crystal": 400, "deuterium": 200 }, "factor": 2.0 },
     "nanite_factory":    { "cost": { "metal": 1000000, "crystal": 500000, "deuterium": 100000 }, "factor": 2.0, "requires": { "robot_factory": 12 }, "_note": "Nanitenfabrik (Endgame, baubar ab Roboterfabrik 12). Senkt die Bauzeit ALLER Gebaeude um build_time.nanite_building_factor je Stufe (x0.75^Stufe, multiplikativ) und die Schiff-Bauzeit um (1 - nanite_ship_factor) je Stufe (x0.95^Stufe). Keine Energie/Produktion." },
     "metal_storage":     { "cost": { "metal": 1000,"crystal": 0,   "deuterium": 0 },   "factor": 2.0 },
@@ -219,7 +220,7 @@
 
   "defenses": {
     "_note": "Schildkuppeln (max 1/Planet) sowie Abfang-/Interplanetarrakete sind Phase 7. Hier nur als baubare Eintraege mit Stats, KEINE Sonderlogik.",
-    "rocket_launcher":        { "cost": { "metal": 2000,  "crystal": 0,     "deuterium": 0 },     "attack": 80,    "shield": 20,    "rapidfire_against": {}, "requires": { "shipyard": 1 } },
+    "rocket_launcher":        { "cost": { "metal": 2000,  "crystal": 0,     "deuterium": 0 },     "attack": 80,    "shield": 20,    "rapidfire_against": {}, "requires": { "defense_factory": 1 } },
     "light_laser":            { "cost": { "metal": 1500,  "crystal": 500,   "deuterium": 0 },     "attack": 100,   "shield": 25,    "rapidfire_against": {}, "requires": { "energy_tech": 1, "laser_tech": 3 } },
     "heavy_laser":            { "cost": { "metal": 6000,  "crystal": 2000,  "deuterium": 0 },     "attack": 250,   "shield": 100,   "rapidfire_against": {}, "requires": { "energy_tech": 3, "laser_tech": 6 } },
     "gauss_cannon":           { "cost": { "metal": 20000, "crystal": 15000, "deuterium": 2000 },  "attack": 1100,  "shield": 200,   "rapidfire_against": {}, "requires": { "weapons_tech": 3, "shield_tech": 1, "energy_tech": 6 } },
@@ -227,8 +228,8 @@
     "plasma_turret":          { "cost": { "metal": 50000, "crystal": 50000, "deuterium": 30000 }, "attack": 3000,  "shield": 300,   "rapidfire_against": {}, "requires": { "plasma_tech": 7 } },
     "small_shield_dome":      { "cost": { "metal": 10000, "crystal": 10000, "deuterium": 0 },     "attack": 1,     "shield": 2000,  "rapidfire_against": {}, "requires": { "shield_tech": 2 } },
     "large_shield_dome":      { "cost": { "metal": 50000, "crystal": 50000, "deuterium": 0 },     "attack": 1,     "shield": 10000, "rapidfire_against": {}, "requires": { "shield_tech": 6 } },
-    "anti_ballistic_missile": { "cost": { "metal": 8000,  "crystal": 0,     "deuterium": 2000 },  "attack": 1,     "shield": 1,     "rapidfire_against": {}, "requires": { "shipyard": 1 } },
-    "interplanetary_missile": { "cost": { "metal": 12500, "crystal": 2500,  "deuterium": 10000 }, "attack": 12000, "shield": 1,     "rapidfire_against": {}, "requires": { "impulse_drive": 1, "shipyard": 4 } },
+    "anti_ballistic_missile": { "cost": { "metal": 8000,  "crystal": 0,     "deuterium": 2000 },  "attack": 1,     "shield": 1,     "rapidfire_against": {}, "requires": { "defense_factory": 1 } },
+    "interplanetary_missile": { "cost": { "metal": 12500, "crystal": 2500,  "deuterium": 10000 }, "attack": 12000, "shield": 1,     "rapidfire_against": {}, "requires": { "impulse_drive": 1, "defense_factory": 4 } },
     "orbital_gun":            { "cost": { "metal": 30000, "crystal": 15000, "deuterium": 5000 },  "attack": 1500,  "shield": 250,   "rapidfire_against": {}, "virtual": true, "_note": "Virtuell: kommt von der Mond-Orbitalbatterie, nicht direkt baubar. Verteidigt den Planeten mit." }
   },
 

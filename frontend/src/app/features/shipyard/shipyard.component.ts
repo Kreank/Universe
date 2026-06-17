@@ -16,7 +16,7 @@ import {
   ConfirmRequest,
 } from '../../shared/components/confirm-dialog.component';
 import { NotificationService } from '../../core/services/notification.service';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { scrollToTile } from '../../shared/focus-scroll';
 
 interface SelectedUnit {
@@ -90,19 +90,19 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
 @Component({
   selector: 'app-shipyard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CountdownComponent, DetailPopupComponent, BuildTileComponent, IconTileComponent, TabBarComponent, ConfirmDialogComponent, BtnIconComponent],
+  imports: [FormsModule, RouterLink, CountdownComponent, DetailPopupComponent, BuildTileComponent, IconTileComponent, TabBarComponent, ConfirmDialogComponent, BtnIconComponent],
   template: `
-    <h1>Werft & Verteidigung</h1>
-    <p class="muted sub">Baue Schiffe und Verteidigungsanlagen auf {{ state.activePlanet()?.name ?? '—' }}.</p>
+    <h1>Werft</h1>
+    <p class="muted sub">Baue Raumschiffe auf {{ state.activePlanet()?.name ?? '—' }}. Planetare Verteidigung entsteht in der <a routerLink="/defense">Verteidigung</a>.</p>
 
     @if (loading()) {
       <p class="empty-state">Lade Werft…</p>
     } @else if (data(); as d) {
-      <!-- Bauschleife -->
+      <!-- Bauschleife (nur Schiffe; Verteidigung hat eine eigene, parallele Schlange) -->
       <section class="card queue">
         <div class="panel-title"><app-btn-icon [src]="navIcon('shipyard')" glyph="🛠️" [size]="16" /> Bauschleife</div>
-        @if (d.queue.length) {
-          @for (q of d.queue; track q.id; let first = $first) {
+        @if (queueView().length) {
+          @for (q of queueView(); track q.id; let first = $first) {
             <div class="queue-row" [class.building]="first" [class.waiting]="!first">
               <span class="q-unit">
                 <app-icon-tile class="q-ico" [glyph]="unitMeta(q.type, q.category).glyph" [src]="unitIcon(q.type, q.category)" [size]="22" variant="muted" />{{ q.count }}× {{ unitMeta(q.type, q.category).label }}
@@ -174,6 +174,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
                     {{ pending() === s.type ? '…' : 'Bauen' }}
                   </button>
                 </div>
+                <span class="stock-line">Auf diesem Planeten: <strong>{{ ownedCount(s.type, view.cat) }}</strong></span>
                 @if (s.capstone) {
                   <span class="hint small cap-line">
                     Besitz {{ s.capstone.owned }}/{{ s.capstone.cap }}
@@ -274,6 +275,10 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
       .hint { color: var(--text-faint); text-align: right; }
       .hint.warn { color: var(--warn); }
 
+      /* Klar sichtbarer Bestand auf dem aktiven Planeten (nicht nur der Eck-Badge). */
+      .stock-line { display: block; font-size: var(--fs-xs); color: var(--text-dim); margin-top: var(--sp-1); }
+      .stock-line strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+
       /* Bauschleifen-Zeile: Countdown + Abbrechen-Button rechts. */
       .q-right { display: flex; align-items: center; gap: var(--sp-2); flex: 0 0 auto; }
       .q-cancel { color: var(--text-faint); min-width: 30px; }
@@ -332,21 +337,16 @@ export class ShipyardComponent {
     return groups;
   });
 
-  // -- Reiter: Schiff-Kategorien + Verteidigung --
+  /** Bauschleife der Werft: nur Schiff-Auftraege (Verteidigung hat eine eigene, parallele Schlange). */
+  protected readonly queueView = computed(() => (this.data()?.queue ?? []).filter((q) => q.category === 'ship'));
+
+  // -- Reiter: nur Schiff-Kategorien (Verteidigung ist ein eigener Screen) --
   protected readonly activeTab = signal<string>('');
-  protected readonly tabDefs = computed(() => {
-    const tabs = this.shipGroups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, icon: g.icon, count: g.ships.length }));
-    const defenses = this.data()?.defenses ?? [];
-    if (defenses.length) {
-      tabs.push({ key: 'defense', label: 'Verteidigung', glyph: '🛡️', icon: statIcon('shield'), count: defenses.length });
-    }
-    return tabs;
-  });
+  protected readonly tabDefs = computed(() =>
+    this.shipGroups().map((g) => ({ key: g.key, label: g.label, glyph: g.glyph, icon: g.icon, count: g.ships.length })),
+  );
   protected readonly activeView = computed<{ cat: ShipyardCategory; items: ShipOption[] } | null>(() => {
     const tab = this.activeTab();
-    if (tab === 'defense') {
-      return { cat: 'defense', items: this.data()?.defenses ?? [] };
-    }
     const groups = this.shipGroups();
     const g = groups.find((x) => x.key === tab) ?? groups[0] ?? null;
     return g ? { cat: 'ship', items: g.ships } : null;
@@ -398,8 +398,6 @@ export class ShipyardComponent {
     const grp = this.shipGroups().find((g) => g.ships.some((s) => s.type === ft));
     if (grp) {
       this.activeTab.set(grp.key);
-    } else if ((this.data()?.defenses ?? []).some((d) => d.type === ft)) {
-      this.activeTab.set('defense');
     }
     scrollToTile(ft);
     setTimeout(() => this.focusType.set(null), 4500);

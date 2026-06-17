@@ -49,8 +49,12 @@ export const BUILDING_META: Record<string, DisplayMeta> = {
     desc: 'Autonome Bautrupps und Schwerlast-Roboter verkürzen jede Bauzeit auf dem Planeten. Eine frühe Investition, die sich über jede spätere Stufe hinweg auszahlt.',
   },
   shipyard: {
-    label: 'Werft', glyph: '🛠️', blurb: 'Baut Schiffe & Verteidigung.',
-    desc: 'Das Herz der militärischen Macht: hier entstehen Flotten und planetare Verteidigung. Höhere Stufen schalten größere Rümpfe frei und lassen die Hellinge schneller arbeiten.',
+    label: 'Werft', glyph: '🛠️', blurb: 'Baut Schiffe.',
+    desc: 'Das Herz der Flottenmacht: hier entstehen alle Raumschiffe. Höhere Stufen schalten größere Rümpfe frei und lassen die Hellinge schneller arbeiten. Planetare Verteidigung entsteht separat in der Verteidigungsfabrik.',
+  },
+  defense_factory: {
+    label: 'Verteidigungsfabrik', glyph: '🛡️', blurb: 'Baut planetare Verteidigung.',
+    desc: 'Eine schwer gepanzerte Rüstungsfabrik, in der Geschütztürme, Raketenrampen und Schildkuppeln gefertigt werden — getrennt von der Werft, die nur Schiffe baut. Ab Stufe 1 lässt sich Verteidigung bauen; jede weitere Stufe verkürzt die Bauzeit. Verteidigung und Schiffe entstehen dadurch unabhängig und parallel.',
   },
   research_lab: {
     label: 'Forschungslabor', glyph: '🔬', blurb: 'Schaltet Technologien frei.',

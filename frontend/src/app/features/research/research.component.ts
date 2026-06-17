@@ -116,6 +116,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
     <p class="muted sub">
       Techbaum · es laeuft nur <strong>eine</strong> Forschung gleichzeitig (Labor:
       {{ state.activePlanet()?.name ?? '—' }}).
+      Forschungsstufen gelten <strong>imperiumsweit</strong> — auf jedem Planeten gleich, nicht pro Planet erneut.
     </p>
 
     @if (activeResearch(); as ar) {

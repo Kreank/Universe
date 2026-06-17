@@ -277,7 +277,29 @@ async def send_fleet(
     # Flottenslots pruefen (Flotten im Flug + aktive Abfang-Patrouillen belegen je einen Slot).
     slots = await fleet_slots(session, player.id)
     if await used_fleet_slots(session, player.id) >= slots:
-        raise RuntimeError("Keine freien Flottenslots")
+        # Aufschluesselung der belegten Slots, damit der Spieler die Ursache sieht
+        # (haeufiges Missverstaendnis: zurueckkehrende Flotten belegen weiter einen Slot;
+        # ein eingehender Angriff blockiert den Versand dagegen NICHT).
+        status_rows = (await session.execute(
+            select(Fleet.status).where(
+                Fleet.player_id == player.id, Fleet.status.in_(ACTIVE_STATUSES)
+            )
+        )).scalars().all()
+        flying = sum(1 for s in status_rows if s in ("flying", "arrived"))
+        returning = sum(1 for s in status_rows if s == "returning")
+        patrols = await active_patrol_count(session, player.id)
+        parts = []
+        if flying:
+            parts.append(f"{flying} unterwegs")
+        if returning:
+            parts.append(f"{returning} im Rückflug")
+        if patrols:
+            parts.append(f"{patrols} Abfang-Patrouille{'n' if patrols != 1 else ''}")
+        breakdown = ", ".join(parts) if parts else "alle belegt"
+        raise RuntimeError(
+            f"Keine freien Flottenslots ({slots} belegt: {breakdown}). "
+            "Zurückkehrende Flotten geben ihren Slot erst bei Ankunft wieder frei."
+        )
 
     # Schiffsbestand pruefen.
     planet_ships = (await session.execute(
@@ -942,10 +964,21 @@ async def fleet_arrive(fleet_id: str) -> None:
         elif mission == "escort":
             stationed = await resolve_deploy(session, fleet, mode="escort")
 
+        # Kolonisierung mit reinem Kolonieschiff: das Schiff wird verbraucht -> die Flotte ist
+        # danach leer und darf NICHT als Phantom-Rueckflug (0 Schiffe) heimkehren. Begleitschiffe
+        # (Flotte mit weiteren Schiffen) kehren dagegen normal zurueck.
+        consumed = False
+        if mission == "colonize":
+            _left = (await session.execute(
+                select(Ship).where(Ship.fleet_id == fleet.id, Ship.count > 0)
+            )).scalars().first()
+            consumed = _left is None
+
         wiped = bool(exp_result and exp_result.get("wiped"))
-        if wiped:
-            # Totalverlust (Schwarzes Loch / vernichtende Begegnung): keine Rueckkehr.
-            # Der bereits geplante fleet_return-Job laeuft ins Leere (Guard: status == 'done').
+        if wiped or consumed:
+            # Totalverlust (Schwarzes Loch / vernichtende Begegnung) ODER verbrauchte Flotte:
+            # keine Rueckkehr. Der bereits geplante fleet_return-Job laeuft ins Leere
+            # (Guard: status == 'done').
             fleet.status = "done"
         elif staged:
             # Koop-Angriff: Flotte wartet am Ziel auf verbuendete Flotten -> Status bleibt 'arrived'

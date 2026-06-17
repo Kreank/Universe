@@ -531,6 +531,41 @@ Es gibt **zwei** Asset-Wurzeln:
 
 ---
 
+## 🛡️ Werft/Verteidigung-Trennung (2026-06-17 — Feature in Umsetzung)
+
+> **Umbau:** Verteidigungsanlagen werden aus der **Werft** herausgelöst und in ein **eigenes Gebäude**
+> verlagert (Realismus: eine Schiffswerft baut keine Bodengeschütze). Neues Gebäude
+> **„Verteidigungsfabrik"** (Key `defense_factory`) in der Gebäude-Übersicht; ein eigener Screen
+> **„Verteidigung"** (Nav-Slug `defense`), auf dem die Verteidigungs-Einheiten gebaut werden (analog
+> zur Werft für Schiffe, schaltet erst ab Fabrik-Stufe ≥ 1 frei). Drei Assets: Gebäude-Artwork +
+> Nav-Icon + Screen-Hintergrund.
+
+### Gebäude-Artwork — GEBÄUDE (Master `assets/buildings/`, Spiegel `frontend/src/assets/img/buildings/`)
+
+> **Verteidigungsfabrik** (Key `defense_factory`) — die Produktionsanlage für planetare Verteidigung.
+> **Muss EXAKT wie die vorhandenen `buildings/*.png` aussehen** — gleiche 3/4-Aufsicht, gleiches
+> Rendering/Licht/Palette, als Bauwerk auf der Oberfläche (KEINE Weltraumszene). **Stil-Anker (genau
+> anschauen!):** `buildings/robot_factory.png`, `buildings/shipyard.png`, `buildings/orbital_battery.png`,
+> `buildings/command_center.png`. Format wie die anderen Gebäude (PNG RGBA, 512×512).
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | defense_factory | `buildings/defense_factory.png` | PNG transparent, 512×512 (wie `buildings/*`) | Verteidigungsfabrik: eine **schwer gepanzerte militärische Rüstungs-/Waffenfabrik als Bauwerk** — bunkerartige Produktionshalle mit gepanzerten Wänden, montierten Geschütztürmen/Raketenrampen auf dem Dach, Munitions-/Bauteil-Gantries, Werkshof mit halbfertigen Geschützen. Martialisch-industriell, dezente Warn-Streifen, kühle Stahl-Palette mit cyan `#2fe3d2` Akzent-Leuchten. Gerendert wie ein Gebäude (3/4-Aufsicht), Mischung aus `robot_factory` (Fertigung) und `orbital_battery` (Geschütz-Anmutung), NICHT als Weltraumszene. |
+
+### Navigations-Icon — referenziert als `assets/img/nav/defense.png`
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | defense (nav) | `icons/nav/defense.png` | PNG transparent, 256×256 (~24px lesbar) | Nav-Icon „Verteidigung"-Screen: schlichte Silhouette eines **planetaren Verteidigungs-Geschützes / einer Schild-Kuppel über Boden** (Flak-/Laserturm mit nach oben gerichtetem Lauf, optional dünner Schildbogen darüber), cyan Akzent. Klar von der Werft (`nav/shipyard.png`, Schiffsbau) und der Schild-Stat (`icons/spec/stat_shield.png`) unterscheidbar — Fokus: **Boden-Verteidigungsturm**. Stil wie vorhandene `nav/*.png`, als kleine klare Silhouette lesbar. |
+
+### Screen-Hintergrund — referenziert als `assets/img/backgrounds/bg_defense.jpg`
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | bg_defense | `backgrounds/` | JPG, 1920×1080, dunkel | Screen-Hintergrund **Verteidigung**: planetare Verteidigungsstellung bei Nacht — eine Reihe Boden-Geschütztürme/Raketenrampen + eine schimmernde Energie-Schildkuppel über der Basis, ferner Orbit/Sternenfeld am Horizont, sparsame defensiv-cyan Glut (kein aktiver Kampf, ruhige Bereitschaft). Ruhige, dunkle Mitte (dort liegt die Bauliste), Interesse an Rändern/oben. **Stil-/Kompositions-Brief siehe oben bei den bg_***. |
+
+---
+
 ## 🗒️ Notizen für Codex
 
 - Optional/später (noch NICHT verdrahtet, daher keine aktive Anforderung): Regions-Hintergründe

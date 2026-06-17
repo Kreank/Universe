@@ -229,6 +229,10 @@ export interface ShipOption {
   range?: string | null;
   /** Endgame-Capstone-Schiff: Besitz-Status (owned/cap). null = kein Capstone. */
   capstone?: { owned: number; cap: number } | null;
+  /** Pro-Planet-Limit (z. B. Schildkuppeln 1). null = unbegrenzt. */
+  max_per_planet?: number | null;
+  /** Bestand dieser pro-Planet-einmaligen Einheit auf dem Planeten (gebaut + Queue). */
+  planet_owned?: number | null;
 }
 
 export interface BuildQueueItem {

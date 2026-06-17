@@ -81,6 +81,9 @@ class ShipOptionOut(BaseModel):
     drive: int | None = None
     range: str | None = None
     capstone: CapstoneInfoOut | None = None
+    # Pro-Planet-Limit (z. B. Schildkuppeln 1; null = unbegrenzt) + aktueller Bestand inkl. Queue.
+    max_per_planet: int | None = None
+    planet_owned: int | None = None
 
 
 class BuildQueueItemOut(BaseModel):

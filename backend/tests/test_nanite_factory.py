@@ -30,14 +30,14 @@ def test_building_time_quarter_off_per_level():
 
 
 def test_ship_time_five_percent_off_per_level():
-    base = build_seconds_each(_BIG, shipyard_lvl=4, nanite_lvl=0)
-    one = build_seconds_each(_BIG, shipyard_lvl=4, nanite_lvl=1)
-    three = build_seconds_each(_BIG, shipyard_lvl=4, nanite_lvl=3)
+    base = build_seconds_each(_BIG, building_lvl=4, nanite_lvl=0)
+    one = build_seconds_each(_BIG, building_lvl=4, nanite_lvl=1)
+    three = build_seconds_each(_BIG, building_lvl=4, nanite_lvl=3)
     factor = float(get_balance().data["build_time"]["nanite_ship_factor"])
     assert factor == 0.95
     assert abs(one / base - 0.95) < 0.001         # -5% je Stufe
     assert abs(three / base - 0.95 ** 3) < 0.001  # multiplikativ
-    assert build_seconds_each(_BIG, shipyard_lvl=4, nanite_lvl=0) == build_seconds_each(_BIG, shipyard_lvl=4)
+    assert build_seconds_each(_BIG, building_lvl=4, nanite_lvl=0) == build_seconds_each(_BIG, building_lvl=4)
 
 
 def test_nanite_negative_level_is_safe():
