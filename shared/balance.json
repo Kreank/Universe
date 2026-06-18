@@ -462,7 +462,7 @@
       "bold": { "risk_mult": 1.6, "yield_mult": 1.25 }
     },
     "outcomes": [
-      { "weight": 30, "type": "resources", "metal": [2000, 25000], "crystal": [1000, 12000], "deuterium": [0, 6000] },
+      { "weight": 30, "type": "resources", "metal": [4000, 50000], "crystal": [2000, 24000], "deuterium": [0, 12000] },
       { "weight": 15, "type": "ships", "ship": "light_fighter", "count": [2, 15] },
       { "weight": 25, "type": "nothing" },
       { "weight": 12, "type": "pirates", "risky": true },
