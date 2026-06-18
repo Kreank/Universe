@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NotificationService } from '../../core/services/notification.service';
 import { BtnIconComponent } from './btn-icon.component';
 import { statusIcon } from '../../core/models/icon-assets';
@@ -27,7 +27,7 @@ import { statusIcon } from '../../core/models/icon-assets';
               ✕
             </button>
           </div>
-          <div class="toast-body">{{ t.message }}</div>
+          <div class="toast-body" [class.toast-clickable]="t.route" (click)="t.route && open(t.route, t.id)">{{ t.message }}</div>
           @if (t.transmissionId) {
             <a class="toast-link" routerLink="/transmissions" (click)="notify.dismiss(t.id)"
               >Funkspruch oeffnen →</a
@@ -90,6 +90,13 @@ import { statusIcon } from '../../core/models/icon-assets';
         font-size: var(--fs-sm);
         margin-top: var(--sp-1);
       }
+      .toast-clickable {
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-color: var(--border-strong);
+        text-underline-offset: 3px;
+      }
+      .toast-clickable:hover { color: var(--text); text-decoration-color: var(--accent); }
       .toast-link {
         display: inline-block;
         margin-top: var(--sp-1);
@@ -144,7 +151,15 @@ import { statusIcon } from '../../core/models/icon-assets';
 })
 export class ToastContainerComponent {
   protected readonly notify = inject(NotificationService);
+  private readonly router = inject(Router);
 
   /** Asset-Pfad-Helfer fuers Template (Glyph-Fallback via app-btn-icon). */
   protected readonly statusIcon = statusIcon;
+
+  /** Klick auf einen Toast mit Ziel-Route: dorthin springen + Toast schliessen. */
+  protected open(route: string, id: number): void {
+    void this.router.navigateByUrl(route);
+    this.notify.dismiss(id);
+  }
 }
+

@@ -202,30 +202,31 @@ export class GameStateService {
 
     this.ws.on<WsBuildComplete>('build_complete').subscribe((msg) => {
       const label = metaFor(BUILDING_META, msg.building).label;
-      this.notify.success('Bau abgeschlossen', `${label} ist jetzt Stufe ${msg.level}.`);
+      this.notify.success('Bau abgeschlossen', `${label} ist jetzt Stufe ${msg.level}. Tippen zum Öffnen.`, '/buildings');
       void this.reloadActivePlanet();
       this.buildingsVersion.update((v) => v + 1);
     });
 
     this.ws.on<WsResearchComplete>('research_complete').subscribe((msg) => {
       const label = metaFor(TECH_META, msg.tech).label;
-      this.notify.success('Forschung abgeschlossen', `${label} Stufe ${msg.level} erreicht.`);
+      this.notify.success('Forschung abgeschlossen', `${label} Stufe ${msg.level} erreicht. Tippen zum Öffnen.`, '/research');
       void this.reloadActivePlanet();
       this.researchVersion.update((v) => v + 1);
     });
 
     this.ws.on<{ type: string }>('shipyard_complete').subscribe(() => {
+      this.notify.success('Werft: Bau abgeschlossen', 'Neue Einheiten stehen bereit. Tippen zum Öffnen.', '/shipyard');
       void this.reloadActivePlanet();
       this.shipyardVersion.update((v) => v + 1);
     });
 
     this.ws.on<WsFleetArrived>('fleet_arrived').subscribe((msg) => {
-      this.notify.info('Flotte angekommen', `Mission "${msg.mission}" hat ihr Ziel erreicht.`);
+      this.notify.info('Flotte angekommen', `Mission "${msg.mission}" hat ihr Ziel erreicht. Tippen für die Flotten.`, '/fleet');
       void this.reloadFleets();
     });
 
     this.ws.on<WsFleetReturned>('fleet_returned').subscribe(() => {
-      this.notify.info('Flotte zurueck', 'Eine Flotte ist zur Basis zurueckgekehrt.');
+      this.notify.info('Flotte zurueck', 'Eine Flotte ist zur Basis zurueckgekehrt. Tippen für die Flotten.', '/fleet');
       void this.reloadFleets();
     });
 
@@ -254,7 +255,7 @@ export class GameStateService {
           ...list,
         ];
       });
-      this.notify.warning('Eingehender Angriff', `Ziel: ${msg.location}. Fleetsave pruefen!`);
+      this.notify.warning('Eingehender Angriff', `Ziel: ${msg.location}. Fleetsave pruefen! Tippen für die Flotten.`, '/fleet');
     });
   }
 
