@@ -25,10 +25,53 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.combat.engine import simulate_battle
+from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
 from app.platform.models import Fleet, Research, Ship
 
 log = logging.getLogger("universe.expedition")
+
+_RES_DE = {"metal": "Metall", "crystal": "Kristall", "deuterium": "Deuterium",
+           "dark_matter": "Dunkle Materie", "antimatter": "Antimaterie"}
+
+
+def _res_list(d: dict) -> str:
+    return ", ".join(f"{int(v):,}".replace(",", ".") + f" {_RES_DE.get(k, k)}" for k, v in (d or {}).items() if v)
+
+
+def _expedition_report_body(result: dict, hours: int) -> str:
+    """Faktischer Expeditions-Bericht aus dem result-Dict (unabhängig vom optionalen AI-Flavor)."""
+    otype = result.get("outcome", "nothing")
+    parts: list[str] = []
+    if result.get("found"):
+        parts.append("Geborgen: " + _res_list(result["found"]) + ".")
+    if result.get("found_exotic"):
+        parts.append("Exotische Materie geborgen: " + _res_list(result["found_exotic"]) + "!")
+    if result.get("found_ships"):
+        parts.append("Treibende Schiffe geborgen: "
+                     + ", ".join(f"{int(v)}× {k}" for k, v in result["found_ships"].items()) + ".")
+    if result.get("found_tech"):
+        parts.append("Fremde Technologie gehackt: "
+                     + ", ".join(f"{k} → Stufe {v}" for k, v in result["found_tech"].items()) + "!")
+    if otype in ("pirates", "aliens") or result.get("ghost") == "trap":
+        won = result.get("winner") == "attacker"
+        gegner = "Aliens" if (otype == "aliens" or result.get("ghost") == "trap") else "Piraten"
+        seg = f"Gefecht gegen {gegner} " + ("GEWONNEN" if won else "VERLOREN")
+        if result.get("lost"):
+            seg += " — Verluste: " + ", ".join(f"{int(v)}× {k}" for k, v in result["lost"].items())
+        parts.append(seg + ".")
+        if result.get("loot"):
+            parts.append("Beute aus den Wracks: " + _res_list(result["loot"]) + ".")
+    if otype == "delay":
+        parts.append(f"Eine Raum-Anomalie verzögert die Rückkehr um {int(result.get('extra_hours', 0))} Std.")
+    if otype == "blackhole" or result.get("wiped"):
+        parts.append("TOTALVERLUST: Die Flotte verschwand in einem Schwarzen Loch — keine Rückkehr.")
+    if result.get("found_equipment"):
+        parts.append("Im Wrackgut fand sich Kommandeurs-Ausrüstung!")
+    if not parts:
+        parts.append("Die Flotte durchkämmte die galaktischen Weiten, fand aber nichts Bemerkenswertes.")
+    tail = "" if result.get("wiped") else " Die Flotte kehrt mit ihren Funden heim (bei Ankunft gutgeschrieben)."
+    return f"Expedition ({hours} Std) abgeschlossen. " + " ".join(parts) + tail
 
 
 # -- Reine Logik ----------------------------------------------------------------
@@ -267,6 +310,16 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
         dropped = await maybe_grant_item(session, fleet.player_id, "expedition", rng)
         if dropped is not None:
             result["found_equipment"] = dropped.item_key
+
+    # Garantierter Faktenbericht ins Postfach (der AI-Flavor oben ist nur additiv/best-effort).
+    _wiped = bool(result.get("wiped"))
+    _fought = otype in ("pirates", "aliens") or result.get("ghost") == "trap"
+    await create_system_transmission(
+        session, player_id=fleet.player_id,
+        subject=(f"{'💥 Expedition verloren' if _wiped else '🛰️ Expedition zurück'} ({result['location']})"),
+        body=_expedition_report_body(result, hours),
+        ttype="combat_report" if _fought else "system",
+    )
 
     log.info("Expedition @ %s [%dh] -> %s", result["location"], hours, otype)
     return result
