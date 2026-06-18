@@ -155,4 +155,26 @@ async def recover_pending_jobs() -> None:
             schedule_at(timeout_at, apply_event_default, str(t.id), job_id=f"event-decide:{t.id}")
             recovered += 1
 
+        # -- Allianz-Stationen: Upkeep-Tick (zehrt Deuterium) + Transit-Ankunft -------
+        # Der Upkeep-Tick perpetuiert sich selbst, geht aber beim Neustart verloren -> ohne
+        # Recovery friert der Treibstoff ein. Transit-Stationen brauchen ihren Ankunfts-Job.
+        from app.alliance.station import _scfg, schedule_upkeep, station_arrive
+        from app.platform.models import AllianceStation
+        interval = int(_scfg().get("tick_interval_seconds", 3600))
+        st_rows = (await session.execute(
+            select(AllianceStation).where(AllianceStation.status != "destroyed")
+        )).scalars().all()
+        for st in st_rows:
+            schedule_upkeep(st.id, interval)
+            recovered += 1
+            if st.status == "transit":
+                arr = (st.transit or {}).get("arrive_at")
+                if arr:
+                    try:
+                        arr_at = dt.datetime.fromisoformat(arr)
+                    except ValueError:
+                        arr_at = now
+                    schedule_at(arr_at, station_arrive, str(st.id), job_id=f"station-arrive:{st.id}")
+                    recovered += 1
+
     log.info("Startup-Recovery: %d offene Timer neu eingeplant", recovered)
