@@ -13,6 +13,15 @@ class TargetCoords(BaseModel):
     position: int
 
 
+class MiningProgressOut(BaseModel):
+    """Live-Schuerf-Fortschritt (Frachtbalken) waehrend einer zeitbasierten Mining-Session."""
+    metal: float
+    crystal: float
+    filled: float       # bisher gefuellte Frachtmenge
+    capacity: float     # voller Frachtraum
+    progress: float     # 0..1
+
+
 class FleetOut(BaseModel):
     id: uuid.UUID
     mission: str
@@ -25,6 +34,8 @@ class FleetOut(BaseModel):
     depart_at: dt.datetime
     arrive_at: dt.datetime
     return_at: dt.datetime | None = None
+    # Nur bei laufender Mining-Session gesetzt: Live-Frachtbalken.
+    mining: MiningProgressOut | None = None
 
 
 class IncomingAttackOut(BaseModel):

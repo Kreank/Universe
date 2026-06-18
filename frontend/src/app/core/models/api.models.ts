@@ -299,6 +299,14 @@ export interface Fleet {
   depart_at: string;
   arrive_at: string;
   return_at: string;
+  /** Nur bei laufender Mining-Session: Live-Frachtbalken (anteilig gefüllt). */
+  mining?: {
+    metal: number;
+    crystal: number;
+    filled: number;
+    capacity: number;
+    progress: number;
+  } | null;
 }
 
 export interface FleetSendRequest {

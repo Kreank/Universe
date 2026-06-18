@@ -284,6 +284,12 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
                   <span class="chip">{{ statusLabel(f.status) }}</span>
                 </span>
                 <app-countdown [target]="f.status === 'returning' ? f.return_at : f.arrive_at" />
+                @if (f.mining; as m) {
+                  <div class="mine-bar" title="Schürf-Fortschritt — der Frachtraum füllt sich über die Verweilzeit. Bei einem Abfang erbeutet der Gegner nur das bisher Geförderte.">
+                    <div class="mb-track"><span class="mb-fill" [style.width.%]="m.progress * 100"></span></div>
+                    <span class="mb-amt mono">⛏ {{ m.metal | shortNumber }} · 💎 {{ m.crystal | shortNumber }}</span>
+                  </div>
+                }
                 <div class="fleet-tip" role="tooltip">
                   <div class="tip-head"><app-btn-icon [src]="fleetIcon()" glyph="🚀" [size]="14" /> {{ metaM(f.mission).label }} → [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</div>
                   <div class="tip-sec">

@@ -144,10 +144,17 @@ export const dashboardStyles = `
     align-items: center;
     justify-content: space-between;
     gap: var(--sp-3);
+    flex-wrap: wrap;
     padding: var(--sp-2) 0;
     font-size: var(--fs-sm);
     border-bottom: 1px solid rgba(255,255,255,0.05);
   }
+  /* Live-Frachtbalken einer schürfenden Flotte (eigene Zeile unter der Bewegung). */
+  .mine-bar { flex-basis: 100%; display: flex; align-items: center; gap: var(--sp-2); margin-top: 2px; }
+  .mb-track { flex: 1; height: 5px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
+  .mb-fill { display: block; height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-dim), var(--accent)); transition: width var(--motion-base) var(--ease-out); }
+  .mb-amt { font-size: var(--fs-xs); color: var(--text-dim); white-space: nowrap; }
   .alert { border-bottom: none; }
   .alert.danger { color: #ffb3d0; }
   .alert.decision { color: var(--accent); }

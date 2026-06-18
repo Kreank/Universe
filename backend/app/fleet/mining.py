@@ -169,6 +169,44 @@ async def resolve_mine(session: AsyncSession, fleet: Fleet) -> dict | None:
     return {"location": location, "richness": field.richness, "started": True}
 
 
+async def mining_projection(session: AsyncSession, fleet: Fleet, now: dt.datetime | None = None) -> dict | None:
+    """Read-only: was die Flotte BISHER (anteilig zur Verweilzeit) geschuerft haette — fuer den
+    Live-Frachtbalken. Mutiert NICHTS. Liefert {metal, crystal, filled, capacity, progress} oder
+    None, wenn keine aktive Schuerf-Session laeuft."""
+    md = fleet.mission_data or {}
+    if not md.get("mine_active"):
+        return None
+    now = now or _now()
+    start = _parse_iso(md.get("mine_start")) or now
+    hold_until = _parse_iso(md.get("hold_until"))
+    if hold_until and hold_until > start:
+        progress = min(1.0, max(0.0, (now - start).total_seconds() / (hold_until - start).total_seconds()))
+    else:
+        progress = 1.0
+    cap_total = float(md.get("mine_cap", 0.0))
+    cap = cap_total * progress
+    metal = crystal = 0.0
+    if cap > 0:
+        field = await _field_at(session, fleet)
+        if field is not None:
+            from app.universe.asteroids import projected_remaining
+            pm, pc = projected_remaining(field)  # Regen read-only mitrechnen
+            g, _m, _c = mine_from_field(pm, pc, cap)
+            from app.alliance.bonus import alliance_bonus
+            from app.platform.models import Player
+            owner = await session.get(Player, fleet.player_id)
+            zb = await alliance_bonus(
+                session, owner, "mining_yield_zone",
+                galaxy=fleet.target_galaxy, system=fleet.target_system,
+            )
+            mult = (1 + zb) if zb > 0 else 1.0
+            metal, crystal = round(g["metal"] * mult, 1), round(g["crystal"] * mult, 1)
+    return {
+        "metal": metal, "crystal": crystal,
+        "filled": round(cap, 0), "capacity": round(cap_total, 0), "progress": round(progress, 3),
+    }
+
+
 async def settle_mining(session: AsyncSession, fleet: Fleet, now: dt.datetime | None = None) -> dict | None:
     """Beendet die Schuerf-Session: foerdert das bis ``now`` ANTEILIG (verstrichene Verweilzeit)
     Geschuerfte real aus dem Feld in ``fleet.cargo`` und markiert die Session als erledigt.

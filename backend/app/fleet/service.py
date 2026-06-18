@@ -235,7 +235,17 @@ async def fleet_to_dict(session: AsyncSession, fleet: Fleet) -> dict:
         "depart_at": fleet.depart_at,
         "arrive_at": fleet.arrive_at,
         "return_at": fleet.return_at,
+        # Zeitbasiertes Schuerfen: Live-Frachtbalken (anteilig gefuellt) waehrend einer Mining-Session.
+        "mining": (
+            await _mining_projection(session, fleet)
+            if fleet.mission == "mine" and (fleet.mission_data or {}).get("mine_active") else None
+        ),
     }
+
+
+async def _mining_projection(session: AsyncSession, fleet: Fleet) -> dict | None:
+    from app.fleet.mining import mining_projection
+    return await mining_projection(session, fleet)
 
 
 async def send_fleet(
