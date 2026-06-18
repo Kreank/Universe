@@ -280,7 +280,7 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
               <div class="queue-row has-tip">
                 <span>
                   <app-btn-icon [src]="fleetIcon()" glyph="🚀" [size]="16" /> {{ metaM(f.mission).label }}
-                  <span class="faint">→ [{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</span>
+                  <span class="faint">→ </span><a class="coord-link" [routerLink]="['/galaxy']" [queryParams]="{ g: f.target.galaxy, s: f.target.system }" title="Auf der Galaxie-Karte ansehen">[{{ f.target.galaxy }}:{{ f.target.system }}:{{ f.target.position }}]</a>
                   <span class="chip">{{ statusLabel(f.status) }}</span>
                 </span>
                 <app-countdown [target]="f.status === 'returning' ? f.return_at : f.arrive_at" />

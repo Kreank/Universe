@@ -98,6 +98,9 @@ export const dashboardStyles = `
     margin-bottom: 2px;
   }
   .queue-row .chip { margin-left: var(--sp-2); }
+  /* Klickbare Zielkoordinaten -> Galaxie-Karte. */
+  .coord-link { color: var(--text-dim); text-decoration: none; border-bottom: 1px dotted var(--border-strong); }
+  .coord-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
   .ok { color: var(--ok); }
   .neg { color: var(--danger); }
 

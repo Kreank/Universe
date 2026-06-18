@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
@@ -276,6 +277,7 @@ export class GalaxyComponent {
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
   private readonly balance = inject(BalanceService);
+  private readonly route = inject(ActivatedRoute);
 
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly missionIcon = missionIcon;
@@ -350,14 +352,21 @@ export class GalaxyComponent {
       error: () => {},
     });
 
+    // Ziel aus den Query-Parametern (?g=&s=) — z. B. per Klick auf Koordinaten in den
+    // Flottenbewegungen — hat Vorrang vor dem Heimatsystem.
+    const qp = this.route.snapshot.queryParamMap;
+    const qg = Number(qp.get('g'));
+    const qs = Number(qp.get('s'));
+    const fromQuery = qg > 0 && qs > 0;
+
     // Standardmäßig das EIGENE Heimatsystem scannen, sobald der aktive Planet geladen ist
     // (race-sicher: initialisiert erst, wenn echte Koordinaten vorliegen — nicht auf 1:1).
     effect(() => {
       const p = this.state.activePlanet();
       if (p && !this.initialized) {
         this.initialized = true;
-        this.viewG = p.galaxy;
-        this.viewS = p.system;
+        this.viewG = fromQuery ? qg : p.galaxy;
+        this.viewS = fromQuery ? qs : p.system;
         this.scan();
       }
     });
