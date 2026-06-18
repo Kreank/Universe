@@ -358,6 +358,8 @@ _STATEMENTS: list[str] = [
     "ALTER TABLE alliance_stations ADD COLUMN IF NOT EXISTS slot_level INTEGER NOT NULL DEFAULT 0",
     # Verteidigungs-Tech der Station (eigene Stations-Forschung, startet bei 1, bis max_tech).
     "ALTER TABLE alliance_stations ADD COLUMN IF NOT EXISTS defense_tech_level INTEGER NOT NULL DEFAULT 1",
+    # Sonder-Flags eines NPC-Angriffs (z. B. nach Piraten-Bestechung: besseres Truemmerfeld + Item-Chance).
+    "ALTER TABLE npc_attacks ADD COLUMN IF NOT EXISTS data JSONB NOT NULL DEFAULT '{}'::jsonb",
     # -- Feature: Kommandeurs-Equipment (2026-06-17) --
     # Item-Instanzen im Spieler-Inventar; equipped_commander_id != NULL => auf einem
     # Kommandeur in seinem Slot getragen (SET NULL => faellt bei Kommandeur-Tod ins Inventar).

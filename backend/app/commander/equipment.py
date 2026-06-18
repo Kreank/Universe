@@ -215,13 +215,15 @@ async def craft_item(
 
 # -- Drops (Quests / Expeditionen / globale Events) ---------------------------
 async def maybe_grant_item(
-    session: AsyncSession, player_id: uuid.UUID, source: str, rng: random.Random | None = None
+    session: AsyncSession, player_id: uuid.UUID, source: str,
+    rng: random.Random | None = None, chance_override: float | None = None,
 ) -> CommanderItem | None:
     """Wuerfelt Drop-Chance der Quelle; bei Treffer wird ein zufaelliges Item (gewichtete
-    Raritaet) ins Inventar gelegt + eine Transmission gepusht. Caller committet (nur flush hier)."""
+    Raritaet der Quelle) ins Inventar gelegt + eine Transmission gepusht. Caller committet (nur
+    flush hier). ``chance_override`` ersetzt die Quellen-Chance (z. B. Piraten-Bestechung)."""
     cfg = equipment_cfg()
     drops = cfg.get("drops", {})
-    chance = float(drops.get("chance", {}).get(source, 0.0))
+    chance = float(chance_override) if chance_override is not None else float(drops.get("chance", {}).get(source, 0.0))
     if chance <= 0:
         return None
     r = rng or random.Random()

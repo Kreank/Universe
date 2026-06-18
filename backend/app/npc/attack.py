@@ -315,8 +315,10 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
         # -- Truemmer (nur Schiffe, beide Seiten) am Spieler-Ort persistieren --
         d_atk = _debris(npc_losses)
         d_def = _debris(def_losses)
-        debris = {"metal": round(d_atk["metal"] + d_def["metal"], 1),
-                  "crystal": round(d_atk["crystal"] + d_def["crystal"], 1)}
+        # Piraten-Bestechung (Teil-Angriff): besonders ergiebiges Truemmerfeld.
+        _dmult = float((atk.data or {}).get("debris_mult", 1.0))
+        debris = {"metal": round((d_atk["metal"] + d_def["metal"]) * _dmult, 1),
+                  "crystal": round((d_atk["crystal"] + d_def["crystal"]) * _dmult, 1)}
         if debris["metal"] > 0 or debris["crystal"] > 0:
             cell = (await session.execute(
                 select(UniverseCell).where(
@@ -338,6 +340,12 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
         if debris["metal"] > 0 or debris["crystal"] > 0:
             from app.planets.moon import maybe_form_moon
             await maybe_form_moon(session, planet, debris["metal"], debris["crystal"])
+
+        # Piraten-Bestechung (Teil-Angriff): Chance auf Kommandeurs-Ausruestung im Truemmerfeld.
+        _item_chance = float((atk.data or {}).get("item_chance", 0.0))
+        if _item_chance > 0:
+            from app.commander.equipment import maybe_grant_item
+            await maybe_grant_item(session, atk.target_player_id, "global_event", chance_override=_item_chance)
 
         # -- Beute (nur bei NPC-Sieg): Spieler-Ressourcen pluendern --
         loot = {"metal": 0.0, "crystal": 0.0, "deuterium": 0.0}

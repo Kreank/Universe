@@ -916,7 +916,14 @@
       "black_hole":           { "enabled": true, "spawn_chance": 0.05, "lifetime_hours": 24, "yield_mult": 3.0, "wipe_chance": 0.18 }
     },
     "personal": {
-      "pirate_raid":  { "enabled": true, "spawn_chance_per_player": 0.02, "warning_minutes": 150, "power_vs_player": 0.45 },
+      "pirate_raid":  { "enabled": true, "spawn_chance_per_player": 0.02, "warning_minutes": 150, "power_vs_player": 0.45,
+        "_bribe_note": "Vor dem Anflug kann man die Piraten bestechen (teuer, aus dem Bau-Planeten). Meist ziehen sie ab; mit bribe_partial_chance greifen sie TROTZDEM an, aber mit reduzierter Flotte (bribe_partial_fleet_mult) und lassen dafuer ein besseres Truemmerfeld (bribe_partial_debris_mult) + Chance auf Kommandeurs-Equipment (bribe_partial_item_chance) zurueck.",
+        "bribe_cost": { "metal": 90000, "crystal": 55000, "deuterium": 35000 },
+        "bribe_partial_chance": 0.2,
+        "bribe_partial_fleet_mult": 0.5,
+        "bribe_partial_debris_mult": 1.6,
+        "bribe_partial_item_chance": 0.35,
+        "bribe_timeout_hours": 2.0 },
       "mine_strike":  { "enabled": true, "spawn_chance_per_player": 0.02, "production_mult": 0.5, "duration_hours": 12, "bribe_deuterium": 30000, "force_morale_penalty": 10, "decision_timeout_hours": 12 },
       "breakthrough": { "enabled": true, "spawn_chance_per_player": 0.012, "free_level_chance": 0.25 }
     }

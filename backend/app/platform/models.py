@@ -548,6 +548,8 @@ class NpcAttack(Base):
     fleet: Mapped[dict] = mapped_column(JSONB, default=dict)  # {type: count} der Angreifer
     status: Mapped[str] = mapped_column(Text, default="incoming")  # 'incoming' | 'resolved'
     arrive_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Optionale Sonder-Flags (z. B. nach Piraten-Bestechung): {debris_mult, item_chance}.
+    data: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

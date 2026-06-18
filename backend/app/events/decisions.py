@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import random
 import uuid
 
 from sqlalchemy import delete, select
@@ -146,6 +147,41 @@ async def _resolve_choice(session: AsyncSession, t: Transmission, choice: str, b
         return (f"Du hast geholfen ({cost} Deuterium): +{bonus} Crew-Moral, schnelleres Bauen "
                 f"und {keep_txt or 'einige Zivilschiffe'} sind dir beigetreten.{gear_txt} "
                 f"Halte dich für ihre Verfolger bereit!")
+
+    if etype == "pirate_raid":
+        from app.economy.service import spend_resources
+        from app.platform.models import NpcAttack, Planet
+        data = (ev.data if ev else {}) or {}
+        if choice != "bribe":
+            return "Du lässt die Razzia kommen — deine Verteidigung stellt sich ihnen."
+        atk_id = data.get("attack_id")
+        atk = await session.get(NpcAttack, uuid.UUID(atk_id)) if atk_id else None
+        if atk is None or atk.status != "incoming":
+            return "Die Piraten sind bereits da — für eine Bestechung ist es zu spät."
+        planet = await session.get(Planet, uuid.UUID(data["planet_id"])) if data.get("planet_id") else None
+        cost = dict(data.get("bribe_cost", {}))
+        if planet is None or not await spend_resources(session, planet, cost):
+            return "Nicht genug Ressourcen für die Bestechung — die Razzia kommt wie geplant."
+        if ev is not None:
+            ev.status = "resolved"
+        # Restrisiko: Piraten kassieren UND greifen trotzdem (reduziert) an.
+        if random.random() < float(data.get("partial_chance", 0.2)):
+            mult = float(data.get("partial_fleet_mult", 0.5))
+            reduced = {t: int(n * mult) for t, n in (atk.fleet or {}).items() if int(n * mult) >= 1}
+            atk.fleet = reduced or ({next(iter(atk.fleet)): 1} if atk.fleet else {"light_fighter": 1})
+            atk.data = {
+                **(atk.data or {}),
+                "debris_mult": float(data.get("partial_debris_mult", 1.6)),
+                "item_chance": float(data.get("partial_item_chance", 0.35)),
+            }
+            return ("Die Piraten kassieren dein Gold — und greifen TROTZDEM an, wenn auch mit weniger "
+                    "Schiffen. Immerhin: Schlägst du sie zurück, lassen sie ein besonders ergiebiges "
+                    "Trümmerfeld zurück (vielleicht sogar mit Ausrüstung).")
+        # Abgewendet: geplanten Angriff stoppen.
+        cancel_job(f"npc-attack:{atk.id}")
+        atk.status = "resolved"
+        await session.delete(atk)
+        return "Die Piraten nehmen das Gold und ziehen ab — die Razzia ist abgewendet."
 
     # Unbekannter Event-Typ: einfach abschließen.
     return "Entscheidung verbucht."

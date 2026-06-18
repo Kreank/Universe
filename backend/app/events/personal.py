@@ -118,16 +118,41 @@ async def trigger_pirate_raid(session: AsyncSession, player: Player, planet: Pla
     await session.flush()
     schedule_at(arrive, _resolve_pirate_attack, str(atk.id), job_id=f"npc-attack:{atk.id}")
     total = sum(fleet.values())
-    await create_system_transmission(
-        session, player_id=player.id,
-        subject=f"☠️ Piraten-Razzia im Anflug ({planet.galaxy}:{planet.system}:{planet.position})",
-        body=f"Ein Piratenclan hat einen Funkspruch abgefangen und schickt {total} Plünderer-Schiffe "
-             f"zu deinem Planeten {planet.name}. Ankunft in ~{int(warn_min)} Minuten. Die Flotte ist "
-             f"deinen Verteidigungsanlagen angepasst — wehr sie ab, und ihr Trümmerfeld lohnt sich! "
-             f"(Verteidigung kämpft automatisch, auch wenn du offline bist.)",
-        ttype="system",
+
+    # Bestechungs-Entscheidung (offline-sicher): vor dem Anflug kann man die Piraten abkaufen.
+    bribe = dict(cfg.get("bribe_cost", {}))
+    ev = CosmicEvent(
+        event_type="pirate_raid", scope="personal",
+        galaxy=planet.galaxy, system=planet.system, position=planet.position, player_id=player.id,
+        data={
+            "attack_id": str(atk.id), "planet_id": str(planet.id), "bribe_cost": bribe,
+            "partial_chance": float(cfg.get("bribe_partial_chance", 0.2)),
+            "partial_fleet_mult": float(cfg.get("bribe_partial_fleet_mult", 0.5)),
+            "partial_debris_mult": float(cfg.get("bribe_partial_debris_mult", 1.6)),
+            "partial_item_chance": float(cfg.get("bribe_partial_item_chance", 0.35)),
+        },
+        expires_at=arrive,
     )
-    log.info("Piraten-Razzia: player=%s planet=%s fleet=%s", player.id, planet.id, fleet)
+    session.add(ev)
+    await session.flush()
+    _names = {"metal": "Metall", "crystal": "Kristall", "deuterium": "Deuterium"}
+    bribe_txt = " / ".join(f"{int(v):,}".replace(",", ".") + " " + _names.get(k, k)
+                           for k, v in bribe.items() if v)
+    from app.events.decisions import create_event_decision
+    await create_event_decision(
+        session, player_id=player.id, event=ev,
+        subject=f"☠️ Piraten-Razzia im Anflug ({planet.galaxy}:{planet.system}:{planet.position})",
+        body=(f"Ein Piratenclan schickt {total} Plünderer-Schiffe zu {planet.name} — Ankunft in "
+              f"~{int(warn_min)} Minuten. Du kannst die Piraten BESTECHEN ({bribe_txt}, aus diesem Planeten): "
+              f"meist ziehen sie dann ab. Es bleibt aber ein Restrisiko, dass sie das Gold kassieren UND "
+              f"trotzdem angreifen — dann zwar mit weniger Schiffen, dafür lassen sie ein besonders "
+              f"ergiebiges Trümmerfeld (evtl. mit Ausrüstung) zurück. Tust du nichts, kommt die volle "
+              f"Razzia (deine Verteidigung kämpft automatisch)."),
+        choices=["bribe", "wait"],
+        default_choice="wait",
+        timeout_hours=float(cfg.get("bribe_timeout_hours", 2.0)),
+    )
+    log.info("Piraten-Razzia (mit Bestechungs-Option): player=%s planet=%s fleet=%s", player.id, planet.id, fleet)
     return True
 
 
