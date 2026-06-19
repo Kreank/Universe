@@ -466,6 +466,9 @@ async def send_fleet(
         commander = await session.get(Commander, commander_id)
         if commander is None or commander.player_id != player.id:
             raise ValueError("Commander nicht gefunden")
+        # Einsatz = Aktivität: refresht den Untätigkeits-Timer (gilt für JEDE Mission, nicht nur
+        # Kampf) -> auch friedliche Spielstile (Bergbau/Expedition/Handel) halten Moral oben.
+        commander.last_active_at = _now()
         if commander.status not in ("active", "wounded"):
             raise RuntimeError("Commander ist nicht einsatzbereit")
         # Ein Gouverneur (Planeten-Posten) kann nicht gleichzeitig eine Flotte fuehren.
@@ -1059,6 +1062,10 @@ async def fleet_return(fleet_id: str) -> None:
             from app.messaging.service import create_system_transmission
             _mined = await settle_mining(session, fleet)
             if _mined and (_mined.get("metal", 0) + _mined.get("crystal", 0)) > 0:
+                # Friedlicher Moral-Gewinn: ein ertragreicher Bergbau-Run belohnt den Kommandeur.
+                if fleet.commander_id:
+                    from app.commander.service import reward_commander_activity
+                    await reward_commander_activity(session, fleet.commander_id, "mining_haul")
                 _loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
                 await create_system_transmission(
                     session, player_id=fleet.player_id,

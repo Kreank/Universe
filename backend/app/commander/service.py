@@ -418,6 +418,24 @@ def commander_unrest_gain_per_hour(c: Commander, sat: dict, potency: dict) -> fl
     return gain * tmult
 
 
+async def reward_commander_activity(session: AsyncSession, commander_id, delta_key: str) -> None:
+    """Friedlicher Moral-Gewinn: belohnt einen Kommandeur für einen erfolgreichen, nicht-
+    kämpferischen Einsatz (Expedition/Bergbau/Handel — analog zu den Kampf-Boni). Hebt Moral um
+    ``balance.commander.morale.deltas[delta_key]`` (gedeckelt 0..100) und frischt den Aktiv-Timer
+    auf. No-op ohne Kommandeur. Best-effort — darf den Auflöser nie stören."""
+    if not commander_id:
+        return
+    try:
+        c = await session.get(Commander, commander_id)
+        if c is None:
+            return
+        delta = int(get_balance().commander["morale"]["deltas"].get(delta_key, 0))
+        c.morale = max(0, min(100, int(c.morale) + delta))
+        c.last_active_at = _now()
+    except Exception:  # noqa: BLE001 — Moral-Bonus darf den Mission-Auflöser nie stören
+        pass
+
+
 async def morale_drift_tick() -> None:
     """Stuendlicher Job: Moral driftet zum Basis-Ziel; Neglect-Decay bei Untaetigkeit;
     Unmut waechst (staerker je staerker der Kommandeur) und erzeugt bei Schwelle eine
@@ -500,7 +518,8 @@ async def morale_drift_tick() -> None:
             last = c.last_active_at or now
             if last.tzinfo is None:
                 last = last.replace(tzinfo=dt.timezone.utc)
-            idle = (now - last).total_seconds() > idle_seconds
+            # Aktuell im Einsatz (Flotte ODER Gouverneur) = NICHT untätig -> kein Neglect-Verfall.
+            idle = (now - last).total_seconds() > idle_seconds and c.id not in assigned
             if idle:
                 # crew_psychology daempft den Neglect-Verfall (gut betreute Crews halten durch).
                 morale -= decay_per_hour * decay_mult * max(0.0, 1.0 - cp_decay_red * cp_lvl)

@@ -2469,7 +2469,10 @@
         "demand_ignored": -6,
         "promotion": 12,
         "shore_leave": 10,
-        "loot_gained": 4
+        "loot_gained": 4,
+        "expedition_success": 6,
+        "mining_haul": 4,
+        "trade_profit": 4
       },
       "neglect": {
         "idle_days_before_decay": 3,
