@@ -226,6 +226,7 @@ Es gibt **zwei** Asset-Wurzeln:
 | ✅ | weapons_mastery | `tech/weapons_mastery.png` | PNG transparent, 256×256 (Stil = `tech/weapons_tech.png`) | Waffen-Meisterschaft (wiederholbar): Waffenkern/Zielkreuz mit Stufen-Chevrons + **∞-Ring**. Direkt am Look von `weapons_tech` orientieren. |
 | ✅ | shield_mastery | `tech/shield_mastery.png` | PNG transparent, 256×256 (Stil = `tech/shield_tech.png`) | Schild-Meisterschaft (wiederholbar): Schildemblem mit Verstärkungsringen + **∞-Ring**. Direkt am Look von `shield_tech` orientieren. |
 | ✅ | armor_mastery | `tech/armor_mastery.png` | PNG transparent, 256×256 (Stil = `tech/armor_tech.png`) | Panzerungs-Meisterschaft (wiederholbar): geschichtete Verbundpanzer-Platten + **∞-Ring**. Direkt am Look von `armor_tech` orientieren. |
+| ✅ | prospecting | `tech/prospecting.png` | PNG transparent, 256×256 (Stil = `tech/spy_tech.png` / `tech/energy_tech.png`) | Ortung / Prospektion (wiederholbar): plastisches Sensor-/Ortungs-Emblem — eine Radar-/Scanner-Schale aussendend, konzentrische cyan Scan-Pulsringe über einem kleinen Asteroiden/Erz-Kristall (Erz-Aufspürung), Zielpeil-Akzent + dezenter **∞-Ring** (repeatable). Gleiches Rendering/Material/Glanz wie die Tech-Anker, cyan `#2fe3d2`, KEIN Text. |
 
 ### Navigations-Icon — referenziert als `assets/img/nav/megastructures.png`
 
