@@ -282,7 +282,15 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
     rep.updated_at = _now()
 
     # -- 9) Flotten-Fracht setzen (kehrt via fleet_return heim) --
-    received = round(result["received"], 1)
+    # Haendler-Garnitur (Equipment des Kommandeurs): +erhaltene Ware, moral-skaliert.
+    _trade_bonus = 0.0
+    if getattr(fleet, "commander_id", None):
+        from app.commander.equipment import commander_stat_bonus
+        from app.platform.models import Commander as _Cmd
+        _cmd = await session.get(_Cmd, fleet.commander_id)
+        _trade_bonus = await commander_stat_bonus(
+            session, fleet.commander_id, "trade_margin", _cmd.morale if _cmd else 100)
+    received = round(result["received"] * (1.0 + _trade_bonus), 1)
     cargo = {want_res: received}
     # Refund: nicht ausgegebenes Budget (Cargo-/Stock-Limit) als Angebots-Ressource zurueck.
     refund_offer = 0.0

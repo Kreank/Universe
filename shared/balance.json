@@ -2924,13 +2924,15 @@
         "head",
         "hands",
         "chest",
+        "legs",
         "shoes"
       ],
       "slot_labels": {
         "head": "Kopf",
         "hands": "Haende",
         "chest": "Brust",
-        "shoes": "Schuhe"
+        "shoes": "Schuhe",
+        "legs": "Beine"
       },
       "rarities": {
         "common": {
@@ -3023,6 +3025,111 @@
                 "stat": "shield",
                 "target": "civil",
                 "pct": 0.12
+              }
+            ]
+          }
+        },
+        "miner": {
+          "label": "Foerder-Garnitur",
+          "bonus": {
+            "2": [
+              {
+                "stat": "mining_yield",
+                "target": "all",
+                "pct": 0.06
+              }
+            ],
+            "4": [
+              {
+                "stat": "mining_yield",
+                "target": "all",
+                "pct": 0.1
+              }
+            ]
+          }
+        },
+        "trader": {
+          "label": "Haendler-Garnitur",
+          "bonus": {
+            "2": [
+              {
+                "stat": "trade_margin",
+                "target": "all",
+                "pct": 0.05
+              }
+            ],
+            "4": [
+              {
+                "stat": "trade_margin",
+                "target": "all",
+                "pct": 0.1
+              }
+            ]
+          }
+        },
+        "scout": {
+          "label": "Spaeher-Garnitur",
+          "bonus": {
+            "2": [
+              {
+                "stat": "spy_success",
+                "target": "all",
+                "pct": 0.06
+              }
+            ],
+            "4": [
+              {
+                "stat": "spy_success",
+                "target": "all",
+                "pct": 0.12
+              }
+            ]
+          }
+        },
+        "explorer": {
+          "label": "Expeditions-Garnitur",
+          "bonus": {
+            "2": [
+              {
+                "stat": "expedition_yield",
+                "target": "all",
+                "pct": 0.06
+              }
+            ],
+            "4": [
+              {
+                "stat": "expedition_yield",
+                "target": "all",
+                "pct": 0.12
+              }
+            ]
+          }
+        },
+        "governor": {
+          "label": "Verwaltungs-Garnitur",
+          "bonus": {
+            "2": [
+              {
+                "stat": "production",
+                "target": "all",
+                "pct": 0.05
+              }
+            ],
+            "4": [
+              {
+                "stat": "research_speed",
+                "target": "all",
+                "pct": 0.05
+              },
+              {
+                "stat": "shipbuild_speed",
+                "target": "all",
+                "pct": 0.05
+              },
+              {
+                "stat": "production",
+                "target": "all",
+                "pct": 0.05
               }
             ]
           }
@@ -3218,6 +3325,354 @@
               "stat": "speed",
               "target": "all",
               "pct": 0.1
+            }
+          ]
+        },
+        "fighter_legs": {
+          "slot": "legs",
+          "set": "fighter",
+          "label": "Jaeger-Beinschienen",
+          "bonuses": [
+            {
+              "stat": "speed",
+              "target": "all",
+              "pct": 0.05
+            }
+          ]
+        },
+        "cruiser_legs": {
+          "slot": "legs",
+          "set": "cruiser",
+          "label": "Taktik-Beinschienen",
+          "bonuses": [
+            {
+              "stat": "shield",
+              "target": "cruiser",
+              "pct": 0.06
+            }
+          ]
+        },
+        "capital_legs": {
+          "slot": "legs",
+          "set": "capital",
+          "label": "Panzer-Beinschienen",
+          "bonuses": [
+            {
+              "stat": "shield",
+              "target": "capital",
+              "pct": 0.06
+            }
+          ]
+        },
+        "salvage_legs": {
+          "slot": "legs",
+          "set": "civil",
+          "label": "Industrie-Beinschuetzer",
+          "bonuses": [
+            {
+              "stat": "speed",
+              "target": "all",
+              "pct": 0.05
+            }
+          ]
+        },
+        "miner_helm": {
+          "slot": "head",
+          "set": "miner",
+          "label": "Foerder-Helm",
+          "bonuses": [
+            {
+              "stat": "mining_yield",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "miner_gloves": {
+          "slot": "hands",
+          "set": "miner",
+          "label": "Foerder-Handschuhe",
+          "bonuses": [
+            {
+              "stat": "mining_yield",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "miner_vest": {
+          "slot": "chest",
+          "set": "miner",
+          "label": "Foerder-Exo",
+          "bonuses": [
+            {
+              "stat": "mining_yield",
+              "target": "all",
+              "pct": 0.05
+            }
+          ]
+        },
+        "miner_legs": {
+          "slot": "legs",
+          "set": "miner",
+          "label": "Foerder-Beinschuetzer",
+          "bonuses": [
+            {
+              "stat": "mining_yield",
+              "target": "all",
+              "pct": 0.03
+            }
+          ]
+        },
+        "miner_boots": {
+          "slot": "shoes",
+          "set": "miner",
+          "label": "Gruben-Magnetstiefel",
+          "bonuses": [
+            {
+              "stat": "mining_yield",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "trader_visor": {
+          "slot": "head",
+          "set": "trader",
+          "label": "Quartiermeister-Helm",
+          "bonuses": [
+            {
+              "stat": "trade_margin",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "trader_gloves": {
+          "slot": "hands",
+          "set": "trader",
+          "label": "Handels-Handschuhe",
+          "bonuses": [
+            {
+              "stat": "trade_margin",
+              "target": "all",
+              "pct": 0.03
+            }
+          ]
+        },
+        "trader_coat": {
+          "slot": "chest",
+          "set": "trader",
+          "label": "Kaufmanns-Mantel",
+          "bonuses": [
+            {
+              "stat": "trade_margin",
+              "target": "all",
+              "pct": 0.05
+            }
+          ]
+        },
+        "trader_legs": {
+          "slot": "legs",
+          "set": "trader",
+          "label": "Haendler-Beinschienen",
+          "bonuses": [
+            {
+              "stat": "trade_margin",
+              "target": "all",
+              "pct": 0.03
+            }
+          ]
+        },
+        "trader_boots": {
+          "slot": "shoes",
+          "set": "trader",
+          "label": "Reisestiefel",
+          "bonuses": [
+            {
+              "stat": "trade_margin",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "scout_hood": {
+          "slot": "head",
+          "set": "scout",
+          "label": "Aufklaerer-Kapuze",
+          "bonuses": [
+            {
+              "stat": "spy_success",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "scout_gloves": {
+          "slot": "hands",
+          "set": "scout",
+          "label": "Schleicher-Handschuhe",
+          "bonuses": [
+            {
+              "stat": "spy_success",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "scout_suit": {
+          "slot": "chest",
+          "set": "scout",
+          "label": "Tarn-Anzug",
+          "bonuses": [
+            {
+              "stat": "spy_success",
+              "target": "all",
+              "pct": 0.05
+            }
+          ]
+        },
+        "scout_legs": {
+          "slot": "legs",
+          "set": "scout",
+          "label": "Schleich-Beinschienen",
+          "bonuses": [
+            {
+              "stat": "spy_success",
+              "target": "all",
+              "pct": 0.03
+            }
+          ]
+        },
+        "scout_boots": {
+          "slot": "shoes",
+          "set": "scout",
+          "label": "Tarnstiefel",
+          "bonuses": [
+            {
+              "stat": "spy_success",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "explorer_helm": {
+          "slot": "head",
+          "set": "explorer",
+          "label": "Expeditions-Helm",
+          "bonuses": [
+            {
+              "stat": "expedition_yield",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "explorer_gloves": {
+          "slot": "hands",
+          "set": "explorer",
+          "label": "Forscher-Handschuhe",
+          "bonuses": [
+            {
+              "stat": "expedition_yield",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "explorer_jacket": {
+          "slot": "chest",
+          "set": "explorer",
+          "label": "Expeditions-Jacke",
+          "bonuses": [
+            {
+              "stat": "expedition_yield",
+              "target": "all",
+              "pct": 0.05
+            }
+          ]
+        },
+        "explorer_legs": {
+          "slot": "legs",
+          "set": "explorer",
+          "label": "Expeditions-Beinschienen",
+          "bonuses": [
+            {
+              "stat": "expedition_yield",
+              "target": "all",
+              "pct": 0.03
+            }
+          ]
+        },
+        "explorer_boots": {
+          "slot": "shoes",
+          "set": "explorer",
+          "label": "Trekkingstiefel",
+          "bonuses": [
+            {
+              "stat": "expedition_yield",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "governor_circlet": {
+          "slot": "head",
+          "set": "governor",
+          "label": "Verwalter-Reif",
+          "bonuses": [
+            {
+              "stat": "research_speed",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "governor_gloves": {
+          "slot": "hands",
+          "set": "governor",
+          "label": "Kommando-Handschuhe",
+          "bonuses": [
+            {
+              "stat": "shipbuild_speed",
+              "target": "all",
+              "pct": 0.04
+            }
+          ]
+        },
+        "governor_robe": {
+          "slot": "chest",
+          "set": "governor",
+          "label": "Gouverneurs-Robe",
+          "bonuses": [
+            {
+              "stat": "production",
+              "target": "all",
+              "pct": 0.05
+            }
+          ]
+        },
+        "governor_legs": {
+          "slot": "legs",
+          "set": "governor",
+          "label": "Uniform-Beinschienen",
+          "bonuses": [
+            {
+              "stat": "production",
+              "target": "all",
+              "pct": 0.03
+            }
+          ]
+        },
+        "governor_boots": {
+          "slot": "shoes",
+          "set": "governor",
+          "label": "Kommando-Stiefel",
+          "bonuses": [
+            {
+              "stat": "research_speed",
+              "target": "all",
+              "pct": 0.03
             }
           ]
         }

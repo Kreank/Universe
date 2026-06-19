@@ -303,6 +303,10 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
         from app.platform.models import Commander as _Commander
         gov = await session.get(_Commander, planet.governor_commander_id)
         gov_mult = governor_production_mult(gov, get_balance())
+        # Verwaltungs-Garnitur (Equipment des Gouverneurs): +Produktion, moral-skaliert.
+        from app.commander.equipment import commander_stat_bonus
+        gov_mult *= (1.0 + await commander_stat_bonus(
+            session, planet.governor_commander_id, "production", gov.morale if gov else 100))
 
     # Event-Debuff/Buff auf die Produktion dieses Planeten (z. B. Minen-Streik 0.5).
     from app.events.buffs import buff_mult as _buff_mult

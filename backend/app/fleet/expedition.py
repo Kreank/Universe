@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.combat.engine import simulate_battle
 from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
-from app.platform.models import Fleet, Research, Ship
+from app.platform.models import Commander, Fleet, Research, Ship
 
 log = logging.getLogger("universe.expedition")
 
@@ -188,6 +188,14 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
     dcfg = cfg.get("doctrine", {}).get(doctrine, {}) if doctrine in ("cautious", "bold") else {}
     risk_mult = float(dcfg.get("risk_mult", 1.0))
     doc_yield = float(dcfg.get("yield_mult", 1.0))
+    # Expeditions-Garnitur (Equipment des begleitenden Kommandeurs): +Expeditions-Ertrag, moral-skaliert.
+    _exp_bonus = 0.0
+    if getattr(fleet, "commander_id", None):
+        from app.commander.equipment import commander_stat_bonus
+        _cmd = await session.get(Commander, fleet.commander_id)
+        _exp_bonus = await commander_stat_bonus(
+            session, fleet.commander_id, "expedition_yield", _cmd.morale if _cmd else 100)
+    doc_yield *= (1.0 + _exp_bonus)
     if risk_mult != 1.0:
         scaled = [
             {**o, "weight": float(o.get("weight", 0)) * (risk_mult if o.get("risky") else 1.0)}

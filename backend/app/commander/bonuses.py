@@ -88,8 +88,13 @@ def resolve_ship_bonuses(
     per: dict[str, dict[str, float]] = {}
     speed = 0.0
     for b in bonuses:
-        pct = b["pct"] * mf
         stat = b["stat"]
+        # Nur Schiffs-Kampfstats hier; Missions-/Planeten-Boni (mining_yield/trade_margin/
+        # spy_success/expedition_yield/research_speed/production/shipbuild_speed) werden in
+        # ihren eigenen Subsystemen angewandt, nicht im Kampf.
+        if stat not in ("attack", "shield", "speed"):
+            continue
+        pct = b["pct"] * mf
         if stat == "speed":
             # Tempo wirkt flottenweit (langsamstes Schiff bestimmt das Tempo).
             speed += pct

@@ -113,6 +113,20 @@ async def equipment_bonuses_for(session: AsyncSession, commander_id: uuid.UUID) 
     return equipment_bonuses(await equipped_items(session, commander_id))
 
 
+async def commander_stat_bonus(
+    session: AsyncSession, commander_id, stat: str, morale: int | float = 100
+) -> float:
+    """Moral-skalierter Gesamt-Prozentsatz eines NICHT-Schiffs-Bonus (mining_yield, trade_margin,
+    spy_success, expedition_yield, research_speed, production, shipbuild_speed) aus der Ausrüstung
+    eines Kommandeurs. 0.0 ohne Kommandeur/ohne passende Boni. Für Missions-/Gouverneurs-Effekte."""
+    if not commander_id:
+        return 0.0
+    from app.commander.bonuses import morale_factor
+    items = await equipped_items(session, commander_id)
+    total = sum(float(b["pct"]) for b in equipment_bonuses(items) if b["stat"] == stat)
+    return round(total * morale_factor(int(morale)), 4)
+
+
 def item_to_dict(it: CommanderItem) -> dict:
     cfg = equipment_cfg()
     d = cfg.get("items", {}).get(it.item_key, {})

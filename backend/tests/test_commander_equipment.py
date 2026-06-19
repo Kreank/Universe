@@ -20,20 +20,26 @@ def _item(key: str, rarity: str = "common") -> CommanderItem:
 def test_equipment_catalog_wellformed():
     cfg = equipment_cfg()
     slots = set(cfg["slots"])
-    assert slots == {"head", "hands", "chest", "shoes"}
+    assert slots == {"head", "hands", "chest", "legs", "shoes"}  # 5 Slots (Beine ergaenzt)
     items = cfg["items"]
-    assert len(items) == 16  # 4 Sets x 4 Slots
+    assert len(items) == 45  # 9 Sets x 5 Slots
     classes = {k for k in get_balance().commander["ship_classes"] if not k.startswith("_")}
+    # Schiffs-Kampfstats + Missions-/Planeten-Stats (Spielstil-Sets).
+    allowed_stats = (
+        "attack", "shield", "speed",
+        "mining_yield", "trade_margin", "spy_success", "expedition_yield",
+        "research_speed", "production", "shipbuild_speed",
+    )
     for key, d in items.items():
         assert d["slot"] in slots
         assert d["set"] in cfg["sets"]
         for b in d["bonuses"]:
-            assert b["stat"] in ("attack", "shield", "speed")
+            assert b["stat"] in allowed_stats
             assert b["target"] == "all" or b["target"] in classes
-    # Jedes Set hat genau 4 Teile (head/hands/chest/shoes).
+    # Jedes Set hat genau 5 Teile (head/hands/chest/legs/shoes).
     for s in cfg["sets"]:
         members = [k for k, d in items.items() if d["set"] == s]
-        assert len(members) == 4
+        assert len(members) == 5
         assert {items[k]["slot"] for k in members} == slots
 
 

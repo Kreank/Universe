@@ -242,10 +242,19 @@ async def settle_mining(session: AsyncSession, fleet: Fleet, now: dt.datetime | 
                 session, owner, "mining_yield_zone",
                 galaxy=fleet.target_galaxy, system=fleet.target_system,
             )
+            # Foerder-Garnitur (Equipment des Kommandeurs): +Erz-Ertrag, moral-skaliert.
+            eqb = 0.0
+            if fleet.commander_id:
+                from app.commander.equipment import commander_stat_bonus
+                from app.platform.models import Commander
+                _cmd = await session.get(Commander, fleet.commander_id)
+                eqb = await commander_stat_bonus(
+                    session, fleet.commander_id, "mining_yield", _cmd.morale if _cmd else 100)
+            mult = (1 + zb) * (1 + eqb)
             gained = {
-                "metal": round(g["metal"] * (1 + zb), 1),
-                "crystal": round(g["crystal"] * (1 + zb), 1),
-            } if zb > 0 else g
+                "metal": round(g["metal"] * mult, 1),
+                "crystal": round(g["crystal"] * mult, 1),
+            } if mult != 1.0 else g
 
     cargo = dict(fleet.cargo or {})
     cargo["metal"] = round(cargo.get("metal", 0) + gained["metal"], 1)

@@ -333,6 +333,13 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
         import random as _random
         # Entdeckungschance aus balance.json (Befund M-3) statt hartkodiert.
         _detect = float(get_balance().data.get("spy", {}).get("npc_detect_reaction_chance", 0.35))
+        # Spaeher-Garnitur (Equipment des Kommandeurs): senkt die Entdeckungschance (stealthier).
+        if getattr(fleet, "commander_id", None):
+            from app.commander.equipment import commander_stat_bonus
+            from app.platform.models import Commander as _Cmd
+            _cmd = await session.get(_Cmd, fleet.commander_id)
+            _detect *= max(0.0, 1.0 - await commander_stat_bonus(
+                session, fleet.commander_id, "spy_success", _cmd.morale if _cmd else 100))
         if _random.random() < _detect:
             try:
                 from app.messaging.service import npc_reaction

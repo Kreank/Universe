@@ -589,10 +589,10 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | slot_head | `icons/equipment/slot_head.png` | PNG transparent, 256×256 | Leerer **Kopf**-Slot: schlichte Helm-/Kopf-Silhouette als Umriss, gedämpft cyan, dezent. |
-| ⬜ | slot_hands | `icons/equipment/slot_hands.png` | PNG transparent, 256×256 | Leerer **Hände**-Slot: Handschuh-/Hand-Umriss, gedämpft cyan, dezent. |
-| ⬜ | slot_chest | `icons/equipment/slot_chest.png` | PNG transparent, 256×256 | Leerer **Brust**-Slot: Brustpanzer-/Westen-Umriss, gedämpft cyan, dezent. |
-| ⬜ | slot_shoes | `icons/equipment/slot_shoes.png` | PNG transparent, 256×256 | Leerer **Schuhe**-Slot: Stiefel-/Fuß-Umriss, gedämpft cyan, dezent. |
+| ✅ | slot_head | `icons/equipment/slot_head.png` | PNG transparent, 256×256 | Leerer **Kopf**-Slot: schlichte Helm-/Kopf-Silhouette als Umriss, gedämpft cyan, dezent. |
+| ✅ | slot_hands | `icons/equipment/slot_hands.png` | PNG transparent, 256×256 | Leerer **Hände**-Slot: Handschuh-/Hand-Umriss, gedämpft cyan, dezent. |
+| ✅ | slot_chest | `icons/equipment/slot_chest.png` | PNG transparent, 256×256 | Leerer **Brust**-Slot: Brustpanzer-/Westen-Umriss, gedämpft cyan, dezent. |
+| ✅ | slot_shoes | `icons/equipment/slot_shoes.png` | PNG transparent, 256×256 | Leerer **Schuhe**-Slot: Stiefel-/Fuß-Umriss, gedämpft cyan, dezent. |
 
 ### Item-Icons (16) — 4 Sets × 4 Slots — referenziert als `assets/img/equipment/<key>.png`
 
@@ -602,22 +602,22 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | fighter_helm | `icons/equipment/fighter_helm.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm** (Schiffsklasse `fighter`, agil/offensiv, scharfe Kanten, cyan): **Kopf** — leichter aerodynamischer Pilotenhelm mit Visier. |
-| ⬜ | fighter_gloves | `icons/equipment/fighter_gloves.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Hände** — schlanke Pilotenhandschuhe mit Steuer-/Sensor-Akzenten. |
-| ⬜ | fighter_vest | `icons/equipment/fighter_vest.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Brust** — leichte Flugweste/Exo-Geschirr, beweglich, cyan Linien. |
-| ⬜ | fighter_boots | `icons/equipment/fighter_boots.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Schuhe** — leichte Schub-/Manöver-Stiefel mit kleinen Düsen. |
-| ⬜ | cruiser_helm | `icons/equipment/cruiser_helm.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon** (Schiffsklasse `cruiser`, ausgewogen/taktisch, blau-cyan): **Kopf** — taktischer Offiziershelm mit Comm-Headset. |
-| ⬜ | cruiser_gloves | `icons/equipment/cruiser_gloves.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Hände** — verstärkte Taktik-Handschuhe. |
-| ⬜ | cruiser_plate | `icons/equipment/cruiser_plate.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Brust** — mittlerer Brustpanzer mit Schulterplatten, taktisch. |
-| ⬜ | cruiser_boots | `icons/equipment/cruiser_boots.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Schuhe** — robuste Einsatzstiefel. |
-| ⬜ | capital_helm | `icons/equipment/capital_helm.png` | PNG transparent, 256×256 | Set **Schlachtlinie** (Schiffsklasse `capital`, wuchtig/schwer gepanzert, martialisch): **Kopf** — massiver gepanzerter Kommandanten-Helm. |
-| ⬜ | capital_gauntlets | `icons/equipment/capital_gauntlets.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Hände** — schwere Panzerhandschuhe (Gauntlets). |
-| ⬜ | capital_cuirass | `icons/equipment/capital_cuirass.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Brust** — schwerer Panzer-Kürass mit Verstärkungsplatten, imposant. |
-| ⬜ | capital_greaves | `icons/equipment/capital_greaves.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Schuhe** — schwere Panzerstiefel (Greaves). |
-| ⬜ | salvage_visor | `icons/equipment/salvage_visor.png` | PNG transparent, 256×256 | Set **Bergungs-Montur** (Schiffsklasse `civil`, Transporter/Miner, industriell, warm-cyan): **Kopf** — Bergmanns-/Industrie-Visier mit Stirnlampe. |
-| ⬜ | salvage_gloves | `icons/equipment/salvage_gloves.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Hände** — schwere Arbeitshandschuhe mit Greifverstärkung. |
-| ⬜ | salvage_rig | `icons/equipment/salvage_rig.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Brust** — Industrie-Exo-Geschirr/Werkzeug-Rig mit Bergungs-Modulen. |
-| ⬜ | salvage_boots | `icons/equipment/salvage_boots.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Schuhe** — schwere Magnet-/Greifstiefel. |
+| ✅ | fighter_helm | `icons/equipment/fighter_helm.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm** (Schiffsklasse `fighter`, agil/offensiv, scharfe Kanten, cyan): **Kopf** — leichter aerodynamischer Pilotenhelm mit Visier. |
+| ✅ | fighter_gloves | `icons/equipment/fighter_gloves.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Hände** — schlanke Pilotenhandschuhe mit Steuer-/Sensor-Akzenten. |
+| ✅ | fighter_vest | `icons/equipment/fighter_vest.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Brust** — leichte Flugweste/Exo-Geschirr, beweglich, cyan Linien. |
+| ✅ | fighter_boots | `icons/equipment/fighter_boots.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Schuhe** — leichte Schub-/Manöver-Stiefel mit kleinen Düsen. |
+| ✅ | cruiser_helm | `icons/equipment/cruiser_helm.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon** (Schiffsklasse `cruiser`, ausgewogen/taktisch, blau-cyan): **Kopf** — taktischer Offiziershelm mit Comm-Headset. |
+| ✅ | cruiser_gloves | `icons/equipment/cruiser_gloves.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Hände** — verstärkte Taktik-Handschuhe. |
+| ✅ | cruiser_plate | `icons/equipment/cruiser_plate.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Brust** — mittlerer Brustpanzer mit Schulterplatten, taktisch. |
+| ✅ | cruiser_boots | `icons/equipment/cruiser_boots.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Schuhe** — robuste Einsatzstiefel. |
+| ✅ | capital_helm | `icons/equipment/capital_helm.png` | PNG transparent, 256×256 | Set **Schlachtlinie** (Schiffsklasse `capital`, wuchtig/schwer gepanzert, martialisch): **Kopf** — massiver gepanzerter Kommandanten-Helm. |
+| ✅ | capital_gauntlets | `icons/equipment/capital_gauntlets.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Hände** — schwere Panzerhandschuhe (Gauntlets). |
+| ✅ | capital_cuirass | `icons/equipment/capital_cuirass.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Brust** — schwerer Panzer-Kürass mit Verstärkungsplatten, imposant. |
+| ✅ | capital_greaves | `icons/equipment/capital_greaves.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Schuhe** — schwere Panzerstiefel (Greaves). |
+| ✅ | salvage_visor | `icons/equipment/salvage_visor.png` | PNG transparent, 256×256 | Set **Bergungs-Montur** (Schiffsklasse `civil`, Transporter/Miner, industriell, warm-cyan): **Kopf** — Bergmanns-/Industrie-Visier mit Stirnlampe. |
+| ✅ | salvage_gloves | `icons/equipment/salvage_gloves.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Hände** — schwere Arbeitshandschuhe mit Greifverstärkung. |
+| ✅ | salvage_rig | `icons/equipment/salvage_rig.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Brust** — Industrie-Exo-Geschirr/Werkzeug-Rig mit Bergungs-Modulen. |
+| ✅ | salvage_boots | `icons/equipment/salvage_boots.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Schuhe** — schwere Magnet-/Greifstiefel. |
 
 ### Set-Embleme (4) — referenziert als `assets/img/equipment/set_<class>.png`
 
@@ -626,10 +626,54 @@ Es gibt **zwei** Asset-Wurzeln:
 
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
-| ⬜ | set_fighter | `icons/equipment/set_fighter.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Jäger-Schwarm**: agiles Jäger-/Schwarm-Motiv (mehrere kleine Jäger-Silhouetten/Pfeilspitze), cyan. |
-| ⬜ | set_cruiser | `icons/equipment/set_cruiser.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Kreuzer-Bataillon**: taktisches Kreuzer-/Bataillons-Wappen, blau-cyan. |
-| ⬜ | set_capital | `icons/equipment/set_capital.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Schlachtlinie**: wuchtiges Schlachtschiff-/Linien-Wappen, martialisch, cyan + dezent magenta `#ff4d7d`. |
-| ⬜ | set_civil | `icons/equipment/set_civil.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Bergungs-Montur**: Industrie-/Bergungs-Motiv (Zahnrad + Frachter/Bohrer), warm-cyan. |
+| ✅ | set_fighter | `icons/equipment/set_fighter.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Jäger-Schwarm**: agiles Jäger-/Schwarm-Motiv (mehrere kleine Jäger-Silhouetten/Pfeilspitze), cyan. |
+| ✅ | set_cruiser | `icons/equipment/set_cruiser.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Kreuzer-Bataillon**: taktisches Kreuzer-/Bataillons-Wappen, blau-cyan. |
+| ✅ | set_capital | `icons/equipment/set_capital.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Schlachtlinie**: wuchtiges Schlachtschiff-/Linien-Wappen, martialisch, cyan + dezent magenta `#ff4d7d`. |
+| ✅ | set_civil | `icons/equipment/set_civil.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Bergungs-Montur**: Industrie-/Bergungs-Motiv (Zahnrad + Frachter/Bohrer), warm-cyan. |
+
+### ⬛ ERWEITERUNG (2026-06-19): Beine-Slot + 5 Spielstil-Sets (gleicher Stil-Brief wie oben)
+
+> Neuer **5. Slot „Beine"** für ALLE Sets + **5 neue Sets** (Spielstil statt Schiffsklasse). Gleiche
+> Vorgaben: plastisch gerendertes Stück, transparenter Hintergrund, 256×256, ~24–32px noch erkennbar,
+> Ablage Master `assets/icons/equipment/<key>.png` + Spiegel `frontend/src/assets/img/equipment/<key>.png`.
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|:---:|---|---|---|---|
+| ✅ | slot_legs | `icons/equipment/slot_legs.png` | PNG transparent, 256×256 | Leerer **Beine**-Slot: Beinschienen-/Bein-Umriss, gedämpft cyan, dezent. |
+| ✅ | fighter_legs | `icons/equipment/fighter_legs.png` | PNG transparent, 256×256 | Set **Jäger-Schwarm**: **Beine** — leichte aerodynamische Flug-Beinschienen mit Manöver-Akzenten, cyan. |
+| ✅ | cruiser_legs | `icons/equipment/cruiser_legs.png` | PNG transparent, 256×256 | Set **Kreuzer-Bataillon**: **Beine** — verstärkte Taktik-Beinschienen, blau-cyan. |
+| ✅ | capital_legs | `icons/equipment/capital_legs.png` | PNG transparent, 256×256 | Set **Schlachtlinie**: **Beine** — schwere Panzer-Beinschienen, martialisch. |
+| ✅ | salvage_legs | `icons/equipment/salvage_legs.png` | PNG transparent, 256×256 | Set **Bergungs-Montur**: **Beine** — robuste Industrie-Beinschützer mit Werkzeugtaschen, warm-cyan. |
+| ✅ | miner_helm | `icons/equipment/miner_helm.png` | PNG transparent, 256×256 | Set **Förder-Garnitur** (Bergbau, industriell, amber-cyan, Erz/Bohrer): **Kopf** — Bergmanns-Helm mit Stirnlampe + Scanner-Visier. |
+| ✅ | miner_gloves | `icons/equipment/miner_gloves.png` | PNG transparent, 256×256 | Set **Förder-Garnitur**: **Hände** — schwere Förder-Handschuhe mit Greifverstärkung. |
+| ✅ | miner_vest | `icons/equipment/miner_vest.png` | PNG transparent, 256×256 | Set **Förder-Garnitur**: **Brust** — Industrie-Exo mit Erz-Behälter/Bohr-Modulen. |
+| ✅ | miner_legs | `icons/equipment/miner_legs.png` | PNG transparent, 256×256 | Set **Förder-Garnitur**: **Beine** — verstärkte Beinschützer mit Werkzeug-Holstern. |
+| ✅ | miner_boots | `icons/equipment/miner_boots.png` | PNG transparent, 256×256 | Set **Förder-Garnitur**: **Schuhe** — schwere Magnet-Grubenstiefel. |
+| ✅ | trader_visor | `icons/equipment/trader_visor.png` | PNG transparent, 256×256 | Set **Händler-Garnitur** (Handel, edel, gold-cyan, Fracht/Waage): **Kopf** — eleganter Quartiermeister-Helm mit Holo-Display/Monokel. |
+| ✅ | trader_gloves | `icons/equipment/trader_gloves.png` | PNG transparent, 256×256 | Set **Händler-Garnitur**: **Hände** — feine Handels-Handschuhe mit Daten-Akzenten. |
+| ✅ | trader_coat | `icons/equipment/trader_coat.png` | PNG transparent, 256×256 | Set **Händler-Garnitur**: **Brust** — edler Kaufmanns-Mantel/Geschirr mit Fracht-Manifest-Holo. |
+| ✅ | trader_legs | `icons/equipment/trader_legs.png` | PNG transparent, 256×256 | Set **Händler-Garnitur**: **Beine** — elegante Beinschienen mit Gürtel-Beuteln. |
+| ✅ | trader_boots | `icons/equipment/trader_boots.png` | PNG transparent, 256×256 | Set **Händler-Garnitur**: **Schuhe** — polierte Reisestiefel. |
+| ✅ | scout_hood | `icons/equipment/scout_hood.png` | PNG transparent, 256×256 | Set **Späher-Garnitur** (Spionage, getarnt, dunkel-cyan, Sensor/Tarnung): **Kopf** — getarnte Aufklärer-Kapuze/Helm mit Sensor-Optik. |
+| ✅ | scout_gloves | `icons/equipment/scout_gloves.png` | PNG transparent, 256×256 | Set **Späher-Garnitur**: **Hände** — schlanke Schleicher-Handschuhe mit Hack-Akzenten. |
+| ✅ | scout_suit | `icons/equipment/scout_suit.png` | PNG transparent, 256×256 | Set **Späher-Garnitur**: **Brust** — Tarn-Anzug/Geschirr mit aktiver Camouflage-Schimmer. |
+| ✅ | scout_legs | `icons/equipment/scout_legs.png` | PNG transparent, 256×256 | Set **Späher-Garnitur**: **Beine** — leise Schleich-Beinschienen. |
+| ✅ | scout_boots | `icons/equipment/scout_boots.png` | PNG transparent, 256×256 | Set **Späher-Garnitur**: **Schuhe** — gedämpfte Tarnstiefel. |
+| ✅ | explorer_helm | `icons/equipment/explorer_helm.png` | PNG transparent, 256×256 | Set **Expeditions-Garnitur** (Expedition, abenteuerlich, teal, Nebel/Kompass): **Kopf** — robuster Expeditions-Helm mit Weitsicht-Visier. |
+| ✅ | explorer_gloves | `icons/equipment/explorer_gloves.png` | PNG transparent, 256×256 | Set **Expeditions-Garnitur**: **Hände** — strapazierfähige Forscher-Handschuhe. |
+| ✅ | explorer_jacket | `icons/equipment/explorer_jacket.png` | PNG transparent, 256×256 | Set **Expeditions-Garnitur**: **Brust** — Expeditions-Jacke/Geschirr mit Versorgungs-Modulen. |
+| ✅ | explorer_legs | `icons/equipment/explorer_legs.png` | PNG transparent, 256×256 | Set **Expeditions-Garnitur**: **Beine** — strapazierfähige Expeditions-Beinschienen. |
+| ✅ | explorer_boots | `icons/equipment/explorer_boots.png` | PNG transparent, 256×256 | Set **Expeditions-Garnitur**: **Schuhe** — grobe Allzweck-Trekkingstiefel. |
+| ✅ | governor_circlet | `icons/equipment/governor_circlet.png` | PNG transparent, 256×256 | Set **Verwaltungs-Garnitur** (Planet/Gouverneur, edel-autoritär, blau-cyan + gold, Holo-Insignien): **Kopf** — würdevoller Verwalter-Reif/Helm mit Holo-Insignien. |
+| ✅ | governor_gloves | `icons/equipment/governor_gloves.png` | PNG transparent, 256×256 | Set **Verwaltungs-Garnitur**: **Hände** — formelle Kommando-Handschuhe. |
+| ✅ | governor_robe | `icons/equipment/governor_robe.png` | PNG transparent, 256×256 | Set **Verwaltungs-Garnitur**: **Brust** — Gouverneurs-Robe/Uniform mit Rang-Insignien + Holo-Datenband. |
+| ✅ | governor_legs | `icons/equipment/governor_legs.png` | PNG transparent, 256×256 | Set **Verwaltungs-Garnitur**: **Beine** — formelle Uniform-Beinschienen. |
+| ✅ | governor_boots | `icons/equipment/governor_boots.png` | PNG transparent, 256×256 | Set **Verwaltungs-Garnitur**: **Schuhe** — polierte Kommando-Stiefel. |
+| ✅ | set_miner | `icons/equipment/set_miner.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Förder-Garnitur**: Spitzhacke/Bohrer + Erz-Kristall, amber-cyan. |
+| ✅ | set_trader | `icons/equipment/set_trader.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Händler-Garnitur**: Waage + Frachtcontainer/Münze, gold-cyan. |
+| ✅ | set_scout | `icons/equipment/set_scout.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Späher-Garnitur**: Auge/Sonde + Tarn-Pulse, dunkel-cyan. |
+| ✅ | set_explorer | `icons/equipment/set_explorer.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Expeditions-Garnitur**: Kompass/Stern + Nebel, teal. |
+| ✅ | set_governor | `icons/equipment/set_governor.png` | PNG transparent, 256×256 (Stil = `tech/*`) | Set-Emblem **Verwaltungs-Garnitur**: Planet + Zahnrad/Insignie, blau-cyan + gold. |
 
 ---
 

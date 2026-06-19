@@ -193,7 +193,15 @@ async def start_research(session: AsyncSession, planet: Planet, tech_type: str) 
     nexus = await effect_mult(session, planet.player_id, "research_speed")
     from app.events.buffs import buff_mult as _buff_mult
     event_speed = await _buff_mult(session, "research_speed", player_id=planet.player_id)
-    secs = max(1, int(round(research_seconds(cost, lab_lvl) / (nexus * event_speed))))
+    # Verwaltungs-Garnitur (Equipment des Gouverneurs auf diesem Planeten): +Forschungstempo.
+    gov_speed = 1.0
+    if getattr(planet, "governor_commander_id", None):
+        from app.commander.equipment import commander_stat_bonus
+        from app.platform.models import Commander as _Cmd
+        _gov = await session.get(_Cmd, planet.governor_commander_id)
+        gov_speed = 1.0 + await commander_stat_bonus(
+            session, planet.governor_commander_id, "research_speed", _gov.morale if _gov else 100)
+    secs = max(1, int(round(research_seconds(cost, lab_lvl) / (nexus * event_speed * gov_speed))))
     finish = _now() + dt.timedelta(seconds=secs)
     row.finishes_at = finish
     await session.flush()

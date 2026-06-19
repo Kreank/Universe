@@ -290,7 +290,15 @@ async def queue_build(session: AsyncSession, planet: Planet, typ: str, count: in
     if not await spend_resources(session, planet, total_cost):
         raise RuntimeError("Nicht genug Ressourcen (inkl. Exoten am Bau-Planeten)")
 
-    secs_each = max(1, int(round(build_seconds_each(unit_cost, blevels.get(gate_building, 0), blevels.get("nanite_factory", 0)) * time_mult)))
+    # Verwaltungs-Garnitur (Equipment des Gouverneurs auf dem Bau-Planeten): +Schiffbau-Tempo.
+    gov_build = 1.0
+    if getattr(planet, "governor_commander_id", None):
+        from app.commander.equipment import commander_stat_bonus
+        from app.platform.models import Commander as _Cmd
+        _gov = await session.get(_Cmd, planet.governor_commander_id)
+        gov_build = 1.0 + await commander_stat_bonus(
+            session, planet.governor_commander_id, "shipbuild_speed", _gov.morale if _gov else 100)
+    secs_each = max(1, int(round(build_seconds_each(unit_cost, blevels.get(gate_building, 0), blevels.get("nanite_factory", 0)) * time_mult / gov_build)))
     # Serielle Schlange JE GEBAEUDE (OGame-nah): Werft und Verteidigungsfabrik bauen unabhaengig
     # voneinander parallel, jede aber fuer sich seriell. Der neue Auftrag startet erst, wenn der
     # letzte Auftrag DERSELBEN Kategorie VOLLSTAENDIG fertig ist (= sein GESAMT-Ende). Innerhalb
