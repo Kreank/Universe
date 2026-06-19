@@ -26,6 +26,10 @@ export interface AttackAlert {
   arriveAt: string;
   shipsTotal?: number;
   attackerName?: string;
+  /** Aufklaerungsstufe (1..3): ab 2 ist die Flotten-Zusammensetzung sichtbar. */
+  intelLevel?: number;
+  /** Flotten-Zusammensetzung des Angreifers (nur ab Aufklaerungsstufe 2). */
+  ships?: Record<string, number> | null;
 }
 
 /**
@@ -87,17 +91,17 @@ export class GameStateService {
         arriveAt: a.arrive_at,
         shipsTotal: a.ships_total,
         attackerName: a.attacker,
+        intelLevel: a.intel_level,
+        ships: a.ships ?? null,
       }));
       this.attackAlerts.update((list) => {
-        const known = new Set(list.map((x) => x.location));
-        const merged = [...list];
+        // Per Location mergen; vom Backend geseedete Alarme (mit Aufklaerung) ersetzen
+        // schlanke WS-Alarme, damit die Flotten-Zusammensetzung sichtbar wird.
+        const byLoc = new Map(list.map((x) => [x.location, x]));
         for (const alert of seeded) {
-          if (!known.has(alert.location)) {
-            merged.push(alert);
-            known.add(alert.location);
-          }
+          byLoc.set(alert.location, { ...byLoc.get(alert.location), ...alert });
         }
-        return merged;
+        return [...byLoc.values()];
       });
     } catch {
       // incoming-attacks optional

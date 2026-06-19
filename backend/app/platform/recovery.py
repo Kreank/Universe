@@ -106,12 +106,19 @@ async def recover_pending_jobs() -> None:
             recovered += 1
 
         # -- Eingehende NPC-Angriffe (status 'incoming') -------------------
+        now_atk = dt.datetime.now(dt.timezone.utc)
         rows = (await session.execute(
             select(NpcAttack).where(NpcAttack.status == "incoming")
         )).scalars().all()
         for atk in rows:
+            # Ueberfaellige Angriffe in Kuerze ausloesen (zuverlaessiger als auf das
+            # Misfire-Verhalten eines weit in der Vergangenheit liegenden Date-Triggers
+            # zu hoffen) -> kein Angriff bleibt nach einem Neustart haengen.
+            run_at = atk.arrive_at
+            if run_at <= now_atk:
+                run_at = now_atk + dt.timedelta(seconds=5)
             schedule_at(
-                atk.arrive_at, resolve_npc_attack, str(atk.id),
+                run_at, resolve_npc_attack, str(atk.id),
                 job_id=f"npc-attack:{atk.id}",
             )
             recovered += 1

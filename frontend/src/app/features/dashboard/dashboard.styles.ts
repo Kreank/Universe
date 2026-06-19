@@ -161,6 +161,15 @@ export const dashboardStyles = `
   .alert { border-bottom: none; }
   .alert.danger { color: #ffb3d0; }
   .alert.decision { color: var(--accent); }
+  /* Eingehender Angriff: Kopfzeile + Flotten-Zusammensetzung (aus der Aufklaerung). */
+  .attack-alert { flex-direction: column; align-items: stretch; gap: var(--sp-1); }
+  .attack-alert .aa-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+  .attack-alert .aa-ships { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); }
+  .attack-alert .aa-ship {
+    font-size: var(--fs-xs); color: var(--text-dim);
+    background: rgba(255,255,255,0.05); border-radius: var(--r-sm);
+    padding: 1px var(--sp-1); white-space: nowrap;
+  }
   hr { border: none; border-top: 1px solid var(--border); margin: var(--sp-2) 0; }
 
   .cmd-row { text-decoration: none; color: var(--text); }

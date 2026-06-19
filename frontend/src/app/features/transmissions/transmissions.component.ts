@@ -309,10 +309,13 @@ export class TransmissionsComponent {
   eventChoices(t: Transmission): { key: string; label: string; tone: string }[] {
     const p = t.decision_payload as Record<string, unknown> | null;
     const choices = (p?.['choices'] as string[]) ?? [];
+    const isRaid = p?.['event_type'] === 'pirate_raid';
     const meta: Record<string, { label: string; tone: string }> = {
-      bribe: { label: 'Deuterium zahlen', tone: 'primary' },
+      // Bei Piraten-Razzien ist "bribe" eine Bestechung, sonst das Auszahlen (z. B. Streik).
+      bribe: { label: isRaid ? 'Bestechen (Deuterium)' : 'Deuterium zahlen', tone: 'primary' },
       force: { label: 'Gewaltsam beenden', tone: 'danger' },
-      wait: { label: 'Aussitzen', tone: 'ghost' },
+      // Bei Razzien heisst "wait" konkret: die Razzia kommen lassen.
+      wait: { label: isRaid ? 'Angriff abwarten' : 'Aussitzen', tone: 'ghost' },
       board: { label: 'Entern', tone: 'primary' },
       ignore: { label: 'Ignorieren', tone: 'ghost' },
       help: { label: 'Helfen', tone: 'primary' },

@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { GameStateService } from '../../core/services/game-state.service';
+import { AttackAlert, GameStateService } from '../../core/services/game-state.service';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
@@ -321,9 +321,25 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
           <div class="panel-title"><app-btn-icon [src]="statusIcon('alert')" glyph="⚠" [size]="16" /> Alerts & Ereignisse</div>
           @if (state.attackAlerts().length) {
             @for (a of state.attackAlerts(); track a.location) {
-              <div class="alert danger">
-                <span><app-btn-icon [src]="statusIcon('attack')" glyph="⚔️" [size]="14" /> Angriff auf {{ a.location }}</span>
-                <app-countdown [target]="a.arriveAt" />
+              <div class="alert danger attack-alert">
+                <div class="aa-head">
+                  <span>
+                    <app-btn-icon [src]="statusIcon('attack')" glyph="⚔️" [size]="14" />
+                    {{ a.attackerName || 'Feindflotte' }} → <a class="coord-link" [routerLink]="['/galaxy']" [queryParams]="alertCoords(a.location)" title="Auf der Galaxie-Karte ansehen">{{ a.location }}</a>
+                  </span>
+                  <app-countdown [target]="a.arriveAt" />
+                </div>
+                @if (alertShips(a); as entries) {
+                  <div class="aa-ships">
+                    @for (e of entries; track e.label) {
+                      <span class="aa-ship">{{ e.count }}× {{ e.label }}</span>
+                    }
+                  </div>
+                } @else if (a.shipsTotal) {
+                  <div class="aa-ships muted small">
+                    {{ a.shipsTotal }} Schiffe — Zusammensetzung unbekannt (Spionagetechnik Stufe 2+ nötig)
+                  </div>
+                }
               </div>
             }
           }
@@ -598,6 +614,18 @@ export class DashboardComponent {
       .filter(([, c]) => (c ?? 0) > 0)
       .map(([t, c]) => ({ label: metaFor(SHIP_META, t).label, count: c as number }))
       .sort((a, b) => b.count - a.count);
+  }
+
+  /** Zerlegt eine "g:s:p"-Location in Galaxie-Karten-QueryParams. */
+  alertCoords(location: string): { g: number; s: number } {
+    const [g, s] = location.split(':').map((n) => Number(n));
+    return { g: g || 1, s: s || 1 };
+  }
+
+  /** Angreifer-Flotte als Label/Menge-Liste — nur wenn die Aufklaerung sie kennt (>= Stufe 2). */
+  alertShips(a: AttackAlert): { label: string; count: number }[] | null {
+    const entries = this.shipEntries(a.ships);
+    return entries.length ? entries : null;
   }
 
   /** Fracht einer Flotte als Label/Menge-Liste (nur Ressourcen mit Menge > 0). */

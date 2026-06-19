@@ -16,7 +16,7 @@ import random
 
 from sqlalchemy import select
 
-from app.npc.attack import maybe_launch_attack
+from app.npc.attack import maybe_launch_attack, sweep_overdue_npc_attacks
 from app.npc.behavior import NpcContext
 from app.npc.expansion import first_free_position, should_expand
 from app.npc.profiles import build_tree
@@ -111,6 +111,10 @@ async def npc_behavior_tick() -> None:
     """Periodischer Job (balance.npc.tick_interval_seconds): ein Tick fuer alle NPCs.
 
     Direkt aufrufbar (Tests) und idempotent pro Tick-Aufruf."""
+    # Sicherheitsnetz zuerst: ueberfaellige Angriffe aufloesen, deren Resolve-Job
+    # (z. B. ueber einen Neustart) verloren ging -> keine dauerhaft haengenden Angriffe.
+    await sweep_overdue_npc_attacks()
+
     bal = get_balance()
     npc_cfg = bal.npc
     income = npc_cfg["income_per_tick"]

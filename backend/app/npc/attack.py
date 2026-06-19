@@ -418,3 +418,26 @@ async def resolve_npc_attack(attack_id_str: str) -> None:
             "summary": notify["summary"],
         })
     log.info("NPC-Angriff %s aufgeloest", attack_id_str)
+
+
+async def sweep_overdue_npc_attacks() -> int:
+    """Sicherheitsnetz: loest jeden 'incoming'-Angriff auf, dessen ``arrive_at`` bereits
+    vorbei ist, dessen Resolve-Job aber nie gefeuert hat (z. B. ueber einen Neustart
+    verloren). Wird bei jedem NPC-Tick aufgerufen -> kein Angriff bleibt dauerhaft haengen.
+    ``resolve_npc_attack`` ist idempotent (prueft status), daher gefahrlos."""
+    now = dt.datetime.now(dt.timezone.utc)
+    async with session_scope() as session:
+        rows = (await session.execute(
+            select(NpcAttack.id).where(
+                NpcAttack.status == "incoming",
+                NpcAttack.arrive_at <= now,
+            )
+        )).scalars().all()
+    for atk_id in rows:
+        try:
+            await resolve_npc_attack(str(atk_id))
+        except Exception:  # pragma: no cover - ein haengender Angriff darf den Tick nicht killen
+            log.exception("Sweep: Aufloesen von ueberfaelligem NPC-Angriff %s fehlgeschlagen", atk_id)
+    if rows:
+        log.info("Sweep: %d ueberfaellige NPC-Angriffe nachtraeglich aufgeloest", len(rows))
+    return len(rows)
