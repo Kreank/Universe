@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import random
 import uuid
 
 from sqlalchemy import select
@@ -28,6 +29,10 @@ _FALLBACK = {
     "crushing_victory": "Vernichtender Sieg ueber {enemy} ({planet}). Kaum Verluste, Beute: {loot}.",
     "close_win": "Knapper Sieg bei {enemy} ({planet}). Es war eng, aber wir halten {loot}.",
     "defeat": "Niederlage bei {enemy} ({planet}). Wir mussten uns zurueckziehen.",
+    # Friedliche Einsaetze (Kommandeur meldet sich auch ohne Kampf).
+    "expedition_success": "Expedition bei {planet} abgeschlossen, Kommandant. Wir bringen unsere Funde heim.",
+    "mining_haul": "Frachtraeume voll, Kommandant — der Abbau bei {planet} hat sich gelohnt.",
+    "trade_profit": "Handel bei {planet} abgewickelt, Kommandant. Ein gutes Geschaeft.",
 }
 
 _SUBJECT = {
@@ -35,6 +40,9 @@ _SUBJECT = {
     "crushing_victory": "Ueberlegener Sieg",
     "close_win": "Knapper Sieg",
     "defeat": "Niederlage",
+    "expedition_success": "Funkspruch von der Expedition",
+    "mining_haul": "Funkspruch vom Bergbau",
+    "trade_profit": "Funkspruch vom Handel",
 }
 
 # NPC-Funksprueche (Phase 1): Fallback je Situation, wenn die NPC-Bank leer ist. {enemy}=Spieler, {planet}=Ort.
@@ -168,6 +176,63 @@ async def after_combat_reaction(
         "Reaktion (%s) fuer player=%s commander=%s bank=%s decisive=%s",
         situation, player_id, commander.id if commander else None, used_bank, decisive,
     )
+    return transmission
+
+
+async def commander_flavor_reaction(
+    session: AsyncSession,
+    *,
+    player_id: uuid.UUID,
+    commander: Commander | None,
+    situation: str,
+    context: dict,
+    chance: float = 0.5,
+) -> Transmission | None:
+    """Friedlicher Kommandeur-Funkspruch (kein Kampf): zieht persona-gefaerbt aus der ReactionBank
+    (sonst Fallback-Text) und stellt ihn zu. Anders als ``after_combat_reaction`` ohne big_moment.
+
+    ``chance`` drosselt die Haeufigkeit (nicht jede Mission soll funken). Gibt die Transmission
+    zurueck oder None (kein Kommandeur / per chance uebersprungen / unbekannte Situation)."""
+    if commander is None or random.random() > chance:
+        return None
+
+    body_template: str | None = None
+    bank = (await session.execute(
+        select(ReactionBank)
+        .where(
+            ReactionBank.commander_id == commander.id,
+            ReactionBank.situation == situation,
+            ReactionBank.used.is_(False),
+        )
+        .order_by(ReactionBank.created_at)
+        .limit(1)
+        .with_for_update(skip_locked=True)
+    )).scalar_one_or_none()
+    if bank is not None:
+        bank.used = True
+        body_template = bank.template_text
+    if body_template is None:
+        body_template = _FALLBACK.get(situation)
+    if body_template is None:
+        return None
+
+    transmission = Transmission(
+        player_id=player_id,
+        commander_id=commander.id,
+        type="reaction",
+        subject=_SUBJECT.get(situation, "Funkspruch"),
+        body=_slot_fill(body_template, context),
+        requires_decision=False,
+        decision_payload=None,
+        read=False,
+        created_at=dt.datetime.now(dt.timezone.utc),
+    )
+    session.add(transmission)
+    await session.flush()
+    await event_bus.publish_ws(player_id, {
+        "type": "transmission",
+        "transmission": transmission_to_dict(transmission),
+    })
     return transmission
 
 

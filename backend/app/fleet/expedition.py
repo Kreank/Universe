@@ -343,10 +343,16 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
     else:
         fleet.mission_data = {**(fleet.mission_data or {}), "expedition_report": _report}
 
-    # Friedlicher Moral-Gewinn: eine (überlebte) Expedition belohnt den begleitenden Kommandeur.
+    # Friedlicher Moral-Gewinn + Funkspruch: eine (überlebte) Expedition belohnt + lässt den
+    # begleitenden Kommandeur funken (auch ohne Kampf hört man jetzt von ihm).
     if not _wiped and getattr(fleet, "commander_id", None):
         from app.commander.service import reward_commander_activity
+        from app.messaging.service import commander_flavor_reaction
         await reward_commander_activity(session, fleet.commander_id, "expedition_success")
+        _rc = await session.get(Commander, fleet.commander_id)
+        await commander_flavor_reaction(
+            session, player_id=fleet.player_id, commander=_rc,
+            situation="expedition_success", context={"planet": result["location"]})
 
     log.info("Expedition @ %s [%dh] -> %s", result["location"], hours, otype)
     return result

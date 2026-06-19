@@ -429,10 +429,17 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         ttype="system",
     )
 
-    # Friedlicher Moral-Gewinn: ein erfolgreicher Handel belohnt den begleitenden Kommandeur.
+    # Friedlicher Moral-Gewinn + Funkspruch: ein erfolgreicher Handel belohnt + lässt den
+    # begleitenden Kommandeur funken.
     if received > 0 and getattr(fleet, "commander_id", None):
         from app.commander.service import reward_commander_activity
+        from app.messaging.service import commander_flavor_reaction
+        from app.platform.models import Commander as _Cmd2
         await reward_commander_activity(session, fleet.commander_id, "trade_profit")
+        _rc = await session.get(_Cmd2, fleet.commander_id)
+        await commander_flavor_reaction(
+            session, player_id=fleet.player_id, commander=_rc,
+            situation="trade_profit", context={"planet": coords})
 
     summary = {
         "npc": npc.name,

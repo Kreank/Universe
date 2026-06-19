@@ -1062,11 +1062,18 @@ async def fleet_return(fleet_id: str) -> None:
             from app.messaging.service import create_system_transmission
             _mined = await settle_mining(session, fleet)
             if _mined and (_mined.get("metal", 0) + _mined.get("crystal", 0)) > 0:
-                # Friedlicher Moral-Gewinn: ein ertragreicher Bergbau-Run belohnt den Kommandeur.
+                _loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+                # Friedlicher Moral-Gewinn + Funkspruch: ein ertragreicher Bergbau-Run belohnt + lässt
+                # den Kommandeur funken.
                 if fleet.commander_id:
                     from app.commander.service import reward_commander_activity
+                    from app.messaging.service import commander_flavor_reaction
+                    from app.platform.models import Commander as _Cmd
                     await reward_commander_activity(session, fleet.commander_id, "mining_haul")
-                _loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+                    _rc = await session.get(_Cmd, fleet.commander_id)
+                    await commander_flavor_reaction(
+                        session, player_id=fleet.player_id, commander=_rc,
+                        situation="mining_haul", context={"planet": _loc})
                 await create_system_transmission(
                     session, player_id=fleet.player_id,
                     subject=f"Bergbau abgeschlossen ({_loc})",
