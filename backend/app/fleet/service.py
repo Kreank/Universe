@@ -1068,6 +1068,17 @@ async def fleet_return(fleet_id: str) -> None:
                           f"gutgeschrieben."),
                 )
 
+        # Expeditions-Bericht erst JETZT (bei der Heimkehr) zustellen — bei der Auflösung in den
+        # Weiten wurde er nur in mission_data zwischengespeichert (siehe resolve_expedition).
+        if fleet.mission == "expedition":
+            _rep = (fleet.mission_data or {}).get("expedition_report")
+            if _rep:
+                from app.messaging.service import create_system_transmission
+                await create_system_transmission(
+                    session, player_id=fleet.player_id,
+                    subject=_rep["subject"], body=_rep["body"], ttype=_rep.get("ttype", "system"),
+                )
+
         if origin is not None:
             # Schiffe in den Planetenbestand zurueckfuehren. Es kann mehrere
             # Bestands-Zeilen je Typ geben (kein DB-Unique); robust zusammenfuehren.

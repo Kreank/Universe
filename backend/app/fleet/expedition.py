@@ -279,30 +279,36 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
         result["lost"] = lost
         result["wiped"] = True
 
+    # Kampf-Ausgang? (Piraten/Aliens/Geisterschiff-Falle) -> dann KEIN separater AI-Flavor-Funkspruch,
+    # sonst widerspricht er dem Kampfbericht ("wir fanden ein Trümmerfeld" neben dem echten Gefecht).
+    _fought = otype in ("pirates", "aliens") or result.get("ghost") == "trap"
+
     # Flavor (Phase 2): erzaehlerischer Expeditions-Log-Bericht via ai-worker (additiv, best effort).
-    try:
-        from app.platform.ai_jobs import enqueue_flavor
-        _otype_de = {
-            "resources": "Rohstofffund", "ships": "Schiffsfund", "pirates": "Piraten-Begegnung",
-            "aliens": "Alien-Begegnung", "delay": "Verzoegerung", "blackhole": "Schwarzes Loch",
-            "nothing": "nichts Bemerkenswertes",
-        }
-        _detail: dict = {}
-        if result.get("found"):
-            _detail["Funde"] = result["found"]
-        if result.get("found_ships"):
-            _detail["geborgene Schiffe"] = result["found_ships"]
-        if result.get("lost"):
-            _detail["Verluste"] = result["lost"]
-        if result.get("battle"):
-            _detail["Gefecht"] = "gewonnen" if result.get("won") else "verloren"
-        await enqueue_flavor(
-            fleet.player_id, narrator="expedition_log", situation="Expedition in den galaktischen Weiten",
-            planet=result["location"], outcome=_otype_de.get(otype, otype), detail=_detail,
-            ttype="routine",
-        )
-    except Exception:  # noqa: BLE001 — Flavor darf die Expedition nie stoeren
-        pass
+    # Nur bei Nicht-Kampf-Ausgängen — bei Gefechten steht der faktische Kampfbericht allein.
+    if not _fought:
+        try:
+            from app.platform.ai_jobs import enqueue_flavor
+            _otype_de = {
+                "resources": "Rohstofffund", "ships": "Schiffsfund", "pirates": "Piraten-Begegnung",
+                "aliens": "Alien-Begegnung", "delay": "Verzoegerung", "blackhole": "Schwarzes Loch",
+                "nothing": "nichts Bemerkenswertes",
+            }
+            _detail: dict = {}
+            if result.get("found"):
+                _detail["Funde"] = result["found"]
+            if result.get("found_ships"):
+                _detail["geborgene Schiffe"] = result["found_ships"]
+            if result.get("lost"):
+                _detail["Verluste"] = result["lost"]
+            if result.get("battle"):
+                _detail["Gefecht"] = "gewonnen" if result.get("won") else "verloren"
+            await enqueue_flavor(
+                fleet.player_id, narrator="expedition_log", situation="Expedition in den galaktischen Weiten",
+                planet=result["location"], outcome=_otype_de.get(otype, otype), detail=_detail,
+                ttype="routine",
+            )
+        except Exception:  # noqa: BLE001 — Flavor darf die Expedition nie stoeren
+            pass
 
     # Expeditions-Drop: Chance auf ein Kommandeurs-Ausruestungsstueck (nicht bei Totalverlust).
     if not result.get("wiped"):
@@ -311,15 +317,23 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
         if dropped is not None:
             result["found_equipment"] = dropped.item_key
 
-    # Garantierter Faktenbericht ins Postfach (der AI-Flavor oben ist nur additiv/best-effort).
+    # Garantierter Faktenbericht. ZUSTELL-ZEITPUNKT (2026-06-19): erst bei der HEIMKEHR der Flotte
+    # (fleet_return), nicht schon bei Ankunft in den Weiten — die Expedition löst zwar bei Ankunft
+    # auf, aber die Nachricht soll am Ende kommen, wenn die Flotte wirklich zurück ist (Spieler-
+    # empfinden). Bei Totalverlust (kein Rückflug) wird sofort zugestellt.
     _wiped = bool(result.get("wiped"))
-    _fought = otype in ("pirates", "aliens") or result.get("ghost") == "trap"
-    await create_system_transmission(
-        session, player_id=fleet.player_id,
-        subject=(f"{'💥 Expedition verloren' if _wiped else '🛰️ Expedition zurück'} ({result['location']})"),
-        body=_expedition_report_body(result, hours),
-        ttype="combat_report" if _fought else "system",
-    )
+    _report = {
+        "subject": f"{'💥 Expedition verloren' if _wiped else '🛰️ Expedition zurück'} ({result['location']})",
+        "body": _expedition_report_body(result, hours),
+        "ttype": "combat_report" if _fought else "system",
+    }
+    if _wiped:
+        await create_system_transmission(
+            session, player_id=fleet.player_id,
+            subject=_report["subject"], body=_report["body"], ttype=_report["ttype"],
+        )
+    else:
+        fleet.mission_data = {**(fleet.mission_data or {}), "expedition_report": _report}
 
     log.info("Expedition @ %s [%dh] -> %s", result["location"], hours, otype)
     return result
