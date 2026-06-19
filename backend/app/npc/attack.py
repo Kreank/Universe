@@ -144,15 +144,15 @@ async def maybe_launch_attack(session: AsyncSession, npc: NpcEmpire, cfg: dict) 
     last = _aware(npc.last_attack_at)
     secs_since = None if last is None else (now - last).total_seconds()
     if not can_attack(npc.behavior_profile, cfg, fleet_power(npc.fleet or {}, ships), secs_since):
-        return False
+        return None
 
     target = await _find_attack_target(session, npc, cfg)
     if target is None:
-        return False
+        return None
 
     commit = select_commit_fleet(npc.fleet or {}, float(cfg.get("commit_fraction", 0.6)))
     if not commit or fleet_power(commit, ships) <= 0:
-        return False
+        return None
 
     # Teilflotte aus der Garnison abziehen (neues dict).
     garrison = dict(npc.fleet or {})
