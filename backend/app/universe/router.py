@@ -129,6 +129,55 @@ async def galaxy_targets(
     return out
 
 
+@router.get("/mining/fields")
+async def mining_fields(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Asteroiden-Übersicht (Bergbau): alle AKTIVEN Felder in Reichweite der Ortungs-Forschung.
+
+    Stufe 1 = nur die Heimat-Galaxie; jede weitere Stufe erweitert die Reichweite um
+    ``prospecting_range_per_level`` Galaxien. Ohne Ortung (Stufe 0) ist die Liste leer/gesperrt.
+    Restvorrat wird inkl. aufgelaufener Regeneration projiziert (wie in der Galaxie-Ansicht)."""
+    from app.economy.service import get_research_levels
+    from app.universe.asteroids import projected_remaining
+
+    levels = await get_research_levels(session, player.id)
+    prospecting = int(levels.get("prospecting", 0))
+    if prospecting < 1:
+        return {"prospecting": 0, "range": 0, "home_galaxy": None, "fields": []}
+
+    home = (await session.execute(
+        select(Planet.galaxy).where(Planet.player_id == player.id, Planet.is_homeworld.is_(True)).limit(1)
+    )).scalar_one_or_none()
+    if home is None:
+        home = (await session.execute(
+            select(Planet.galaxy).where(Planet.player_id == player.id).limit(1)
+        )).scalar_one_or_none()
+    if home is None:
+        return {"prospecting": prospecting, "range": 0, "home_galaxy": None, "fields": []}
+
+    per = int(get_balance().data["research"]["effects"].get("prospecting_range_per_level", 1))
+    reach = (prospecting - 1) * per  # Stufe 1 = Reichweite 0 = nur Heimat-Galaxie
+    rows = (await session.execute(
+        select(AsteroidField)
+        .where(AsteroidField.galaxy >= home - reach, AsteroidField.galaxy <= home + reach)
+        .order_by(AsteroidField.galaxy, AsteroidField.system, AsteroidField.position)
+    )).scalars().all()
+    fields = []
+    for f in rows:
+        m_now, c_now = projected_remaining(f)
+        fields.append({
+            "galaxy": f.galaxy, "system": f.system, "position": f.position,
+            "coords": f"{f.galaxy}:{f.system}:{f.position}",
+            "richness": f.richness, "mult": round(f.mult, 2),
+            "metal": round(m_now, 0), "crystal": round(c_now, 0),
+            "metal_max": round(f.metal_max, 0), "crystal_max": round(f.crystal_max, 0),
+            "expires_at": f.expires_at.isoformat() if f.expires_at else None,
+        })
+    return {"prospecting": prospecting, "range": reach, "home_galaxy": home, "fields": fields}
+
+
 @router.get("/galaxy/{galaxy}/{system}", response_model=GalaxyViewOut)
 async def galaxy_view(
     galaxy: int,

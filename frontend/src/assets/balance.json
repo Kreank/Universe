@@ -415,7 +415,8 @@
       "convoy_route_risk_reduction_per_level": 0.06,
       "combustion_drive_speed_per_level": 0.1,
       "impulse_drive_speed_per_level": 0.2,
-      "hyperspace_drive_speed_per_level": 0.3
+      "hyperspace_drive_speed_per_level": 0.3,
+      "prospecting_range_per_level": 1
     },
     "techs": {
       "energy_tech": {
@@ -939,6 +940,18 @@
           "impulse_drive": 3
         },
         "effect": "Routen-Planung (wiederholbar): +1 Feld je Farm-Route je Stufe (Default 2)."
+      },
+      "prospecting": {
+        "cost": {
+          "metal": 2000,
+          "crystal": 4000,
+          "deuterium": 1000
+        },
+        "requires": {
+          "research_lab": 3,
+          "spy_tech": 1
+        },
+        "effect": "Ortung: schaltet die Asteroiden-Übersicht frei (Stufe 1 = Heimat-Galaxie). Jede weitere Stufe erweitert die Reichweite um +1 Galaxie (bis das ganze Universum sichtbar ist)."
       }
     }
   },

@@ -8,6 +8,7 @@ import {
   Commander,
   CommanderBonus,
   CommanderDetail,
+  MiningFieldsResponse,
   CommanderTrainResponse,
   EquipmentCatalog,
   EquipmentItem,
@@ -170,6 +171,10 @@ export class ApiService {
 
   getGalaxyTargets(): Observable<GalaxyTarget[]> {
     return this.http.get<GalaxyTarget[]>('/api/galaxy/targets');
+  }
+
+  getMiningFields(): Observable<MiningFieldsResponse> {
+    return this.http.get<MiningFieldsResponse>('/api/mining/fields');
   }
 
   getGalaxy(galaxy: number, system: number): Observable<GalaxyResponse> {

@@ -72,6 +72,11 @@ export const routes: Routes = [
           import('./features/galaxy/galaxy.component').then((m) => m.GalaxyComponent),
       },
       {
+        path: 'mining',
+        loadComponent: () =>
+          import('./features/mining/mining.component').then((m) => m.MiningComponent),
+      },
+      {
         path: 'trade',
         loadComponent: () =>
           import('./features/trade/trade.component').then((m) => m.TradeComponent),

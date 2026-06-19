@@ -309,6 +309,29 @@ export interface Fleet {
   } | null;
 }
 
+/** Ein aktives Asteroidenfeld in der Bergbau-Übersicht (Reichweite via Ortungs-Forschung). */
+export interface MiningField {
+  galaxy: number;
+  system: number;
+  position: number;
+  coords: string;
+  richness: string;
+  mult: number;
+  metal: number;
+  crystal: number;
+  metal_max: number;
+  crystal_max: number;
+  expires_at: string | null;
+}
+
+/** Antwort der Asteroiden-Übersicht: Ortungsstufe + Reichweite + sichtbare Felder. */
+export interface MiningFieldsResponse {
+  prospecting: number;
+  range: number;
+  home_galaxy: number | null;
+  fields: MiningField[];
+}
+
 export interface FleetSendRequest {
   origin_planet_id: string;
   target: Coordinate;
