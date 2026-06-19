@@ -1208,9 +1208,9 @@
     },
     "destroyer": {
       "cost": {
-        "metal": 20000,
-        "crystal": 15000,
-        "deuterium": 5000
+        "metal": 55000,
+        "crystal": 41250,
+        "deuterium": 13750
       },
       "attack": 1900,
       "shield": 120,
