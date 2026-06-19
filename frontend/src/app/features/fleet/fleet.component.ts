@@ -226,6 +226,17 @@ type CargoKey = (typeof CARGO_KEYS)[number];
                 <button type="button" class="btn btn-sm" [class.btn-primary]="expeditionDoctrine() === 'bold'" [class.btn-ghost]="expeditionDoctrine() !== 'bold'" (click)="expeditionDoctrine.set('bold')">🔥 Risikofreudig</button>
               </div>
             </div>
+            @if (maxExpeditionHours() >= 1) {
+              <div class="field">
+                <label class="tip" [attr.data-tip]="'Wie lange die Flotte am Ziel bleibt. Länger = mehr Ertrag (+' + expeditionBonus().yield + '%/Std), aber auch mehr Risiko (+' + expeditionBonus().risk + '%/Std). Obergrenze durch Astrophysik Stufe ' + astroLevel() + '.'">Verweildauer {{ expeditionHours() }} Std <span class="faint">(max {{ maxExpeditionHours() }})</span></label>
+                <input type="range" min="1" [max]="maxExpeditionHours()" step="1" [ngModel]="expeditionHours()" (ngModelChange)="expeditionHours.set(+$event || 1)" />
+                @if (expeditionHours() > 1) {
+                  <span class="muted small">≈ +{{ (expeditionHours() - 1) * expeditionBonus().yield }}% Ertrag, +{{ (expeditionHours() - 1) * expeditionBonus().risk }}% Risiko</span>
+                }
+              </div>
+            } @else {
+              <p class="muted small">Erforsche <strong>Astrophysik</strong>, um die Verweildauer (und damit den Ertrag) zu verlängern.</p>
+            }
           }
 
           <div class="field">
@@ -389,7 +400,30 @@ export class FleetComponent {
   protected readonly escortRadius = signal(5);
   /** Expeditions-Doktrin (offline-sichere Vorab-Wahl). */
   protected readonly expeditionDoctrine = signal<'cautious' | 'neutral' | 'bold'>('neutral');
+  /** Gewuenschte Verweildauer (Std) am Expeditionsziel; Backend deckelt auf das Astrophysik-Max. */
+  protected readonly expeditionHours = signal(1);
+  /** Astrophysik-Stufe (account-weit) -> Obergrenze der Verweildauer. */
+  protected readonly astroLevel = signal(0);
   protected readonly escortFeePct = signal(2); // Prozent (0..10), Backend deckelt
+
+  /** Max. Verweildauer (Std) = Astrophysik-Stufe * Faktor, gedeckelt (aus balance.expedition.duration). */
+  protected readonly maxExpeditionHours = computed(() => {
+    const dur = (this.balance.value as { expedition?: { duration?: Record<string, number> } } | undefined)
+      ?.expedition?.duration ?? {};
+    const per = Number(dur['max_hours_per_astro_level'] ?? 1);
+    const cap = Number(dur['hour_cap'] ?? 24);
+    return Math.max(0, Math.min(cap, Math.floor(this.astroLevel() * per)));
+  });
+
+  /** Ertrags-/Risiko-Bonus pro Stunde in Prozent (fuer den UI-Hinweis). */
+  protected readonly expeditionBonus = computed(() => {
+    const dur = (this.balance.value as { expedition?: { duration?: Record<string, number> } } | undefined)
+      ?.expedition?.duration ?? {};
+    return {
+      yield: Math.round(Number(dur['yield_bonus_per_hour'] ?? 0) * 100),
+      risk: Math.round(Number(dur['risk_bonus_per_hour'] ?? 0) * 100),
+    };
+  });
   protected readonly sending = signal(false);
 
   // Nur entsendbare Schiffe: count > 0 UND mit Antrieb (stationaere Einheiten wie der
@@ -465,6 +499,25 @@ export class FleetComponent {
 
     this.loadIncoming();
     this.loadStationed();
+    this.loadAstro();
+  }
+
+  /** Astrophysik-Stufe laden (begrenzt die waehlbare Expeditions-Verweildauer). */
+  loadAstro(): void {
+    this.api.getResearch().subscribe({
+      next: (r) => {
+        const astro = r.research.find((x) => x.type === 'astrophysics');
+        this.astroLevel.set(astro?.level ?? 0);
+        // gewaehlte Dauer in den gueltigen Bereich ziehen (1..max).
+        const mx = this.maxExpeditionHours();
+        if (mx >= 1 && this.expeditionHours() > mx) {
+          this.expeditionHours.set(mx);
+        }
+      },
+      error: () => {
+        // Research optional -> dann bleibt der Regler ausgeblendet.
+      },
+    });
   }
 
   loadStationed(): void {
@@ -640,6 +693,8 @@ export class FleetComponent {
           this.missionSig() === 'expedition' && this.expeditionDoctrine() !== 'neutral'
             ? (this.expeditionDoctrine() as 'cautious' | 'bold')
             : undefined,
+        expedition_hours:
+          this.missionSig() === 'expedition' ? this.expeditionHours() : undefined,
       })
       .subscribe({
         next: () => {

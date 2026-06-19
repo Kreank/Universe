@@ -2,35 +2,71 @@
   "_meta": {
     "description": "Single Source of Truth fuer alle Balance-Zahlen von Universe. Backend (Python) und Frontend (TS) laden diese Datei. Aenderungen hier wirken ueberall. Werte fuer den Vertical Slice festgelegt (2026-06-06), tunebar.",
     "version": "0.1.0",
-    "doc_refs": ["docs/DESIGN_DECISIONS.md", "docs/systems/01-economy-and-buildings.md"]
+    "doc_refs": [
+      "docs/DESIGN_DECISIONS.md",
+      "docs/systems/01-economy-and-buildings.md"
+    ]
   },
-
   "universe": {
     "speed": 7,
     "_speed_note": "Korridor 5-10 (GDD §12). 7 = modern/zugaenglich. Multipliziert Produktion/Bau (Wirtschaft). NICHT mehr Flottentempo — das hat seit 2026-06-12 einen eigenen Regler fleet_speed.",
     "fleet_speed": 1.0,
     "_fleet_speed_note": "Eigenstaendiger Flotten-Tempo-Regler (OGame: eigenes Universumssetting). Teilt die Flugzeit, entkoppelt von speed (=Wirtschaft). Hoeher = schnellere Fluege. 1.0 = strategisch (Nachbarsystem ~20min Kolonieschiff @Antrieb 0). Reine Restart-Aenderung.",
-    "base_income": { "metal": 30, "crystal": 15, "deuterium": 0 },
+    "base_income": {
+      "metal": 30,
+      "crystal": 15,
+      "deuterium": 0
+    },
     "galaxies": 8,
     "systems_per_galaxy": 200,
     "positions_per_system": 15
   },
-
   "planets": {
     "_note": "Position bestimmt Typ/Temperatur/fields_max (Doku 06a). field_curve: ZENTRUM-Stuetzwert je Position 1..15 (1 Feld pro Gebaeudestufe). Die tatsaechlichen Felder eines Slots werden per (galaxy:system:position)-geseedetem RNG um diesen Wert gerollt (field_roll) -> jeder Slot hat feste, aber variierende Groesse (Glueck), stabil ueber Neustarts. type_bands: erstes Band mit pos <= max_pos gewinnt. temp linear von inner (Pos 1) nach outer (Pos 15). homeworld_min_fields garantiert fairen Start.",
-    "field_curve": [90, 110, 130, 165, 200, 230, 255, 265, 255, 230, 200, 165, 135, 110, 95],
+    "field_curve": [
+      90,
+      110,
+      130,
+      165,
+      200,
+      230,
+      255,
+      265,
+      255,
+      230,
+      200,
+      165,
+      135,
+      110,
+      95
+    ],
     "field_roll": {
       "_note": "Felder = triangular(center*(1-variance), center*(1+variance), mode=center), geseedet per Slot-Koordinate. Mittenlastig -> Max-Feld-Planeten sind selten (Glueck). floor = harte Untergrenze. variance auf 0 setzen = wieder deterministisch.",
-      "variance": 0.30,
+      "variance": 0.3,
       "floor": 60
     },
     "homeworld_min_fields": 190,
     "type_bands": [
-      { "max_pos": 3,  "type": "fire" },
-      { "max_pos": 5,  "type": "barren" },
-      { "max_pos": 10, "type": "normal" },
-      { "max_pos": 12, "type": "cold" },
-      { "max_pos": 15, "type": "ice" }
+      {
+        "max_pos": 3,
+        "type": "fire"
+      },
+      {
+        "max_pos": 5,
+        "type": "barren"
+      },
+      {
+        "max_pos": 10,
+        "type": "normal"
+      },
+      {
+        "max_pos": 12,
+        "type": "cold"
+      },
+      {
+        "max_pos": 15,
+        "type": "ice"
+      }
     ],
     "temp": {
       "_note": "Temperatur linear von inner (Pos 1, sonnennah) nach outer (Pos 15). variance = +/- Streuung um den Positions-Wert, per (galaxy:system:position) geseedet (mittenlastig, stabil) -> jeder Slot hat eine feste, leicht abweichende Temperatur (Min-Max-Spanne je Position = Zentrum +/- variance). variance 0 = deterministisch.",
@@ -39,59 +75,308 @@
       "variance": 15
     }
   },
-
   "buildings": {
-    "metal_mine":        { "cost": { "metal": 60,  "crystal": 15,  "deuterium": 0 },   "factor": 1.5, "prod_base": 30, "prod_growth": 1.1, "energy_base": 10, "energy_growth": 1.1 },
-    "crystal_mine":      { "cost": { "metal": 48,  "crystal": 24,  "deuterium": 0 },   "factor": 1.6, "prod_base": 20, "prod_growth": 1.1, "energy_base": 10, "energy_growth": 1.1 },
-    "deuterium_synth":   { "cost": { "metal": 225, "crystal": 75,  "deuterium": 0 },   "factor": 1.5, "prod_base": 10, "prod_growth": 1.1, "energy_base": 20, "energy_growth": 1.1 },
-    "solar_plant":       { "cost": { "metal": 75,  "crystal": 30,  "deuterium": 0 },   "factor": 1.5, "energy_prod_base": 20, "energy_prod_growth": 1.1 },
-    "fusion_reactor":    { "cost": { "metal": 900, "crystal": 360, "deuterium": 180 }, "factor": 1.8, "energy_prod_base": 30, "deut_cost_base": 10, "deut_cost_growth": 1.1 },
-    "robot_factory":     { "cost": { "metal": 400, "crystal": 120, "deuterium": 200 }, "factor": 2.0 },
-    "shipyard":          { "cost": { "metal": 400, "crystal": 200, "deuterium": 100 }, "factor": 2.0 },
-    "defense_factory":   { "cost": { "metal": 300, "crystal": 150, "deuterium": 50 },  "factor": 2.0, "_note": "Verteidigungsfabrik: eigenstaendiges Gebaeude fuer den Bau planetarer Verteidigung (aus der Werft herausgeloest, 2026-06-17). Hoehere Stufe = schnellere Verteidigungs-Bauzeit (analog zur Werft fuer Schiffe). Verteidigung wird NICHT mehr in der Werft gebaut." },
-    "research_lab":      { "cost": { "metal": 200, "crystal": 400, "deuterium": 200 }, "factor": 2.0 },
-    "nanite_factory":    { "cost": { "metal": 1000000, "crystal": 500000, "deuterium": 100000 }, "factor": 2.0, "requires": { "robot_factory": 12 }, "_note": "Nanitenfabrik (Endgame, baubar ab Roboterfabrik 12). Senkt die Bauzeit ALLER Gebaeude um build_time.nanite_building_factor je Stufe (x0.75^Stufe, multiplikativ) und die Schiff-Bauzeit um (1 - nanite_ship_factor) je Stufe (x0.95^Stufe). Keine Energie/Produktion." },
-    "metal_storage":     { "cost": { "metal": 1000,"crystal": 0,   "deuterium": 0 },   "factor": 2.0 },
-    "crystal_storage":   { "cost": { "metal": 1000,"crystal": 500, "deuterium": 0 },   "factor": 2.0 },
-    "deuterium_tank":    { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 0 },   "factor": 2.0 },
-    "command_academy":   { "cost": { "metal": 1000,"crystal": 1000,"deuterium": 500 }, "factor": 2.0, "_note": "USP: bildet Commander aus" },
-    "command_center":    { "cost": { "metal": 5000,"crystal": 3000,"deuterium": 1000 },"factor": 2.0, "_note": "USP: erhoeht Span-of-Control" },
-    "sensorphalanx":     { "cost": { "metal": 20000,"crystal": 40000,"deuterium": 20000 },"factor": 2.0, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Mond-only. Scannt fremde Flottenbewegungen zu/von Zielen in Reichweite (Level^2-1 Systeme)." },
-    "moon_base":         { "cost": { "metal": 20000,"crystal": 40000,"deuterium": 0 },    "factor": 2.0, "moon_only": true, "moon_fields_per_level": 3, "_note": "Mondbasis: Fundament, jede Stufe +Felder auf dem Mond." },
-    "jump_gate":         { "cost": { "metal": 2000000,"crystal": 4000000,"deuterium": 2000000 }, "factor": 2.0, "moon_only": true, "requires": { "gravity_lab": 1 }, "_note": "Sprungtor: instanter Flottensprung zwischen zwei eigenen Monden." },
-    "orbital_battery":   { "cost": { "metal": 30000,"crystal": 15000,"deuterium": 5000 }, "factor": 1.7, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Orbitalbatterie: verteidigt beim Angriff den gebundenen Planeten mit (Mond feuert herab)." },
-    "shield_dome_moon":  { "cost": { "metal": 50000,"crystal": 50000,"deuterium": 0 },    "factor": 2.0, "moon_only": true, "requires": { "moon_base": 1 }, "_note": "Schildkuppel: legt im Planetenkampf einen Zusatzschild ueber die Verteidiger." },
-    "gravity_lab":       { "cost": { "metal": 100000,"crystal": 80000,"deuterium": 40000 },"factor": 2.2, "moon_only": true, "requires": { "moon_base": 2 }, "_note": "Gravitationslabor: Voraussetzung fuer das Sprungtor (hoehere Kriegsfuehrung)." },
-    "antimatter_collector": { "cost": { "metal": 80000, "crystal": 50000, "deuterium": 20000 }, "factor": 2.0, "exotic_prod": "antimatter", "prod_base": 2, "prod_growth": 1.1, "energy_base": 80, "energy_growth": 1.1, "allowed_positions": [1, 2], "position_yield": { "1": 1.0, "2": 0.5 }, "requires": { "solar_plant": 12 }, "_note": "Exo-Mine: erntet Antimaterie aus der Sternenstrahlung. NUR auf heissen inneren Slots (Pos 1 voll, Pos 2 halber Ertrag). Hoher Energiehunger -> an Solar gekoppelt (requires solar_plant 12). Ertrag kontoweit auf player.antimatter (KEIN Cap, nicht als Planeten-Fracht), gedrosselt vom Energie-factor + speed. Erspielt, nicht gekauft. Natuerliche Bremse statt Cap: Energie + Kolonie-Slot-Opportunitaet + Positions-Gradient." },
-    "dark_matter_condenser": { "cost": { "metal": 80000, "crystal": 50000, "deuterium": 20000 }, "factor": 2.0, "exotic_prod": "dark_matter", "prod_base": 2, "prod_growth": 1.1, "energy_base": 80, "energy_growth": 1.1, "allowed_positions": [14, 15], "position_yield": { "15": 1.0, "14": 0.5 }, "requires": { "fusion_reactor": 8 }, "_note": "Exo-Mine: kondensiert Dunkle Materie in der eisigen Aussenzone. NUR auf kalten aeusseren Slots (Pos 15 voll, Pos 14 halber Ertrag). Hoher Energiehunger -> an Fusion gekoppelt (requires fusion_reactor 8). Ertrag kontoweit auf player.dark_matter (KEIN Cap), gedrosselt vom Energie-factor + speed." }
+    "metal_mine": {
+      "cost": {
+        "metal": 60,
+        "crystal": 15,
+        "deuterium": 0
+      },
+      "factor": 1.5,
+      "prod_base": 30,
+      "prod_growth": 1.1,
+      "energy_base": 10,
+      "energy_growth": 1.1
+    },
+    "crystal_mine": {
+      "cost": {
+        "metal": 48,
+        "crystal": 24,
+        "deuterium": 0
+      },
+      "factor": 1.6,
+      "prod_base": 20,
+      "prod_growth": 1.1,
+      "energy_base": 10,
+      "energy_growth": 1.1
+    },
+    "deuterium_synth": {
+      "cost": {
+        "metal": 225,
+        "crystal": 75,
+        "deuterium": 0
+      },
+      "factor": 1.5,
+      "prod_base": 10,
+      "prod_growth": 1.1,
+      "energy_base": 20,
+      "energy_growth": 1.1
+    },
+    "solar_plant": {
+      "cost": {
+        "metal": 75,
+        "crystal": 30,
+        "deuterium": 0
+      },
+      "factor": 1.5,
+      "energy_prod_base": 20,
+      "energy_prod_growth": 1.1
+    },
+    "fusion_reactor": {
+      "cost": {
+        "metal": 900,
+        "crystal": 360,
+        "deuterium": 180
+      },
+      "factor": 1.8,
+      "energy_prod_base": 30,
+      "deut_cost_base": 10,
+      "deut_cost_growth": 1.1
+    },
+    "robot_factory": {
+      "cost": {
+        "metal": 400,
+        "crystal": 120,
+        "deuterium": 200
+      },
+      "factor": 2.0
+    },
+    "shipyard": {
+      "cost": {
+        "metal": 400,
+        "crystal": 200,
+        "deuterium": 100
+      },
+      "factor": 2.0
+    },
+    "defense_factory": {
+      "cost": {
+        "metal": 300,
+        "crystal": 150,
+        "deuterium": 50
+      },
+      "factor": 2.0,
+      "_note": "Verteidigungsfabrik: eigenstaendiges Gebaeude fuer den Bau planetarer Verteidigung (aus der Werft herausgeloest, 2026-06-17). Hoehere Stufe = schnellere Verteidigungs-Bauzeit (analog zur Werft fuer Schiffe). Verteidigung wird NICHT mehr in der Werft gebaut."
+    },
+    "research_lab": {
+      "cost": {
+        "metal": 200,
+        "crystal": 400,
+        "deuterium": 200
+      },
+      "factor": 2.0
+    },
+    "nanite_factory": {
+      "cost": {
+        "metal": 1000000,
+        "crystal": 500000,
+        "deuterium": 100000
+      },
+      "factor": 2.0,
+      "requires": {
+        "robot_factory": 12
+      },
+      "_note": "Nanitenfabrik (Endgame, baubar ab Roboterfabrik 12). Senkt die Bauzeit ALLER Gebaeude um build_time.nanite_building_factor je Stufe (x0.75^Stufe, multiplikativ) und die Schiff-Bauzeit um (1 - nanite_ship_factor) je Stufe (x0.95^Stufe). Keine Energie/Produktion."
+    },
+    "metal_storage": {
+      "cost": {
+        "metal": 1000,
+        "crystal": 0,
+        "deuterium": 0
+      },
+      "factor": 2.0
+    },
+    "crystal_storage": {
+      "cost": {
+        "metal": 1000,
+        "crystal": 500,
+        "deuterium": 0
+      },
+      "factor": 2.0
+    },
+    "deuterium_tank": {
+      "cost": {
+        "metal": 1000,
+        "crystal": 1000,
+        "deuterium": 0
+      },
+      "factor": 2.0
+    },
+    "command_academy": {
+      "cost": {
+        "metal": 1000,
+        "crystal": 1000,
+        "deuterium": 500
+      },
+      "factor": 2.0,
+      "_note": "USP: bildet Commander aus"
+    },
+    "command_center": {
+      "cost": {
+        "metal": 5000,
+        "crystal": 3000,
+        "deuterium": 1000
+      },
+      "factor": 2.0,
+      "_note": "USP: erhoeht Span-of-Control"
+    },
+    "sensorphalanx": {
+      "cost": {
+        "metal": 20000,
+        "crystal": 40000,
+        "deuterium": 20000
+      },
+      "factor": 2.0,
+      "moon_only": true,
+      "requires": {
+        "moon_base": 1
+      },
+      "_note": "Mond-only. Scannt fremde Flottenbewegungen zu/von Zielen in Reichweite (Level^2-1 Systeme)."
+    },
+    "moon_base": {
+      "cost": {
+        "metal": 20000,
+        "crystal": 40000,
+        "deuterium": 0
+      },
+      "factor": 2.0,
+      "moon_only": true,
+      "moon_fields_per_level": 3,
+      "_note": "Mondbasis: Fundament, jede Stufe +Felder auf dem Mond."
+    },
+    "jump_gate": {
+      "cost": {
+        "metal": 2000000,
+        "crystal": 4000000,
+        "deuterium": 2000000
+      },
+      "factor": 2.0,
+      "moon_only": true,
+      "requires": {
+        "gravity_lab": 1
+      },
+      "_note": "Sprungtor: instanter Flottensprung zwischen zwei eigenen Monden."
+    },
+    "orbital_battery": {
+      "cost": {
+        "metal": 30000,
+        "crystal": 15000,
+        "deuterium": 5000
+      },
+      "factor": 1.7,
+      "moon_only": true,
+      "requires": {
+        "moon_base": 1
+      },
+      "_note": "Orbitalbatterie: verteidigt beim Angriff den gebundenen Planeten mit (Mond feuert herab)."
+    },
+    "shield_dome_moon": {
+      "cost": {
+        "metal": 50000,
+        "crystal": 50000,
+        "deuterium": 0
+      },
+      "factor": 2.0,
+      "moon_only": true,
+      "requires": {
+        "moon_base": 1
+      },
+      "_note": "Schildkuppel: legt im Planetenkampf einen Zusatzschild ueber die Verteidiger."
+    },
+    "gravity_lab": {
+      "cost": {
+        "metal": 100000,
+        "crystal": 80000,
+        "deuterium": 40000
+      },
+      "factor": 2.2,
+      "moon_only": true,
+      "requires": {
+        "moon_base": 2
+      },
+      "_note": "Gravitationslabor: Voraussetzung fuer das Sprungtor (hoehere Kriegsfuehrung)."
+    },
+    "antimatter_collector": {
+      "cost": {
+        "metal": 80000,
+        "crystal": 50000,
+        "deuterium": 20000
+      },
+      "factor": 2.0,
+      "exotic_prod": "antimatter",
+      "prod_base": 2,
+      "prod_growth": 1.1,
+      "energy_base": 80,
+      "energy_growth": 1.1,
+      "allowed_positions": [
+        1,
+        2
+      ],
+      "position_yield": {
+        "1": 1.0,
+        "2": 0.5
+      },
+      "requires": {
+        "solar_plant": 12
+      },
+      "_note": "Exo-Mine: erntet Antimaterie aus der Sternenstrahlung. NUR auf heissen inneren Slots (Pos 1 voll, Pos 2 halber Ertrag). Hoher Energiehunger -> an Solar gekoppelt (requires solar_plant 12). Ertrag kontoweit auf player.antimatter (KEIN Cap, nicht als Planeten-Fracht), gedrosselt vom Energie-factor + speed. Erspielt, nicht gekauft. Natuerliche Bremse statt Cap: Energie + Kolonie-Slot-Opportunitaet + Positions-Gradient."
+    },
+    "dark_matter_condenser": {
+      "cost": {
+        "metal": 80000,
+        "crystal": 50000,
+        "deuterium": 20000
+      },
+      "factor": 2.0,
+      "exotic_prod": "dark_matter",
+      "prod_base": 2,
+      "prod_growth": 1.1,
+      "energy_base": 80,
+      "energy_growth": 1.1,
+      "allowed_positions": [
+        14,
+        15
+      ],
+      "position_yield": {
+        "15": 1.0,
+        "14": 0.5
+      },
+      "requires": {
+        "fusion_reactor": 8
+      },
+      "_note": "Exo-Mine: kondensiert Dunkle Materie in der eisigen Aussenzone. NUR auf kalten aeusseren Slots (Pos 15 voll, Pos 14 halber Ertrag). Hoher Energiehunger -> an Fusion gekoppelt (requires fusion_reactor 8). Ertrag kontoweit auf player.dark_matter (KEIN Cap), gedrosselt vom Energie-factor + speed."
+    }
   },
   "moon": {
     "_note": "Monde entstehen aus Truemmerfeldern nach einem Kampf an einem Spieler-Planeten: chance = min(max_chance, debris_total/value_per_chance). Gebunden an den Planeten (gleiche Koordinate), keine Minen, wenige Felder (base_fields + moon_base*moon_fields_per_level). Tragen Kriegsfuehrungs-Gebaeude.",
-    "max_chance": 0.20,
+    "max_chance": 0.2,
     "value_per_chance": 1000000,
     "base_fields": 1,
     "orbital_battery_units_per_level": 8,
     "shield_dome_tech_per_level": 2,
     "jump_gate_cooldown_seconds": 3600,
     "jump_cost_base_deuterium": 5,
-    "jump_cost_class_mult": { "fighter": 1, "civil": 1, "cruiser": 2, "capital": 4 },
+    "jump_cost_class_mult": {
+      "fighter": 1,
+      "civil": 1,
+      "cruiser": 2,
+      "capital": 4
+    },
     "destruction": {
       "_note": "03d — Todesstern-Mondzerstoerung nach gewonnenem Angriff: chance = min(cap, n_todessterne * chance_per_deathstar * size_ref/mond_felder). Rueckschlag: je Todesstern Wurf auf Selbstzerstoerung, gedeckelt.",
       "enabled": true,
       "chance_per_deathstar": 0.15,
-      "chance_cap": 0.90,
+      "chance_cap": 0.9,
       "size_ref_fields": 10,
       "backfire_chance_per_deathstar": 0.04,
       "backfire_cap_per_attempt": 3
     }
   },
-
   "storage": {
     "_formula": "5000 * floor(2.5 * e^(20*lvl/33))",
     "base": 5000,
     "starting_capacity": 10000
   },
-
   "build_time": {
     "_formula_buildings": "hours = (metal + crystal) / (2500 * (1 + robot_factory_lvl) * speed) * nanite_building_factor^nanite_lvl",
     "_formula_ships": "hours = (metal + crystal) / (2500 * (1 + shipyard_lvl) * speed) * nanite_ship_factor^nanite_lvl",
@@ -101,7 +386,6 @@
     "nanite_ship_factor": 0.95,
     "_nanite_note": "Nanitenfabrik (nanite_factory): je Stufe x0.75 Gebaeude-Bauzeit (-25%) bzw. x0.95 Schiff-Bauzeit (-5%), multiplikativ. nanite_lvl = Stufe der Nanitenfabrik auf dem Planeten."
   },
-
   "research": {
     "_formula_time": "hours = (metal + crystal) / (1000 * (1 + lab_lvl) * speed)",
     "_formula_cost": "Kosten Stufe c -> c+1 = base * 2^c (current_level als Exponent; vgl. research/service.py cost_for_level)",
@@ -110,17 +394,17 @@
     "effects": {
       "_note": "Pro-Stufe-Skalare der Nicht-Kampf-Techs (Kampf-Skalare stehen in combat.*). Werden in commander/economy/colonize/expedition gelesen.",
       "crew_psychology_target_per_level": 2,
-      "crew_psychology_decay_reduction_per_level": 0.10,
+      "crew_psychology_decay_reduction_per_level": 0.1,
       "logistics_morale_regen_per_level": 0.08,
-      "leadership_unrest_reduction_per_level": 0.10,
-      "academy_xp_per_level": 0.10,
+      "leadership_unrest_reduction_per_level": 0.1,
+      "academy_xp_per_level": 0.1,
       "mining_per_level": 0.02,
       "extraction_per_level": 0.01,
       "extraction_mastery_per_level": 0.005,
       "terraforming_fields_per_level": 5,
       "storage_per_level": 0.05,
       "astrophysics_colonies_per_level": 1,
-      "expedition_per_level": 0.10,
+      "expedition_per_level": 0.1,
       "jump_cooldown_reduction_per_level": 0.06,
       "jump_cost_reduction_per_level": 0.08,
       "jump_cooldown_floor": 0.4,
@@ -129,206 +413,1613 @@
       "moon_chance_cap_per_level": 0.02,
       "orbital_units_per_level": 1,
       "convoy_route_risk_reduction_per_level": 0.06,
-      "combustion_drive_speed_per_level": 0.10,
-      "impulse_drive_speed_per_level": 0.20,
-      "hyperspace_drive_speed_per_level": 0.30
+      "combustion_drive_speed_per_level": 0.1,
+      "impulse_drive_speed_per_level": 0.2,
+      "hyperspace_drive_speed_per_level": 0.3
     },
     "techs": {
-      "energy_tech":        { "cost": { "metal": 0,    "crystal": 800,  "deuterium": 400 }, "requires": { "research_lab": 1 } },
-      "combustion_drive":   { "cost": { "metal": 400,  "crystal": 0,    "deuterium": 600 }, "requires": { "energy_tech": 1 } },
-      "impulse_drive":      { "cost": { "metal": 2000, "crystal": 4000, "deuterium": 600 }, "requires": { "energy_tech": 1 } },
-      "spy_tech":           { "cost": { "metal": 200,  "crystal": 1000, "deuterium": 200 }, "requires": { "research_lab": 3 } },
-      "computer_tech":      { "cost": { "metal": 0,    "crystal": 400,  "deuterium": 600 }, "requires": { "research_lab": 1 }, "effect": "+1 fleet slot / level" },
-      "weapons_tech":       { "cost": { "metal": 800,  "crystal": 200,  "deuterium": 0 },   "requires": { "research_lab": 4 }, "effect": "+10% attack / level" },
-      "shield_tech":        { "cost": { "metal": 200,  "crystal": 600,  "deuterium": 0 },   "requires": { "research_lab": 6 }, "effect": "+10% shield / level" },
-      "armor_tech":         { "cost": { "metal": 1000, "crystal": 0,    "deuterium": 0 },   "requires": { "research_lab": 2 }, "effect": "+10% hull / level" },
-      "command_doctrine":   { "cost": { "metal": 2000, "crystal": 2000, "deuterium": 1000 },"requires": { "research_lab": 3 }, "effect": "+span-of-control (diminishing)" },
-      "logistics_tech":     { "cost": { "metal": 1000, "crystal": 1000, "deuterium": 500 }, "requires": { "research_lab": 3 }, "effect": "faster morale recovery, less overstretch penalty" },
-      "crew_psychology":    { "cost": { "metal": 500,  "crystal": 1500, "deuterium": 500 }, "requires": { "research_lab": 4 }, "effect": "higher morale ceiling, slower decay" },
-      "laser_tech":         { "cost": { "metal": 200,   "crystal": 100,   "deuterium": 0 },     "requires": { "research_lab": 1, "energy_tech": 2 }, "effect": "Schaltet Laser-Verteidigung (leicht/schwer) und den Schlachtkreuzer frei." },
-      "ion_tech":           { "cost": { "metal": 1000,  "crystal": 300,   "deuterium": 100 },   "requires": { "research_lab": 4, "energy_tech": 4, "laser_tech": 5 }, "effect": "Ionentechnik: Ionengeschuetz und Kreuzer." },
-      "plasma_tech":        { "cost": { "metal": 2000,  "crystal": 4000,  "deuterium": 1000 },  "requires": { "research_lab": 4, "energy_tech": 8, "laser_tech": 10, "ion_tech": 5 }, "effect": "Plasmawerfer sowie Bomber und Zerstoerer." },
-      "hyperspace_tech":    { "cost": { "metal": 0,     "crystal": 4000,  "deuterium": 2000 },  "requires": { "research_lab": 7, "energy_tech": 5, "shield_tech": 5 }, "effect": "Grundlage fuer Hyperraumantrieb und Grosskampfschiffe." },
-      "hyperspace_drive":   { "cost": { "metal": 10000, "crystal": 20000, "deuterium": 6000 },  "requires": { "research_lab": 7, "hyperspace_tech": 3 }, "effect": "Antrieb schwerer Kriegsschiffe (Schlachtschiff, Zerstoerer)." },
-      "graviton_tech":      { "cost": { "metal": 0,     "crystal": 0,     "deuterium": 300000 },"requires": { "research_lab": 12, "hyperspace_tech": 6 }, "effect": "Benoetigt enorme Energie. Ermoeglicht den Bau des Todessterns." },
-      "hyperspace_interdiction": { "cost": { "metal": 6000, "crystal": 9000, "deuterium": 3000 }, "requires": { "research_lab": 8, "hyperspace_tech": 4, "ion_tech": 4 }, "max_level": 10, "effect": "Hyperraum-Interdiktionsfeld: +1 Abfang-Reichweite je Stufe (bis Stufe 5) und +0,5% Fang-Chance je Stufe ohne Interdiktor (bis Stufe 10 = +5%)." },
-      "ion_disruptors":     { "cost": { "metal": 3000, "crystal": 5000, "deuterium": 1500 }, "requires": { "research_lab": 6, "ion_tech": 6 }, "effect": "Verstaerkte Ionenwaffen: +10% Schild-Strip/Antriebsschaden je Stufe und staerkere Verteidigungs-Lahmlegung." },
-      "boarding_doctrine":  { "cost": { "metal": 4000, "crystal": 2000, "deuterium": 1000 }, "requires": { "research_lab": 5, "armor_tech": 5, "impulse_drive": 5 }, "effect": "Enter-Taktik: +1 gekapertes Schiff je Enterschiff und Stufe." },
-      "leadership_doctrine": { "cost": { "metal": 1500, "crystal": 2500, "deuterium": 1000 }, "requires": { "research_lab": 4, "command_doctrine": 2 }, "effect": "Fuehrungsdoktrin: senkt den Unmut-Aufbau der Kommandeure je Stufe (seltener Forderungen/Meuterei)." },
-      "tactical_academy":   { "cost": { "metal": 2000, "crystal": 2000, "deuterium": 1500 }, "requires": { "research_lab": 5, "command_doctrine": 3, "computer_tech": 2 }, "effect": "Taktische Akademie: +10% XP-Gewinn der Kommandeure je Stufe." },
-      "mining_efficiency":  { "cost": { "metal": 800, "crystal": 1200, "deuterium": 0 }, "requires": { "research_lab": 2, "energy_tech": 2 }, "effect": "Bergbau-Effizienz: +2% Metall-/Kristall-/Deuterium-Foerderung je Stufe." },
-      "storage_tech":       { "cost": { "metal": 1000, "crystal": 500, "deuterium": 0 }, "requires": { "research_lab": 1 }, "effect": "Speichertechnik: +5% Lagerkapazitaet je Stufe." },
-      "astrophysics":       { "cost": { "metal": 4000, "crystal": 8000, "deuterium": 4000 }, "requires": { "research_lab": 6, "impulse_drive": 3, "spy_tech": 2 }, "effect": "Astrophysik: +1 Kolonie je Stufe (Expansion) UND +1 Std max. Expeditions-Verweildauer je Stufe (bis 24h). Stufe 1 schaltet Expeditionen frei." },
-      "expedition_tech":    { "cost": { "metal": 5000, "crystal": 5000, "deuterium": 5000 }, "requires": { "research_lab": 7, "hyperspace_drive": 4, "computer_tech": 6 }, "effect": "Expeditionstechnik: +10% Expeditions-Ertrag je Stufe." },
-      "jump_gate_tech":     { "cost": { "metal": 0, "crystal": 60000, "deuterium": 30000 }, "requires": { "research_lab": 10, "hyperspace_tech": 6 }, "effect": "Sprungtor-Kalibrierung: -6% Abklingzeit und -8% Sprungkosten je Stufe." },
-      "phalanx_tech":       { "cost": { "metal": 20000, "crystal": 40000, "deuterium": 10000 }, "requires": { "research_lab": 6, "spy_tech": 6, "computer_tech": 4 }, "effect": "Phalanx-Sensorik: +1 Scan-Reichweite (Systeme) und -8% Scankosten je Stufe." },
-      "gravitics":          { "cost": { "metal": 0, "crystal": 50000, "deuterium": 80000 }, "requires": { "research_lab": 12, "graviton_tech": 1 }, "effect": "Gravitationsforschung: +2%-Punkte Mond-Entstehungschance-Obergrenze und +1 Orbitalbatterie-Geschuetz je Stufe." },
-      "convoy_tactics":     { "cost": { "metal": 4000, "crystal": 2000, "deuterium": 4000 }, "requires": { "research_lab": 4, "combustion_drive": 4 }, "effect": "Konvoi-Taktik: -6% NPC-Piraten-Ueberfallrisiko auf Handelsrouten je Stufe. Schuetzt NICHT vor Spieler-Abfangen." },
-      "research_network":   { "cost": { "metal": 0, "crystal": 8000, "deuterium": 2000 }, "requires": { "research_lab": 5, "computer_tech": 8 }, "effect": "Intergalaktisches Forschungsnetzwerk: summiert die Forschungslabore der besten (Stufe+1) Planeten in die Forschungszeit. Stufe 1 koppelt 2 Labore, Stufe 2 drei usw. Belohnt breite Expansion." },
-      "weapons_mastery":    { "cost": { "metal": 6000, "crystal": 3000, "deuterium": 1000 }, "repeatable": true, "requires": { "research_lab": 8, "weapons_tech": 10 }, "effect": "Waffen-Meisterschaft (wiederholbar): +1% Angriff aller Einheiten je Stufe. Lineare Kosten, additiver Effekt - nie fertig, sinkender Grenznutzen." },
-      "shield_mastery":     { "cost": { "metal": 3000, "crystal": 6000, "deuterium": 1000 }, "repeatable": true, "requires": { "research_lab": 8, "shield_tech": 10 }, "effect": "Schild-Meisterschaft (wiederholbar): +1% Schildkraft aller Einheiten je Stufe. Linear-additiv." },
-      "armor_mastery":      { "cost": { "metal": 9000, "crystal": 0, "deuterium": 1000 }, "repeatable": true, "requires": { "research_lab": 8, "armor_tech": 10 }, "effect": "Panzerungs-Meisterschaft (wiederholbar): +1% Huelle aller Einheiten je Stufe. Linear-additiv." },
-      "extraction_tech":    { "cost": { "metal": 1000, "crystal": 1500, "deuterium": 0 }, "requires": { "research_lab": 3, "energy_tech": 3 }, "effect": "Foerdertechnik: +1% Minen-Foerderung (Metall/Kristall/Deuterium) je Stufe. Ergaenzt Bergbau-Effizienz." },
-      "extraction_mastery": { "cost": { "metal": 8000, "crystal": 6000, "deuterium": 2000 }, "repeatable": true, "requires": { "research_lab": 8, "extraction_tech": 10 }, "effect": "Foerder-Meisterschaft (wiederholbar): +0,5% Minen-Foerderung je Stufe. Linear-additiv, kein Maximum - ewiger Wirtschafts-Motor." },
-      "terraforming":       { "cost": { "metal": 50000, "crystal": 80000, "deuterium": 20000 }, "requires": { "research_lab": 10, "energy_tech": 12, "computer_tech": 6 }, "effect": "Terraforming: +5 Bauplaetze auf JEDEM Planeten je Stufe. Mehr Felder = mehr Gebaeudestufen = ewiger Bau-Sink." },
-      "flagship_command":   { "cost": { "metal": 200000, "crystal": 150000, "deuterium": 80000 }, "repeatable": true, "requires": { "research_lab": 10, "computer_tech": 10 }, "effect": "Flaggschiff-Doktrin (wiederholbar): +1 erlaubtes Flaggschiff je Stufe (Default 1)." },
-      "corsair_command":    { "cost": { "metal": 120000, "crystal": 90000, "deuterium": 50000 }, "repeatable": true, "requires": { "research_lab": 8, "ion_tech": 8 }, "effect": "Korsaren-Verband (wiederholbar): +1 erlaubter Korsar je Stufe (Default 1)." },
-      "leviathan_command":  { "cost": { "metal": 150000, "crystal": 100000, "deuterium": 40000 }, "repeatable": true, "requires": { "research_lab": 8, "computer_tech": 8 }, "effect": "Grosshandels-Lizenz (wiederholbar): +1 erlaubter Handels-Leviathan je Stufe (Default 1)." },
-      "harvest_command":    { "cost": { "metal": 180000, "crystal": 120000, "deuterium": 40000 }, "repeatable": true, "requires": { "research_lab": 8, "mining_efficiency": 8 }, "effect": "Schuerf-Kommando (wiederholbar): +1 erlaubter Ernte-Titan je Stufe (Default 1)." },
-      "fleet_logistics":    { "cost": { "metal": 4000, "crystal": 6000, "deuterium": 2000 }, "repeatable": true, "requires": { "research_lab": 4, "computer_tech": 4 }, "effect": "Logistik-Netz (wiederholbar): +1 gleichzeitig laufende Farm-Routine je Stufe (Default 2)." },
-      "route_planning":     { "cost": { "metal": 3000, "crystal": 5000, "deuterium": 2000 }, "repeatable": true, "requires": { "research_lab": 4, "impulse_drive": 3 }, "effect": "Routen-Planung (wiederholbar): +1 Feld je Farm-Route je Stufe (Default 2)." }
+      "energy_tech": {
+        "cost": {
+          "metal": 0,
+          "crystal": 800,
+          "deuterium": 400
+        },
+        "requires": {
+          "research_lab": 1
+        }
+      },
+      "combustion_drive": {
+        "cost": {
+          "metal": 400,
+          "crystal": 0,
+          "deuterium": 600
+        },
+        "requires": {
+          "energy_tech": 1
+        }
+      },
+      "impulse_drive": {
+        "cost": {
+          "metal": 2000,
+          "crystal": 4000,
+          "deuterium": 600
+        },
+        "requires": {
+          "energy_tech": 1
+        }
+      },
+      "spy_tech": {
+        "cost": {
+          "metal": 200,
+          "crystal": 1000,
+          "deuterium": 200
+        },
+        "requires": {
+          "research_lab": 3
+        }
+      },
+      "computer_tech": {
+        "cost": {
+          "metal": 0,
+          "crystal": 400,
+          "deuterium": 600
+        },
+        "requires": {
+          "research_lab": 1
+        },
+        "effect": "+1 fleet slot / level"
+      },
+      "weapons_tech": {
+        "cost": {
+          "metal": 800,
+          "crystal": 200,
+          "deuterium": 0
+        },
+        "requires": {
+          "research_lab": 4
+        },
+        "effect": "+10% attack / level"
+      },
+      "shield_tech": {
+        "cost": {
+          "metal": 200,
+          "crystal": 600,
+          "deuterium": 0
+        },
+        "requires": {
+          "research_lab": 6
+        },
+        "effect": "+10% shield / level"
+      },
+      "armor_tech": {
+        "cost": {
+          "metal": 1000,
+          "crystal": 0,
+          "deuterium": 0
+        },
+        "requires": {
+          "research_lab": 2
+        },
+        "effect": "+10% hull / level"
+      },
+      "command_doctrine": {
+        "cost": {
+          "metal": 2000,
+          "crystal": 2000,
+          "deuterium": 1000
+        },
+        "requires": {
+          "research_lab": 3
+        },
+        "effect": "+span-of-control (diminishing)"
+      },
+      "logistics_tech": {
+        "cost": {
+          "metal": 1000,
+          "crystal": 1000,
+          "deuterium": 500
+        },
+        "requires": {
+          "research_lab": 3
+        },
+        "effect": "faster morale recovery, less overstretch penalty"
+      },
+      "crew_psychology": {
+        "cost": {
+          "metal": 500,
+          "crystal": 1500,
+          "deuterium": 500
+        },
+        "requires": {
+          "research_lab": 4
+        },
+        "effect": "higher morale ceiling, slower decay"
+      },
+      "laser_tech": {
+        "cost": {
+          "metal": 200,
+          "crystal": 100,
+          "deuterium": 0
+        },
+        "requires": {
+          "research_lab": 1,
+          "energy_tech": 2
+        },
+        "effect": "Schaltet Laser-Verteidigung (leicht/schwer) und den Schlachtkreuzer frei."
+      },
+      "ion_tech": {
+        "cost": {
+          "metal": 1000,
+          "crystal": 300,
+          "deuterium": 100
+        },
+        "requires": {
+          "research_lab": 4,
+          "energy_tech": 4,
+          "laser_tech": 5
+        },
+        "effect": "Ionentechnik: Ionengeschuetz und Kreuzer."
+      },
+      "plasma_tech": {
+        "cost": {
+          "metal": 2000,
+          "crystal": 4000,
+          "deuterium": 1000
+        },
+        "requires": {
+          "research_lab": 4,
+          "energy_tech": 8,
+          "laser_tech": 10,
+          "ion_tech": 5
+        },
+        "effect": "Plasmawerfer sowie Bomber und Zerstoerer."
+      },
+      "hyperspace_tech": {
+        "cost": {
+          "metal": 0,
+          "crystal": 4000,
+          "deuterium": 2000
+        },
+        "requires": {
+          "research_lab": 7,
+          "energy_tech": 5,
+          "shield_tech": 5
+        },
+        "effect": "Grundlage fuer Hyperraumantrieb und Grosskampfschiffe."
+      },
+      "hyperspace_drive": {
+        "cost": {
+          "metal": 10000,
+          "crystal": 20000,
+          "deuterium": 6000
+        },
+        "requires": {
+          "research_lab": 7,
+          "hyperspace_tech": 3
+        },
+        "effect": "Antrieb schwerer Kriegsschiffe (Schlachtschiff, Zerstoerer)."
+      },
+      "graviton_tech": {
+        "cost": {
+          "metal": 0,
+          "crystal": 0,
+          "deuterium": 300000
+        },
+        "requires": {
+          "research_lab": 12,
+          "hyperspace_tech": 6
+        },
+        "effect": "Benoetigt enorme Energie. Ermoeglicht den Bau des Todessterns."
+      },
+      "hyperspace_interdiction": {
+        "cost": {
+          "metal": 6000,
+          "crystal": 9000,
+          "deuterium": 3000
+        },
+        "requires": {
+          "research_lab": 8,
+          "hyperspace_tech": 4,
+          "ion_tech": 4
+        },
+        "max_level": 10,
+        "effect": "Hyperraum-Interdiktionsfeld: +1 Abfang-Reichweite je Stufe (bis Stufe 5) und +0,5% Fang-Chance je Stufe ohne Interdiktor (bis Stufe 10 = +5%)."
+      },
+      "ion_disruptors": {
+        "cost": {
+          "metal": 3000,
+          "crystal": 5000,
+          "deuterium": 1500
+        },
+        "requires": {
+          "research_lab": 6,
+          "ion_tech": 6
+        },
+        "effect": "Verstaerkte Ionenwaffen: +10% Schild-Strip/Antriebsschaden je Stufe und staerkere Verteidigungs-Lahmlegung."
+      },
+      "boarding_doctrine": {
+        "cost": {
+          "metal": 4000,
+          "crystal": 2000,
+          "deuterium": 1000
+        },
+        "requires": {
+          "research_lab": 5,
+          "armor_tech": 5,
+          "impulse_drive": 5
+        },
+        "effect": "Enter-Taktik: +1 gekapertes Schiff je Enterschiff und Stufe."
+      },
+      "leadership_doctrine": {
+        "cost": {
+          "metal": 1500,
+          "crystal": 2500,
+          "deuterium": 1000
+        },
+        "requires": {
+          "research_lab": 4,
+          "command_doctrine": 2
+        },
+        "effect": "Fuehrungsdoktrin: senkt den Unmut-Aufbau der Kommandeure je Stufe (seltener Forderungen/Meuterei)."
+      },
+      "tactical_academy": {
+        "cost": {
+          "metal": 2000,
+          "crystal": 2000,
+          "deuterium": 1500
+        },
+        "requires": {
+          "research_lab": 5,
+          "command_doctrine": 3,
+          "computer_tech": 2
+        },
+        "effect": "Taktische Akademie: +10% XP-Gewinn der Kommandeure je Stufe."
+      },
+      "mining_efficiency": {
+        "cost": {
+          "metal": 800,
+          "crystal": 1200,
+          "deuterium": 0
+        },
+        "requires": {
+          "research_lab": 2,
+          "energy_tech": 2
+        },
+        "effect": "Bergbau-Effizienz: +2% Metall-/Kristall-/Deuterium-Foerderung je Stufe."
+      },
+      "storage_tech": {
+        "cost": {
+          "metal": 1000,
+          "crystal": 500,
+          "deuterium": 0
+        },
+        "requires": {
+          "research_lab": 1
+        },
+        "effect": "Speichertechnik: +5% Lagerkapazitaet je Stufe."
+      },
+      "astrophysics": {
+        "cost": {
+          "metal": 4000,
+          "crystal": 8000,
+          "deuterium": 4000
+        },
+        "requires": {
+          "research_lab": 6,
+          "impulse_drive": 3,
+          "spy_tech": 2
+        },
+        "effect": "Astrophysik: +1 Kolonie je Stufe (Expansion) UND +1 Std max. Expeditions-Verweildauer je Stufe (bis 24h). Stufe 1 schaltet Expeditionen frei."
+      },
+      "expedition_tech": {
+        "cost": {
+          "metal": 5000,
+          "crystal": 5000,
+          "deuterium": 5000
+        },
+        "requires": {
+          "research_lab": 7,
+          "hyperspace_drive": 4,
+          "computer_tech": 6
+        },
+        "effect": "Expeditionstechnik: +10% Expeditions-Ertrag je Stufe."
+      },
+      "jump_gate_tech": {
+        "cost": {
+          "metal": 0,
+          "crystal": 60000,
+          "deuterium": 30000
+        },
+        "requires": {
+          "research_lab": 10,
+          "hyperspace_tech": 6
+        },
+        "effect": "Sprungtor-Kalibrierung: -6% Abklingzeit und -8% Sprungkosten je Stufe."
+      },
+      "phalanx_tech": {
+        "cost": {
+          "metal": 20000,
+          "crystal": 40000,
+          "deuterium": 10000
+        },
+        "requires": {
+          "research_lab": 6,
+          "spy_tech": 6,
+          "computer_tech": 4
+        },
+        "effect": "Phalanx-Sensorik: +1 Scan-Reichweite (Systeme) und -8% Scankosten je Stufe."
+      },
+      "gravitics": {
+        "cost": {
+          "metal": 0,
+          "crystal": 50000,
+          "deuterium": 80000
+        },
+        "requires": {
+          "research_lab": 12,
+          "graviton_tech": 1
+        },
+        "effect": "Gravitationsforschung: +2%-Punkte Mond-Entstehungschance-Obergrenze und +1 Orbitalbatterie-Geschuetz je Stufe."
+      },
+      "convoy_tactics": {
+        "cost": {
+          "metal": 4000,
+          "crystal": 2000,
+          "deuterium": 4000
+        },
+        "requires": {
+          "research_lab": 4,
+          "combustion_drive": 4
+        },
+        "effect": "Konvoi-Taktik: -6% NPC-Piraten-Ueberfallrisiko auf Handelsrouten je Stufe. Schuetzt NICHT vor Spieler-Abfangen."
+      },
+      "research_network": {
+        "cost": {
+          "metal": 0,
+          "crystal": 8000,
+          "deuterium": 2000
+        },
+        "requires": {
+          "research_lab": 5,
+          "computer_tech": 8
+        },
+        "effect": "Intergalaktisches Forschungsnetzwerk: summiert die Forschungslabore der besten (Stufe+1) Planeten in die Forschungszeit. Stufe 1 koppelt 2 Labore, Stufe 2 drei usw. Belohnt breite Expansion."
+      },
+      "weapons_mastery": {
+        "cost": {
+          "metal": 6000,
+          "crystal": 3000,
+          "deuterium": 1000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 8,
+          "weapons_tech": 10
+        },
+        "effect": "Waffen-Meisterschaft (wiederholbar): +1% Angriff aller Einheiten je Stufe. Lineare Kosten, additiver Effekt - nie fertig, sinkender Grenznutzen."
+      },
+      "shield_mastery": {
+        "cost": {
+          "metal": 3000,
+          "crystal": 6000,
+          "deuterium": 1000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 8,
+          "shield_tech": 10
+        },
+        "effect": "Schild-Meisterschaft (wiederholbar): +1% Schildkraft aller Einheiten je Stufe. Linear-additiv."
+      },
+      "armor_mastery": {
+        "cost": {
+          "metal": 9000,
+          "crystal": 0,
+          "deuterium": 1000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 8,
+          "armor_tech": 10
+        },
+        "effect": "Panzerungs-Meisterschaft (wiederholbar): +1% Huelle aller Einheiten je Stufe. Linear-additiv."
+      },
+      "extraction_tech": {
+        "cost": {
+          "metal": 1000,
+          "crystal": 1500,
+          "deuterium": 0
+        },
+        "requires": {
+          "research_lab": 3,
+          "energy_tech": 3
+        },
+        "effect": "Foerdertechnik: +1% Minen-Foerderung (Metall/Kristall/Deuterium) je Stufe. Ergaenzt Bergbau-Effizienz."
+      },
+      "extraction_mastery": {
+        "cost": {
+          "metal": 8000,
+          "crystal": 6000,
+          "deuterium": 2000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 8,
+          "extraction_tech": 10
+        },
+        "effect": "Foerder-Meisterschaft (wiederholbar): +0,5% Minen-Foerderung je Stufe. Linear-additiv, kein Maximum - ewiger Wirtschafts-Motor."
+      },
+      "terraforming": {
+        "cost": {
+          "metal": 50000,
+          "crystal": 80000,
+          "deuterium": 20000
+        },
+        "requires": {
+          "research_lab": 10,
+          "energy_tech": 12,
+          "computer_tech": 6
+        },
+        "effect": "Terraforming: +5 Bauplaetze auf JEDEM Planeten je Stufe. Mehr Felder = mehr Gebaeudestufen = ewiger Bau-Sink."
+      },
+      "flagship_command": {
+        "cost": {
+          "metal": 200000,
+          "crystal": 150000,
+          "deuterium": 80000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 10,
+          "computer_tech": 10
+        },
+        "effect": "Flaggschiff-Doktrin (wiederholbar): +1 erlaubtes Flaggschiff je Stufe (Default 1)."
+      },
+      "corsair_command": {
+        "cost": {
+          "metal": 120000,
+          "crystal": 90000,
+          "deuterium": 50000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 8,
+          "ion_tech": 8
+        },
+        "effect": "Korsaren-Verband (wiederholbar): +1 erlaubter Korsar je Stufe (Default 1)."
+      },
+      "leviathan_command": {
+        "cost": {
+          "metal": 150000,
+          "crystal": 100000,
+          "deuterium": 40000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 8,
+          "computer_tech": 8
+        },
+        "effect": "Grosshandels-Lizenz (wiederholbar): +1 erlaubter Handels-Leviathan je Stufe (Default 1)."
+      },
+      "harvest_command": {
+        "cost": {
+          "metal": 180000,
+          "crystal": 120000,
+          "deuterium": 40000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 8,
+          "mining_efficiency": 8
+        },
+        "effect": "Schuerf-Kommando (wiederholbar): +1 erlaubter Ernte-Titan je Stufe (Default 1)."
+      },
+      "fleet_logistics": {
+        "cost": {
+          "metal": 4000,
+          "crystal": 6000,
+          "deuterium": 2000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 4,
+          "computer_tech": 4
+        },
+        "effect": "Logistik-Netz (wiederholbar): +1 gleichzeitig laufende Farm-Routine je Stufe (Default 2)."
+      },
+      "route_planning": {
+        "cost": {
+          "metal": 3000,
+          "crystal": 5000,
+          "deuterium": 2000
+        },
+        "repeatable": true,
+        "requires": {
+          "research_lab": 4,
+          "impulse_drive": 3
+        },
+        "effect": "Routen-Planung (wiederholbar): +1 Feld je Farm-Route je Stufe (Default 2)."
+      }
     }
   },
-
   "ships": {
     "_note": "Huelle = (metall+kristall)/10. Werte OGame-nah, fuer Vertical Slice konkret. Alle Kampfschiffe haben Rapidfire 5 gegen Spionagesonde und Solarsatellit.",
-    "light_fighter":    { "cost": { "metal": 3000,    "crystal": 1000,    "deuterium": 0 },       "attack": 50,     "shield": 10,    "cargo": 50,      "speed": 12500, "fuel": 20, "fuel_tank": 7,   "rapidfire": {}, "requires": { "shipyard": 1, "combustion_drive": 1 } },
-    "heavy_fighter":    { "cost": { "metal": 6000,    "crystal": 4000,    "deuterium": 0 },       "attack": 150,    "shield": 25,    "cargo": 100,     "speed": 10000, "fuel": 75, "fuel_tank": 52,   "rapidfire": {}, "requires": { "shipyard": 2, "impulse_drive": 2, "armor_tech": 2 } },
-    "cruiser":          { "cost": { "metal": 20000,   "crystal": 7000,    "deuterium": 2000 },    "attack": 400,    "shield": 50,    "cargo": 800,     "speed": 15000, "fuel": 300, "fuel_tank": 380,  "rapidfire": {}, "requires": { "shipyard": 3, "impulse_drive": 4, "ion_tech": 2 } },
-    "small_cargo":      { "cost": { "metal": 2000,    "crystal": 2000,    "deuterium": 0 },       "attack": 5,      "shield": 10,    "cargo": 5000,    "speed": 7500,  "fuel": 10, "fuel_tank": 26,   "rapidfire": {}, "requires": { "shipyard": 1, "combustion_drive": 2 } },
-    "large_cargo":      { "cost": { "metal": 6000,    "crystal": 6000,    "deuterium": 0 },       "attack": 5,      "shield": 25,    "cargo": 25000,   "speed": 5000,  "fuel": 50, "fuel_tank": 130,   "rapidfire": {}, "requires": { "shipyard": 2, "combustion_drive": 6 } },
-    "colony_ship":      { "cost": { "metal": 10000,   "crystal": 20000,   "deuterium": 0 },       "attack": 50,     "shield": 100,   "cargo": 7500,    "speed": 2500,  "fuel": 1000, "fuel_tank": 2600, "rapidfire": {}, "requires": { "shipyard": 4, "impulse_drive": 3 } },
-    "recycler":         { "cost": { "metal": 10000,   "crystal": 6000,    "deuterium": 2000 },    "attack": 1,      "shield": 10,    "cargo": 20000,   "speed": 2000,  "fuel": 300, "fuel_tank": 780,  "rapidfire": {}, "requires": { "shipyard": 4, "combustion_drive": 6, "shield_tech": 2 } },
-    "solar_satellite":  { "cost": { "metal": 0,       "crystal": 2000,    "deuterium": 0 },       "attack": 0,      "shield": 1,     "cargo": 0,       "speed": 0,     "fuel": 0, "fuel_tank": 0,    "rapidfire": {}, "requires": { "shipyard": 1 }, "energy_prod": { "_note": "Solarsatellit: Energie je Sat = floor((temp_max + temp_offset) / divisor) (OGame). Heisse (sonnennahe) Planeten -> mehr Ertrag; aussen ~3x weniger. Auf dem Planeten stationiert (fleet_id NULL), zaehlt zur Energiebilanz.", "temp_offset": 160, "divisor": 6 } },
-    "spy_probe":        { "cost": { "metal": 0,       "crystal": 1000,    "deuterium": 0 },       "attack": 0,      "shield": 0,     "cargo": 5,       "speed": 100000000, "fuel": 1, "fuel_tank": 3, "rapidfire": {}, "requires": { "shipyard": 1, "spy_tech": 1, "combustion_drive": 1 } },
-    "battleship":       { "cost": { "metal": 45000,   "crystal": 15000,   "deuterium": 0 },       "attack": 1000,   "shield": 200,   "cargo": 1500,    "speed": 10000, "fuel": 500, "fuel_tank": 630,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 4 } },
-    "battlecruiser":    { "cost": { "metal": 30000,   "crystal": 24000,   "deuterium": 8000 },    "attack": 1000,   "shield": 400,   "cargo": 750,     "speed": 10000, "fuel": 250, "fuel_tank": 320,  "rapidfire": {}, "requires": { "shipyard": 8, "hyperspace_tech": 5, "laser_tech": 12 } },
-    "bomber":           { "cost": { "metal": 50000,   "crystal": 25000,   "deuterium": 0 },       "attack": 1000,   "shield": 500,   "cargo": 500,     "speed": 4000,  "fuel": 1000, "fuel_tank": 1260, "rapidfire": { "rocket_launcher": 20, "light_laser": 20, "heavy_laser": 10, "ion_cannon": 10, "gauss_cannon": 5, "plasma_turret": 5, "orbital_gun": 10, "solar_satellite": 5, "spy_probe": 5 }, "requires": { "shipyard": 7, "impulse_drive": 6, "plasma_tech": 5 } },
-    "destroyer":        { "cost": { "metal": 20000,   "crystal": 15000,   "deuterium": 5000 },    "attack": 1900,   "shield": 120,   "cargo": 2000,    "speed": 5000,  "fuel": 1000, "fuel_tank": 1260, "rapidfire": {}, "_note": "Artillerie/Glaskanone (Doku 03c/03d): hoher Fern-Schaden, DUENNE Huelle+Schild -> billig. Konter ist EMERGENT (kein Rapidfire mehr): schnelle Schiffe schliessen ueber die Reichweiten-Baender die Distanz und zerlegen die duenne Huelle; Standoff-Strafe schwaecht sie im Nahkampf.", "requires": { "shipyard": 7, "hyperspace_drive": 6, "plasma_tech": 5 } },
-    "deathstar":        { "cost": { "metal": 5000000, "crystal": 4000000, "deuterium": 1000000 }, "attack": 200000, "shield": 50000, "cargo": 1000000, "speed": 100,   "fuel": 1, "fuel_tank": 2,    "rapidfire": {}, "requires": { "shipyard": 12, "graviton_tech": 1, "hyperspace_drive": 7, "hyperspace_tech": 6 } },
-
+    "light_fighter": {
+      "cost": {
+        "metal": 3000,
+        "crystal": 1000,
+        "deuterium": 0
+      },
+      "attack": 50,
+      "shield": 10,
+      "cargo": 50,
+      "speed": 12500,
+      "fuel": 20,
+      "fuel_tank": 7,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 1,
+        "combustion_drive": 1
+      }
+    },
+    "heavy_fighter": {
+      "cost": {
+        "metal": 6000,
+        "crystal": 4000,
+        "deuterium": 0
+      },
+      "attack": 150,
+      "shield": 25,
+      "cargo": 100,
+      "speed": 10000,
+      "fuel": 75,
+      "fuel_tank": 52,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 2,
+        "impulse_drive": 2,
+        "armor_tech": 2
+      }
+    },
+    "cruiser": {
+      "cost": {
+        "metal": 20000,
+        "crystal": 7000,
+        "deuterium": 2000
+      },
+      "attack": 400,
+      "shield": 50,
+      "cargo": 800,
+      "speed": 15000,
+      "fuel": 300,
+      "fuel_tank": 380,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 3,
+        "impulse_drive": 4,
+        "ion_tech": 2
+      }
+    },
+    "small_cargo": {
+      "cost": {
+        "metal": 2000,
+        "crystal": 2000,
+        "deuterium": 0
+      },
+      "attack": 5,
+      "shield": 10,
+      "cargo": 5000,
+      "speed": 7500,
+      "fuel": 10,
+      "fuel_tank": 26,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 1,
+        "combustion_drive": 2
+      }
+    },
+    "large_cargo": {
+      "cost": {
+        "metal": 6000,
+        "crystal": 6000,
+        "deuterium": 0
+      },
+      "attack": 5,
+      "shield": 25,
+      "cargo": 25000,
+      "speed": 5000,
+      "fuel": 50,
+      "fuel_tank": 130,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 2,
+        "combustion_drive": 6
+      }
+    },
+    "colony_ship": {
+      "cost": {
+        "metal": 10000,
+        "crystal": 20000,
+        "deuterium": 0
+      },
+      "attack": 50,
+      "shield": 100,
+      "cargo": 7500,
+      "speed": 2500,
+      "fuel": 1000,
+      "fuel_tank": 2600,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 4,
+        "impulse_drive": 3
+      }
+    },
+    "recycler": {
+      "cost": {
+        "metal": 10000,
+        "crystal": 6000,
+        "deuterium": 2000
+      },
+      "attack": 1,
+      "shield": 10,
+      "cargo": 20000,
+      "speed": 2000,
+      "fuel": 300,
+      "fuel_tank": 780,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 4,
+        "combustion_drive": 6,
+        "shield_tech": 2
+      }
+    },
+    "solar_satellite": {
+      "cost": {
+        "metal": 0,
+        "crystal": 2000,
+        "deuterium": 0
+      },
+      "attack": 0,
+      "shield": 1,
+      "cargo": 0,
+      "speed": 0,
+      "fuel": 0,
+      "fuel_tank": 0,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 1
+      },
+      "energy_prod": {
+        "_note": "Solarsatellit: Energie je Sat = floor((temp_max + temp_offset) / divisor) (OGame). Heisse (sonnennahe) Planeten -> mehr Ertrag; aussen ~3x weniger. Auf dem Planeten stationiert (fleet_id NULL), zaehlt zur Energiebilanz.",
+        "temp_offset": 160,
+        "divisor": 6
+      }
+    },
+    "spy_probe": {
+      "cost": {
+        "metal": 0,
+        "crystal": 1000,
+        "deuterium": 0
+      },
+      "attack": 0,
+      "shield": 0,
+      "cargo": 5,
+      "speed": 100000000,
+      "fuel": 1,
+      "fuel_tank": 3,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 1,
+        "spy_tech": 1,
+        "combustion_drive": 1
+      }
+    },
+    "battleship": {
+      "cost": {
+        "metal": 45000,
+        "crystal": 15000,
+        "deuterium": 0
+      },
+      "attack": 1000,
+      "shield": 200,
+      "cargo": 1500,
+      "speed": 10000,
+      "fuel": 500,
+      "fuel_tank": 630,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 6,
+        "hyperspace_drive": 4
+      }
+    },
+    "battlecruiser": {
+      "cost": {
+        "metal": 30000,
+        "crystal": 24000,
+        "deuterium": 8000
+      },
+      "attack": 1000,
+      "shield": 400,
+      "cargo": 750,
+      "speed": 10000,
+      "fuel": 250,
+      "fuel_tank": 320,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 8,
+        "hyperspace_tech": 5,
+        "laser_tech": 12
+      }
+    },
+    "bomber": {
+      "cost": {
+        "metal": 50000,
+        "crystal": 25000,
+        "deuterium": 0
+      },
+      "attack": 1000,
+      "shield": 500,
+      "cargo": 500,
+      "speed": 4000,
+      "fuel": 1000,
+      "fuel_tank": 1260,
+      "rapidfire": {
+        "rocket_launcher": 20,
+        "light_laser": 20,
+        "heavy_laser": 10,
+        "ion_cannon": 10,
+        "gauss_cannon": 5,
+        "plasma_turret": 5,
+        "orbital_gun": 10,
+        "solar_satellite": 5,
+        "spy_probe": 5
+      },
+      "requires": {
+        "shipyard": 7,
+        "impulse_drive": 6,
+        "plasma_tech": 5
+      }
+    },
+    "destroyer": {
+      "cost": {
+        "metal": 20000,
+        "crystal": 15000,
+        "deuterium": 5000
+      },
+      "attack": 1900,
+      "shield": 120,
+      "cargo": 2000,
+      "speed": 5000,
+      "fuel": 1000,
+      "fuel_tank": 1260,
+      "rapidfire": {},
+      "_note": "Artillerie/Glaskanone (Doku 03c/03d): hoher Fern-Schaden, DUENNE Huelle+Schild -> billig. Konter ist EMERGENT (kein Rapidfire mehr): schnelle Schiffe schliessen ueber die Reichweiten-Baender die Distanz und zerlegen die duenne Huelle; Standoff-Strafe schwaecht sie im Nahkampf.",
+      "requires": {
+        "shipyard": 7,
+        "hyperspace_drive": 6,
+        "plasma_tech": 5
+      }
+    },
+    "deathstar": {
+      "cost": {
+        "metal": 5000000,
+        "crystal": 4000000,
+        "deuterium": 1000000
+      },
+      "attack": 200000,
+      "shield": 50000,
+      "cargo": 1000000,
+      "speed": 100,
+      "fuel": 1,
+      "fuel_tank": 2,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 12,
+        "graviton_tech": 1,
+        "hyperspace_drive": 7,
+        "hyperspace_tech": 6
+      }
+    },
     "_note_roles": "Rollen-Roster (Doku 03c / Phase 4): neue Spezial-Rollen. Universell baubar (Doktrin-Verguenstigung spaeter). Sondermechaniken (Drohnen-Start/Schild-Projektion/Stealth/Mining/Expedition) folgen; Stats + Rolle (combat_roster) wirken bereits.",
-    "carrier":          { "cost": { "metal": 45000, "crystal": 20000, "deuterium": 5000 },  "attack": 150,  "shield": 400,  "cargo": 3000,  "speed": 6000,  "fuel": 600, "fuel_tank": 760,  "rapidfire": {}, "requires": { "shipyard": 8, "hyperspace_drive": 5, "plasma_tech": 4 } },
-    "drone":            { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 0 },     "attack": 45,   "shield": 10,   "cargo": 0,     "speed": 13000, "fuel": 10, "fuel_tank": 4,   "rapidfire": {}, "requires": { "computer_tech": 4, "shipyard": 4 } },
-    "interdictor":      { "cost": { "metal": 18000, "crystal": 12000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 500,   "speed": 9000,  "fuel": 300, "fuel_tank": 210,  "rapidfire": {}, "requires": { "shipyard": 7, "hyperspace_drive": 4, "ion_tech": 4 } },
-    "ewar_frigate":     { "cost": { "metal": 9000,  "crystal": 9000,  "deuterium": 3000 },  "attack": 400,  "shield": 50,   "cargo": 100,   "speed": 11000, "fuel": 200, "fuel_tank": 140,  "rapidfire": {}, "requires": { "shipyard": 5, "ion_tech": 5, "impulse_drive": 4 } },
-    "boarder":          { "cost": { "metal": 30000, "crystal": 12000, "deuterium": 4000 },  "attack": 60,   "shield": 50,   "cargo": 5000,  "speed": 7000,  "fuel": 400, "fuel_tank": 280,  "rapidfire": {}, "requires": { "shipyard": 6, "impulse_drive": 5, "armor_tech": 4 } },
-    "stealth_corvette": { "cost": { "metal": 8000,  "crystal": 8000,  "deuterium": 2000 },  "attack": 150,  "shield": 10,   "cargo": 100,   "speed": 16000, "fuel": 150, "fuel_tank": 105,  "rapidfire": {}, "requires": { "shipyard": 5, "laser_tech": 6, "combustion_drive": 6 } },
-    "escort_frigate":   { "cost": { "metal": 18000, "crystal": 12000, "deuterium": 2000 },  "attack": 150,  "shield": 150,  "cargo": 300,   "speed": 10000, "fuel": 250, "fuel_tank": 175,  "rapidfire": {}, "requires": { "shipyard": 4, "armor_tech": 3, "laser_tech": 4 } },
-    "warp_stabilizer":  { "cost": { "metal": 14000, "crystal": 10000, "deuterium": 6000 },  "attack": 100,  "shield": 120,  "cargo": 200,   "speed": 12000, "fuel": 300, "fuel_tank": 210,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 5, "impulse_drive": 5 } },
-    "shield_tender":    { "cost": { "metal": 20000, "crystal": 25000, "deuterium": 5000 },  "attack": 0,    "shield": 1000, "cargo": 200,   "speed": 6000,  "fuel": 400, "fuel_tank": 280,  "rapidfire": {}, "requires": { "shipyard": 6, "shield_tech": 6, "impulse_drive": 4 } },
-    "interceptor":      { "cost": { "metal": 3000,  "crystal": 1000,  "deuterium": 8000 },  "attack": 400,  "shield": 50,   "cargo": 50,    "speed": 18000, "fuel": 100, "fuel_tank": 35,  "rapidfire": {}, "requires": { "shipyard": 4, "laser_tech": 5, "impulse_drive": 3 } },
-    "miner":            { "cost": { "metal": 25000, "crystal": 10000, "deuterium": 2000 },  "attack": 0,    "shield": 50,   "cargo": 15000, "speed": 3000,  "fuel": 300, "fuel_tank": 780,  "rapidfire": {}, "requires": { "combustion_drive": 4, "shipyard": 4 } },
-    "deep_scout":       { "cost": { "metal": 8000,  "crystal": 12000, "deuterium": 1000 },  "attack": 0,    "shield": 50,   "cargo": 100,   "speed": 14000, "fuel": 80, "fuel_tank": 230,   "rapidfire": {}, "requires": { "shipyard": 5, "spy_tech": 3, "impulse_drive": 4 } },
-    "expedition_ship":  { "cost": { "metal": 30000, "crystal": 20000, "deuterium": 5000 },  "attack": 60,   "shield": 150,  "cargo": 10000, "speed": 6000,  "fuel": 800, "fuel_tank": 2100,  "rapidfire": {}, "requires": { "shipyard": 6, "hyperspace_drive": 4, "computer_tech": 6 } },
+    "carrier": {
+      "cost": {
+        "metal": 45000,
+        "crystal": 20000,
+        "deuterium": 5000
+      },
+      "attack": 150,
+      "shield": 400,
+      "cargo": 3000,
+      "speed": 6000,
+      "fuel": 600,
+      "fuel_tank": 760,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 8,
+        "hyperspace_drive": 5,
+        "plasma_tech": 4
+      }
+    },
+    "drone": {
+      "cost": {
+        "metal": 3000,
+        "crystal": 1000,
+        "deuterium": 0
+      },
+      "attack": 45,
+      "shield": 10,
+      "cargo": 0,
+      "speed": 13000,
+      "fuel": 10,
+      "fuel_tank": 4,
+      "rapidfire": {},
+      "requires": {
+        "computer_tech": 4,
+        "shipyard": 4
+      }
+    },
+    "interdictor": {
+      "cost": {
+        "metal": 18000,
+        "crystal": 12000,
+        "deuterium": 5000
+      },
+      "attack": 60,
+      "shield": 150,
+      "cargo": 500,
+      "speed": 9000,
+      "fuel": 300,
+      "fuel_tank": 210,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 7,
+        "hyperspace_drive": 4,
+        "ion_tech": 4
+      }
+    },
+    "ewar_frigate": {
+      "cost": {
+        "metal": 9000,
+        "crystal": 9000,
+        "deuterium": 3000
+      },
+      "attack": 400,
+      "shield": 50,
+      "cargo": 100,
+      "speed": 11000,
+      "fuel": 200,
+      "fuel_tank": 140,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 5,
+        "ion_tech": 5,
+        "impulse_drive": 4
+      }
+    },
+    "boarder": {
+      "cost": {
+        "metal": 30000,
+        "crystal": 12000,
+        "deuterium": 4000
+      },
+      "attack": 60,
+      "shield": 50,
+      "cargo": 5000,
+      "speed": 7000,
+      "fuel": 400,
+      "fuel_tank": 280,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 6,
+        "impulse_drive": 5,
+        "armor_tech": 4
+      }
+    },
+    "stealth_corvette": {
+      "cost": {
+        "metal": 8000,
+        "crystal": 8000,
+        "deuterium": 2000
+      },
+      "attack": 150,
+      "shield": 10,
+      "cargo": 100,
+      "speed": 16000,
+      "fuel": 150,
+      "fuel_tank": 105,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 5,
+        "laser_tech": 6,
+        "combustion_drive": 6
+      }
+    },
+    "escort_frigate": {
+      "cost": {
+        "metal": 18000,
+        "crystal": 12000,
+        "deuterium": 2000
+      },
+      "attack": 150,
+      "shield": 150,
+      "cargo": 300,
+      "speed": 10000,
+      "fuel": 250,
+      "fuel_tank": 175,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 4,
+        "armor_tech": 3,
+        "laser_tech": 4
+      }
+    },
+    "warp_stabilizer": {
+      "cost": {
+        "metal": 14000,
+        "crystal": 10000,
+        "deuterium": 6000
+      },
+      "attack": 100,
+      "shield": 120,
+      "cargo": 200,
+      "speed": 12000,
+      "fuel": 300,
+      "fuel_tank": 210,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 6,
+        "hyperspace_drive": 5,
+        "impulse_drive": 5
+      }
+    },
+    "shield_tender": {
+      "cost": {
+        "metal": 20000,
+        "crystal": 25000,
+        "deuterium": 5000
+      },
+      "attack": 0,
+      "shield": 1000,
+      "cargo": 200,
+      "speed": 6000,
+      "fuel": 400,
+      "fuel_tank": 280,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 6,
+        "shield_tech": 6,
+        "impulse_drive": 4
+      }
+    },
+    "interceptor": {
+      "cost": {
+        "metal": 3000,
+        "crystal": 1000,
+        "deuterium": 8000
+      },
+      "attack": 400,
+      "shield": 50,
+      "cargo": 50,
+      "speed": 18000,
+      "fuel": 100,
+      "fuel_tank": 35,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 4,
+        "laser_tech": 5,
+        "impulse_drive": 3
+      }
+    },
+    "miner": {
+      "cost": {
+        "metal": 25000,
+        "crystal": 10000,
+        "deuterium": 2000
+      },
+      "attack": 0,
+      "shield": 50,
+      "cargo": 15000,
+      "speed": 3000,
+      "fuel": 300,
+      "fuel_tank": 780,
+      "rapidfire": {},
+      "requires": {
+        "combustion_drive": 4,
+        "shipyard": 4
+      }
+    },
+    "deep_scout": {
+      "cost": {
+        "metal": 8000,
+        "crystal": 12000,
+        "deuterium": 1000
+      },
+      "attack": 0,
+      "shield": 50,
+      "cargo": 100,
+      "speed": 14000,
+      "fuel": 80,
+      "fuel_tank": 230,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 5,
+        "spy_tech": 3,
+        "impulse_drive": 4
+      }
+    },
+    "expedition_ship": {
+      "cost": {
+        "metal": 30000,
+        "crystal": 20000,
+        "deuterium": 5000
+      },
+      "attack": 60,
+      "shield": 150,
+      "cargo": 10000,
+      "speed": 6000,
+      "fuel": 800,
+      "fuel_tank": 2100,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 6,
+        "hyperspace_drive": 4,
+        "computer_tech": 6
+      }
+    },
     "_note_capstones": "Endgame-Capstone-Schiffe (je Spielstil). Default-Besitz 1, je +1 ueber Kommando-Forschung (capstone_command_tech). exotische Kosten (antimatter/dark_matter) = kontoweite Senke. Auren (aura) stapeln NICHT (combat/service dedupliziert je Auratyp).",
-    "flagship":         { "cost": { "metal": 120000, "crystal": 60000, "deuterium": 140000, "antimatter": 300 }, "attack": 3000, "shield": 1500, "cargo": 5000,   "speed": 8000,  "fuel": 2000, "fuel_tank": 3000, "rapidfire": {}, "requires": { "shipyard": 12, "hyperspace_drive": 8, "computer_tech": 10 }, "capstone": "flagship_command" },
-    "corsair":          { "cost": { "metal": 35000,  "crystal": 25000, "deuterium": 70000,  "antimatter": 150 }, "attack": 3500, "shield": 300,  "cargo": 12000,  "speed": 17000, "fuel": 1500, "fuel_tank": 2400, "rapidfire": {}, "requires": { "shipyard": 10, "hyperspace_drive": 6, "ion_tech": 8 }, "capstone": "corsair_command" },
-    "trade_leviathan":  { "cost": { "metal": 90000,  "crystal": 50000, "deuterium": 60000,  "dark_matter": 250 }, "attack": 500,  "shield": 800,  "cargo": 600000, "speed": 6000,  "fuel": 4000, "fuel_tank": 8000, "rapidfire": {}, "requires": { "shipyard": 10, "hyperspace_drive": 5, "computer_tech": 8 }, "capstone": "leviathan_command" },
-    "harvest_titan":    { "cost": { "metal": 80000,  "crystal": 40000, "deuterium": 70000,  "dark_matter": 250 }, "attack": 400,  "shield": 600,  "cargo": 250000, "speed": 5000,  "fuel": 3000, "fuel_tank": 6000, "rapidfire": {}, "requires": { "shipyard": 10, "hyperspace_drive": 5, "mining_efficiency": 8 }, "capstone": "harvest_command" }
+    "flagship": {
+      "cost": {
+        "metal": 120000,
+        "crystal": 60000,
+        "deuterium": 140000,
+        "antimatter": 300
+      },
+      "attack": 3000,
+      "shield": 1500,
+      "cargo": 5000,
+      "speed": 8000,
+      "fuel": 2000,
+      "fuel_tank": 3000,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 12,
+        "hyperspace_drive": 8,
+        "computer_tech": 10
+      },
+      "capstone": "flagship_command"
+    },
+    "corsair": {
+      "cost": {
+        "metal": 35000,
+        "crystal": 25000,
+        "deuterium": 70000,
+        "antimatter": 150
+      },
+      "attack": 3500,
+      "shield": 300,
+      "cargo": 12000,
+      "speed": 17000,
+      "fuel": 1500,
+      "fuel_tank": 2400,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 10,
+        "hyperspace_drive": 6,
+        "ion_tech": 8
+      },
+      "capstone": "corsair_command"
+    },
+    "trade_leviathan": {
+      "cost": {
+        "metal": 90000,
+        "crystal": 50000,
+        "deuterium": 60000,
+        "dark_matter": 250
+      },
+      "attack": 500,
+      "shield": 800,
+      "cargo": 600000,
+      "speed": 6000,
+      "fuel": 4000,
+      "fuel_tank": 8000,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 10,
+        "hyperspace_drive": 5,
+        "computer_tech": 8
+      },
+      "capstone": "leviathan_command"
+    },
+    "harvest_titan": {
+      "cost": {
+        "metal": 80000,
+        "crystal": 40000,
+        "deuterium": 70000,
+        "dark_matter": 250
+      },
+      "attack": 400,
+      "shield": 600,
+      "cargo": 250000,
+      "speed": 5000,
+      "fuel": 3000,
+      "fuel_tank": 6000,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 10,
+        "hyperspace_drive": 5,
+        "mining_efficiency": 8
+      },
+      "capstone": "harvest_command"
+    }
   },
-
   "defenses": {
     "_note": "Schildkuppeln (max 1/Planet) sowie Abfang-/Interplanetarrakete sind Phase 7. Hier nur als baubare Eintraege mit Stats, KEINE Sonderlogik.",
-    "rocket_launcher":        { "cost": { "metal": 2000,  "crystal": 0,     "deuterium": 0 },     "attack": 80,    "shield": 20,    "rapidfire_against": {}, "requires": { "defense_factory": 1 } },
-    "light_laser":            { "cost": { "metal": 1500,  "crystal": 500,   "deuterium": 0 },     "attack": 100,   "shield": 25,    "rapidfire_against": {}, "requires": { "energy_tech": 1, "laser_tech": 3 } },
-    "heavy_laser":            { "cost": { "metal": 6000,  "crystal": 2000,  "deuterium": 0 },     "attack": 250,   "shield": 100,   "rapidfire_against": {}, "requires": { "energy_tech": 3, "laser_tech": 6 } },
-    "gauss_cannon":           { "cost": { "metal": 20000, "crystal": 15000, "deuterium": 2000 },  "attack": 1100,  "shield": 200,   "rapidfire_against": {}, "requires": { "weapons_tech": 3, "shield_tech": 1, "energy_tech": 6 } },
-    "ion_cannon":             { "cost": { "metal": 2000,  "crystal": 6000,  "deuterium": 0 },     "attack": 150,   "shield": 500,   "rapidfire_against": {}, "requires": { "ion_tech": 4 } },
-    "plasma_turret":          { "cost": { "metal": 50000, "crystal": 50000, "deuterium": 30000 }, "attack": 3000,  "shield": 300,   "rapidfire_against": {}, "requires": { "plasma_tech": 7 } },
-    "small_shield_dome":      { "cost": { "metal": 10000, "crystal": 10000, "deuterium": 0 },     "attack": 1,     "shield": 2000,  "rapidfire_against": {}, "requires": { "shield_tech": 2 } },
-    "large_shield_dome":      { "cost": { "metal": 50000, "crystal": 50000, "deuterium": 0 },     "attack": 1,     "shield": 10000, "rapidfire_against": {}, "requires": { "shield_tech": 6 } },
-    "anti_ballistic_missile": { "cost": { "metal": 8000,  "crystal": 0,     "deuterium": 2000 },  "attack": 1,     "shield": 1,     "rapidfire_against": {}, "requires": { "defense_factory": 1 } },
-    "interplanetary_missile": { "cost": { "metal": 12500, "crystal": 2500,  "deuterium": 10000 }, "attack": 12000, "shield": 1,     "rapidfire_against": {}, "requires": { "impulse_drive": 1, "defense_factory": 4 } },
-    "orbital_gun":            { "cost": { "metal": 30000, "crystal": 15000, "deuterium": 5000 },  "attack": 1500,  "shield": 250,   "rapidfire_against": {}, "virtual": true, "_note": "Virtuell: kommt von der Mond-Orbitalbatterie, nicht direkt baubar. Verteidigt den Planeten mit." }
+    "rocket_launcher": {
+      "cost": {
+        "metal": 2000,
+        "crystal": 0,
+        "deuterium": 0
+      },
+      "attack": 80,
+      "shield": 20,
+      "rapidfire_against": {},
+      "requires": {
+        "defense_factory": 1
+      }
+    },
+    "light_laser": {
+      "cost": {
+        "metal": 1500,
+        "crystal": 500,
+        "deuterium": 0
+      },
+      "attack": 100,
+      "shield": 25,
+      "rapidfire_against": {},
+      "requires": {
+        "energy_tech": 1,
+        "laser_tech": 3
+      }
+    },
+    "heavy_laser": {
+      "cost": {
+        "metal": 6000,
+        "crystal": 2000,
+        "deuterium": 0
+      },
+      "attack": 250,
+      "shield": 100,
+      "rapidfire_against": {},
+      "requires": {
+        "energy_tech": 3,
+        "laser_tech": 6
+      }
+    },
+    "gauss_cannon": {
+      "cost": {
+        "metal": 20000,
+        "crystal": 15000,
+        "deuterium": 2000
+      },
+      "attack": 1100,
+      "shield": 200,
+      "rapidfire_against": {},
+      "requires": {
+        "weapons_tech": 3,
+        "shield_tech": 1,
+        "energy_tech": 6
+      }
+    },
+    "ion_cannon": {
+      "cost": {
+        "metal": 2000,
+        "crystal": 6000,
+        "deuterium": 0
+      },
+      "attack": 150,
+      "shield": 500,
+      "rapidfire_against": {},
+      "requires": {
+        "ion_tech": 4
+      }
+    },
+    "plasma_turret": {
+      "cost": {
+        "metal": 50000,
+        "crystal": 50000,
+        "deuterium": 30000
+      },
+      "attack": 3000,
+      "shield": 300,
+      "rapidfire_against": {},
+      "requires": {
+        "plasma_tech": 7
+      }
+    },
+    "small_shield_dome": {
+      "cost": {
+        "metal": 10000,
+        "crystal": 10000,
+        "deuterium": 0
+      },
+      "attack": 1,
+      "shield": 2000,
+      "rapidfire_against": {},
+      "requires": {
+        "shield_tech": 2
+      }
+    },
+    "large_shield_dome": {
+      "cost": {
+        "metal": 50000,
+        "crystal": 50000,
+        "deuterium": 0
+      },
+      "attack": 1,
+      "shield": 10000,
+      "rapidfire_against": {},
+      "requires": {
+        "shield_tech": 6
+      }
+    },
+    "anti_ballistic_missile": {
+      "cost": {
+        "metal": 8000,
+        "crystal": 0,
+        "deuterium": 2000
+      },
+      "attack": 1,
+      "shield": 1,
+      "rapidfire_against": {},
+      "requires": {
+        "defense_factory": 1
+      }
+    },
+    "interplanetary_missile": {
+      "cost": {
+        "metal": 12500,
+        "crystal": 2500,
+        "deuterium": 10000
+      },
+      "attack": 12000,
+      "shield": 1,
+      "rapidfire_against": {},
+      "requires": {
+        "impulse_drive": 1,
+        "defense_factory": 4
+      }
+    },
+    "orbital_gun": {
+      "cost": {
+        "metal": 30000,
+        "crystal": 15000,
+        "deuterium": 5000
+      },
+      "attack": 1500,
+      "shield": 250,
+      "rapidfire_against": {},
+      "virtual": true,
+      "_note": "Virtuell: kommt von der Mond-Orbitalbatterie, nicht direkt baubar. Verteidigt den Planeten mit."
+    }
   },
-
   "combat_roster": {
     "_note": "Rollen-Kampf-Profil (Doku 03b/03c) je Einheit: weapon_type (Schadenstyp, null=feuert nicht) + drive (Antriebs-Tier 1-5, *drive_integrity_per_tier = Pool; 0=stationaer/immobil) + range (near/medium/far). Eintrag fehlt -> Standard kinetic/near/drive 3. Verteidigung: drive 0 (nie gestrandet, feuert immer). Befund #10: Schiffe mit weapon_type=null (colony_ship, cargos, recycler) feuern NICHT, ihr ships.*.attack ist daher KEIN Kampfschaden -> aber bewusst >0 belassen, weil fleet_power/station_power/Expeditions-Verlustverteilung diesen Wert als groben Staerke-Proxy lesen (auf 0 setzen wuerde diese Proxies verfaelschen).",
-    "light_fighter":   { "weapon_type": "kinetic", "drive": 5, "range": "near" },
-    "heavy_fighter":   { "weapon_type": "kinetic", "drive": 4, "range": "near" },
-    "cruiser":         { "weapon_type": "energy",  "drive": 4, "range": "medium" },
-    "small_cargo":     { "weapon_type": null,      "drive": 3, "range": "near" },
-    "large_cargo":     { "weapon_type": null,      "drive": 2, "range": "near" },
-    "colony_ship":     { "weapon_type": null,      "drive": 1, "range": "near" },
-    "recycler":        { "weapon_type": null,      "drive": 2, "range": "near" },
-    "solar_satellite": { "weapon_type": null,      "drive": 0, "range": "near" },
-    "spy_probe":       { "weapon_type": null,      "drive": 5, "range": "far" },
-    "battleship":      { "weapon_type": "kinetic", "drive": 2, "range": "medium" },
-    "battlecruiser":   { "weapon_type": "kinetic", "drive": 3, "range": "medium" },
-    "bomber":          { "weapon_type": "missile", "drive": 2, "range": "medium" },
-    "destroyer":       { "weapon_type": "kinetic", "drive": 2, "range": "far" },
-    "deathstar":       { "weapon_type": "kinetic", "drive": 1, "range": "medium" },
-
-    "carrier":          { "weapon_type": "kinetic", "drive": 2, "range": "medium", "carrier": true },
-    "drone":            { "weapon_type": "kinetic", "drive": 4, "range": "near" },
-    "interdictor":      { "weapon_type": "kinetic", "drive": 3, "range": "medium", "interdictor": true },
-    "ewar_frigate":     { "weapon_type": "ion",     "drive": 4, "range": "medium" },
-    "boarder":          { "weapon_type": "kinetic", "drive": 3, "range": "near", "boarder": true },
-    "stealth_corvette": { "weapon_type": "energy",  "drive": 5, "range": "near", "stealth": true },
-    "escort_frigate":   { "weapon_type": "kinetic", "drive": 3, "range": "medium", "point_defense": true },
-    "warp_stabilizer":  { "weapon_type": "kinetic", "drive": 4, "range": "near", "stabilizer": true },
-    "shield_tender":    { "weapon_type": null,      "drive": 2, "range": "medium", "shield_projector": true },
-    "interceptor":      { "weapon_type": "energy",  "drive": 5, "range": "near" },
-    "miner":            { "weapon_type": null,      "drive": 1, "range": "near" },
-    "deep_scout":       { "weapon_type": null,      "drive": 4, "range": "far", "sensor": true },
-    "expedition_ship":  { "weapon_type": "kinetic", "drive": 3, "range": "medium" },
-    "flagship":         { "weapon_type": "energy",  "drive": 2, "range": "medium", "aura": "combat" },
-    "corsair":          { "weapon_type": "energy",  "drive": 5, "range": "near", "stealth": true, "boarder": true, "raider": true },
-    "trade_leviathan":  { "weapon_type": "kinetic", "drive": 2, "range": "medium", "aura": "convoy" },
-    "harvest_titan":    { "weapon_type": "kinetic", "drive": 2, "range": "medium", "harvester": true },
-
-    "rocket_launcher":        { "weapon_type": "kinetic", "drive": 0, "range": "far" },
-    "light_laser":            { "weapon_type": "energy",  "drive": 0, "range": "far" },
-    "heavy_laser":            { "weapon_type": "energy",  "drive": 0, "range": "far" },
-    "gauss_cannon":           { "weapon_type": "kinetic", "drive": 0, "range": "far" },
-    "ion_cannon":             { "weapon_type": "ion",     "drive": 0, "range": "far" },
-    "plasma_turret":          { "weapon_type": "energy",  "drive": 0, "range": "far" },
-    "small_shield_dome":      { "weapon_type": null,      "drive": 0, "range": "far" },
-    "large_shield_dome":      { "weapon_type": null,      "drive": 0, "range": "far" },
-    "anti_ballistic_missile": { "weapon_type": null,      "drive": 0, "range": "far" },
-    "interplanetary_missile": { "weapon_type": "missile", "drive": 0, "range": "far" },
-    "orbital_gun":            { "weapon_type": "orbital", "drive": 0, "range": "far" }
+    "light_fighter": {
+      "weapon_type": "kinetic",
+      "drive": 5,
+      "range": "near"
+    },
+    "heavy_fighter": {
+      "weapon_type": "kinetic",
+      "drive": 4,
+      "range": "near"
+    },
+    "cruiser": {
+      "weapon_type": "energy",
+      "drive": 4,
+      "range": "medium"
+    },
+    "small_cargo": {
+      "weapon_type": null,
+      "drive": 3,
+      "range": "near"
+    },
+    "large_cargo": {
+      "weapon_type": null,
+      "drive": 2,
+      "range": "near"
+    },
+    "colony_ship": {
+      "weapon_type": null,
+      "drive": 1,
+      "range": "near"
+    },
+    "recycler": {
+      "weapon_type": null,
+      "drive": 2,
+      "range": "near"
+    },
+    "solar_satellite": {
+      "weapon_type": null,
+      "drive": 0,
+      "range": "near"
+    },
+    "spy_probe": {
+      "weapon_type": null,
+      "drive": 5,
+      "range": "far"
+    },
+    "battleship": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "medium"
+    },
+    "battlecruiser": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "medium"
+    },
+    "bomber": {
+      "weapon_type": "missile",
+      "drive": 2,
+      "range": "medium"
+    },
+    "destroyer": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "far"
+    },
+    "deathstar": {
+      "weapon_type": "kinetic",
+      "drive": 1,
+      "range": "medium"
+    },
+    "carrier": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "medium",
+      "carrier": true
+    },
+    "drone": {
+      "weapon_type": "kinetic",
+      "drive": 4,
+      "range": "near"
+    },
+    "interdictor": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "medium",
+      "interdictor": true
+    },
+    "ewar_frigate": {
+      "weapon_type": "ion",
+      "drive": 4,
+      "range": "medium"
+    },
+    "boarder": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "near",
+      "boarder": true
+    },
+    "stealth_corvette": {
+      "weapon_type": "energy",
+      "drive": 5,
+      "range": "near",
+      "stealth": true
+    },
+    "escort_frigate": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "medium",
+      "point_defense": true
+    },
+    "warp_stabilizer": {
+      "weapon_type": "kinetic",
+      "drive": 4,
+      "range": "near",
+      "stabilizer": true
+    },
+    "shield_tender": {
+      "weapon_type": null,
+      "drive": 2,
+      "range": "medium",
+      "shield_projector": true
+    },
+    "interceptor": {
+      "weapon_type": "energy",
+      "drive": 5,
+      "range": "near"
+    },
+    "miner": {
+      "weapon_type": null,
+      "drive": 1,
+      "range": "near"
+    },
+    "deep_scout": {
+      "weapon_type": null,
+      "drive": 4,
+      "range": "far",
+      "sensor": true
+    },
+    "expedition_ship": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "medium"
+    },
+    "flagship": {
+      "weapon_type": "energy",
+      "drive": 2,
+      "range": "medium",
+      "aura": "combat"
+    },
+    "corsair": {
+      "weapon_type": "energy",
+      "drive": 5,
+      "range": "near",
+      "stealth": true,
+      "boarder": true,
+      "raider": true
+    },
+    "trade_leviathan": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "medium",
+      "aura": "convoy"
+    },
+    "harvest_titan": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "medium",
+      "harvester": true
+    },
+    "rocket_launcher": {
+      "weapon_type": "kinetic",
+      "drive": 0,
+      "range": "far"
+    },
+    "light_laser": {
+      "weapon_type": "energy",
+      "drive": 0,
+      "range": "far"
+    },
+    "heavy_laser": {
+      "weapon_type": "energy",
+      "drive": 0,
+      "range": "far"
+    },
+    "gauss_cannon": {
+      "weapon_type": "kinetic",
+      "drive": 0,
+      "range": "far"
+    },
+    "ion_cannon": {
+      "weapon_type": "ion",
+      "drive": 0,
+      "range": "far"
+    },
+    "plasma_turret": {
+      "weapon_type": "energy",
+      "drive": 0,
+      "range": "far"
+    },
+    "small_shield_dome": {
+      "weapon_type": null,
+      "drive": 0,
+      "range": "far"
+    },
+    "large_shield_dome": {
+      "weapon_type": null,
+      "drive": 0,
+      "range": "far"
+    },
+    "anti_ballistic_missile": {
+      "weapon_type": null,
+      "drive": 0,
+      "range": "far"
+    },
+    "interplanetary_missile": {
+      "weapon_type": "missile",
+      "drive": 0,
+      "range": "far"
+    },
+    "orbital_gun": {
+      "weapon_type": "orbital",
+      "drive": 0,
+      "range": "far"
+    }
   },
-
   "tech_bonus": {
-    "weapons_per_level": 0.10,
-    "shield_per_level": 0.10,
-    "armor_per_level": 0.10,
+    "weapons_per_level": 0.1,
+    "shield_per_level": 0.1,
+    "armor_per_level": 0.1,
     "weapons_mastery_per_level": 0.01,
     "shield_mastery_per_level": 0.01,
     "armor_mastery_per_level": 0.01,
     "weapons_forge_per_level": 0.03
   },
-
   "combat": {
     "max_rounds": 8,
     "shield_regen_ratio": 0.3,
     "damage_scale": 2.0,
     "shield_bounce_ratio": 0.01,
-    "explosion_threshold_hull_pct": 0.70,
-    "debris_ratio": 0.30,
+    "explosion_threshold_hull_pct": 0.7,
+    "debris_ratio": 0.3,
     "debris_from_defense": false,
-    "plunder_ratio": 0.50,
-    "defense_regen_ratio": 0.70,
+    "plunder_ratio": 0.5,
+    "defense_regen_ratio": 0.7,
     "defense_disable": {
       "_note": "Ionen legen Verteidigung lahm (Doku 03b §3, C): Verteidigungsanlagen erhalten eine System-Integritaet (statt unverwundbar). Ionen-Treffer (drive-Schaden der damage_matrix) setzen sie herab; bei <= 0 ist das Geschuetz fuer den Rest der Schlacht LAHMGELEGT und feuert nicht mehr. Toetet das Geschuetz nicht (Huelle bleibt) -> Ionen sind der Tueroeffner. ion_disruptor_per_level: Forschung 'ion_disruptors' der Angreifer-Seite erhoeht Ionen-Schild-/Antriebswirkung je Stufe.",
       "enabled": true,
       "integrity": 140,
-      "ion_disruptor_per_level": 0.10
+      "ion_disruptor_per_level": 0.1
     },
     "damage_matrix": {
       "_note": "Rollen-Kampf (Doku 03b/03d): weapon_type -> Effektivitaet gegen {shield, drive, hull}. Schild regeneriert pro Runde, Antrieb NICHT (mission kill). RUECKGRAT seit 03d (kein Schiff-Rapidfire mehr): Energie strippt Schild -> Kinetik/Rakete zerlegt Huelle -> Ionen laehmt. Kinetik-vs-Schild steht auf 0.1 (Glaskanonen-Rolle, Phase-2-Schaerfung umgesetzt). 'orbital' (Mond-Orbitalbatterie, Befund #5): bewusst ausgewogen -> gut gegen Schild UND Huelle, aber in keiner Domain dominant (besondere, wertvolle Waffe, kein Overkill-Geschuetz).",
-      "energy":  { "shield": 1.5,  "drive": 0.5,  "hull": 0.6 },
-      "kinetic": { "shield": 0.1, "drive": 0.75, "hull": 1.3 },
-      "ion":     { "shield": 1.4,  "drive": 1.6,  "hull": 0.0 },
-      "missile": { "shield": 0.5,  "drive": 0.7,  "hull": 1.2 },
-      "orbital": { "shield": 0.9,  "drive": 0.5,  "hull": 0.9 }
+      "energy": {
+        "shield": 1.5,
+        "drive": 0.5,
+        "hull": 0.6
+      },
+      "kinetic": {
+        "shield": 0.1,
+        "drive": 0.75,
+        "hull": 1.3
+      },
+      "ion": {
+        "shield": 1.4,
+        "drive": 1.6,
+        "hull": 0.0
+      },
+      "missile": {
+        "shield": 0.5,
+        "drive": 0.7,
+        "hull": 1.2
+      },
+      "orbital": {
+        "shield": 0.9,
+        "drive": 0.5,
+        "hull": 0.9
+      }
     },
     "drive_integrity_per_tier": 100,
     "range_bands": {
       "_note": "Doku 03b §6.1: Distanz schliesst sich pro Runde (far->near). Ein Schiff feuert nur, wenn die Distanz <= seine Reichweite ist; feuert es naeher als seine optimale Reichweite, greift die Standoff-Strafe (Artillerie ist schwach im Nahkampf). Verteidigung ist stationaer -> feuert immer ohne Strafe.",
-      "order": ["near", "medium", "far"],
+      "order": [
+        "near",
+        "medium",
+        "far"
+      ],
       "start": "far",
       "close_per_round": 1,
       "standoff_penalty_per_band": 0.5
     },
     "drive_stages": {
       "_note": "Doku 03b §2: Antriebs-Integritaet (drive/drive_max) -> Stufe. Steuert Flucht (can_flee) und Tempo (speed_factor, fuer spaetere Flugzeit-Wirkung). Gestrandet (0) = enterbar (Phase 3).",
-      "full":     { "min_ratio": 0.66, "speed_factor": 1.0, "can_flee": true,  "flee_factor": 1.0 },
-      "reduced":  { "min_ratio": 0.33, "speed_factor": 0.6, "can_flee": true,  "flee_factor": 0.5 },
-      "crippled": { "min_ratio": 0.0,  "speed_factor": 0.3, "can_flee": false, "flee_factor": 0.0 },
-      "stranded": { "min_ratio": -1.0, "speed_factor": 0.0, "can_flee": false, "flee_factor": 0.0 }
+      "full": {
+        "min_ratio": 0.66,
+        "speed_factor": 1.0,
+        "can_flee": true,
+        "flee_factor": 1.0
+      },
+      "reduced": {
+        "min_ratio": 0.33,
+        "speed_factor": 0.6,
+        "can_flee": true,
+        "flee_factor": 0.5
+      },
+      "crippled": {
+        "min_ratio": 0.0,
+        "speed_factor": 0.3,
+        "can_flee": false,
+        "flee_factor": 0.0
+      },
+      "stranded": {
+        "min_ratio": -1.0,
+        "speed_factor": 0.0,
+        "can_flee": false,
+        "flee_factor": 0.0
+      }
     },
     "disengage": {
       "_note": "Doku 03b §4: Flucht-Wurf pro Runde fuer die unterlegene Seite (Power >= loser_power_ratio). Pro Schiff: base_chance * Antriebs-flee_factor * (1 - Interdiktion). Interdiktion = Anzahl gegnerischer Interdiktor-Einheiten (combat_roster.interdictor=true) * interdiction_per_unit (Phase 4). KONTER (2026-06-14): Warp-Stabilisatoren (combat_roster.stabilizer=true) der FLIEHENDEN Seite senken die Interdiktion um stabilization_per_unit je Stueck -> ein Stabilisator hebt einen Interdiktor auf. Angreifer darf standardmaessig fliehen (Rueckzug), Verteidiger nicht (haelt Stellung).",
@@ -353,7 +2044,10 @@
       "_note": "Option A: Traeger laden beim Angriffs-Flottenstart automatisch ECHTE Drohnen aus der Garnison nach (send_fleet), bis zur Kapazitaet je Traeger-Typ (capacity_by_type). Drohnen kaempfen als normale Schiffe. Todesstern (03d): Drohnentraeger mit 50 Basis, per computer_tech bis deathstar_capacity_max (100) erhoehbar.",
       "drone_type": "drone",
       "drone_capacity": 8,
-      "capacity_by_type": { "carrier": 8, "deathstar": 50 },
+      "capacity_by_type": {
+        "carrier": 8,
+        "deathstar": 50
+      },
       "deathstar_capacity_per_computer_level": 5,
       "deathstar_capacity_max": 100
     },
@@ -362,15 +2056,21 @@
       "enabled": true,
       "distance": "near",
       "detect_per_sensor": 0.01,
-      "detect_ship_cap": 0.90,
+      "detect_ship_cap": 0.9,
       "detect_per_research_level": 0.005,
       "detect_research_cap": 0.05,
       "detect_cap": 0.95
     },
     "evacuation": {
       "_note": "Entkommen nur, wenn eigene Schiffe ueberleben (GDD §13 / Doku 04).",
-      "base_chance": 0.30,
-      "rank_bonus": { "cadet": 0.0, "officer": 0.05, "veteran": 0.10, "elite": 0.20, "legend": 0.35 },
+      "base_chance": 0.3,
+      "rank_bonus": {
+        "cadet": 0.0,
+        "officer": 0.05,
+        "veteran": 0.1,
+        "elite": 0.2,
+        "legend": 0.35
+      },
       "logistics_tech_bonus_per_level": 0.03,
       "survivor_ship_bonus_max": 0.25
     },
@@ -378,47 +2078,50 @@
       "_note": "Abfangen im Flug (A, dedizierte Patrouille). Eine StationedFleet mit intercept_enabled faengt feindliche Flotten ab, deren galaxie-interne Route ihr System (+/- intercept_radius) kreuzt. GETRENNTE ACHSEN (2026-06-12): (1) FANGEN haengt NUR an Abfangjaegern + Forschung = WEICHES Modell, nie 100%: Chance = min(ship_chance_cap, chance_per_interceptor * Abfangjaeger) + min(interdiction_chance_cap, chance_per_interdiction_level * hyperspace_interdiction-Stufe), gesamt gedeckelt auf chance_cap. Schiffe kommen NUR bis ship_chance_cap (0.90) -> die letzten 5% (bis 0.95) gibt es ausschliesslich ueber Forschung, damit die Forschung auf jeder Stufe wirksam bleibt und der einzige Weg an die 95% ist. (2) Der INTERDIKTOR faengt NICHT mehr; er unterdrueckt nur das Fliehen der bereits gestellten Flotte, und das passiert im Kampf-Engine (combat.drive_stages/disengage zaehlt interdictor-Einheiten), NICHT hier. Inter-Galaxie-Fluege haben keinen modellierten Pfad -> nur am Ziel fangbar. Patrouille ist Aggressor (kann nicht fliehen), die abgefangene Flotte darf fliehen (sofern keine Interdiktor-Einheiten im Gefecht). Ueberlebt die Flotte, fliegt sie weiter.",
       "enabled": true,
       "chance_per_interceptor": 0.01,
-      "ship_chance_cap": 0.90,
+      "ship_chance_cap": 0.9,
       "chance_per_interdiction_level": 0.005,
       "interdiction_chance_cap": 0.05,
       "chance_cap": 0.95,
       "_stabilizer_note": "KONTER (2026-06-14): Warp-Stabilisatoren (combat_roster.stabilizer=true) in der DURCHREISENDEN Flotte senken die Fang-Chance um stabilizer_relief_per_unit je Stueck, gedeckelt auf stabilizer_relief_cap. So kann eine ausreichend ausgestattete Flotte nicht mehr aus dem Warp gerissen werden.",
       "stabilizer_relief_per_unit": 0.05,
-      "stabilizer_relief_cap": 0.80,
+      "stabilizer_relief_cap": 0.8,
       "base_radius": 1,
       "max_radius": 6,
       "radius_per_interdiction_level": 1,
       "_radius_note": "Patrouillen-Reichweite: Default 0 (nur das Stationssystem). Waehlbar bis intercept_radius_cap = min(max_radius, base_radius + radius_per_interdiction_level * hyperspace_interdiction-Stufe). Ohne Forschung also bis 1; Forschung dehnt +1/Stufe, hart gedeckelt bei max_radius (6, bei Stufe 5)."
     }
   },
-
   "harvest": {
     "_note": "Recycler-Mission: sammelt das Truemmerfeld (universe_cells.debris_field) am Zielort ein, begrenzt durch die Frachtkapazitaet der Flotte. min_collectors = benoetigte Recycler.",
     "collector_type": "recycler",
     "min_collectors": 1
   },
-
   "routines": {
     "_note": "Automatisierte Farm-Routen ('Routinen'). Eine Routine = eine dauerhaft fliegende Sammelschleife einer Flotte ueber Asteroiden-/Truemmerfelder. Jeder Zyklus = ein getaggter mine/recycle-Flug zum aktuellen Feld (Cursor) + Rueckkehr + Ausladen an der Heim-Station; danach startet die naechste Runde. Feld leer geraeumt -> Cursor rueckt zum naechsten Feld (modulo, endlos); Laderaum voll bevor Feld leer -> Cursor bleibt (selbes Feld nochmal). Anzahl Routinen = base_routines + fleet_logistics-Stufe; Felder pro Route = base_fields_per_route + route_planning-Stufe. Routinen-Fluege sind normale Flotten -> abfangbar + Fracht erbeutbar. Treibstoff pro Flug von der Heim-Station; kein Deuterium -> Routine pausiert.",
     "base_routines": 2,
     "base_fields_per_route": 2,
     "routines_research": "fleet_logistics",
     "fields_research": "route_planning",
-    "allowed_field_types": ["asteroid_field", "debris_field"],
+    "allowed_field_types": [
+      "asteroid_field",
+      "debris_field"
+    ],
     "empty_threshold": 1.0,
     "dock_seconds": 5,
     "loss_check_buffer_seconds": 30
   },
-
   "colonization": {
     "_note": "Doku 06a: 'colonize'-Mission gruendet eine Kolonie auf einer leeren (oder reinen Truemmer-) Zelle. Kolonie-Limit OHNE Heimatplanet (OGame-Stil): base_colonies + astrophysics_colonies_per_level * Astrophysik-Stufe, HART gedeckelt bei max_colonies. Gesamt-Planeten = 1 (Heimat) + Kolonien. Das Kolonieschiff wird beim Gruenden verbraucht; mitgefuehrte Fracht wird zur Start-Ressource der Kolonie.",
     "ship_type": "colony_ship",
     "base_colonies": 3,
     "max_colonies": 20,
-    "colony_resources": { "metal": 500, "crystal": 500, "deuterium": 0 },
+    "colony_resources": {
+      "metal": 500,
+      "crystal": 500,
+      "deuterium": 0
+    },
     "colony_buildings": {}
   },
-
   "mining": {
     "_note": "Doku 03c: Mining-Mission ('mine'). Modell 'fuelle deinen Frachtraum' + ZEITBASIERT (2026-06-15): Eine Bergbauflotte verweilt am Feld und schuerft ueber die Zeit, bis ihr GESAMTER Frachtraum voll ist (oder das Feld leer). Schuerf-Rate = mine_rate_per_miner_per_hour x Anzahl Bergbauschiffe (Ernte-Titan zaehlt harvester_rate_units Bergbauschiffe). Verweildauer = zu_fuellender_Frachtraum / Rate (gedeckelt max_hold_seconds). -> Bergbauschiffe = TEMPO, Transporter = KAPAZITAET: mehr Transporter = mehr Ausbeute, aber laenger am Feld = riskanter (Flotte ist waehrend des Schuerfens am Feld). Ertrag anteilig zur Feld-Zusammensetzung, Rest bleibt im Feld. min_ships = mind. so viele Bergbauschiffe (oder ein Ernte-Titan).",
     "ship_type": "miner",
@@ -427,7 +2130,6 @@
     "harvester_rate_units": 30,
     "max_hold_seconds": 14400
   },
-
   "asteroids": {
     "_note": "Asteroidenfelder: endliche, regenerierende Erz-Vorkommen, per RNG im Universum verteilt (eigene Zelle, occupant 'asteroid_field'). Reichtums-Tier (gewichtet gerollt) skaliert Vorrat UND Mining-Ertrag. capacity x mult = Max-Vorrat; erschoepft beim Minen, regeneriert lazy mit regen_ratio_per_hour x Max bis zur Deckelung. density_per_galaxy = Ziel-Anzahl Felder je Galaxie (auf leeren Zellen geseedet).",
     "density_per_galaxy": 50,
@@ -435,15 +2137,33 @@
     "position_min": 1,
     "position_max": 15,
     "richness_tiers": [
-      { "name": "karg",     "weight": 35, "mult": 0.5 },
-      { "name": "normal",   "weight": 40, "mult": 1.0 },
-      { "name": "reich",    "weight": 18, "mult": 1.8 },
-      { "name": "ergiebig", "weight": 7,  "mult": 3.0 }
+      {
+        "name": "karg",
+        "weight": 35,
+        "mult": 0.5
+      },
+      {
+        "name": "normal",
+        "weight": 40,
+        "mult": 1.0
+      },
+      {
+        "name": "reich",
+        "weight": 18,
+        "mult": 1.8
+      },
+      {
+        "name": "ergiebig",
+        "weight": 7,
+        "mult": 3.0
+      }
     ],
-    "capacity": { "metal": 240000, "crystal": 120000 },
+    "capacity": {
+      "metal": 240000,
+      "crystal": 120000
+    },
     "regen_ratio_per_hour": 0.03
   },
-
   "expedition": {
     "_note": "Expeditions-Mission in die GALAKTISCHEN WEITEN (deep_space_position=16, eigener Slot je System, kein Planet/NPC). Flotte fliegt hin, VERWEILT gewaehlte Stunden (1..max_hours, max = min(astrophysics, hour_cap)) und kehrt dann zurueck. Bei Aufloesung gewichteter Zufalls-Ausgang. Laenger = mehr Ertrag (yield_bonus_per_hour) UND mehr Risiko (risk_bonus_per_hour skaliert die 'risky'-Gewichte). Ertrag zusaetzlich x expedition_tech (+expedition_per_level/Stufe, gedeckelt bei yield_cap_level = +100%). Bereiche [min,max] seed-basiert gezogen.",
     "ship_type": "expedition_ship",
@@ -458,59 +2178,245 @@
     },
     "doctrine": {
       "_note": "Expeditions-Doktrin pro Flotte VOR dem Start waehlbar (offline-sicher): vorsichtig = weniger Risiko + etwas weniger Ertrag, risikofreudig = mehr Risiko + mehr Ertrag. Steuert die risky-Gewichte, den Ertrag UND die automatische Geisterschiff-Wahl (vorsichtig=ausschlachten, risikofreudig=Kern hacken).",
-      "cautious": { "risk_mult": 0.5, "yield_mult": 0.95 },
-      "bold": { "risk_mult": 1.6, "yield_mult": 1.25 }
+      "cautious": {
+        "risk_mult": 0.5,
+        "yield_mult": 0.95
+      },
+      "bold": {
+        "risk_mult": 1.6,
+        "yield_mult": 1.25
+      }
     },
     "outcomes": [
-      { "weight": 30, "type": "resources", "metal": [4000, 50000], "crystal": [2000, 24000], "deuterium": [0, 12000] },
-      { "weight": 15, "type": "ships", "ship": "light_fighter", "count": [2, 15] },
-      { "weight": 25, "type": "nothing" },
-      { "weight": 12, "type": "pirates", "risky": true },
-      { "weight": 8,  "type": "aliens", "risky": true },
-      { "weight": 4,  "type": "delay", "risky": true, "extra_hours": [1, 6] },
-      { "weight": 2,  "type": "blackhole", "risky": true },
-      { "weight": 3,  "type": "dark_matter", "amount": [50, 400] },
-      { "weight": 2,  "type": "antimatter", "amount": [30, 250] },
-      { "weight": 8,  "type": "ghost_ship", "risky": true, "metal": [3000, 18000], "crystal": [2000, 12000], "hack_success": 0.5 }
+      {
+        "weight": 30,
+        "type": "resources",
+        "metal": [
+          4000,
+          50000
+        ],
+        "crystal": [
+          2000,
+          24000
+        ],
+        "deuterium": [
+          0,
+          12000
+        ]
+      },
+      {
+        "weight": 15,
+        "type": "ships",
+        "ship": "light_fighter",
+        "count": [
+          2,
+          15
+        ]
+      },
+      {
+        "weight": 25,
+        "type": "nothing"
+      },
+      {
+        "weight": 12,
+        "type": "pirates",
+        "risky": true
+      },
+      {
+        "weight": 8,
+        "type": "aliens",
+        "risky": true
+      },
+      {
+        "weight": 4,
+        "type": "delay",
+        "risky": true,
+        "extra_hours": [
+          1,
+          6
+        ]
+      },
+      {
+        "weight": 2,
+        "type": "blackhole",
+        "risky": true
+      },
+      {
+        "weight": 3,
+        "type": "dark_matter",
+        "amount": [
+          50,
+          400
+        ]
+      },
+      {
+        "weight": 2,
+        "type": "antimatter",
+        "amount": [
+          30,
+          250
+        ]
+      },
+      {
+        "weight": 8,
+        "type": "ghost_ship",
+        "risky": true,
+        "metal": [
+          3000,
+          18000
+        ],
+        "crystal": [
+          2000,
+          12000
+        ],
+        "hack_success": 0.5
+      }
     ],
     "encounters": {
       "_note": "Piraten/Aliens = generierte Gegnerflotte, durch die echte Kampf-Engine. power_ratio x Expeditions-Kampfwert (Summe Schiff-attack) = Gegner-Budget, verteilt ueber roster (guenstigstes zuerst, zyklisch). tech = Waffen-/Schild-/Panzer-Stufe der Gegner. Bei Sieg: loot_ratio x (Metall+Kristall der zerstoerten Gegner, via Schiffskosten) als Beute in die Fracht.",
-      "pirates": { "power_ratio": 0.7, "roster": ["light_fighter", "heavy_fighter", "cruiser"], "loot_ratio": 0.5, "tech": 2 },
-      "aliens":  { "power_ratio": 1.2, "roster": ["cruiser", "battleship", "destroyer"], "loot_ratio": 0.3, "tech": 6 }
+      "pirates": {
+        "power_ratio": 0.7,
+        "roster": [
+          "light_fighter",
+          "heavy_fighter",
+          "cruiser"
+        ],
+        "loot_ratio": 0.5,
+        "tech": 2
+      },
+      "aliens": {
+        "power_ratio": 1.2,
+        "roster": [
+          "cruiser",
+          "battleship",
+          "destroyer"
+        ],
+        "loot_ratio": 0.3,
+        "tech": 6
+      }
     }
   },
-
   "doctrines": {
     "_note": "Imperiums-Doktrin (Doku 03b §9). Frueh waehlbar, Wechsel kostet switch_cost + Cooldown. Boni ueber Multiplikatoren; Signatur-Schiffe sind guenstiger/schneller. Fremde Linien bleiben baubar (keine harten Locks). Aktiv wirken aktuell: Flottenslots, Bau-Kosten/-Zeit der Signatur-Schiffe, Kampf-Angriff. (cargo_mult fuer Haendler ist als Feld vorgesehen, Markt-Layer folgt.)",
-    "switch_cost": { "metal": 50000, "crystal": 50000, "deuterium": 20000 },
+    "switch_cost": {
+      "metal": 50000,
+      "crystal": 50000,
+      "deuterium": 20000
+    },
     "switch_cooldown_seconds": 604800,
     "list": {
-      "warlord": { "label": "Kriegsherr", "fleet_slot_bonus": 1, "combat_attack_mult": 1.10, "signature_cost_mult": 0.85, "signature_time_mult": 0.85,
-        "signature_ships": ["battleship", "battlecruiser", "destroyer", "bomber", "carrier", "deathstar"] },
-      "trader": { "label": "Haendler", "fleet_slot_bonus": 0, "combat_attack_mult": 1.0, "cargo_mult": 1.25, "signature_cost_mult": 0.85, "signature_time_mult": 0.85,
-        "signature_ships": ["small_cargo", "large_cargo", "miner"] },
-      "pirate": { "label": "Freibeuter", "fleet_slot_bonus": 0, "combat_attack_mult": 1.0, "signature_cost_mult": 0.85, "signature_time_mult": 0.85,
-        "signature_ships": ["interdictor", "ewar_frigate", "boarder", "stealth_corvette"] },
-      "pioneer": { "label": "Pionier", "fleet_slot_bonus": 0, "combat_attack_mult": 1.0, "signature_cost_mult": 0.80, "signature_time_mult": 0.80,
-        "signature_ships": ["deep_scout", "expedition_ship", "colony_ship", "miner"] }
+      "warlord": {
+        "label": "Kriegsherr",
+        "fleet_slot_bonus": 1,
+        "combat_attack_mult": 1.1,
+        "signature_cost_mult": 0.85,
+        "signature_time_mult": 0.85,
+        "signature_ships": [
+          "battleship",
+          "battlecruiser",
+          "destroyer",
+          "bomber",
+          "carrier",
+          "deathstar"
+        ]
+      },
+      "trader": {
+        "label": "Haendler",
+        "fleet_slot_bonus": 0,
+        "combat_attack_mult": 1.0,
+        "cargo_mult": 1.25,
+        "signature_cost_mult": 0.85,
+        "signature_time_mult": 0.85,
+        "signature_ships": [
+          "small_cargo",
+          "large_cargo",
+          "miner"
+        ]
+      },
+      "pirate": {
+        "label": "Freibeuter",
+        "fleet_slot_bonus": 0,
+        "combat_attack_mult": 1.0,
+        "signature_cost_mult": 0.85,
+        "signature_time_mult": 0.85,
+        "signature_ships": [
+          "interdictor",
+          "ewar_frigate",
+          "boarder",
+          "stealth_corvette"
+        ]
+      },
+      "pioneer": {
+        "label": "Pionier",
+        "fleet_slot_bonus": 0,
+        "combat_attack_mult": 1.0,
+        "signature_cost_mult": 0.8,
+        "signature_time_mult": 0.8,
+        "signature_ships": [
+          "deep_scout",
+          "expedition_ship",
+          "colony_ship",
+          "miner"
+        ]
+      }
     }
   },
-
   "commander": {
     "morale": {
-      "min": 0, "max": 100, "start": 60, "base_target": 50,
-      "drift_rate_per_tick": 0.10,
+      "min": 0,
+      "max": 100,
+      "start": 60,
+      "base_target": 50,
+      "drift_rate_per_tick": 0.1,
       "_tick_note": "Moral-Drift laeuft als periodischer Job (stuendlich).",
       "bands": [
-        { "min": 80, "max": 100, "combat_mod": 0.10,  "label": "hoch",     "effects": ["+10% Angriff/Schild"] },
-        { "min": 50, "max": 79,  "combat_mod": 0.0,   "label": "neutral",  "effects": [] },
-        { "min": 25, "max": 49,  "combat_mod": -0.10, "label": "niedrig",  "effects": ["-10% Kampfwerte", "gelegentliche Befehlsverzoegerung"] },
-        { "min": 0,  "max": 24,  "combat_mod": -0.25, "label": "kritisch", "effects": ["-25% Kampfwerte", "Meuterei-/Ueberlauf-Risiko"] }
+        {
+          "min": 80,
+          "max": 100,
+          "combat_mod": 0.1,
+          "label": "hoch",
+          "effects": [
+            "+10% Angriff/Schild"
+          ]
+        },
+        {
+          "min": 50,
+          "max": 79,
+          "combat_mod": 0.0,
+          "label": "neutral",
+          "effects": []
+        },
+        {
+          "min": 25,
+          "max": 49,
+          "combat_mod": -0.1,
+          "label": "niedrig",
+          "effects": [
+            "-10% Kampfwerte",
+            "gelegentliche Befehlsverzoegerung"
+          ]
+        },
+        {
+          "min": 0,
+          "max": 24,
+          "combat_mod": -0.25,
+          "label": "kritisch",
+          "effects": [
+            "-25% Kampfwerte",
+            "Meuterei-/Ueberlauf-Risiko"
+          ]
+        }
       ],
       "deltas": {
-        "victory": 8, "defeat": -12, "crushing_victory": 4, "bashing": -10,
-        "demand_fulfilled": 6, "demand_ignored": -6, "promotion": 12,
-        "shore_leave": 10, "loot_gained": 4
+        "victory": 8,
+        "defeat": -12,
+        "crushing_victory": 4,
+        "bashing": -10,
+        "demand_fulfilled": 6,
+        "demand_ignored": -6,
+        "promotion": 12,
+        "shore_leave": 10,
+        "loot_gained": 4
       },
       "neglect": {
         "idle_days_before_decay": 3,
@@ -519,13 +2425,52 @@
       }
     },
     "ranks": [
-      { "key": "cadet",   "label": "Kadett",   "xp_threshold": 0,    "span_contrib": 1, "stat_cap": 1.0, "permadeath_protection": 0.0 },
-      { "key": "officer", "label": "Offizier", "xp_threshold": 100,  "span_contrib": 1, "stat_cap": 1.2, "permadeath_protection": 0.05 },
-      { "key": "veteran", "label": "Veteran",  "xp_threshold": 400,  "span_contrib": 2, "stat_cap": 1.5, "permadeath_protection": 0.10 },
-      { "key": "elite",   "label": "Elite",    "xp_threshold": 1200, "span_contrib": 3, "stat_cap": 1.8, "permadeath_protection": 0.20 },
-      { "key": "legend",  "label": "Legende",  "xp_threshold": 4000, "span_contrib": 4, "stat_cap": 2.2, "permadeath_protection": 0.35 }
+      {
+        "key": "cadet",
+        "label": "Kadett",
+        "xp_threshold": 0,
+        "span_contrib": 1,
+        "stat_cap": 1.0,
+        "permadeath_protection": 0.0
+      },
+      {
+        "key": "officer",
+        "label": "Offizier",
+        "xp_threshold": 100,
+        "span_contrib": 1,
+        "stat_cap": 1.2,
+        "permadeath_protection": 0.05
+      },
+      {
+        "key": "veteran",
+        "label": "Veteran",
+        "xp_threshold": 400,
+        "span_contrib": 2,
+        "stat_cap": 1.5,
+        "permadeath_protection": 0.1
+      },
+      {
+        "key": "elite",
+        "label": "Elite",
+        "xp_threshold": 1200,
+        "span_contrib": 3,
+        "stat_cap": 1.8,
+        "permadeath_protection": 0.2
+      },
+      {
+        "key": "legend",
+        "label": "Legende",
+        "xp_threshold": 4000,
+        "span_contrib": 4,
+        "stat_cap": 2.2,
+        "permadeath_protection": 0.35
+      }
     ],
-    "xp": { "mission_success": 25, "victory": 40, "expedition_find": 30 },
+    "xp": {
+      "mission_success": 25,
+      "victory": 40,
+      "expedition_find": 30
+    },
     "span": {
       "player_base": 1,
       "command_center_bonus_per_level": 1,
@@ -534,62 +2479,195 @@
       "overstretch_penalty_per_excess": 0.08,
       "_overstretch_note": "Pro Geschwader ueber Span: -8% effektive Kampfkraft (Koordinationsstrafe)."
     },
-    "specializations": ["combat", "logistics", "spy", "research", "trade", "admin"],
-
+    "specializations": [
+      "combat",
+      "logistics",
+      "spy",
+      "research",
+      "trade",
+      "admin"
+    ],
     "ship_classes": {
       "_note": "Schiffsklassen, auf die Commander-Boni zielen koennen (target).",
-      "fighter": ["light_fighter", "heavy_fighter", "interceptor", "drone", "stealth_corvette"],
-      "cruiser": ["cruiser", "escort_frigate", "ewar_frigate", "interdictor"],
-      "capital": ["battleship", "battlecruiser", "destroyer", "bomber", "deathstar", "carrier", "shield_tender", "boarder"],
-      "civil": ["small_cargo", "large_cargo", "recycler", "colony_ship", "spy_probe", "solar_satellite", "miner", "deep_scout", "expedition_ship"]
+      "fighter": [
+        "light_fighter",
+        "heavy_fighter",
+        "interceptor",
+        "drone",
+        "stealth_corvette"
+      ],
+      "cruiser": [
+        "cruiser",
+        "escort_frigate",
+        "ewar_frigate",
+        "interdictor"
+      ],
+      "capital": [
+        "battleship",
+        "battlecruiser",
+        "destroyer",
+        "bomber",
+        "deathstar",
+        "carrier",
+        "shield_tender",
+        "boarder"
+      ],
+      "civil": [
+        "small_cargo",
+        "large_cargo",
+        "recycler",
+        "colony_ship",
+        "spy_probe",
+        "solar_satellite",
+        "miner",
+        "deep_scout",
+        "expedition_ship"
+      ]
     },
-
     "combat_bonuses": {
       "_note": "Commander-Boni: % auf Angriff/Schild/Tempo, teils flottenweit ('all'), teils auf eine Schiffsklasse (Fokus). Abgeleitet aus Spezialisierung + Rang + Traits + persona.focus, skaliert mit Moral. Damit baut sich jeder Spieler eigene Flotten-Profile (Offensive/Defensive/Speed).",
-      "stats": ["attack", "shield", "speed"],
+      "stats": [
+        "attack",
+        "shield",
+        "speed"
+      ],
       "profiles": {
-        "combat":    { "primary": "attack", "secondary": "shield", "favored_class": "fighter" },
-        "logistics": { "primary": "speed",  "secondary": "shield", "favored_class": "civil" },
-        "spy":       { "primary": "speed",  "secondary": "attack", "favored_class": "civil" },
-        "research":  { "primary": "shield", "secondary": "speed",  "favored_class": "cruiser" },
-        "trade":     { "primary": "speed",  "secondary": "shield", "favored_class": "civil" },
-        "admin":     { "primary": "shield", "secondary": "shield", "favored_class": "civil" }
+        "combat": {
+          "primary": "attack",
+          "secondary": "shield",
+          "favored_class": "fighter"
+        },
+        "logistics": {
+          "primary": "speed",
+          "secondary": "shield",
+          "favored_class": "civil"
+        },
+        "spy": {
+          "primary": "speed",
+          "secondary": "attack",
+          "favored_class": "civil"
+        },
+        "research": {
+          "primary": "shield",
+          "secondary": "speed",
+          "favored_class": "cruiser"
+        },
+        "trade": {
+          "primary": "speed",
+          "secondary": "shield",
+          "favored_class": "civil"
+        },
+        "admin": {
+          "primary": "shield",
+          "secondary": "shield",
+          "favored_class": "civil"
+        }
       },
-      "base": { "primary_pct": 0.10, "secondary_pct": 0.05, "favored_class_pct": 0.10 },
-      "rank_scale": { "cadet": 0.6, "officer": 0.8, "veteran": 1.0, "elite": 1.3, "legend": 1.6 },
+      "base": {
+        "primary_pct": 0.1,
+        "secondary_pct": 0.05,
+        "favored_class_pct": 0.1
+      },
+      "rank_scale": {
+        "cadet": 0.6,
+        "officer": 0.8,
+        "veteran": 1.0,
+        "elite": 1.3,
+        "legend": 1.6
+      },
       "trait_mods": {
         "_note": "Flotten-weite Modifikatoren je Trait (flach, NICHT rang-skaliert). Negative Werte = Schwaeche (Risiko/Belohnung).",
-        "aggressive":   { "attack": 0.08, "shield": -0.04 },
-        "cautious":     { "shield": 0.08, "attack": -0.03 },
-        "loyal":        {},
-        "ambitious":    { "attack": 0.03 },
-        "greedy":       { "attack": 0.04 },
-        "honorable":    { "shield": 0.03 },
-        "charismatic":  { "attack": 0.03, "shield": 0.03 },
-        "hot_tempered": { "attack": 0.12, "shield": -0.06 }
+        "aggressive": {
+          "attack": 0.08,
+          "shield": -0.04
+        },
+        "cautious": {
+          "shield": 0.08,
+          "attack": -0.03
+        },
+        "loyal": {},
+        "ambitious": {
+          "attack": 0.03
+        },
+        "greedy": {
+          "attack": 0.04
+        },
+        "honorable": {
+          "shield": 0.03
+        },
+        "charismatic": {
+          "attack": 0.03,
+          "shield": 0.03
+        },
+        "hot_tempered": {
+          "attack": 0.12,
+          "shield": -0.06
+        }
       },
-      "morale_scale": { "floor": 0.5, "_note": "effektiv = base * (floor + (1-floor)*morale/100). Moral 100 -> voll, 0 -> floor." }
+      "morale_scale": {
+        "floor": 0.5,
+        "_note": "effektiv = base * (floor + (1-floor)*morale/100). Moral 100 -> voll, 0 -> floor."
+      }
     },
-
     "personality_traits": {
-      "aggressive":   { "self_risk_mod": 0.10 },
-      "cautious":     { "loss_reduction": 0.15, "retreat_early": true },
-      "loyal":        { "morale_decay_mult": 0.5, "defect_risk_mult": 0.2 },
-      "ambitious":    { "xp_mult": 1.25, "demands_promotion": true },
-      "greedy":       { "morale_on_loot": 0.08, "demands_bigger_share": true },
-      "honorable":    { "morale_on_fair_target": 0.10, "morale_on_bashing": -0.20 },
-      "charismatic":  { "adjacent_morale_boost": 0.05 },
-      "hot_tempered": { "morale_instability": 0.20, "mutiny_risk": true }
+      "aggressive": {
+        "self_risk_mod": 0.1
+      },
+      "cautious": {
+        "loss_reduction": 0.15,
+        "retreat_early": true
+      },
+      "loyal": {
+        "morale_decay_mult": 0.5,
+        "defect_risk_mult": 0.2
+      },
+      "ambitious": {
+        "xp_mult": 1.25,
+        "demands_promotion": true
+      },
+      "greedy": {
+        "morale_on_loot": 0.08,
+        "demands_bigger_share": true
+      },
+      "honorable": {
+        "morale_on_fair_target": 0.1,
+        "morale_on_bashing": -0.2
+      },
+      "charismatic": {
+        "adjacent_morale_boost": 0.05
+      },
+      "hot_tempered": {
+        "morale_instability": 0.2,
+        "mutiny_risk": true
+      }
     },
     "economy_bonus": {
       "_note": "Wirtschafts-Commander: +bonus * (morale/100) auf Planetenproduktion.",
-      "peak_pct_by_rank": { "cadet": 0.03, "officer": 0.05, "veteran": 0.07, "elite": 0.09, "legend": 0.10 }
+      "peak_pct_by_rank": {
+        "cadet": 0.03,
+        "officer": 0.05,
+        "veteran": 0.07,
+        "elite": 0.09,
+        "legend": 0.1
+      }
     },
     "satisfaction": {
       "_note": "Zufriedenheits-Oekonomie (natuerlicher Overkill). Unmut waechst pro Tag (stuendlicher Tick) = base_gain_per_day * rank_mult * grade_potency * trait_mult; Schwelle demand_threshold -> trait-gefaerbte Forderung (Postfach-Entscheidung). Erfuellen hebt Loyalitaet + Unmut-Reset, Ignorieren senkt Loyalitaet. relief_on_win senkt Unmut bei Sieg. Starke Kommandeure sind beduerftiger -> man kann nicht beliebig viele zufriedenstellen.",
       "base_gain_per_day": 6.0,
-      "rank_mult": { "cadet": 0.5, "officer": 0.8, "veteran": 1.2, "elite": 1.8, "legend": 2.5 },
-      "trait_mult": { "ambitious": 1.5, "greedy": 1.3, "hot_tempered": 1.3, "loyal": 0.4, "honorable": 0.9 },
+      "rank_mult": {
+        "cadet": 0.5,
+        "officer": 0.8,
+        "veteran": 1.2,
+        "elite": 1.8,
+        "legend": 2.5
+      },
+      "trait_mult": {
+        "ambitious": 1.5,
+        "greedy": 1.3,
+        "hot_tempered": 1.3,
+        "loyal": 0.4,
+        "honorable": 0.9
+      },
       "idle_unrest_per_hour": 0.3,
       "demand_threshold": 100,
       "relief_on_win": 25,
@@ -601,19 +2679,85 @@
       "mutiny_threshold": 30,
       "defect_threshold": 15,
       "defect_chance_per_day": 0.25,
-      "mutiny_trait_mult": { "hot_tempered": 1.6, "aggressive": 1.2, "loyal": 0.15, "honorable": 0.6 }
+      "mutiny_trait_mult": {
+        "hot_tempered": 1.6,
+        "aggressive": 1.2,
+        "loyal": 0.15,
+        "honorable": 0.6
+      }
     },
     "ability_catalog": {
       "_note": "Erlernbare Faehigkeiten (RPG-Entwicklung). Pro Stufe (max_level) staerker. kind steuert die Wirkung: attack_pct (Angriffs-Boost in der Schlacht), loss_reduction (rettet eigene Verluste), flight_pct (kuerzere Flugzeit), fuel_pct (weniger Sprit). sp_cost = Skillpunkte je Stufe. requires.min_rank gated. Beim Versand werden bis arm_slots erlernte Faehigkeiten scharfgeschaltet; Cooldown je Faehigkeit.",
-      "focused_fire":   { "label": "Konzentriertes Feuer", "category": "combat",    "kind": "attack_pct",     "per_level": 0.12, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "officer" }, "cooldown_seconds": 7200 },
-      "evasive":        { "label": "Ausweichmanöver",       "category": "combat",    "kind": "loss_reduction", "per_level": 0.10, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "veteran" }, "cooldown_seconds": 10800 },
-      "battle_drill":   { "label": "Gefechtsdrill",         "category": "general",   "kind": "attack_pct",     "per_level": 0.06, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "cadet" },   "cooldown_seconds": 7200 },
-      "forced_march":   { "label": "Eilmarsch",             "category": "logistics", "kind": "flight_pct",     "per_level": 0.10, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "cadet" },   "cooldown_seconds": 7200 },
-      "efficient_burn": { "label": "Sparflug",              "category": "logistics", "kind": "fuel_pct",       "per_level": 0.15, "max_level": 3, "sp_cost": 1, "requires": { "min_rank": "officer" }, "cooldown_seconds": 7200 }
+      "focused_fire": {
+        "label": "Konzentriertes Feuer",
+        "category": "combat",
+        "kind": "attack_pct",
+        "per_level": 0.12,
+        "max_level": 3,
+        "sp_cost": 1,
+        "requires": {
+          "min_rank": "officer"
+        },
+        "cooldown_seconds": 7200
+      },
+      "evasive": {
+        "label": "Ausweichmanöver",
+        "category": "combat",
+        "kind": "loss_reduction",
+        "per_level": 0.1,
+        "max_level": 3,
+        "sp_cost": 1,
+        "requires": {
+          "min_rank": "veteran"
+        },
+        "cooldown_seconds": 10800
+      },
+      "battle_drill": {
+        "label": "Gefechtsdrill",
+        "category": "general",
+        "kind": "attack_pct",
+        "per_level": 0.06,
+        "max_level": 3,
+        "sp_cost": 1,
+        "requires": {
+          "min_rank": "cadet"
+        },
+        "cooldown_seconds": 7200
+      },
+      "forced_march": {
+        "label": "Eilmarsch",
+        "category": "logistics",
+        "kind": "flight_pct",
+        "per_level": 0.1,
+        "max_level": 3,
+        "sp_cost": 1,
+        "requires": {
+          "min_rank": "cadet"
+        },
+        "cooldown_seconds": 7200
+      },
+      "efficient_burn": {
+        "label": "Sparflug",
+        "category": "logistics",
+        "kind": "fuel_pct",
+        "per_level": 0.15,
+        "max_level": 3,
+        "sp_cost": 1,
+        "requires": {
+          "min_rank": "officer"
+        },
+        "cooldown_seconds": 7200
+      }
     },
     "ability_progression": {
       "_note": "arm_slots = wie viele erlernte Faehigkeiten je Einsatz scharfgeschaltet werden koennen. skill_points_per_rank beim Aufstieg; +grade_bonus_min_grade ab Grade. unlearn_refund = Anteil erstatteter Skillpunkte beim Verlernen.",
-      "arm_slots": { "cadet": 1, "officer": 1, "veteran": 2, "elite": 2, "legend": 3 },
+      "arm_slots": {
+        "cadet": 1,
+        "officer": 1,
+        "veteran": 2,
+        "elite": 2,
+        "legend": 3
+      },
       "skill_points_per_rank": 1,
       "grade_bonus_from": "A",
       "grade_bonus_points": 1,
@@ -622,12 +2766,27 @@
     },
     "trait_training": {
       "_note": "Charakter-Zucht an der Akademie (Ressourcen-Kosten, sofort). reroll = neue Zufalls-Traits; replace = einen Trait durch einen gewuenschten ersetzen (teurer). Kadetten-Training kann gegen Aufpreis einen Wunsch-Trait garantieren.",
-      "reroll_cost": { "metal": 30000, "crystal": 20000, "deuterium": 10000 },
-      "replace_cost": { "metal": 60000, "crystal": 40000, "deuterium": 20000 }
+      "reroll_cost": {
+        "metal": 30000,
+        "crystal": 20000,
+        "deuterium": 10000
+      },
+      "replace_cost": {
+        "metal": 60000,
+        "crystal": 40000,
+        "deuterium": 20000
+      }
     },
     "governor": {
       "_note": "Kommandeur als Planeten-Gouverneur: Produktions-Bonus = economy_bonus.peak_pct_by_rank[rank] * (morale/100) * spec_mult. admin (Verwaltung) ist darauf spezialisiert.",
-      "spec_mult": { "admin": 1.6, "trade": 1.1, "logistics": 1.0, "research": 1.0, "combat": 0.6, "spy": 0.8 }
+      "spec_mult": {
+        "admin": 1.6,
+        "trade": 1.1,
+        "logistics": 1.0,
+        "research": 1.0,
+        "combat": 0.6,
+        "spy": 0.8
+      }
     },
     "academy": {
       "base_training_seconds": 600,
@@ -637,89 +2796,412 @@
     "grades": {
       "_note": "Gueteklasse E..S (6 Stufen). Angeborenes Potenzial, orthogonal zum Rang. potency skaliert Schiffsboni/Span. Neue Commander default = C (Baseline). Ausbildungs-Programme bilden eine glatte Leiter (Standard E/D -> gehoben D/C -> Elite C/B/A -> experimentell A/S). aliases bilden Alt-Grade (F/SS/SSS) auf das neue Schema ab, ohne DB-Write. Gewichte werden normalisiert (Summe egal).",
       "default": "C",
-      "order": ["E", "D", "C", "B", "A", "S"],
+      "order": [
+        "E",
+        "D",
+        "C",
+        "B",
+        "A",
+        "S"
+      ],
       "potency": {
-        "E": 0.80, "D": 0.90, "C": 1.00, "B": 1.15, "A": 1.32, "S": 1.50
+        "E": 0.8,
+        "D": 0.9,
+        "C": 1.0,
+        "B": 1.15,
+        "A": 1.32,
+        "S": 1.5
       },
-      "aliases": { "F": "E", "SS": "S", "SSS": "S" },
-      "training_base_cost": { "metal": 2000, "crystal": 1500, "deuterium": 500 },
+      "aliases": {
+        "F": "E",
+        "SS": "S",
+        "SSS": "S"
+      },
+      "training_base_cost": {
+        "metal": 2000,
+        "crystal": 1500,
+        "deuterium": 500
+      },
       "training_tiers": [
         {
-          "key": "standard", "label": "Standard", "cost_mult": 1,
-          "weights": { "E": 70, "D": 30 }
+          "key": "standard",
+          "label": "Standard",
+          "cost_mult": 1,
+          "weights": {
+            "E": 70,
+            "D": 30
+          }
         },
         {
-          "key": "gehoben", "label": "Gehoben", "cost_mult": 3,
-          "weights": { "D": 55, "C": 45 }
+          "key": "gehoben",
+          "label": "Gehoben",
+          "cost_mult": 3,
+          "weights": {
+            "D": 55,
+            "C": 45
+          }
         },
         {
-          "key": "elite", "label": "Elite", "cost_mult": 8,
-          "weights": { "C": 30, "B": 45, "A": 25 }
+          "key": "elite",
+          "label": "Elite",
+          "cost_mult": 8,
+          "weights": {
+            "C": 30,
+            "B": 45,
+            "A": 25
+          }
         },
         {
-          "key": "experimentell", "label": "Experimentell", "cost_mult": 20,
-          "weights": { "A": 65, "S": 35 }
+          "key": "experimentell",
+          "label": "Experimentell",
+          "cost_mult": 20,
+          "weights": {
+            "A": 65,
+            "S": 35
+          }
         }
       ]
     },
     "equipment": {
       "_note": "Kommandeurs-Ausruestung: 4 Slots (head/hands/chest/shoes). Item-bonuses in der Form {stat,target,pct} wie commander.combat_bonuses -> fliessen (moral-skaliert) in die Schiffsboni ein. rarity multipliziert die Item-pct (NICHT die Set-Boni). 4er-Sets geben bei 2/4 getragenen Teilen Zusatzboni. Quellen: Quests/Expeditionen/globale Events (Drops) + Akademie-Fertigung (craft). P2W-frei: nur erspielt.",
-      "slots": ["head", "hands", "chest", "shoes"],
-      "slot_labels": { "head": "Kopf", "hands": "Haende", "chest": "Brust", "shoes": "Schuhe" },
+      "slots": [
+        "head",
+        "hands",
+        "chest",
+        "shoes"
+      ],
+      "slot_labels": {
+        "head": "Kopf",
+        "hands": "Haende",
+        "chest": "Brust",
+        "shoes": "Schuhe"
+      },
       "rarities": {
-        "common": { "label": "Gewoehnlich", "mult": 1.0 },
-        "rare":   { "label": "Selten",      "mult": 1.35 },
-        "epic":   { "label": "Episch",      "mult": 1.8 }
+        "common": {
+          "label": "Gewoehnlich",
+          "mult": 1.0
+        },
+        "rare": {
+          "label": "Selten",
+          "mult": 1.35
+        },
+        "epic": {
+          "label": "Episch",
+          "mult": 1.8
+        }
       },
       "sets": {
-        "fighter": { "label": "Jaeger-Schwarm", "ship_class": "fighter",
-          "bonus": { "2": [{ "stat": "speed", "target": "all", "pct": 0.05 }],
-                     "4": [{ "stat": "attack", "target": "fighter", "pct": 0.12 }] } },
-        "cruiser": { "label": "Kreuzer-Bataillon", "ship_class": "cruiser",
-          "bonus": { "2": [{ "stat": "shield", "target": "cruiser", "pct": 0.06 }],
-                     "4": [{ "stat": "attack", "target": "cruiser", "pct": 0.10 }] } },
-        "capital": { "label": "Schlachtlinie", "ship_class": "capital",
-          "bonus": { "2": [{ "stat": "shield", "target": "capital", "pct": 0.08 }],
-                     "4": [{ "stat": "attack", "target": "capital", "pct": 0.12 }] } },
-        "civil": { "label": "Bergungs-Montur", "ship_class": "civil",
-          "bonus": { "2": [{ "stat": "speed", "target": "all", "pct": 0.06 }],
-                     "4": [{ "stat": "shield", "target": "civil", "pct": 0.12 }] } }
+        "fighter": {
+          "label": "Jaeger-Schwarm",
+          "ship_class": "fighter",
+          "bonus": {
+            "2": [
+              {
+                "stat": "speed",
+                "target": "all",
+                "pct": 0.05
+              }
+            ],
+            "4": [
+              {
+                "stat": "attack",
+                "target": "fighter",
+                "pct": 0.12
+              }
+            ]
+          }
+        },
+        "cruiser": {
+          "label": "Kreuzer-Bataillon",
+          "ship_class": "cruiser",
+          "bonus": {
+            "2": [
+              {
+                "stat": "shield",
+                "target": "cruiser",
+                "pct": 0.06
+              }
+            ],
+            "4": [
+              {
+                "stat": "attack",
+                "target": "cruiser",
+                "pct": 0.1
+              }
+            ]
+          }
+        },
+        "capital": {
+          "label": "Schlachtlinie",
+          "ship_class": "capital",
+          "bonus": {
+            "2": [
+              {
+                "stat": "shield",
+                "target": "capital",
+                "pct": 0.08
+              }
+            ],
+            "4": [
+              {
+                "stat": "attack",
+                "target": "capital",
+                "pct": 0.12
+              }
+            ]
+          }
+        },
+        "civil": {
+          "label": "Bergungs-Montur",
+          "ship_class": "civil",
+          "bonus": {
+            "2": [
+              {
+                "stat": "speed",
+                "target": "all",
+                "pct": 0.06
+              }
+            ],
+            "4": [
+              {
+                "stat": "shield",
+                "target": "civil",
+                "pct": 0.12
+              }
+            ]
+          }
+        }
       },
       "items": {
-        "fighter_helm":      { "slot": "head",  "set": "fighter", "label": "Jaeger-Helm",        "bonuses": [{ "stat": "attack", "target": "fighter", "pct": 0.06 }] },
-        "fighter_gloves":    { "slot": "hands", "set": "fighter", "label": "Jaeger-Handschuhe",  "bonuses": [{ "stat": "attack", "target": "fighter", "pct": 0.05 }] },
-        "fighter_vest":      { "slot": "chest", "set": "fighter", "label": "Jaeger-Flugweste",   "bonuses": [{ "stat": "shield", "target": "fighter", "pct": 0.06 }] },
-        "fighter_boots":     { "slot": "shoes", "set": "fighter", "label": "Jaeger-Schubstiefel","bonuses": [{ "stat": "speed",  "target": "all",     "pct": 0.08 }] },
-        "cruiser_helm":      { "slot": "head",  "set": "cruiser", "label": "Taktik-Helm",        "bonuses": [{ "stat": "attack", "target": "cruiser", "pct": 0.06 }] },
-        "cruiser_gloves":    { "slot": "hands", "set": "cruiser", "label": "Taktik-Handschuhe",  "bonuses": [{ "stat": "attack", "target": "cruiser", "pct": 0.05 }] },
-        "cruiser_plate":     { "slot": "chest", "set": "cruiser", "label": "Kreuzer-Panzer",     "bonuses": [{ "stat": "shield", "target": "cruiser", "pct": 0.08 }] },
-        "cruiser_boots":     { "slot": "shoes", "set": "cruiser", "label": "Einsatzstiefel",     "bonuses": [{ "stat": "speed",  "target": "all",     "pct": 0.05 }] },
-        "capital_helm":      { "slot": "head",  "set": "capital", "label": "Kommandanten-Helm",  "bonuses": [{ "stat": "attack", "target": "capital", "pct": 0.06 }] },
-        "capital_gauntlets": { "slot": "hands", "set": "capital", "label": "Panzerhandschuhe",   "bonuses": [{ "stat": "attack", "target": "capital", "pct": 0.06 }] },
-        "capital_cuirass":   { "slot": "chest", "set": "capital", "label": "Schlacht-Kuerass",   "bonuses": [{ "stat": "shield", "target": "capital", "pct": 0.10 }] },
-        "capital_greaves":   { "slot": "shoes", "set": "capital", "label": "Panzerstiefel",      "bonuses": [{ "stat": "shield", "target": "capital", "pct": 0.06 }] },
-        "salvage_visor":     { "slot": "head",  "set": "civil",   "label": "Bergungs-Visier",    "bonuses": [{ "stat": "shield", "target": "civil",   "pct": 0.08 }] },
-        "salvage_gloves":    { "slot": "hands", "set": "civil",   "label": "Arbeitshandschuhe",  "bonuses": [{ "stat": "speed",  "target": "all",     "pct": 0.05 }] },
-        "salvage_rig":       { "slot": "chest", "set": "civil",   "label": "Bergungs-Rig",       "bonuses": [{ "stat": "shield", "target": "civil",   "pct": 0.08 }] },
-        "salvage_boots":     { "slot": "shoes", "set": "civil",   "label": "Magnetstiefel",      "bonuses": [{ "stat": "speed",  "target": "all",     "pct": 0.10 }] }
+        "fighter_helm": {
+          "slot": "head",
+          "set": "fighter",
+          "label": "Jaeger-Helm",
+          "bonuses": [
+            {
+              "stat": "attack",
+              "target": "fighter",
+              "pct": 0.06
+            }
+          ]
+        },
+        "fighter_gloves": {
+          "slot": "hands",
+          "set": "fighter",
+          "label": "Jaeger-Handschuhe",
+          "bonuses": [
+            {
+              "stat": "attack",
+              "target": "fighter",
+              "pct": 0.05
+            }
+          ]
+        },
+        "fighter_vest": {
+          "slot": "chest",
+          "set": "fighter",
+          "label": "Jaeger-Flugweste",
+          "bonuses": [
+            {
+              "stat": "shield",
+              "target": "fighter",
+              "pct": 0.06
+            }
+          ]
+        },
+        "fighter_boots": {
+          "slot": "shoes",
+          "set": "fighter",
+          "label": "Jaeger-Schubstiefel",
+          "bonuses": [
+            {
+              "stat": "speed",
+              "target": "all",
+              "pct": 0.08
+            }
+          ]
+        },
+        "cruiser_helm": {
+          "slot": "head",
+          "set": "cruiser",
+          "label": "Taktik-Helm",
+          "bonuses": [
+            {
+              "stat": "attack",
+              "target": "cruiser",
+              "pct": 0.06
+            }
+          ]
+        },
+        "cruiser_gloves": {
+          "slot": "hands",
+          "set": "cruiser",
+          "label": "Taktik-Handschuhe",
+          "bonuses": [
+            {
+              "stat": "attack",
+              "target": "cruiser",
+              "pct": 0.05
+            }
+          ]
+        },
+        "cruiser_plate": {
+          "slot": "chest",
+          "set": "cruiser",
+          "label": "Kreuzer-Panzer",
+          "bonuses": [
+            {
+              "stat": "shield",
+              "target": "cruiser",
+              "pct": 0.08
+            }
+          ]
+        },
+        "cruiser_boots": {
+          "slot": "shoes",
+          "set": "cruiser",
+          "label": "Einsatzstiefel",
+          "bonuses": [
+            {
+              "stat": "speed",
+              "target": "all",
+              "pct": 0.05
+            }
+          ]
+        },
+        "capital_helm": {
+          "slot": "head",
+          "set": "capital",
+          "label": "Kommandanten-Helm",
+          "bonuses": [
+            {
+              "stat": "attack",
+              "target": "capital",
+              "pct": 0.06
+            }
+          ]
+        },
+        "capital_gauntlets": {
+          "slot": "hands",
+          "set": "capital",
+          "label": "Panzerhandschuhe",
+          "bonuses": [
+            {
+              "stat": "attack",
+              "target": "capital",
+              "pct": 0.06
+            }
+          ]
+        },
+        "capital_cuirass": {
+          "slot": "chest",
+          "set": "capital",
+          "label": "Schlacht-Kuerass",
+          "bonuses": [
+            {
+              "stat": "shield",
+              "target": "capital",
+              "pct": 0.1
+            }
+          ]
+        },
+        "capital_greaves": {
+          "slot": "shoes",
+          "set": "capital",
+          "label": "Panzerstiefel",
+          "bonuses": [
+            {
+              "stat": "shield",
+              "target": "capital",
+              "pct": 0.06
+            }
+          ]
+        },
+        "salvage_visor": {
+          "slot": "head",
+          "set": "civil",
+          "label": "Bergungs-Visier",
+          "bonuses": [
+            {
+              "stat": "shield",
+              "target": "civil",
+              "pct": 0.08
+            }
+          ]
+        },
+        "salvage_gloves": {
+          "slot": "hands",
+          "set": "civil",
+          "label": "Arbeitshandschuhe",
+          "bonuses": [
+            {
+              "stat": "speed",
+              "target": "all",
+              "pct": 0.05
+            }
+          ]
+        },
+        "salvage_rig": {
+          "slot": "chest",
+          "set": "civil",
+          "label": "Bergungs-Rig",
+          "bonuses": [
+            {
+              "stat": "shield",
+              "target": "civil",
+              "pct": 0.08
+            }
+          ]
+        },
+        "salvage_boots": {
+          "slot": "shoes",
+          "set": "civil",
+          "label": "Magnetstiefel",
+          "bonuses": [
+            {
+              "stat": "speed",
+              "target": "all",
+              "pct": 0.1
+            }
+          ]
+        }
       },
       "craft": {
         "_note": "Akademie-Fertigung: jedes Katalog-Item gegen Ressourcen herstellbar (rarity=common). academy_min = benoetigte Akademie-Stufe.",
         "academy_min": 2,
-        "cost": { "metal": 8000, "crystal": 6000, "deuterium": 2000 }
+        "cost": {
+          "metal": 8000,
+          "crystal": 6000,
+          "deuterium": 2000
+        }
       },
       "drops": {
         "_note": "Drop-Chance je Quelle (pro Belohnungs-Event) + Raritaets-Gewichte. grant_item waehlt ein zufaelliges Katalog-Item + Raritaet.",
-        "chance": { "quest": 0.18, "expedition": 0.08, "global_event": 0.45 },
+        "chance": {
+          "quest": 0.18,
+          "expedition": 0.08,
+          "global_event": 0.45
+        },
         "rarity_weights": {
-          "quest":        { "common": 70, "rare": 27, "epic": 3 },
-          "expedition":   { "common": 55, "rare": 35, "epic": 10 },
-          "global_event": { "common": 40, "rare": 42, "epic": 18 }
+          "quest": {
+            "common": 70,
+            "rare": 27,
+            "epic": 3
+          },
+          "expedition": {
+            "common": 55,
+            "rare": 35,
+            "epic": 10
+          },
+          "global_event": {
+            "common": 40,
+            "rare": 42,
+            "epic": 18
+          }
         }
       }
     }
   },
-
   "fleet": {
     "base_slots": 1,
     "slots_per_computer_tech": 1,
@@ -751,7 +3233,6 @@
     "_speed_factor_note": "NUR der Sprit-Divisor in fuel_cost. NICHT die Flugzeitkonstante (die 35000 in flight_seconds ist hartkodiert, OGame-Wert).",
     "_flight_note": "flight_seconds = (10 + 35000/speed_pct * sqrt(distance*10/slowest_ship_speed)) / universe.fleet_speed"
   },
-
   "npc": {
     "tick_interval_seconds": 3600,
     "tier": {
@@ -773,35 +3254,88 @@
         "max_tier_bonus": 4.0
       }
     },
-    "income_per_tick": { "metal": 800, "crystal": 500, "deuterium": 150 },
-    "resource_cap": { "metal": 60000, "crystal": 40000, "deuterium": 15000 },
+    "income_per_tick": {
+      "metal": 800,
+      "crystal": 500,
+      "deuterium": 150
+    },
+    "resource_cap": {
+      "metal": 60000,
+      "crystal": 40000,
+      "deuterium": 15000
+    },
     "rebuild_fraction_per_tick": 0.25,
     "profiles": {
-      "defensive":  { "rebuild_defense": 0.6, "reinforce_fleet": 0.2, "growth_cap_mult": 1.0 },
-      "aggressive": { "rebuild_defense": 0.3, "reinforce_fleet": 0.7, "growth_cap_mult": 1.5 },
-      "expansive":  { "rebuild_defense": 0.3, "reinforce_fleet": 0.5, "growth_cap_mult": 2.0 },
-      "merchant":   { "rebuild_defense": 0.2, "reinforce_fleet": 0.1, "growth_cap_mult": 1.0 }
+      "defensive": {
+        "rebuild_defense": 0.6,
+        "reinforce_fleet": 0.2,
+        "growth_cap_mult": 1.0
+      },
+      "aggressive": {
+        "rebuild_defense": 0.3,
+        "reinforce_fleet": 0.7,
+        "growth_cap_mult": 1.5
+      },
+      "expansive": {
+        "rebuild_defense": 0.3,
+        "reinforce_fleet": 0.5,
+        "growth_cap_mult": 2.0
+      },
+      "merchant": {
+        "rebuild_defense": 0.2,
+        "reinforce_fleet": 0.1,
+        "growth_cap_mult": 1.0
+      }
     },
     "expansion": {
       "_note": "Doku 08: 'expansive' NPCs gruenden auf einer freien Position im EIGENEN System eine neue NPC-Garnison. Throttle: hohe min_resources (nahe resource_cap) + Kosten (danach unter Schwelle) + max_per_system + max_expansions_per_tick. Determinismus: erste freie Position gewinnt; neue Garnison ist 'defensive' (kein Ketten-Wachstum).",
-      "enabled_profiles": ["expansive"],
-      "min_resources": { "metal": 45000, "crystal": 30000, "deuterium": 10000 },
-      "cost": { "metal": 35000, "crystal": 22000, "deuterium": 7000 },
+      "enabled_profiles": [
+        "expansive"
+      ],
+      "min_resources": {
+        "metal": 45000,
+        "crystal": 30000,
+        "deuterium": 10000
+      },
+      "cost": {
+        "metal": 35000,
+        "crystal": 22000,
+        "deuterium": 7000
+      },
       "max_per_system": 4,
       "max_expansions_per_tick": 3,
-      "garrison": { "fleet": { "light_fighter": 20, "cruiser": 4 }, "defenses": { "rocket_launcher": 10, "light_laser": 5 } },
-      "colony_resources": { "metal": 2000, "crystal": 1000, "deuterium": 500 }
+      "garrison": {
+        "fleet": {
+          "light_fighter": 20,
+          "cruiser": 4
+        },
+        "defenses": {
+          "rocket_launcher": 10,
+          "light_laser": 5
+        }
+      },
+      "colony_resources": {
+        "metal": 2000,
+        "crystal": 1000,
+        "deuterium": 500
+      }
     },
     "attack": {
       "_note": "Doku 08: 'aggressive' NPCs greifen ungeschuetzte Spieler-Planeten an (eingehender Angriff via npc_attacks-Tabelle, KEINE Fleet-Zeile). Throttle: cooldown_seconds je NPC + min_fleet_power (lohnendes Geschwader) + max_attacks_per_tick. Es wird nur ein Teil der Garnison (commit_fraction) entsandt; Ueberlebende kehren zurueck. Geschuetzte Spieler werden nie angegriffen. npc_tech = pauschale Angreifer-Tech.",
-      "enabled_profiles": ["aggressive"],
+      "enabled_profiles": [
+        "aggressive"
+      ],
       "min_fleet_power": 4000,
       "commit_fraction": 0.6,
       "max_attacks_per_tick": 2,
       "cooldown_seconds": 10800,
       "target_max_systems": 20,
-      "min_warning_seconds": 600,
-      "npc_tech": { "weapons_tech": 4, "shield_tech": 4, "armor_tech": 4 }
+      "min_warning_seconds": 2700,
+      "npc_tech": {
+        "weapons_tech": 4,
+        "shield_tech": 4,
+        "armor_tech": 4
+      }
     },
     "population": {
       "_note": "Populations-Spawner (lebendiges Universum): haelt nahe bei Spielern eine Ziel-NPC-Dichte. profile_weights = gewichtete Zufallswahl. templates je Profil liefern Start-fleet/defenses/resources + name_pool. baseline der NPCs = template fleet/defenses (damit sie nachbauen). auto_discover_radius: Spawns innerhalb X Systemen eines Spielers werden sofort sichtbar (Ziel-Verzeichnis), weiter entfernte brauchen weiter eine Sonde.",
@@ -821,25 +3355,118 @@
         "min_age_seconds": 3600,
         "max_removals_per_tick": 5
       },
-      "profile_weights": { "aggressive": 0.35, "defensive": 0.30, "merchant": 0.20, "expansive": 0.15 },
+      "profile_weights": {
+        "aggressive": 0.35,
+        "defensive": 0.3,
+        "merchant": 0.2,
+        "expansive": 0.15
+      },
       "templates": {
-        "aggressive": { "name_pool": ["Piratenbande", "Freibeuter-Klan", "Korsaren-Nest", "Pluenderer-Schwarm", "Roter Komet"], "fleet": {"light_fighter": 12, "heavy_fighter": 4, "cruiser": 1}, "defenses": {"rocket_launcher": 6}, "resources": {"metal": 8000, "crystal": 4000, "deuterium": 1500} },
-        "defensive": { "name_pool": ["Verlassene Station", "Schmugglerbasis", "Treibendes Wrack", "Bergungsdepot", "Stiller Aussenposten"], "fleet": {"light_fighter": 6}, "defenses": {"rocket_launcher": 4, "light_laser": 2}, "resources": {"metal": 5000, "crystal": 2500, "deuterium": 800} },
-        "merchant": { "name_pool": ["Handelsgilde", "Freihaendler-Kontor", "Karawanen-Konvoi", "Sternenbasar", "Warenkonsortium"], "fleet": {"large_cargo": 4, "light_fighter": 3}, "defenses": {"rocket_launcher": 3}, "resources": {"metal": 12000, "crystal": 7000, "deuterium": 2500} },
-        "expansive": { "name_pool": ["Koloniale Vorhut", "Siedler-Allianz", "Pionier-Kompanie", "Expansions-Flotte"], "fleet": {"light_fighter": 8, "small_cargo": 2, "colony_ship": 1}, "defenses": {"rocket_launcher": 4}, "resources": {"metal": 9000, "crystal": 6000, "deuterium": 3000} }
+        "aggressive": {
+          "name_pool": [
+            "Piratenbande",
+            "Freibeuter-Klan",
+            "Korsaren-Nest",
+            "Pluenderer-Schwarm",
+            "Roter Komet"
+          ],
+          "fleet": {
+            "light_fighter": 12,
+            "heavy_fighter": 4,
+            "cruiser": 1
+          },
+          "defenses": {
+            "rocket_launcher": 6
+          },
+          "resources": {
+            "metal": 8000,
+            "crystal": 4000,
+            "deuterium": 1500
+          }
+        },
+        "defensive": {
+          "name_pool": [
+            "Verlassene Station",
+            "Schmugglerbasis",
+            "Treibendes Wrack",
+            "Bergungsdepot",
+            "Stiller Aussenposten"
+          ],
+          "fleet": {
+            "light_fighter": 6
+          },
+          "defenses": {
+            "rocket_launcher": 4,
+            "light_laser": 2
+          },
+          "resources": {
+            "metal": 5000,
+            "crystal": 2500,
+            "deuterium": 800
+          }
+        },
+        "merchant": {
+          "name_pool": [
+            "Handelsgilde",
+            "Freihaendler-Kontor",
+            "Karawanen-Konvoi",
+            "Sternenbasar",
+            "Warenkonsortium"
+          ],
+          "fleet": {
+            "large_cargo": 4,
+            "light_fighter": 3
+          },
+          "defenses": {
+            "rocket_launcher": 3
+          },
+          "resources": {
+            "metal": 12000,
+            "crystal": 7000,
+            "deuterium": 2500
+          }
+        },
+        "expansive": {
+          "name_pool": [
+            "Koloniale Vorhut",
+            "Siedler-Allianz",
+            "Pionier-Kompanie",
+            "Expansions-Flotte"
+          ],
+          "fleet": {
+            "light_fighter": 8,
+            "small_cargo": 2,
+            "colony_ship": 1
+          },
+          "defenses": {
+            "rocket_launcher": 4
+          },
+          "resources": {
+            "metal": 9000,
+            "crystal": 6000,
+            "deuterium": 3000
+          }
+        }
       }
     },
     "_note": "NPC-Behavior-Tick (Doku 08). NPCs regenerieren Garnison zur baseline und wachsen je Profil; Anti-Farming durch Wiederaufbau."
   },
-
   "trade": {
     "_note": "Handelssystem (Anfliegen-Modell). Preis je Ressource bei einem Haendler = base_value * (setpoint/stock), geclamped auf [min_mult, max_mult]*base_value. Orders werden chunk-weise gegen den Bestand abgerechnet -> Slippage (grosse Order bewegt den Kurs). margin = Spanne zugunsten des Haendlers. specializations skalieren den Sollbestand je Ressource -> Preis-Differenziale zwischen Haendlern (Arbitrage). reputation senkt die margin fuer Stammkunden.",
-    "base_value": { "metal": 1.0, "crystal": 2.0, "deuterium": 3.0 },
+    "base_value": {
+      "metal": 1.0,
+      "crystal": 2.0,
+      "deuterium": 3.0
+    },
     "price_min_mult": 0.5,
     "price_max_mult": 2.0,
     "margin": 0.04,
     "swap_steps": 40,
-    "default_setpoint": { "metal": 2000000, "crystal": 1000000, "deuterium": 500000 },
+    "default_setpoint": {
+      "metal": 2000000,
+      "crystal": 1000000,
+      "deuterium": 500000
+    },
     "min_stock_floor": 1000,
     "stock_regen_per_tick": 0.1,
     "market_tick_interval_seconds": 1800,
@@ -852,35 +3479,69 @@
       "loss_fraction": 0.4
     },
     "specializations": {
-      "metal_world":        { "metal": 3.0, "crystal": 1.0, "deuterium": 0.4 },
-      "crystal_hub":        { "metal": 1.0, "crystal": 3.0, "deuterium": 0.6 },
-      "deuterium_refinery": { "metal": 0.6, "crystal": 0.8, "deuterium": 3.0 },
-      "generalist":         { "metal": 1.0, "crystal": 1.0, "deuterium": 1.0 }
+      "metal_world": {
+        "metal": 3.0,
+        "crystal": 1.0,
+        "deuterium": 0.4
+      },
+      "crystal_hub": {
+        "metal": 1.0,
+        "crystal": 3.0,
+        "deuterium": 0.6
+      },
+      "deuterium_refinery": {
+        "metal": 0.6,
+        "crystal": 0.8,
+        "deuterium": 3.0
+      },
+      "generalist": {
+        "metal": 1.0,
+        "crystal": 1.0,
+        "deuterium": 1.0
+      }
     },
-    "reputation": { "volume_per_level": 500000, "max_level": 5, "margin_reduction_per_level": 0.005 },
+    "reputation": {
+      "volume_per_level": 500000,
+      "max_level": 5,
+      "margin_reduction_per_level": 0.005
+    },
     "index": {
       "_note": "Globaler Handelskurs der unangreifbaren Handelszentren (behavior_profile 'trade_center'). Kurs_r = base_value_r * (neutral_r + V_r) / (vorrat_r + V_r), gespeist in price_of via synthetischem Markt (setpoint = neutral+V, stock = weltvorrat+V). neutral_r = neutral_per_player_r * aktive_spieler -> skaliert mit Population, kein Einzelner dominiert. virtual_reserve V gross gegenueber Fruehphasen-Vorrat -> Kurs nahe base_value und stabil bei wenig Spielern; wirkt zugleich als Order-Tiefe (Slippage). Weltvorrat = liquider Spieler-Vorrat (Gebaeude/Schiffe sind aus dem Umlauf), EMA-geglaettet ueber Ticks. Spread = margin (oben).",
-      "neutral_per_player": { "metal": 2000000, "crystal": 1000000, "deuterium": 500000 },
-      "virtual_reserve":    { "metal": 8000000, "crystal": 4000000, "deuterium": 2000000 },
+      "neutral_per_player": {
+        "metal": 2000000,
+        "crystal": 1000000,
+        "deuterium": 500000
+      },
+      "virtual_reserve": {
+        "metal": 8000000,
+        "crystal": 4000000,
+        "deuterium": 2000000
+      },
       "smoothing_alpha": 0.25,
       "tick_interval_seconds": 600,
       "target_centers": 6,
-      "center_name_pool": ["Handelszentrum Aurora", "Handelszentrum Meridian", "Handelszentrum Solace", "Handelszentrum Concord", "Handelszentrum Bazaar", "Handelszentrum Nexus", "Handelszentrum Halcyon", "Handelszentrum Tranquil"]
+      "center_name_pool": [
+        "Handelszentrum Aurora",
+        "Handelszentrum Meridian",
+        "Handelszentrum Solace",
+        "Handelszentrum Concord",
+        "Handelszentrum Bazaar",
+        "Handelszentrum Nexus",
+        "Handelszentrum Halcyon",
+        "Handelszentrum Tranquil"
+      ]
     }
   },
-
   "phalanx": {
     "_note": "Sensorphalanx (Gebaeude): Scannt fremde Flottenbewegungen zu/von einem Ziel in Reichweite. range_systems = level^2 - 1 (gleiche Galaxie). Jeder Scan kostet Deuterium am scannenden Planeten. intercept_window_seconds = wie lange eine angekommene Handels-/Transportflotte am Ziel fangbar bleibt.",
     "scan_cost_deuterium": 5000,
     "intercept_window_seconds": 60
   },
-
   "escort": {
     "_note": "Stationierte Eskort-Patrouillen (deploy). Ein Trader waehlt beim Versand Eskort-Angebote, die seine Route decken (Stationssystem im Routen-Intervall +/- escort_radius), und zahlt fee_pct des Frachtwerts an den Anbieter; die Patrouillen-Kampfkraft daempft das Routenrisiko. region_radius = Default-Deckungsradius, max_fee_pct = Gebuehren-Obergrenze.",
     "region_radius": 5,
-    "max_fee_pct": 0.10
+    "max_fee_pct": 0.1
   },
-
   "spy": {
     "probe_type": "spy_probe",
     "min_probes": 1,
@@ -891,14 +3552,12 @@
     "npc_detect_reaction_chance": 0.35,
     "_note": "Spionage (Doku 04 §6). Detailstufe steigt mit Sondenanzahl bzw. Spionagetech: L1 Gesamtstaerke, L2 + Flotten-/Verteidigungs-Zusammensetzung, L3 + Ressourcen. npc_detect_reaction_chance = Wahrscheinlichkeit, dass ein bespitzelter NPC die Sonden entdeckt und einen Warn-Funkspruch sendet (Befund M-3)."
   },
-
   "protection": {
-    "newbie_avg_factor": 0.30,
+    "newbie_avg_factor": 0.3,
     "bash_band_factor": 5,
     "bash_min_attacker_score": 5000,
     "_note": "A (Neulingsschutz, Grundsystem): REIN punkte-relativ. Geschuetzt, solange Imperiumswert < newbie_avg_factor * Durchschnitt aller Spieler mit Punkten>0 (nicht im Urlaub). KEIN Zeitlimit, KEIN fester Floor -> die Schwelle ergibt sich nur aus dem Punkteschnitt und waechst mit dem Universum mit. Spieler mit 0 Punkten graduieren nie (Cold-Start-Schutz). Graduierung einmalig (nur an->aus); eigenes Angreifen verwirkt den Schutz sofort. Kein Permadeath/Plunder unter Schutz. B (Bashing-Schutz, Zusatz): ein Angreifer mit >= bash_min_attacker_score Punkten darf KEIN Ziel mit weniger als (eigene Punkte / bash_band_factor) angreifen -> Platz 1 kann Platz 500 nicht wegsnacken."
   },
-
   "events": {
     "_note": "Dynamische Welt-/Karten-Events + persoenliche Events. Default: SELTEN & BESONDERS. spawn_chance je Event je events-Tick (tick_interval_seconds). Zeiten in Stunden, Mengen absolut. Alles hier fein justierbar.",
     "tick_interval_seconds": 1800,
@@ -906,47 +3565,150 @@
     "max_active_map_events": 6,
     "min_player_score": 50,
     "global": {
-      "wandering_comet":      { "enabled": true, "spawn_chance": 0.06, "lifetime_hours": 48, "crystal": [400000, 900000], "deuterium": [600000, 1400000], "richness_mult": 2.5 },
-      "cosmic_anomaly":       { "enabled": true, "spawn_chance": 0.05, "lifetime_hours": 24, "research_speed_buff": 1.25, "buff_hours": 12, "damage_chance": 0.15 },
-      "black_market":         { "enabled": true, "spawn_chance": 0.045, "lifetime_hours": 24, "rate_bonus": 1.5 },
-      "solar_storm":          { "enabled": true, "spawn_chance": 0.035, "warning_hours": 12, "lifetime_hours": 24 },
-      "super_freighter_wreck":{ "enabled": true, "spawn_chance": 0.06, "lifetime_hours": 72, "drone_power_vs_top": 0.6, "metal": [2000000, 5000000], "crystal": [1500000, 3500000] },
-      "utopia_shipyard":      { "enabled": true, "spawn_chance": 0.025, "lifetime_hours": 48, "reward_ship": "battleship", "reward_count": 5, "top_n": 3 },
-      "refugee_flotilla":     { "enabled": true, "spawn_chance": 0.04, "lifetime_hours": 12, "deuterium_cost": 50000, "morale_bonus": 12, "build_speed_buff": 1.5, "buff_hours": 24, "pursuer_power_vs_player": 0.5, "keep_ships": { "large_cargo": 5 } },
-      "black_hole":           { "enabled": true, "spawn_chance": 0.05, "lifetime_hours": 24, "yield_mult": 3.0, "wipe_chance": 0.18 }
+      "wandering_comet": {
+        "enabled": true,
+        "spawn_chance": 0.06,
+        "lifetime_hours": 48,
+        "crystal": [
+          400000,
+          900000
+        ],
+        "deuterium": [
+          600000,
+          1400000
+        ],
+        "richness_mult": 2.5
+      },
+      "cosmic_anomaly": {
+        "enabled": true,
+        "spawn_chance": 0.05,
+        "lifetime_hours": 24,
+        "research_speed_buff": 1.25,
+        "buff_hours": 12,
+        "damage_chance": 0.15
+      },
+      "black_market": {
+        "enabled": true,
+        "spawn_chance": 0.045,
+        "lifetime_hours": 24,
+        "rate_bonus": 1.5
+      },
+      "solar_storm": {
+        "enabled": true,
+        "spawn_chance": 0.035,
+        "warning_hours": 12,
+        "lifetime_hours": 24
+      },
+      "super_freighter_wreck": {
+        "enabled": true,
+        "spawn_chance": 0.06,
+        "lifetime_hours": 72,
+        "drone_power_vs_top": 0.6,
+        "metal": [
+          2000000,
+          5000000
+        ],
+        "crystal": [
+          1500000,
+          3500000
+        ]
+      },
+      "utopia_shipyard": {
+        "enabled": true,
+        "spawn_chance": 0.025,
+        "lifetime_hours": 48,
+        "reward_ship": "battleship",
+        "reward_count": 5,
+        "top_n": 3
+      },
+      "refugee_flotilla": {
+        "enabled": true,
+        "spawn_chance": 0.04,
+        "lifetime_hours": 12,
+        "deuterium_cost": 50000,
+        "morale_bonus": 12,
+        "build_speed_buff": 1.5,
+        "buff_hours": 24,
+        "pursuer_power_vs_player": 0.5,
+        "keep_ships": {
+          "large_cargo": 5
+        }
+      },
+      "black_hole": {
+        "enabled": true,
+        "spawn_chance": 0.05,
+        "lifetime_hours": 24,
+        "yield_mult": 3.0,
+        "wipe_chance": 0.18
+      }
     },
     "personal": {
-      "pirate_raid":  { "enabled": true, "spawn_chance_per_player": 0.02, "warning_minutes": 150, "power_vs_player": 0.45,
+      "pirate_raid": {
+        "enabled": true,
+        "spawn_chance_per_player": 0.02,
+        "warning_minutes": 150,
+        "power_vs_player": 0.45,
         "_bribe_note": "Vor dem Anflug kann man die Piraten bestechen (teuer, aus dem Bau-Planeten). Meist ziehen sie ab; mit bribe_partial_chance greifen sie TROTZDEM an, aber mit reduzierter Flotte (bribe_partial_fleet_mult) und lassen dafuer ein besseres Truemmerfeld (bribe_partial_debris_mult) + Chance auf Kommandeurs-Equipment (bribe_partial_item_chance) zurueck.",
-        "bribe_cost": { "metal": 90000, "crystal": 55000, "deuterium": 35000 },
+        "bribe_cost": {
+          "metal": 90000,
+          "crystal": 55000,
+          "deuterium": 35000
+        },
         "bribe_partial_chance": 0.2,
         "bribe_partial_fleet_mult": 0.5,
         "bribe_partial_debris_mult": 1.6,
         "bribe_partial_item_chance": 0.35,
-        "bribe_timeout_hours": 2.0 },
-      "mine_strike":  { "enabled": true, "spawn_chance_per_player": 0.02, "production_mult": 0.5, "duration_hours": 12, "bribe_deuterium": 30000, "force_morale_penalty": 10, "decision_timeout_hours": 12 },
-      "breakthrough": { "enabled": true, "spawn_chance_per_player": 0.012, "free_level_chance": 0.25 }
+        "bribe_timeout_hours": 2.0
+      },
+      "mine_strike": {
+        "enabled": true,
+        "spawn_chance_per_player": 0.02,
+        "production_mult": 0.5,
+        "duration_hours": 12,
+        "bribe_deuterium": 30000,
+        "force_morale_penalty": 10,
+        "decision_timeout_hours": 12
+      },
+      "breakthrough": {
+        "enabled": true,
+        "spawn_chance_per_player": 0.012,
+        "free_level_chance": 0.25
+      }
     }
   },
-
   "decay": {
     "inactive_days_before_decay": 14,
     "production_decay_per_day": 0.05,
     "vacation_mode": true
   },
-
   "starting_player": {
-    "resources": { "metal": 1000, "crystal": 500, "deuterium": 200 },
-    "buildings": { "metal_mine": 1, "crystal_mine": 1, "solar_plant": 1 },
-    "commander": { "give_starter": true, "rank": "officer", "specialization": "combat" }
+    "resources": {
+      "metal": 1000,
+      "crystal": 500,
+      "deuterium": 200
+    },
+    "buildings": {
+      "metal_mine": 1,
+      "crystal_mine": 1,
+      "solar_plant": 1
+    },
+    "commander": {
+      "give_starter": true,
+      "rank": "officer",
+      "specialization": "combat"
+    }
   },
-
   "megastructures": {
     "_note": "Endgame-Megastrukturen (kontoweit, stufenweiser Bau). Kosten/Stufe = cost_base * cost_growth^level; Bauzeit/Stufe = build_hours_base * build_hours_growth^level (durch speed geteilt). Nur EIN Projekt gleichzeitig je Spieler (Anti-Snowball). Dunkle Materie = Haupt-Sink. effect/effect_per_level werden serverseitig gelesen.",
     "research_nexus": {
       "name": "Forschungs-Nexus",
       "max_level": 5,
-      "cost_base": { "metal": 500000, "crystal": 800000, "deuterium": 200000, "dark_matter": 1500 },
+      "cost_base": {
+        "metal": 500000,
+        "crystal": 800000,
+        "deuterium": 200000,
+        "dark_matter": 1500
+      },
       "cost_growth": 2.0,
       "build_hours_base": 24,
       "build_hours_growth": 1.8,
@@ -957,7 +3719,12 @@
     "matter_decompressor": {
       "name": "Materie-Dekompressor",
       "max_level": 5,
-      "cost_base": { "metal": 200000, "crystal": 300000, "deuterium": 100000, "dark_matter": 1200 },
+      "cost_base": {
+        "metal": 200000,
+        "crystal": 300000,
+        "deuterium": 100000,
+        "dark_matter": 1200
+      },
       "cost_growth": 2.0,
       "build_hours_base": 30,
       "build_hours_growth": 1.8,
@@ -968,7 +3735,12 @@
     "antimatter_forge": {
       "name": "Antimaterie-Schmiede",
       "max_level": 5,
-      "cost_base": { "metal": 400000, "crystal": 400000, "deuterium": 200000, "antimatter": 1500 },
+      "cost_base": {
+        "metal": 400000,
+        "crystal": 400000,
+        "deuterium": 200000,
+        "antimatter": 1500
+      },
       "cost_growth": 2.0,
       "build_hours_base": 30,
       "build_hours_growth": 1.8,
@@ -977,19 +3749,26 @@
       "blurb": "Antimaterie-befeuerte Waffenschmiede: +3% Angriff aller Einheiten je Stufe (imperiumsweit, Angriff UND Verteidigung)."
     }
   },
-
   "capstone": {
     "_note": "Endgame-Capstone-Schiffe: default_cap besitzbar, je +1 ueber die capstone-Forschung (ships[*].capstone). Auren (roster.aura) stapeln NICHT (combat/service dedupliziert je Auratyp -> nur die staerkste/eine je Flotte). raider_loot_bonus = +Beute-Anteil wenn ein Korsar in der Angriffsflotte ist. Der Ernte-Titan (roster.harvester) zieht seine Staerke aus seinem riesigen eigenen Laderaum (ships.harvest_titan.cargo) — Mining fuellt den Frachtraum (kein Schiffszahl-Multiplikator mehr).",
     "default_cap": 1,
-    "combat_aura": { "attack_mult": 1.15, "shield_mult": 1.15 },
-    "convoy_aura": { "risk_reduction": 0.5 },
+    "combat_aura": {
+      "attack_mult": 1.15,
+      "shield_mult": 1.15
+    },
+    "convoy_aura": {
+      "risk_reduction": 0.5
+    },
     "raider_loot_bonus": 0.25
   },
-
   "alliance": {
     "_note": "Allianzen: kooperative Ebene OBEN AUF der individuellen Spieler-Forschung (kein Ersatz, kein Doppel-Dip). Allianz-Forschung wird aus dem gemeinsamen Pool bezahlt. Jeder Knoten kodiert per 'context' den Doppel-Dip-Schutz: 'coop' = nur wenn >=2 Mitglieder gemeinsam handeln, 'zone' = nur in der Einflusszone einer eigenen Station, 'ally' = nur wenn die Aktion ein anderes Mitglied schuetzt/transportiert, 'passive_collective' = immer fuer Mitglieder (rein soziale Hebel). 'lever' = maschinen-Schluessel, den der Bonus-Resolver an den Hook-Punkten nachschlaegt. Wirkung je Stufe = level * per_level (Soft-Cap via max_level).",
     "max_members": 50,
-    "create_cost": { "metal": 50000, "crystal": 30000, "deuterium": 10000 },
+    "create_cost": {
+      "metal": 50000,
+      "crystal": 30000,
+      "deuterium": 10000
+    },
     "min_role_for_spend": "officer",
     "research": {
       "reset_refund_ratio": 0.0,
@@ -999,41 +3778,281 @@
         "piracy": {
           "label": "Piraterie",
           "nodes": {
-            "raid_loot":             { "context": "coop", "lever": "raid_loot_mult",       "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 4000, "crystal": 2000, "deuterium": 1000 }, "effect": "Beutezug: +5% Pluenderung beim Raid mit Verbuendeten je Stufe." },
-            "shadow_fleet":          { "context": "zone", "lever": "stealth_zone",         "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 3000, "crystal": 3000, "deuterium": 1000 }, "effect": "Schattenflotte: in der eigenen Zone schwerer entdeckbar (+5% Tarnung je Stufe)." },
-            "boarding_doctrine_ally":{ "context": "coop", "lever": "boarding_ally",        "per_level": 1,    "max_level": 5,  "repeatable": false, "cost": { "metal": 6000, "crystal": 3000, "deuterium": 1500 }, "effect": "Enterhaken (Koop): +1 gekapertes Schiff je Stufe bei gemeinsamen Raids." },
-            "gravity_snare":         { "context": "zone", "lever": "interdiction_zone",    "per_level": 0.05, "max_level": 5,  "repeatable": false, "cost": { "metal": 5000, "crystal": 4000, "deuterium": 2000 }, "effect": "Fanggriff: +5% Interdiktion gegen Fremde in der eigenen Zone je Stufe (Raeuberhoehle)." },
-            "pack_hunt":             { "context": "coop", "lever": "pack_hunt",            "per_level": 0.10, "max_level": 5,  "repeatable": false, "cost": { "metal": 8000, "crystal": 5000, "deuterium": 3000 }, "effect": "⭐ Rudeljagd: gemeinsamer Abfang -> +10% Extra-Beute je Stufe + geteilte Phalanx-Sicht." }
+            "raid_loot": {
+              "context": "coop",
+              "lever": "raid_loot_mult",
+              "per_level": 0.05,
+              "max_level": 10,
+              "repeatable": true,
+              "cost": {
+                "metal": 4000,
+                "crystal": 2000,
+                "deuterium": 1000
+              },
+              "effect": "Beutezug: +5% Pluenderung beim Raid mit Verbuendeten je Stufe."
+            },
+            "shadow_fleet": {
+              "context": "zone",
+              "lever": "stealth_zone",
+              "per_level": 0.05,
+              "max_level": 10,
+              "repeatable": true,
+              "cost": {
+                "metal": 3000,
+                "crystal": 3000,
+                "deuterium": 1000
+              },
+              "effect": "Schattenflotte: in der eigenen Zone schwerer entdeckbar (+5% Tarnung je Stufe)."
+            },
+            "boarding_doctrine_ally": {
+              "context": "coop",
+              "lever": "boarding_ally",
+              "per_level": 1,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 6000,
+                "crystal": 3000,
+                "deuterium": 1500
+              },
+              "effect": "Enterhaken (Koop): +1 gekapertes Schiff je Stufe bei gemeinsamen Raids."
+            },
+            "gravity_snare": {
+              "context": "zone",
+              "lever": "interdiction_zone",
+              "per_level": 0.05,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 5000,
+                "crystal": 4000,
+                "deuterium": 2000
+              },
+              "effect": "Fanggriff: +5% Interdiktion gegen Fremde in der eigenen Zone je Stufe (Raeuberhoehle)."
+            },
+            "pack_hunt": {
+              "context": "coop",
+              "lever": "pack_hunt",
+              "per_level": 0.1,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 8000,
+                "crystal": 5000,
+                "deuterium": 3000
+              },
+              "effect": "⭐ Rudeljagd: gemeinsamer Abfang -> +10% Extra-Beute je Stufe + geteilte Phalanx-Sicht."
+            }
           }
         },
         "economy": {
           "label": "Wirtschaft",
           "nodes": {
-            "extraction_zone":  { "context": "zone", "lever": "mining_yield_zone",     "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 4000, "crystal": 3000, "deuterium": 500 },  "effect": "Foerderquote: +5% Minen-Foerderung in der Zone je Stufe." },
-            "deep_drilling":    { "context": "zone", "lever": "harvest_yield_zone",    "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 5000, "crystal": 4000, "deuterium": 1000 }, "effect": "Tiefenbohrung: +5% Asteroiden-/Truemmer-/Exotik-Ertrag in der Zone je Stufe." },
-            "forward_yards":    { "context": "zone", "lever": "build_time_zone",       "per_level": 0.03, "max_level": 10, "repeatable": true,  "cost": { "metal": 6000, "crystal": 4000, "deuterium": 1000 }, "effect": "Vorgeschobene Werften: -3% Bauzeit in der Zone je Stufe." },
-            "depot_storage":    { "context": "passive_collective", "lever": "pool_storage", "per_level": 0.10, "max_level": 5, "repeatable": false, "cost": { "metal": 4000, "crystal": 2000, "deuterium": 500 }, "effect": "Lagernetz: +10% Pool-Lagerkapazitaet / -decay je Stufe." },
-            "joint_extraction":{ "context": "coop", "lever": "joint_extraction",       "per_level": 0.10, "max_level": 5,  "repeatable": false, "cost": { "metal": 8000, "crystal": 6000, "deuterium": 2000 }, "effect": "⭐ Gemeinschaftsfoerderung: geteilte Minen-Op mit Verbuendeten -> +10% Ertrag je Stufe." }
+            "extraction_zone": {
+              "context": "zone",
+              "lever": "mining_yield_zone",
+              "per_level": 0.05,
+              "max_level": 10,
+              "repeatable": true,
+              "cost": {
+                "metal": 4000,
+                "crystal": 3000,
+                "deuterium": 500
+              },
+              "effect": "Foerderquote: +5% Minen-Foerderung in der Zone je Stufe."
+            },
+            "deep_drilling": {
+              "context": "zone",
+              "lever": "harvest_yield_zone",
+              "per_level": 0.05,
+              "max_level": 10,
+              "repeatable": true,
+              "cost": {
+                "metal": 5000,
+                "crystal": 4000,
+                "deuterium": 1000
+              },
+              "effect": "Tiefenbohrung: +5% Asteroiden-/Truemmer-/Exotik-Ertrag in der Zone je Stufe."
+            },
+            "forward_yards": {
+              "context": "zone",
+              "lever": "build_time_zone",
+              "per_level": 0.03,
+              "max_level": 10,
+              "repeatable": true,
+              "cost": {
+                "metal": 6000,
+                "crystal": 4000,
+                "deuterium": 1000
+              },
+              "effect": "Vorgeschobene Werften: -3% Bauzeit in der Zone je Stufe."
+            },
+            "depot_storage": {
+              "context": "passive_collective",
+              "lever": "pool_storage",
+              "per_level": 0.1,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 4000,
+                "crystal": 2000,
+                "deuterium": 500
+              },
+              "effect": "Lagernetz: +10% Pool-Lagerkapazitaet / -decay je Stufe."
+            },
+            "joint_extraction": {
+              "context": "coop",
+              "lever": "joint_extraction",
+              "per_level": 0.1,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 8000,
+                "crystal": 6000,
+                "deuterium": 2000
+              },
+              "effect": "⭐ Gemeinschaftsfoerderung: geteilte Minen-Op mit Verbuendeten -> +10% Ertrag je Stufe."
+            }
           }
         },
         "trade": {
           "label": "Handel",
           "nodes": {
-            "market_access":    { "context": "zone", "lever": "market_margin_zone",   "per_level": 0.03, "max_level": 10, "repeatable": true,  "cost": { "metal": 3000, "crystal": 4000, "deuterium": 1000 }, "effect": "Marktzugang: +3% bessere Preise fuer Zonen-/Pool-Trades je Stufe." },
-            "cargo_logistics":  { "context": "ally", "lever": "cargo_fuel_ally",       "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 3000, "crystal": 3000, "deuterium": 1000 }, "effect": "Frachtoptimierung: +5% Fracht / -Sprit bei Transport zu/fuer Verbuendete je Stufe." },
-            "safe_routes":      { "context": "coop", "lever": "route_risk_convoy",     "per_level": 0.06, "max_level": 5,  "repeatable": false, "cost": { "metal": 4000, "crystal": 3000, "deuterium": 2000 }, "effect": "Sichere Routen: -6% Routenrisiko fuer Konvois mit Verbuendeten je Stufe." },
-            "depot_logistics":  { "context": "passive_collective", "lever": "pool_deposit_cost", "per_level": 0.05, "max_level": 5, "repeatable": false, "cost": { "metal": 3000, "crystal": 2000, "deuterium": 500 }, "effect": "Depot-Logistik: -5% Kosten/Verlust bei Pool-Einzahlung je Stufe." },
-            "escort_convoy":    { "context": "coop", "lever": "escort_convoy",         "per_level": 0.10, "max_level": 5,  "repeatable": false, "cost": { "metal": 7000, "crystal": 5000, "deuterium": 2000 }, "effect": "⭐ Geleitzug: eskortierter Konvoi -> +10% sichere Ladung + Profit je Stufe." }
+            "market_access": {
+              "context": "zone",
+              "lever": "market_margin_zone",
+              "per_level": 0.03,
+              "max_level": 10,
+              "repeatable": true,
+              "cost": {
+                "metal": 3000,
+                "crystal": 4000,
+                "deuterium": 1000
+              },
+              "effect": "Marktzugang: +3% bessere Preise fuer Zonen-/Pool-Trades je Stufe."
+            },
+            "cargo_logistics": {
+              "context": "ally",
+              "lever": "cargo_fuel_ally",
+              "per_level": 0.05,
+              "max_level": 10,
+              "repeatable": true,
+              "cost": {
+                "metal": 3000,
+                "crystal": 3000,
+                "deuterium": 1000
+              },
+              "effect": "Frachtoptimierung: +5% Fracht / -Sprit bei Transport zu/fuer Verbuendete je Stufe."
+            },
+            "safe_routes": {
+              "context": "coop",
+              "lever": "route_risk_convoy",
+              "per_level": 0.06,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 4000,
+                "crystal": 3000,
+                "deuterium": 2000
+              },
+              "effect": "Sichere Routen: -6% Routenrisiko fuer Konvois mit Verbuendeten je Stufe."
+            },
+            "depot_logistics": {
+              "context": "passive_collective",
+              "lever": "pool_deposit_cost",
+              "per_level": 0.05,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 3000,
+                "crystal": 2000,
+                "deuterium": 500
+              },
+              "effect": "Depot-Logistik: -5% Kosten/Verlust bei Pool-Einzahlung je Stufe."
+            },
+            "escort_convoy": {
+              "context": "coop",
+              "lever": "escort_convoy",
+              "per_level": 0.1,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 7000,
+                "crystal": 5000,
+                "deuterium": 2000
+              },
+              "effect": "⭐ Geleitzug: eskortierter Konvoi -> +10% sichere Ladung + Profit je Stufe."
+            }
           }
         },
         "protection": {
           "label": "Schutz",
           "nodes": {
-            "escort_doctrine":  { "context": "ally", "lever": "escort_uncapturable",   "per_level": 0.20, "max_level": 5,  "repeatable": false, "cost": { "metal": 4000, "crystal": 3000, "deuterium": 1000 }, "effect": "Geleitschutz: Konvois Verbuendeter +20% schwerer kaperbar je Stufe." },
-            "rapid_response":   { "context": "ally", "lever": "interception_defense",  "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 4000, "crystal": 3000, "deuterium": 1500 }, "effect": "Schnelle Eingreiftruppe: +5% Abfang-Chance bei Verteidigung eines Mitglieds je Stufe." },
-            "early_warning":    { "context": "zone", "lever": "phalanx_detect_zone",   "per_level": 0.05, "max_level": 10, "repeatable": true,  "cost": { "metal": 3000, "crystal": 4000, "deuterium": 1500 }, "effect": "Fruehwarnnetz: +5% Phalanx-/Hinterhalt-Entdeckung in der Zone je Stufe." },
-            "bounty":           { "context": "passive_collective", "lever": "bounty_pirate", "per_level": 0.10, "max_level": 5, "repeatable": false, "cost": { "metal": 4000, "crystal": 2000, "deuterium": 1000 }, "effect": "Kopfgeld: +10% Bonus-Beute je Stufe beim Vernichten von Piraten." },
-            "shield_wall":      { "context": "coop", "lever": "shield_wall",           "per_level": 0.05, "max_level": 5,  "repeatable": false, "cost": { "metal": 8000, "crystal": 6000, "deuterium": 2000 }, "effect": "⭐ Schildwall: gemeinsame Verteidigung -> +5% gestapelte Aura + Gruppen-Warp-Stabilisator je Stufe." }
+            "escort_doctrine": {
+              "context": "ally",
+              "lever": "escort_uncapturable",
+              "per_level": 0.2,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 4000,
+                "crystal": 3000,
+                "deuterium": 1000
+              },
+              "effect": "Geleitschutz: Konvois Verbuendeter +20% schwerer kaperbar je Stufe."
+            },
+            "rapid_response": {
+              "context": "ally",
+              "lever": "interception_defense",
+              "per_level": 0.05,
+              "max_level": 10,
+              "repeatable": true,
+              "cost": {
+                "metal": 4000,
+                "crystal": 3000,
+                "deuterium": 1500
+              },
+              "effect": "Schnelle Eingreiftruppe: +5% Abfang-Chance bei Verteidigung eines Mitglieds je Stufe."
+            },
+            "early_warning": {
+              "context": "zone",
+              "lever": "phalanx_detect_zone",
+              "per_level": 0.05,
+              "max_level": 10,
+              "repeatable": true,
+              "cost": {
+                "metal": 3000,
+                "crystal": 4000,
+                "deuterium": 1500
+              },
+              "effect": "Fruehwarnnetz: +5% Phalanx-/Hinterhalt-Entdeckung in der Zone je Stufe."
+            },
+            "bounty": {
+              "context": "passive_collective",
+              "lever": "bounty_pirate",
+              "per_level": 0.1,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 4000,
+                "crystal": 2000,
+                "deuterium": 1000
+              },
+              "effect": "Kopfgeld: +10% Bonus-Beute je Stufe beim Vernichten von Piraten."
+            },
+            "shield_wall": {
+              "context": "coop",
+              "lever": "shield_wall",
+              "per_level": 0.05,
+              "max_level": 5,
+              "repeatable": false,
+              "cost": {
+                "metal": 8000,
+                "crystal": 6000,
+                "deuterium": 2000
+              },
+              "effect": "⭐ Schildwall: gemeinsame Verteidigung -> +5% gestapelte Aura + Gruppen-Warp-Stabilisator je Stufe."
+            }
           }
         }
       }
@@ -1044,11 +4063,19 @@
       "max_allied_fleets": 8
     },
     "station": {
-      "build_cost": { "metal": 80000, "crystal": 50000, "deuterium": 20000 },
+      "build_cost": {
+        "metal": 80000,
+        "crystal": 50000,
+        "deuterium": 20000
+      },
       "base_radius": 1,
       "max_radius": 5,
       "radius_per_research_level": 1,
-      "radius_upgrade_cost": { "metal": 20000, "crystal": 15000, "deuterium": 8000 },
+      "radius_upgrade_cost": {
+        "metal": 20000,
+        "crystal": 15000,
+        "deuterium": 8000
+      },
       "upkeep_deuterium_per_tick": 500,
       "tick_interval_seconds": 3600,
       "max_per_alliance": 1,
@@ -1060,13 +4087,27 @@
       "siege_window_seconds": 86400,
       "hp_regen_per_tick": 25000,
       "regen_quiet_seconds": 7200,
-      "defense_tech": { "weapons_tech": 1, "shield_tech": 1, "armor_tech": 1 },
+      "defense_tech": {
+        "weapons_tech": 1,
+        "shield_tech": 1,
+        "armor_tech": 1
+      },
       "max_tech": 12,
-      "tech_upgrade_cost": { "metal": 30000, "crystal": 20000, "deuterium": 10000 },
+      "tech_upgrade_cost": {
+        "metal": 30000,
+        "crystal": 20000,
+        "deuterium": 10000
+      },
       "_tech_note": "Stations-Forschung (Verteidigungs-Tech, defense_tech_level): startet bei 1, aufwertbar Stufe fuer Stufe bis max_tech=12. Hebt Angriff/Schild/Huelle ALLER Abwehrbatterien (Abfang + Belagerung). Kosten je Stufe = tech_upgrade_cost * aktuelle Stufe (steigend), aus dem Allianz-Pool. Getrennt von den Modulen (die liefern konkrete Geschuetze/Schild/HP).",
       "_defense_base_note": "Grundbestueckung beim Bau (Stufe 0, 2026-06-17 Redesign): eine FRISCHE Station ist bewusst nur etwa so stark wie EIN Zerstoerer (~2000 effektiver Angriff bei Tech 1). Sie waechst durch Investition: Radius-Ausbau (defense_per_radius addiert Geschuetze + vergroessert die Zone), Module (Geschuetzturm->Geschuetze, Schildgenerator->Schild, Panzerplatte/Huellenverstaerker->HP, Schubtriebwerk->Transit-Tempo) UND Stations-Forschung (Tech 1->12).",
-      "defense_base": { "gauss_cannon": 1, "heavy_laser": 3 },
-      "defense_per_radius": { "gauss_cannon": 1, "heavy_laser": 4 },
+      "defense_base": {
+        "gauss_cannon": 1,
+        "heavy_laser": 3
+      },
+      "defense_per_radius": {
+        "gauss_cannon": 1,
+        "heavy_laser": 4
+      },
       "transit_combat_strength": 0.4,
       "_relocate_note": "Umstationieren (2026-06-17): Station kann auf einen freien Slot DERSELBEN Galaxie umziehen. Reisezeit = max(min_seconds, Distanz * seconds_per_distance) — bewusst SEHR langsam (Stunden). Deuterium-Kosten aus dem Pool = max(min_deuterium, Distanz * deuterium_per_distance). Waehrend des Transits ist die Einflusszone AUS (status='transit'), und die Station reist wie eine langsame Flotte: feindliche Abfang-Patrouillen auf der galaxie-internen Route koennen sie stellen. Im Abfang verteidigt sie mit ihren Abwehrbatterien (+ optionaler Eskorte); verliert sie das Gefecht, ist die Station ZERSTOERT. Ziel bei Ankunft belegt -> Rueckkehr zum Start (erneute Reisezeit).",
       "relocate": {
@@ -1079,15 +4120,63 @@
       "modules": {
         "base_slots": 2,
         "max_slots": 8,
-        "slot_upgrade_cost": { "metal": 40000, "crystal": 30000, "deuterium": 10000 },
+        "slot_upgrade_cost": {
+          "metal": 40000,
+          "crystal": 30000,
+          "deuterium": 10000
+        },
         "unmount_refund_pct": 0.5,
         "thruster_speed_cap": 0.5,
         "catalog": {
-          "turret":             { "label": "Geschuetzturm",      "defense": { "gauss_cannon": 2 },      "cost": { "metal": 30000, "crystal": 15000, "deuterium": 5000 } },
-          "shield_generator":   { "label": "Schildgenerator",    "defense": { "large_shield_dome": 1 }, "cost": { "metal": 15000, "crystal": 30000, "deuterium": 5000 } },
-          "armor_plating":      { "label": "Panzerplatte",       "max_hp": 40000,   "cost": { "metal": 40000, "crystal": 5000,  "deuterium": 5000 } },
-          "hull_reinforcement": { "label": "Huellenverstaerker", "max_hp": 100000,  "cost": { "metal": 50000, "crystal": 30000, "deuterium": 10000 } },
-          "thruster":           { "label": "Schubtriebwerk",     "relocate_speed_pct": 0.15, "cost": { "metal": 20000, "crystal": 20000, "deuterium": 20000 } }
+          "turret": {
+            "label": "Geschuetzturm",
+            "defense": {
+              "gauss_cannon": 2
+            },
+            "cost": {
+              "metal": 30000,
+              "crystal": 15000,
+              "deuterium": 5000
+            }
+          },
+          "shield_generator": {
+            "label": "Schildgenerator",
+            "defense": {
+              "large_shield_dome": 1
+            },
+            "cost": {
+              "metal": 15000,
+              "crystal": 30000,
+              "deuterium": 5000
+            }
+          },
+          "armor_plating": {
+            "label": "Panzerplatte",
+            "max_hp": 40000,
+            "cost": {
+              "metal": 40000,
+              "crystal": 5000,
+              "deuterium": 5000
+            }
+          },
+          "hull_reinforcement": {
+            "label": "Huellenverstaerker",
+            "max_hp": 100000,
+            "cost": {
+              "metal": 50000,
+              "crystal": 30000,
+              "deuterium": 10000
+            }
+          },
+          "thruster": {
+            "label": "Schubtriebwerk",
+            "relocate_speed_pct": 0.15,
+            "cost": {
+              "metal": 20000,
+              "crystal": 20000,
+              "deuterium": 20000
+            }
+          }
         }
       }
     }
