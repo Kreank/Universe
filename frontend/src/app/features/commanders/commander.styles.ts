@@ -172,6 +172,19 @@ export const commanderStyles = `
   }
   .inv-ico img { width: 20px; height: 20px; object-fit: contain; }
   .inv-glyph-fb { display: none; }
+  /* Werkstatt: Set-Gruppen + Item-Karten-Raster (Akademie-Fertigung). */
+  .workshop { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-1); }
+  .ws-set-head { font-family: var(--font-display); font-size: var(--fs-sm); color: var(--text-dim);
+    border-bottom: 1px solid var(--border); padding-bottom: 2px; margin-bottom: var(--sp-2); }
+  .ws-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--sp-2); }
+  .ws-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px;
+    padding: var(--sp-2); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--r-md); }
+  .ws-ico { position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
+  .ws-ico img { width: 56px; height: 56px; object-fit: contain; }
+  .ws-name { font-weight: 600; font-size: var(--fs-sm); }
+  .ws-bonus { color: var(--accent); }
+  .ws-craft { margin-top: var(--sp-1); width: 100%; }
   .inv-name { font-weight: 600; font-size: var(--fs-sm); flex: 1; min-width: 0; }
   .rar-tag { font-size: var(--fs-xs); }
   .rar-tag.rar-common { color: var(--text-dim); }

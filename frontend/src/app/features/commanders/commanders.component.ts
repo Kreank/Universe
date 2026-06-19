@@ -192,23 +192,35 @@ interface GradesConfig {
         <p class="faint small warn-text">{{ err }}</p>
       }
 
-      <div class="craft-row">
-        <label class="field">
-          <span>An der Akademie fertigen</span>
-          <select [ngModel]="craftKey()" (ngModelChange)="craftKey.set($event)">
-            <option [ngValue]="''">— Item wählen —</option>
-            @for (it of craftOptions(); track it.key) {
-              <option [ngValue]="it.key">{{ it.label }} ({{ slotLabel(it.slot) }})</option>
-            }
-          </select>
-        </label>
-        <button class="btn btn-primary" type="button" [disabled]="!craftKey() || crafting() || !canTrain()" (click)="craft()">
-          {{ crafting() ? 'Fertigt…' : 'Fertigen' }}
-        </button>
-      </div>
       @if (craftCost(); as cost) {
-        <p class="faint small craft-cost">Kosten je Teil: <app-cost-line [cost]="cost" /> · benötigt Kommando-Akademie Stufe {{ craftMin() }}.</p>
+        <p class="faint small craft-cost">Akademie-Fertigung · Kosten je Teil: <app-cost-line [cost]="cost" /> · benötigt Kommando-Akademie Stufe {{ craftMin() }}.</p>
       }
+      <div class="workshop">
+        @for (set of craftSets(); track set.key) {
+          <div class="ws-set">
+            <div class="ws-set-head">{{ set.label }}</div>
+            <div class="ws-grid">
+              @for (it of set.items; track it.key) {
+                <div class="ws-card">
+                  <span class="ws-ico">
+                    <img [src]="itemIcon(it.key)" alt="" (error)="onIcoError($event)" />
+                    <span class="inv-glyph-fb">🎽</span>
+                  </span>
+                  <span class="ws-name">{{ it.label }}</span>
+                  <span class="faint small">{{ slotLabel(it.slot) }}</span>
+                  @if (it.bonusText) {
+                    <span class="ws-bonus small">{{ it.bonusText }}</span>
+                  }
+                  <button class="btn btn-sm btn-primary ws-craft" type="button"
+                    [disabled]="craftingKey() !== null || !canTrain()" (click)="craft(it.key)">
+                    {{ craftingKey() === it.key ? 'Fertigt…' : 'Fertigen' }}
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
 
       <div class="bonus-head faint small inv-title">Inventar ({{ inventory().length }})</div>
       @if (inventory().length) {
@@ -324,17 +336,40 @@ export class CommandersComponent {
   // Arsenal: Inventar + Akademie-Fertigung.
   protected readonly inventory = signal<EquipmentItem[]>([]);
   protected readonly equipCatalog = signal<EquipmentCatalog | null>(null);
-  protected readonly craftKey = signal<string>('');
-  protected readonly crafting = signal(false);
+  protected readonly craftingKey = signal<string | null>(null);
   protected readonly craftError = signal<string | null>(null);
   protected readonly itemIcon = equipmentItemIcon;
 
-  /** Fertigbare Items (Key, Label, Slot) aus dem Equipment-Katalog. */
-  protected readonly craftOptions = computed(() => {
-    const items = this.equipCatalog()?.items ?? {};
-    return Object.entries(items)
-      .map(([key, def]) => ({ key, label: def.label, slot: def.slot }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+  private readonly STAT_LABELS: Record<string, string> = {
+    attack: 'Angriff', shield: 'Schild', speed: 'Tempo', mining_yield: 'Erz-Ertrag',
+    trade_margin: 'Handelsgewinn', spy_success: 'Spionage', expedition_yield: 'Expeditions-Ertrag',
+    research_speed: 'Forschung', production: 'Produktion', shipbuild_speed: 'Schiffbau',
+  };
+  private readonly TARGET_LABELS: Record<string, string> = {
+    fighter: 'Jäger', cruiser: 'Kreuzer', capital: 'Großkampf', civil: 'Zivil',
+  };
+
+  private bonusText(bonuses: { stat: string; target: string; pct: number }[] | undefined): string {
+    return (bonuses ?? []).map((b) => {
+      const t = b.target && b.target !== 'all' ? ` (${this.TARGET_LABELS[b.target] ?? b.target})` : '';
+      return `+${Math.round(b.pct * 100)}% ${this.STAT_LABELS[b.stat] ?? b.stat}${t}`;
+    }).join(', ');
+  }
+
+  /** Fertigbare Items, nach Set gruppiert (Werkstatt-Raster). */
+  protected readonly craftSets = computed(() => {
+    const cat = this.equipCatalog() as { items?: Record<string, { label: string; slot: string; set: string; bonuses?: { stat: string; target: string; pct: number }[] }>; sets?: Record<string, { label?: string }> } | null;
+    if (!cat?.items || !cat?.sets) return [];
+    const items = cat.items;
+    const order = ['head', 'chest', 'hands', 'legs', 'shoes'];
+    return Object.entries(cat.sets).map(([key, sdef]) => ({
+      key,
+      label: sdef.label ?? key,
+      items: Object.entries(items)
+        .filter(([, d]) => d.set === key)
+        .map(([k, d]) => ({ key: k, label: d.label, slot: d.slot, bonusText: this.bonusText(d.bonuses) }))
+        .sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot)),
+    }));
   });
   protected readonly craftCost = computed(() => this.equipCatalog()?.craft?.cost ?? null);
   protected readonly craftMin = computed(() => this.equipCatalog()?.craft?.academy_min ?? 2);
@@ -402,22 +437,21 @@ export class CommandersComponent {
     });
   }
 
-  craft(): void {
+  craft(key: string): void {
     const planetId = this.state.activePlanetId();
-    const key = this.craftKey();
-    if (!planetId || !key) {
+    if (!planetId || !key || this.craftingKey() !== null) {
       return;
     }
-    this.crafting.set(true);
+    this.craftingKey.set(key);
     this.craftError.set(null);
     this.api.craftItem(planetId, key).subscribe({
       next: (item) => {
-        this.crafting.set(false);
+        this.craftingKey.set(null);
         this.notify.success('Gefertigt', `${item.label} (${item.rarity_label}) liegt im Arsenal.`);
         this.loadInventory();
       },
       error: (err) => {
-        this.crafting.set(false);
+        this.craftingKey.set(null);
         this.craftError.set(err?.error?.detail ?? 'Fertigung fehlgeschlagen.');
       },
     });
