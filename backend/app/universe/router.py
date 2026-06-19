@@ -80,6 +80,12 @@ async def galaxy_targets(
     Liefert nur Ziele, die dieser Spieler per Sonde aufgedeckt hat
     (``player_discoveries``); Staerke/Zusammensetzung stammen aus dem letzten
     Aufklaerungs-Schnappschuss und koennen veraltet sein."""
+    import datetime as _dt
+
+    from app.fleet.trade import ensure_market, merchant_intel
+    bal = get_balance()
+    _now_iso = _dt.datetime.now(_dt.timezone.utc).isoformat()
+
     discoveries = sorted(
         (await _player_discoveries(session, player.id)).values(),
         key=lambda d: (d.galaxy, d.system, d.position),
@@ -95,6 +101,18 @@ async def galaxy_targets(
                 NpcEmpire.position == d.position,
             )
         )).scalar_one_or_none()
+        # Haendler/Handelszentren sind OHNE Spionage handelbar (Wunsch 2026-06-19):
+        # ist das entdeckte Ziel ein Haendler, das Handels-Intel (Flag + Kurse) direkt
+        # beilegen, auch wenn es nie spioniert wurde -> Galaxie zeigt den "Handeln"-Button.
+        prof = getattr(npc, "behavior_profile", None) if npc is not None else None
+        if npc is not None and prof == "merchant" and not intel.get("merchant"):
+            # Legacy-Haendler: lokalen Markt + aktuelle Kurse beilegen.
+            ensure_market(npc, bal.trade)
+            intel = {**intel, **merchant_intel(npc, bal.trade, _now_iso)}
+        elif npc is not None and prof == "trade_center" and not intel.get("merchant"):
+            # Handelszentren handeln zum globalen Indexkurs (keine lokalen Kurse erfinden);
+            # nur die Flags setzen, damit der Handeln-Button erscheint.
+            intel = {**intel, "merchant": True, "trade_center": True, "spec": "trade_center"}
         out.append(TargetOut(
             npc_id=str(npc.id) if npc else None,
             name=intel.get("name") or (npc.name if npc else f"{d.galaxy}:{d.system}:{d.position}"),
