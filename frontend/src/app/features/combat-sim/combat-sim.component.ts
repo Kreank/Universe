@@ -9,6 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
+import { CombatSimPreloadService } from '../../core/services/combat-sim-preload.service';
 import { CombatReport, Commander } from '../../core/models/api.models';
 import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { navIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
@@ -115,6 +116,9 @@ interface PickRow {
               <app-btn-icon [src]="statusIcon('attack')" glyph="⚔" [size]="16" /> {{ mode() === 'defense' ? 'Angreifer' : 'Gegner' }}
               @if (enemyTotal()) { <span class="ptotal mono">{{ enemyTotal() }}</span> }
             </div>
+            @if (presetLabel(); as pl) {
+              <p class="tech-hint faint">📡 Aus Spionagebericht übernommen: {{ pl }} — Werte ggf. anpassen.</p>
+            }
 
             <div class="sub-head">Schiffe</div>
             @for (s of combatShips(); track s.type) {
@@ -313,6 +317,7 @@ export class CombatSimComponent {
   private readonly api = inject(ApiService);
   private readonly balance = inject(BalanceService);
   private readonly state = inject(GameStateService);
+  private readonly preload = inject(CombatSimPreloadService);
 
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly navIcon = navIcon;
@@ -361,7 +366,20 @@ export class CombatSimComponent {
       },
       error: () => this.commanders.set([]),
     });
+
+    // Gegner-Voreinstellung aus einem Spionagebericht übernehmen (einmalig).
+    const preset = this.preload.consume();
+    if (preset) {
+      this.mode.set('attack');
+      this.enemyShipCounts.set({ ...preset.ships });
+      this.enemyDefCounts.set({ ...preset.defenses });
+      this.enemyTech.set({ ...preset.tech });
+      this.presetLabel.set(preset.label ?? null);
+    }
   }
+
+  /** Notiz, woher die Gegner-Werte stammen (Spionagebericht), bis der Spieler etwas ändert. */
+  protected readonly presetLabel = signal<string | null>(null);
 
   protected readonly balanceLoaded = computed(() => this.balance.value !== null);
 

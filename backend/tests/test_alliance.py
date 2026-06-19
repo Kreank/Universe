@@ -124,7 +124,7 @@ def test_phase2_balance_block():
     assert st["hp_regen_per_tick"] > 0
     assert st["siege_window_seconds"] > 0
     assert st["siege_damage_factor"] > 0
-    assert "plasma_turret" in st["defense_base"]
+    assert st["defense_base"]  # nicht-leere Abwehr-Grundbestueckung (Einheit->Anzahl)
     assert "weapons_tech" in st["defense_tech"]
 
 
@@ -158,8 +158,10 @@ def test_station_defenses_scale_with_radius():
     cfg = get_balance().data["alliance"]["station"]
     base = S.station_defenses(_station(research_radius_level=0))
     up = S.station_defenses(_station(research_radius_level=3))
-    assert base["plasma_turret"] == cfg["defense_base"]["plasma_turret"]
-    assert up["plasma_turret"] > base["plasma_turret"]
+    # Mindestens eine je-Radius-skalierende Einheit waechst mit der Ausbau-Stufe (balance-agnostisch).
+    scaling = [u for u, n in cfg.get("defense_per_radius", {}).items() if n]
+    assert scaling, "defense_per_radius sollte mind. eine skalierende Einheit haben"
+    assert any(up.get(u, 0) > base.get(u, 0) for u in scaling)
 
 
 def test_station_defender_shape():
@@ -219,9 +221,12 @@ def test_turret_module_raises_attack():
     armed = S.station_combat_stats(_station(modules={"turret": 2}))
     assert armed["attack_total"] > bare["attack_total"]
     assert armed["slots_used"] == 2
-    # Modul-Tech wird in die Verteidiger-Tech der Engine eingespeist.
-    assert S.station_defender(_station(modules={"turret": 2}))["tech"]["weapons_tech"] > \
-        S.station_defender(_station())["tech"]["weapons_tech"]
+    # Module fuegen der Station echte Abwehreinheiten hinzu (defense-Bonus-Modell).
+    bonus = S.module_defense_bonus(_station(modules={"turret": 2}))
+    assert bonus and sum(bonus.values()) > 0
+    armed_def = S.station_defenses(_station(modules={"turret": 2}))
+    bare_def = S.station_defenses(_station())
+    assert sum(armed_def.values()) > sum(bare_def.values())
 
 
 def test_hull_module_raises_max_hp():

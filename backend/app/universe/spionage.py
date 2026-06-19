@@ -21,11 +21,13 @@ from app.economy.service import get_research_levels
 from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
 from app.platform.models import (
+    Building,
     Defense,
     Fleet,
     NpcEmpire,
     Planet,
     PlayerDiscovery,
+    Research,
     Resource,
     Ship,
     UniverseCell,
@@ -105,6 +107,14 @@ async def _gather_target(
             res_rows = (await session.execute(
                 select(Resource).where(Resource.planet_id == planet.id)
             )).scalars().all()
+            # Gebaeudestufen (dieser Planet) + Forschungsstufen (kontoweit, Ziel-Spieler) — fuer
+            # das L3-Voll-Dossier. Forschung haengt am Spieler, nicht am Planeten.
+            bld_rows = (await session.execute(
+                select(Building).where(Building.planet_id == planet.id)
+            )).scalars().all()
+            res_levels = (await session.execute(
+                select(Research).where(Research.player_id == planet.player_id)
+            )).scalars().all()
             fleet_map: dict[str, int] = {}
             for s in ships:
                 if s.count > 0:
@@ -118,6 +128,8 @@ async def _gather_target(
                     for r in res_rows
                     if r.type in _RES_LABELS and r.amount > 0
                 },
+                "buildings": {b.type: b.level for b in bld_rows if b.level > 0},
+                "research": {r.type: r.level for r in res_levels if r.level > 0},
                 "kind": "player",
             }
 
@@ -128,6 +140,13 @@ def _fmt_units(units: dict[str, int]) -> str:
     if not units:
         return "keine"
     return ", ".join(f"{cnt}x {typ}" for typ, cnt in units.items())
+
+
+def _fmt_levels(levels: dict[str, int]) -> str:
+    """Gebaeude/Forschung als Stufen (nicht Stueckzahl): 'metal_mine Stufe 5'."""
+    if not levels:
+        return "keine"
+    return ", ".join(f"{typ} Stufe {lvl}" for typ, lvl in levels.items())
 
 
 def _fmt_resources(res: dict[str, int]) -> str:
@@ -154,8 +173,12 @@ def _build_report_body(coords: str, intel: dict) -> str:
         lines.append("Flotten-/Verteidigungs-Zusammensetzung: unklar (mehr Sonden oder Spionagetech noetig).")
     if level >= 3:
         lines.append(f"Ressourcen: {_fmt_resources(intel.get('resources', {}))}")
+        if intel.get("buildings"):
+            lines.append(f"Gebaeude: {_fmt_levels(intel['buildings'])}")
+        if intel.get("research"):
+            lines.append(f"Forschung: {_fmt_levels(intel['research'])}")
     else:
-        lines.append("Ressourcen: nicht aufgeklaert (Stufe 3 noetig).")
+        lines.append("Ressourcen/Gebaeude/Forschung: nicht aufgeklaert (Stufe 3 noetig).")
     eco = intel.get("economy")
     if eco:
         lines.append(f"Wirtschaft: Ausbaustufe {eco.get('development', '?')}, "
@@ -227,6 +250,9 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
     intel: dict = {
         "name": target["name"],
         "kind": target["kind"],
+        "galaxy": fleet.target_galaxy,
+        "system": fleet.target_system,
+        "position": fleet.target_position,
         "ships_total": ships_total,
         "defenses_total": defenses_total,
         "level": level,
@@ -237,6 +263,11 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
         intel["defenses"] = target["defenses"]
     if level >= 3:
         intel["resources"] = target["resources"]
+        # Voll-Dossier (Sascha-Entscheid): Gebaeude- + Forschungsstufen erst ab Stufe 3.
+        # Nur fuer Spieler-Ziele (NPCs liefern stattdessen 'economy', s.u.).
+        if target["kind"] == "player":
+            intel["buildings"] = target.get("buildings", {})
+            intel["research"] = target.get("research", {})
 
     # Haendler-NPC: Spec + aktuelle Kurse ins Intel mergen (Spionage deckt den Markt auf).
     spy_npc = target.get("npc")

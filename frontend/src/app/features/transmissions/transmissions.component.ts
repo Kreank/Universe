@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { CombatSimPreloadService } from '../../core/services/combat-sim-preload.service';
 import { Commander, DecisionChoice, Transmission } from '../../core/models/api.models';
-import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { defenseIcon, missionIcon, navIcon, resourceIcon, shipIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
+import { BUILDING_META, DEFENSE_META, RESOURCE_META, SHIP_META, TECH_META, metaFor } from '../../core/models/display';
+import { buildingIcon, defenseIcon, missionIcon, navIcon, resourceIcon, shipIcon, statIcon, statusIcon, techIcon, uiIcon } from '../../core/models/icon-assets';
 import { transmissionStyles } from './transmission.styles';
 import { CombatReportComponent } from './combat-report.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
@@ -28,14 +30,23 @@ interface SpyIntelView {
   name: string;
   kind: string;
   level: number;
+  /** Ziel-Koordinaten (für Angreifen/Simulator-Buttons), falls im Intel enthalten. */
+  coords: [number, number, number] | null;
   shipsTotal: number;
   defensesTotal: number;
   fleet: IntelUnit[] | null;
   defenses: IntelUnit[] | null;
   resources: IntelUnit[] | null;
+  /** Gebäude-/Forschungsstufen (L3, nur Spieler-Ziele). */
+  buildings: IntelUnit[] | null;
+  research: IntelUnit[] | null;
   /** NPC-Wirtschaft (abgeleitete Ausbau-/Forschungsstufe), sonst null. */
   economy: { development: number; research: number } | null;
   scannedAt: string | null;
+  /** Roh-Maps (type→count/level) für den Simulator-Preload. */
+  rawFleet: Record<string, number>;
+  rawDefenses: Record<string, number>;
+  rawResearch: Record<string, number>;
 }
 
 /**
@@ -142,6 +153,40 @@ interface SpyIntelView {
                     </div>
                   </div>
                 }
+                @if (intel.buildings) {
+                  <div class="intel-section">
+                    <div class="intel-label"><app-btn-icon [src]="navIcon('buildings')" glyph="🏗️" [size]="16" /> Gebäude</div>
+                    <div class="intel-rows">
+                      @for (u of intel.buildings; track u.label) {
+                        <span class="unit"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ u.label }} <strong>Stufe {{ u.count }}</strong></span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (intel.research) {
+                  <div class="intel-section">
+                    <div class="intel-label"><app-btn-icon [src]="navIcon('research')" glyph="🔬" [size]="16" /> Forschung</div>
+                    <div class="intel-rows">
+                      @for (u of intel.research; track u.label) {
+                        <span class="unit"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ u.label }} <strong>Stufe {{ u.count }}</strong></span>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Aktionen: direkt angreifen / in Simulator laden -->
+                @if (intel.coords) {
+                  <div class="intel-actions">
+                    <button class="btn btn-primary btn-sm" type="button" (click)="attackTarget(intel)" title="Flotte auf dieses Ziel ansetzen">
+                      ⚔️ Angreifen
+                    </button>
+                    @if (intel.fleet || intel.defenses) {
+                      <button class="btn btn-ghost btn-sm" type="button" (click)="loadInSimulator(intel)" title="Gegnerwerte in den Kampf-Simulator übernehmen">
+                        🎯 In Simulator laden
+                      </button>
+                    }
+                  </div>
+                }
 
                 @if (intel.level < 3) {
                   <p class="intel-hint small">
@@ -237,6 +282,42 @@ export class TransmissionsComponent {
   private readonly api = inject(ApiService);
   protected readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+  private readonly router = inject(Router);
+  private readonly simPreload = inject(CombatSimPreloadService);
+
+  /** Combat-relevante Tech-Keys, die der Simulator als Gegner-Forschung versteht. */
+  private static readonly SIM_TECH_KEYS = [
+    'weapons_tech', 'shield_tech', 'armor_tech',
+    'weapons_mastery', 'shield_mastery', 'armor_mastery',
+  ];
+
+  /** „⚔️ Angreifen": öffnet den Flottenversand auf die Zielkoordinate (Mission Angriff). */
+  attackTarget(intel: SpyIntelView): void {
+    if (!intel.coords) {
+      this.notify.warning('Keine Koordinaten', 'Dieser Bericht enthält kein angreifbares Ziel.');
+      return;
+    }
+    const [g, s, p] = intel.coords;
+    this.router.navigate(['/fleet'], { queryParams: { g, s, p, mission: 'attack' } });
+  }
+
+  /** „🎯 In Simulator laden": Gegner-Flotte/Verteidigung (+ spionierte Tech) vorbefüllen. */
+  loadInSimulator(intel: SpyIntelView): void {
+    const tech: Record<string, number> = {};
+    for (const k of TransmissionsComponent.SIM_TECH_KEYS) {
+      if (intel.rawResearch[k]) {
+        tech[k] = Number(intel.rawResearch[k]);
+      }
+    }
+    const coordStr = intel.coords ? `${intel.coords[0]}:${intel.coords[1]}:${intel.coords[2]}` : '';
+    this.simPreload.set({
+      ships: { ...intel.rawFleet },
+      defenses: { ...intel.rawDefenses },
+      tech,
+      label: `${intel.name}${coordStr ? ' (' + coordStr + ')' : ''}`,
+    });
+    this.router.navigate(['/combat-sim']);
+  }
 
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly missionIcon = missionIcon;
@@ -448,15 +529,25 @@ export class TransmissionsComponent {
           })
       : null;
 
+    const coords: [number, number, number] | null =
+      p['galaxy'] != null && p['system'] != null && p['position'] != null
+        ? [Number(p['galaxy']), Number(p['system']), Number(p['position'])]
+        : null;
+    const asMap = (v: unknown): Record<string, number> =>
+      v && typeof v === 'object' ? (v as Record<string, number>) : {};
+
     return {
       name: String(p['name'] ?? 'Unbekanntes Ziel'),
       kind: String(p['kind'] ?? 'npc'),
       level: Number(p['level'] ?? 1),
+      coords,
       shipsTotal: Number(p['ships_total'] ?? 0),
       defensesTotal: Number(p['defenses_total'] ?? 0),
       fleet: units(p['fleet'], SHIP_META, shipIcon),
       defenses: units(p['defenses'], DEFENSE_META, defenseIcon),
       resources: resources && resources.length ? resources : null,
+      buildings: units(p['buildings'], BUILDING_META, buildingIcon),
+      research: units(p['research'], TECH_META, techIcon),
       economy: (() => {
         const e = p['economy'] as Record<string, number> | undefined;
         return e && typeof e === 'object'
@@ -464,6 +555,9 @@ export class TransmissionsComponent {
           : null;
       })(),
       scannedAt: typeof p['scanned_at'] === 'string' ? (p['scanned_at'] as string) : null,
+      rawFleet: asMap(p['fleet']),
+      rawDefenses: asMap(p['defenses']),
+      rawResearch: asMap(p['research']),
     };
   }
 

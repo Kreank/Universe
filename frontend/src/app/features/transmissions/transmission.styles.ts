@@ -88,6 +88,7 @@ export const transmissionStyles = `
   .u-ico { flex: 0 0 auto; }
 
   .intel-hint { color: var(--text-dim); margin: var(--sp-1) 0 0; }
+  .intel-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
   .intel-time { margin: 0; }
 
   .decision {
