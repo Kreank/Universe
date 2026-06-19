@@ -239,6 +239,18 @@ type CargoKey = (typeof CARGO_KEYS)[number];
             }
           }
 
+          @if (missionSig() === 'attack') {
+            <div class="field">
+              <label class="tip" data-tip="Welche GESTRANDETEN Gegnerschiffe (Antrieb durch Ionen lahmgelegt) deine Enterschiffe bevorzugt kapern. Standard: die wertvollsten zuerst.">Kaper-Priorität</label>
+              <select [ngModel]="capturePriority()" (ngModelChange)="capturePriority.set($event)">
+                <option value="value">Wertvollste zuerst</option>
+                @for (t of captureTargets; track t) {
+                  <option [value]="t">{{ shipMeta(t).label }} zuerst</option>
+                }
+              </select>
+            </div>
+          }
+
           <div class="field">
             <label class="tip" data-tip="Langsamer = weniger Sprit">Tempo {{ speed() }}%</label>
             <input type="range" min="10" max="100" step="10" [ngModel]="speed()" (ngModelChange)="speed.set($event)" />
@@ -404,6 +416,13 @@ export class FleetComponent {
   protected readonly expeditionHours = signal(1);
   /** Astrophysik-Stufe (account-weit) -> Obergrenze der Verweildauer. */
   protected readonly astroLevel = signal(0);
+  /** Kaper-Priorität (mission == 'attack'): 'value' (teuerste zuerst) oder ein Schiffstyp-Key. */
+  protected readonly capturePriority = signal<string>('value');
+  /** Lohnende Kaperziele für das Dropdown (wertvolle Kampf-/Capital-/Frachtschiffe). */
+  protected readonly captureTargets = [
+    'battleship', 'battlecruiser', 'destroyer', 'cruiser', 'bomber',
+    'corsair', 'carrier', 'deathstar', 'harvest_titan', 'trade_leviathan', 'large_cargo',
+  ];
   protected readonly escortFeePct = signal(2); // Prozent (0..10), Backend deckelt
 
   /** Max. Verweildauer (Std) = Astrophysik-Stufe * Faktor, gedeckelt (aus balance.expedition.duration). */
@@ -695,6 +714,10 @@ export class FleetComponent {
             : undefined,
         expedition_hours:
           this.missionSig() === 'expedition' ? this.expeditionHours() : undefined,
+        capture_priority:
+          this.missionSig() === 'attack' && this.capturePriority() !== 'value'
+            ? this.capturePriority()
+            : undefined,
       })
       .subscribe({
         next: () => {

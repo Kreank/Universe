@@ -545,15 +545,41 @@ def simulate_battle(
     attacker_captured: dict[str, int] = {}
     defender_captured: dict[str, int] = {}
 
-    def board(boarding_units: list[Unit], victim_units: list[Unit], captured: dict[str, int], cap_per: int) -> list[Unit]:
+    # Schiffswert (Summe der Baukosten) je Typ -> Kaper-Priorisierung (A: teuerste zuerst).
+    # ``balance["ships"]`` kann auch Nicht-Dict-Einträge (z. B. _note) enthalten -> typsicher.
+    _ship_costs = balance.get("ships", {})
+    ship_values: dict[str, float] = {}
+    for _t, _spec in _ship_costs.items():
+        if not isinstance(_spec, dict):
+            continue
+        _cost = _spec.get("cost") if isinstance(_spec.get("cost"), dict) else {}
+        ship_values[_t] = sum(float(v) for v in _cost.values())
+    # Wunsch-Kaperziel des Angreifers (B): konkreter Schiffstyp wird bevorzugt; sonst rein nach Wert.
+    _atk_prefer = attacker.get("capture_priority")
+    _atk_prefer = _atk_prefer if _atk_prefer and _atk_prefer != "value" else None
+
+    def board(boarding_units: list[Unit], victim_units: list[Unit], captured: dict[str, int],
+              cap_per: int, prefer: str | None = None) -> list[Unit]:
         capacity = sum(1 for u in boarding_units if u.boarder) * cap_per
         # Punktverteidigung der Opfer-Seite (Eskort-Fregatten) faengt Enterer ab.
         capacity -= sum(1 for u in victim_units if u.point_defense) * pd_block
         if capacity <= 0:
             return victim_units
+        # Nur GESTRANDETE Gegner (Antrieb auf 0) sind kaperbar; Rest bleibt unangetastet.
+        capturable: list[Unit] = []
         kept: list[Unit] = []
         for u in victim_units:
-            if capacity > 0 and not u.launched and not u.is_defense and u.drive_max > 0 and u.drive <= 0:
+            if not u.launched and not u.is_defense and u.drive_max > 0 and u.drive <= 0:
+                capturable.append(u)
+            else:
+                kept.append(u)
+        # Priorisierung: gewuenschter Typ (B) zuerst, dann nach Schiffswert absteigend (A).
+        capturable.sort(
+            key=lambda u: (1 if (prefer and u.type == prefer) else 0, ship_values.get(u.type, 0.0)),
+            reverse=True,
+        )
+        for u in capturable:
+            if capacity > 0:
                 captured[u.type] = captured.get(u.type, 0) + 1
                 capacity -= 1
             else:
@@ -561,7 +587,7 @@ def simulate_battle(
         return kept
 
     if cap_base > 0 or cap_per_doc > 0:
-        def_units = board(atk_units, def_units, attacker_captured, atk_cap_per)   # Angreifer entert Verteidiger
+        def_units = board(atk_units, def_units, attacker_captured, atk_cap_per, _atk_prefer)  # Angreifer entert Verteidiger
         atk_units = board(def_units, atk_units, defender_captured, def_cap_per)   # Verteidiger entert Angreifer
 
     # Geflohene Einheiten ueberleben (kehren heim), zaehlen aber nicht als "haelt das Feld".

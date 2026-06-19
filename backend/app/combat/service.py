@@ -508,6 +508,8 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
         "tech": atk_tech,
         "attack_mult": attack_mult,
         "ship_bonuses": ship_bonuses,
+        # Kaper-Priorität des Angreifers (B): bevorzugter Schiffstyp bzw. "value"/None = teuerste zuerst.
+        "capture_priority": (fleet.mission_data or {}).get("capture_priority"),
     }
     defender = {
         "ships": def_ships, "defenses": def_defenses, "tech": def_tech,

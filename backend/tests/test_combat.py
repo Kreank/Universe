@@ -189,6 +189,33 @@ def test_no_capture_without_boarder():
     assert result["defender_drive_disabled"].get("cruiser", 0) == 8  # ... aber gestrandet
 
 
+def test_capture_priority_value_takes_most_valuable_first():
+    """A: bei begrenzter Kaper-Kapazität werden die WERTVOLLSTEN gestrandeten Schiffe zuerst
+    gekapert (Schlachtschiff teurer als Kreuzer) -> mehr Schlachtschiffe als Kreuzer gekapert."""
+    # Viele EWAR stranden alles, wenige Enterer -> Kapazität ist der Engpass, Priorität entscheidet.
+    attacker = {"ships": {"ewar_frigate": 200, "boarder": 3}, "tech": {}, "attack_mult": 1.0}
+    defender = {"ships": {"battleship": 6, "cruiser": 6}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    result = simulate_battle(attacker, defender, 5, BALANCE)
+    cap = result["attacker_captured"]
+    assert cap.get("battleship", 0) > 0
+    # Wert-Priorität: nie mehr (billigere) Kreuzer als (teurere) Schlachtschiffe kapern.
+    assert cap.get("battleship", 0) >= cap.get("cruiser", 0)
+
+
+def test_capture_priority_prefers_chosen_type():
+    """B: mit capture_priority='cruiser' werden Kreuzer bevorzugt gekapert, obwohl Schlachtschiffe
+    wertvoller sind -> mehr Kreuzer als Schlachtschiffe trotz Wert-Nachteil."""
+    attacker = {
+        "ships": {"ewar_frigate": 200, "boarder": 3}, "tech": {}, "attack_mult": 1.0,
+        "capture_priority": "cruiser",
+    }
+    defender = {"ships": {"battleship": 6, "cruiser": 6}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
+    result = simulate_battle(attacker, defender, 5, BALANCE)
+    cap = result["attacker_captured"]
+    assert cap.get("cruiser", 0) > 0
+    assert cap.get("cruiser", 0) >= cap.get("battleship", 0)
+
+
 # ---- Eskorten-Konter (Doku 03b §4): Punktverteidigung + Schild-Tender ----
 
 def test_escort_point_defense_blocks_boarding():

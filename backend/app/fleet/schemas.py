@@ -79,6 +79,8 @@ class SendFleetRequest(BaseModel):
     expedition_doctrine: str | None = None
     # Ziel-Typ an der Koordinate: 'moon' greift/spioniert den Mond statt des Planeten (sonst Planet).
     target_type: str | None = None
+    # Kapern (mission == 'attack'): bevorzugtes Kaperziel — Schiffstyp-Key oder 'value' (teuerste zuerst, Default).
+    capture_priority: str | None = None
     # Abfangen (mission == 'intercept'): Patrouillen-Radius in Systemen (Default 0 = nur Zielsystem).
     radius: int | None = None
     # Eskorte (mission == 'escort'): Deckungs-Radius in Systemen + Gebuehr (Anteil 0..max_fee_pct).

@@ -337,6 +337,8 @@ export interface FleetSendRequest {
   /** Eskorte (mission == 'escort'): Deckungs-Radius in Systemen + Gebuehr (Anteil 0..max_fee_pct). */
   escort_radius?: number;
   escort_fee_pct?: number;
+  /** Kapern (mission == 'attack'): bevorzugtes Kaperziel — Schiffstyp-Key oder 'value' (teuerste zuerst). */
+  capture_priority?: string;
 }
 
 /** Ein Eintrag im Faehigkeiten-Katalog (RPG-Entwicklung). */

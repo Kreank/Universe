@@ -209,6 +209,20 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
           </div>
         }
 
+        @if (mission() === 'attack') {
+          <div class="field">
+            <label class="tip" data-tip="Welche GESTRANDETEN Gegnerschiffe (Antrieb durch Ionen lahmgelegt) deine Enterschiffe bevorzugt kapern. Standard: die wertvollsten zuerst.">
+              <app-btn-icon [src]="missionIcon('attack')" glyph="🪝" [size]="16" /> Kaper-Priorität
+            </label>
+            <select [ngModel]="capturePriority()" (ngModelChange)="capturePriority.set($event)">
+              <option value="value">Wertvollste zuerst</option>
+              @for (t of captureTargets; track t) {
+                <option [value]="t">{{ shipMeta(t).label }} zuerst</option>
+              }
+            </select>
+          </div>
+        }
+
         @if (hasSelection()) {
           <div class="fleet-summary" [class.out]="rangeInfo()?.inRange === false">
             <div class="cap-head">
@@ -474,6 +488,14 @@ export class FleetDispatchComponent {
   });
 
   protected readonly showTrade = computed(() => this.mission() === 'trade');
+
+  /** Kaper-Priorität (mission == 'attack'): 'value' (teuerste zuerst) oder ein Schiffstyp-Key. */
+  protected readonly capturePriority = signal<string>('value');
+  /** Lohnende Kaperziele für das Dropdown (wertvolle Kampf-/Capital-/Frachtschiffe). */
+  protected readonly captureTargets = [
+    'battleship', 'battlecruiser', 'destroyer', 'cruiser', 'bomber',
+    'corsair', 'carrier', 'deathstar', 'harvest_titan', 'trade_leviathan', 'large_cargo',
+  ];
 
   /** Ist das Ziel ein (oeffentliches) Handelszentrum mit globalem Kurs? */
   protected readonly isCenter = computed(() => !!this.merchantIntel()?.trade_center);
@@ -838,6 +860,9 @@ export class FleetDispatchComponent {
     };
     if (this.mission() === 'expedition') {
       body.expedition_hours = this.expHours();
+    }
+    if (this.mission() === 'attack' && this.capturePriority() !== 'value') {
+      body.capture_priority = this.capturePriority();
     }
     if (this.targetType() === 'moon') {
       body.target_type = 'moon';

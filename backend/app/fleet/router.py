@@ -72,6 +72,8 @@ async def send(
             mission_data["escort_fee_pct"] = body.escort_fee_pct
     if body.target_type == "moon":
         mission_data["target_type"] = "moon"
+    if body.mission == "attack" and body.capture_priority:
+        mission_data["capture_priority"] = body.capture_priority
     try:
         fleet = await send_fleet(
             session,
