@@ -956,7 +956,10 @@
       "speed": 12500,
       "fuel": 20,
       "fuel_tank": 7,
-      "rapidfire": {},
+      "rapidfire": {
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
       "requires": {
         "shipyard": 1,
         "combustion_drive": 1
@@ -974,7 +977,11 @@
       "speed": 10000,
       "fuel": 75,
       "fuel_tank": 52,
-      "rapidfire": {},
+      "rapidfire": {
+        "small_cargo": 3,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
       "requires": {
         "shipyard": 2,
         "impulse_drive": 2,
@@ -993,7 +1000,13 @@
       "speed": 15000,
       "fuel": 300,
       "fuel_tank": 380,
-      "rapidfire": {},
+      "rapidfire": {
+        "light_fighter": 6,
+        "heavy_fighter": 3,
+        "drone": 6,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
       "requires": {
         "shipyard": 3,
         "impulse_drive": 4,
@@ -1126,7 +1139,12 @@
       "speed": 10000,
       "fuel": 500,
       "fuel_tank": 630,
-      "rapidfire": {},
+      "rapidfire": {
+        "small_cargo": 3,
+        "large_cargo": 3,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
       "requires": {
         "shipyard": 6,
         "hyperspace_drive": 4
@@ -1144,7 +1162,15 @@
       "speed": 10000,
       "fuel": 250,
       "fuel_tank": 320,
-      "rapidfire": {},
+      "rapidfire": {
+        "battleship": 7,
+        "cruiser": 4,
+        "heavy_fighter": 4,
+        "small_cargo": 3,
+        "large_cargo": 3,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
       "requires": {
         "shipyard": 8,
         "hyperspace_tech": 5,
@@ -1192,7 +1218,12 @@
       "speed": 5000,
       "fuel": 1000,
       "fuel_tank": 1260,
-      "rapidfire": {},
+      "rapidfire": {
+        "battlecruiser": 3,
+        "cruiser": 2,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
       "_note": "Artillerie/Glaskanone (Doku 03c/03d): hoher Fern-Schaden, DUENNE Huelle+Schild -> billig. Konter ist EMERGENT (kein Rapidfire mehr): schnelle Schiffe schliessen ueber die Reichweiten-Baender die Distanz und zerlegen die duenne Huelle; Standoff-Strafe schwaecht sie im Nahkampf.",
       "requires": {
         "shipyard": 7,
@@ -1403,7 +1434,13 @@
       "speed": 18000,
       "fuel": 100,
       "fuel_tank": 35,
-      "rapidfire": {},
+      "rapidfire": {
+        "light_fighter": 4,
+        "heavy_fighter": 3,
+        "drone": 4,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
       "requires": {
         "shipyard": 4,
         "laser_tech": 5,
