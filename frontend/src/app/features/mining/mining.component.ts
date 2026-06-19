@@ -2,9 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
-import { MiningField, MiningFieldsResponse } from '../../core/models/api.models';
+import { Coordinate, MiningField, MiningFieldsResponse } from '../../core/models/api.models';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
+import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
 
 type SortKey = 'richness' | 'metal' | 'crystal' | 'expires';
 
@@ -20,7 +21,7 @@ const RICHNESS_RANK: Record<string, number> = { ergiebig: 3, reich: 2, normal: 1
 @Component({
   selector: 'app-mining',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, RouterLink, CountdownComponent, EmptyStateComponent],
+  imports: [DecimalPipe, RouterLink, CountdownComponent, EmptyStateComponent, FleetDispatchComponent],
   template: `
     <h1>Bergbau · Asteroidenfelder</h1>
     <p class="sub">
@@ -75,7 +76,7 @@ const RICHNESS_RANK: Record<string, number> = { ergiebig: 3, reich: 2, normal: 1
                   @if (f.expires_at) {
                     <span class="exp muted small">wandert in <app-countdown [target]="f.expires_at" /></span>
                   }
-                  <a class="btn btn-sm btn-primary" [routerLink]="['/fleet']" [queryParams]="{ g: f.galaxy, s: f.system, p: f.position, mission: 'mine' }">⛏ Minen</a>
+                  <button class="btn btn-sm btn-primary" (click)="openMine(f)">⛏ Minen</button>
                 </div>
               </article>
             }
@@ -86,6 +87,16 @@ const RICHNESS_RANK: Record<string, number> = { ergiebig: 3, reich: 2, normal: 1
           </app-empty-state>
         }
       }
+    }
+
+    @if (dispatch(); as d) {
+      <app-fleet-dispatch
+        [target]="d.target"
+        [targetName]="d.name"
+        [initialMission]="'mine'"
+        (sent)="onMined()"
+        (close)="dispatch.set(null)"
+      />
     }
   `,
   styles: [
@@ -119,6 +130,8 @@ export class MiningComponent {
   protected readonly loading = signal(true);
   protected readonly data = signal<MiningFieldsResponse | null>(null);
   protected readonly sortKey = signal<SortKey>('richness');
+  /** Offener Versand-Dialog (Bergbau-Flotte zum Feld schicken). */
+  protected readonly dispatch = signal<{ target: Coordinate; name: string } | null>(null);
 
   protected readonly sortedFields = computed(() => {
     const fields = [...(this.data()?.fields ?? [])];
@@ -144,6 +157,17 @@ export class MiningComponent {
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: () => { this.loading.set(false); },
     });
+  }
+
+  /** Öffnet den Versand-Dialog (Bergbau-Flotte) für ein Feld. */
+  openMine(f: MiningField): void {
+    this.dispatch.set({ target: { galaxy: f.galaxy, system: f.system, position: f.position }, name: `Asteroidenfeld [${f.coords}]` });
+  }
+
+  /** Nach erfolgreichem Versand: Dialog schließen + Felder neu laden. */
+  onMined(): void {
+    this.dispatch.set(null);
+    this.reload();
   }
 
   richnessLabel(r: string): string {

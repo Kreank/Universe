@@ -373,8 +373,10 @@ export class FleetComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly balance = inject(BalanceService);
 
+  // 'mine' lebt jetzt im Bergbau-Bereich (eigener Screen + Galaxie-Dialog) -> raus aus
+  // dem allgemeinen Flotten-Dropdown, das war zu überladen.
   protected readonly missions: FleetMission[] = [
-    'attack', 'transport', 'spy', 'deploy', 'intercept', 'escort', 'recycle', 'colonize', 'mine', 'expedition',
+    'attack', 'transport', 'spy', 'deploy', 'intercept', 'escort', 'recycle', 'colonize', 'expedition',
   ];
 
   // Pflicht-Schiff je Spezial-Mission (Backend erzwingt es; hier als Hinweis).
