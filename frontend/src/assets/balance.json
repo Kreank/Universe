@@ -2169,7 +2169,7 @@
   },
   "asteroids": {
     "_note": "Asteroidenfelder: endliche, regenerierende Erz-Vorkommen, per RNG im Universum verteilt (eigene Zelle, occupant 'asteroid_field'). Reichtums-Tier (gewichtet gerollt) skaliert Vorrat UND Mining-Ertrag. capacity x mult = Max-Vorrat; erschoepft beim Minen, regeneriert lazy mit regen_ratio_per_hour x Max bis zur Deckelung. density_per_galaxy = Ziel-Anzahl Felder je Galaxie (auf leeren Zellen geseedet).",
-    "density_per_galaxy": 50,
+    "density_per_galaxy": 40,
     "seed_tick_interval_seconds": 21600,
     "position_min": 1,
     "position_max": 15,
@@ -2199,7 +2199,10 @@
       "metal": 240000,
       "crystal": 120000
     },
-    "regen_ratio_per_hour": 0.03
+    "regen_ratio_per_hour": 0.03,
+    "lifetime_hours_min": 24,
+    "lifetime_hours_max": 48,
+    "relocation_tick_interval_seconds": 3600
   },
   "expedition": {
     "_note": "Expeditions-Mission in die GALAKTISCHEN WEITEN (deep_space_position=16, eigener Slot je System, kein Planet/NPC). Flotte fliegt hin, VERWEILT gewaehlte Stunden (1..max_hours, max = min(astrophysics, hour_cap)) und kehrt dann zurueck. Bei Aufloesung gewichteter Zufalls-Ausgang. Laenger = mehr Ertrag (yield_bonus_per_hour) UND mehr Risiko (risk_bonus_per_hour skaliert die 'risky'-Gewichte). Ertrag zusaetzlich x expedition_tech (+expedition_per_level/Stufe, gedeckelt bei yield_cap_level = +100%). Bereiche [min,max] seed-basiert gezogen.",

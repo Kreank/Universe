@@ -354,6 +354,9 @@ class AsteroidField(Base):
     crystal_max: Mapped[float] = mapped_column(Float, default=0.0)
     last_regen_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    # Ablaufzeit (gestaffelt 24-48h): danach wandert das Feld (despawn + neu woanders),
+    # damit Hot-Spotting vermieden wird. NULL = unbegrenzt (Alt-Felder bis zum Backfill).
+    expires_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class FarmRoute(Base):

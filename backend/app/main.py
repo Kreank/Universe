@@ -33,7 +33,7 @@ from app.platform.ai_jobs import bootstrap_nightly_batches, enqueue_nightly_batc
 from app.platform.balance import get_balance
 from app.platform.eventbus import event_bus
 from app.planets.derive import backfill_planets
-from app.universe.asteroids import ensure_asteroid_fields
+from app.universe.asteroids import ensure_asteroid_fields, relocate_expired_fields
 from app.platform.migrations import ensure_schema
 from app.platform.recovery import recover_pending_jobs
 from app.platform.scheduler import schedule_interval, shutdown_scheduler, start_scheduler
@@ -116,6 +116,12 @@ async def lifespan(app: FastAPI):
         ensure_asteroid_fields,
         seconds=get_balance().data["asteroids"]["seed_tick_interval_seconds"],
         job_id="asteroid-seed",
+    )
+    # Asteroiden-Relocation-Tick: abgelaufene Felder wandern (despawn + reseed), Mining-Schutz.
+    schedule_interval(
+        relocate_expired_fields,
+        seconds=get_balance().data["asteroids"].get("relocation_tick_interval_seconds", 3600),
+        job_id="asteroid-relocate",
     )
     # Game-Events: Spawner-Tick (Welt-/persoenliche Events) + Buff-Cleanup.
     from app.events.buffs import cleanup_expired_buffs

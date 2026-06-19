@@ -29,6 +29,15 @@ def _now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
 
 
+def _roll_expiry(rng: random.Random) -> dt.datetime:
+    """Gestaffelte Ablaufzeit (lifetime_hours_min..max, Default 24-48h) -> Felder wandern
+    nicht alle gleichzeitig, sondern laufend versetzt."""
+    cfg = _cfg()
+    lo = float(cfg.get("lifetime_hours_min", 24))
+    hi = float(cfg.get("lifetime_hours_max", 48))
+    return _now() + dt.timedelta(hours=rng.uniform(lo, max(lo, hi)))
+
+
 # -- Reine Logik ----------------------------------------------------------------
 
 def roll_richness(rng: random.Random, cfg: dict | None = None) -> tuple[str, float]:
@@ -188,6 +197,7 @@ async def ensure_asteroid_fields(session: AsyncSession | None = None) -> int:
                 richness=name, mult=mult,
                 metal_remaining=m_max, crystal_remaining=c_max,
                 metal_max=m_max, crystal_max=c_max,
+                expires_at=_roll_expiry(rng),
             ))
             spawned += 1
             created += 1
@@ -195,3 +205,47 @@ async def ensure_asteroid_fields(session: AsyncSession | None = None) -> int:
     if created:
         log.info("Asteroiden-Seeding: %d neue Felder erzeugt", created)
     return created
+
+
+async def relocate_expired_fields(session: AsyncSession | None = None) -> int:
+    """Periodischer Tick (relocation_tick_interval_seconds): abgelaufene Felder (expires_at <= now)
+    despawnen und die Ziel-Dichte neu seeden -> Felder wandern (Anti-Hot-Spotting).
+
+    SCHUTZ: ein Feld, an dem gerade eine Bergbauflotte schuerft ODER das gerade angeflogen wird
+    (mission 'mine', status != 'done'), wird NICHT entfernt -- sonst verschwaende es mitten im
+    Abbau. Stattdessen wird sein Ablauf verschoben und beim naechsten Tick erneut geprueft."""
+    from app.platform.db import session_scope
+    if session is None:
+        async with session_scope() as s:
+            n = await relocate_expired_fields(s)
+            await s.commit()
+            return n
+
+    from app.platform.models import Fleet
+    now = _now()
+    expired = (await session.execute(
+        select(AsteroidField).where(
+            AsteroidField.expires_at.is_not(None), AsteroidField.expires_at <= now
+        )
+    )).scalars().all()
+    removed = 0
+    for f in expired:
+        busy = int((await session.execute(
+            select(func.count()).select_from(Fleet).where(
+                Fleet.target_galaxy == f.galaxy,
+                Fleet.target_system == f.system,
+                Fleet.target_position == f.position,
+                Fleet.mission == "mine",
+                Fleet.status != "done",
+            )
+        )).scalar() or 0)
+        if busy:
+            f.expires_at = now + dt.timedelta(hours=float(_cfg().get("lifetime_hours_min", 24)))
+            continue
+        await session.delete(f)
+        removed += 1
+    # Defizit auffuellen -> neue Felder an neuen, zufaelligen Stellen.
+    await ensure_asteroid_fields(session)
+    if removed:
+        log.info("Asteroiden-Relocation: %d abgelaufene Felder gewandert", removed)
+    return removed

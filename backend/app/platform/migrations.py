@@ -376,6 +376,12 @@ _STATEMENTS: list[str] = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_commander_items_player ON commander_items(player_id)",
     "CREATE INDEX IF NOT EXISTS idx_commander_items_equipped ON commander_items(equipped_commander_id)",
+    # -- Feature: Asteroidenfelder wandern (2026-06-19) --
+    # Ablaufzeit eines Asteroidenfeldes; danach despawnt es und ein neues spawnt woanders
+    # (Anti-Hot-Spotting). Backfill: Alt-Felder bekommen eine gestaffelte Ablaufzeit (24-48h).
+    "ALTER TABLE asteroid_fields ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ",
+    "UPDATE asteroid_fields SET expires_at = now() + (interval '24 hours') + (random() * interval '24 hours') WHERE expires_at IS NULL",
+    "CREATE INDEX IF NOT EXISTS idx_asteroid_expires ON asteroid_fields(expires_at)",
 ]
 
 
