@@ -3689,8 +3689,8 @@
       "drops": {
         "_note": "Drop-Chance je Quelle (pro Belohnungs-Event) + Raritaets-Gewichte. grant_item waehlt ein zufaelliges Katalog-Item + Raritaet.",
         "chance": {
-          "quest": 0.18,
-          "expedition": 0.08,
+          "quest": 0.3,
+          "expedition": 0.15,
           "global_event": 0.45
         },
         "rarity_weights": {
@@ -4156,7 +4156,7 @@
     "personal": {
       "pirate_raid": {
         "enabled": true,
-        "spawn_chance_per_player": 0.02,
+        "spawn_chance_per_player": 0.03,
         "warning_minutes": 150,
         "power_vs_player": 0.45,
         "_bribe_note": "Vor dem Anflug kann man die Piraten bestechen (teuer, aus dem Bau-Planeten). Meist ziehen sie ab; mit bribe_partial_chance greifen sie TROTZDEM an, aber mit reduzierter Flotte (bribe_partial_fleet_mult) und lassen dafuer ein besseres Truemmerfeld (bribe_partial_debris_mult) + Chance auf Kommandeurs-Equipment (bribe_partial_item_chance) zurueck.",
@@ -4173,7 +4173,7 @@
       },
       "mine_strike": {
         "enabled": true,
-        "spawn_chance_per_player": 0.02,
+        "spawn_chance_per_player": 0.03,
         "production_mult": 0.5,
         "duration_hours": 12,
         "bribe_deuterium": 30000,
@@ -4182,7 +4182,7 @@
       },
       "breakthrough": {
         "enabled": true,
-        "spawn_chance_per_player": 0.012,
+        "spawn_chance_per_player": 0.05,
         "free_level_chance": 0.25
       }
     }

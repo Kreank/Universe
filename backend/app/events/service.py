@@ -446,6 +446,34 @@ async def active_map_events(session: AsyncSession) -> list[CosmicEvent]:
 
 # -- Spawner-Tick ------------------------------------------------------------
 
+_EVENT_LABELS = {
+    "wandering_comet": "Wandernder Komet",
+    "cosmic_anomaly": "Kosmische Anomalie",
+    "solar_storm": "Sonnensturm",
+    "black_market": "Schwarzmarkt",
+    "utopia_shipyard": "Utopia-Werft",
+}
+
+
+async def _notify_world_event(session: AsyncSession, ev) -> None:
+    """Benachrichtigt Spieler mit einem Planeten in der Galaxie des Welt-Events (Toast + Postfach),
+    damit globale Events wahrgenommen werden — vorher nur stilles Galaxie-Karten-Overlay."""
+    from app.messaging.service import create_system_transmission
+    label = _EVENT_LABELS.get(ev.event_type, ev.event_type)
+    coords = f"{ev.galaxy}:{ev.system}" + (f":{ev.position}" if ev.position else "")
+    pids = set((await session.execute(
+        select(Planet.player_id).where(Planet.galaxy == ev.galaxy)
+    )).scalars().all())
+    for pid in pids:
+        await create_system_transmission(
+            session, player_id=pid,
+            subject=f"🌌 Globales Event: {label}",
+            body=(f"In deiner Galaxie ist ein Ereignis aufgetaucht: {label} bei {coords}. "
+                  f"Es ist zeitlich begrenzt — hinfliegen kann sich lohnen."),
+            ttype="system",
+        )
+
+
 async def events_tick() -> None:
     """Periodischer Tick: würfelt neue Welt-Events (selten) + persönliche Events."""
     bal = get_balance()
@@ -471,6 +499,7 @@ async def events_tick() -> None:
                     schedule_at(ev.expires_at, resolve_event, str(ev.id), job_id=f"event:{ev.id}")
                     active.append(ev)
                     log.info("Event gespawnt: %s @ %s:%s:%s", etype, ev.galaxy, ev.system, ev.position)
+                    await _notify_world_event(session, ev)
         await session.commit()
 
     # Persönliche Events getrennt (eigener Session-Scope je Spieler).
