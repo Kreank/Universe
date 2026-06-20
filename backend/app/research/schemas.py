@@ -47,4 +47,6 @@ class StartResearchRequest(BaseModel):
 class StartResearchResponse(BaseModel):
     type: str
     level: int
-    finishes_at: dt.datetime
+    # None nach einem Abbruch (keine laufende Forschung mehr) — sonst scheitert die Antwort-
+    # Serialisierung des cancel-Endpunkts (ValidationError -> HTTP 500). Analog UpgradeResponse.
+    finishes_at: dt.datetime | None = None
