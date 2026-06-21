@@ -244,7 +244,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     diplomacy: { path: '/diplomacy', label: 'Diplomatie', glyph: '🕊️', icon: 'assets/img/nav/diplomacy.png' },
     transmissions: { path: '/transmissions', label: 'Postfach', glyph: '📡', icon: 'assets/img/nav/mail.png' },
     ranking: { path: '/ranking', label: 'Rangliste', glyph: '🏆', icon: 'assets/img/nav/ranking.png' },
-    chronicle: { path: '/chronicle', label: 'Chronik', glyph: '📜', icon: 'assets/img/nav/ranking.png' },
+    chronicle: { path: '/chronicle', label: 'Chronik', glyph: '📜', icon: 'assets/img/nav/chronicle.png' },
   };
 
   protected readonly navGroups: NavGroup[] = [

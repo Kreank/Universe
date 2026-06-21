@@ -704,3 +704,7 @@ Es gibt **zwei** Asset-Wurzeln:
 |---|---|---|---|---|
 | ✅ | mk2_frame | `icons/ui/` | PNG transparent (Mitte+Ecken), 256×256 | Mk2/Elite-Rahmen-Overlay: goldener Sci-fi-Rahmen + Glow am Rand, transparente Mitte (legt sich um ein Schiff-Icon). Master + Spiegel `frontend/src/assets/img/ui/`. |
 | ✅ | targets | `icons/nav/` | PNG transparent, 256×256 | Nav-Icon „Ziele/Bedrohungen": Metallrahmen + cyan Fadenkreuz/Radar-Sweep mit rotem Bedrohungs-Blip. Stil-Anker diplomacy/command. Master + Spiegel `frontend/src/assets/img/nav/`. |
+
+| ✅ | deuterium_prospecting | `icons/tech/` | PNG transparent, 256×256 | Forschung „Deuterium-Prospektion": Tech-Medaillon, Deuterium-Tank + Bohrkopf/Asteroid, cyan. Master + Spiegel `frontend/src/assets/img/tech/`. |
+| ✅ | veteran_shipyard | `icons/tech/` | PNG transparent, 256×256 | Forschung „Veteranen-Werft" (schaltet Mk2 frei): Tech-Medaillon, Schiff im Dock + goldener „II"/Stern-Elite-Akzent. Master + Spiegel. |
+| ✅ | chronicle | `icons/nav/` | PNG transparent, 256×256 | Nav-Icon „Chronik": Metallrahmen + cyan Holo-Buch + ✦-Funken. Master + Spiegel `frontend/src/assets/img/nav/`. |

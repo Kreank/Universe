@@ -56,7 +56,7 @@ import { FeedbackCategory } from '../../core/models/api.models';
               <li>💾 Behalte nichts „für immer" – noch wird viel umgebaut.</li>
             </ul>
 
-            <a class="discord" href="https://discord.gg/7S2VST8d6" target="_blank" rel="noopener noreferrer">
+            <a class="discord" href="https://discord.gg/6hvE5KuZZR" target="_blank" rel="noopener noreferrer">
               <span class="dc-ico">💬</span>
               <span>Komm auf unseren <b>Discord</b> – Austausch, News &amp; schnelle Hilfe →</span>
             </a>
@@ -104,7 +104,7 @@ import { FeedbackCategory } from '../../core/models/api.models';
               <div class="check">✅</div>
               <h2 class="title">Danke!</h2>
               <p class="lead">Deine Meldung ist angekommen. Du kannst jederzeit weiter melden.</p>
-              <a class="discord" href="https://discord.gg/7S2VST8d6" target="_blank" rel="noopener noreferrer">
+              <a class="discord" href="https://discord.gg/6hvE5KuZZR" target="_blank" rel="noopener noreferrer">
                 <span class="dc-ico">💬</span>
                 <span>Komm auf unseren <b>Discord</b> →</span>
               </a>
