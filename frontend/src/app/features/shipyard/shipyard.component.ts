@@ -136,6 +136,12 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
       </section>
 
       <app-tab-bar [tabs]="tabDefs()" [active]="activeTab()" (select)="activeTab.set($event)" />
+      @if (hasMk2()) {
+        <label class="mk2-toggle">
+          <input type="checkbox" [checked]="showMk2()" (change)="showMk2.set(!showMk2())" />
+          ⭐ Mk2-/Elite-Schiffe anzeigen
+        </label>
+      }
       @if (activeView(); as view) {
         <div class="tile-grid">
           @for (s of view.items; track s.type) {
@@ -232,6 +238,13 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
       /* Unterzeile unter dem Titel. */
       .sub { margin-top: calc(-1 * var(--sp-1)); font-size: var(--fs-sm); }
 
+      /* Mk2-Ein-/Ausblenden-Schalter (unter der Tab-Leiste). */
+      .mk2-toggle {
+        display: inline-flex; align-items: center; gap: var(--sp-2);
+        margin: var(--sp-2) 0; font-size: var(--fs-sm); color: var(--text-dim); cursor: pointer;
+      }
+      .mk2-toggle input { cursor: pointer; }
+
       /* Bauschleifen-Panel (nutzt globale .card / .panel-title). */
       .queue { margin-bottom: var(--sp-4); }
       .queue-row {
@@ -302,6 +315,10 @@ export class ShipyardComponent {
   protected readonly navIcon = navIcon;
   /** Mk2/Elite-Schiff erkennen (Mk2-Rahmen ueber dem Artwork). */
   protected readonly isMk2 = isMk2;
+  /** Mk2/Elite-Schiffe in der Werft ein-/ausblenden (Default: eingeblendet). */
+  protected readonly showMk2 = signal(true);
+  /** Toggle nur zeigen, wenn überhaupt Mk2-Schiffe verfügbar sind. */
+  protected readonly hasMk2 = computed(() => (this.data()?.ships ?? []).some((s) => isMk2(s.type)));
 
   protected readonly data = signal<ShipyardResponse | null>(null);
   protected readonly loading = signal(true);
@@ -330,6 +347,7 @@ export class ShipyardComponent {
   /** Gruppiert die Schiffe in Kategorien (Reihenfolge aus SHIP_CATEGORY_ORDER). */
   protected readonly shipGroups = computed<ShipGroup[]>(() => {
     const ships = this.data()?.ships ?? [];
+    const showMk2 = this.showMk2();
     const byType = new Map(ships.map((s) => [s.type, s]));
     const used = new Set<string>();
     const groups: ShipGroup[] = [];
@@ -341,19 +359,21 @@ export class ShipyardComponent {
           rows.push(base);
           used.add(base.type);
         }
-        // Mk2/Elite-Variante (data-driven) direkt nach dem jeweiligen Mk1 einsortieren.
+        // Mk2/Elite-Variante (data-driven) direkt nach dem jeweiligen Mk1 einsortieren — nur wenn eingeblendet.
         const mk2 = byType.get(t + '_mk2');
         if (mk2) {
-          rows.push(mk2);
           used.add(mk2.type);
+          if (showMk2) {
+            rows.push(mk2);
+          }
         }
       }
       if (rows.length) {
         groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, icon: cat.icon, ships: rows });
       }
     }
-    // Etwaige unkategorisierte Schiffe als "Sonstiges".
-    const rest = ships.filter((s) => !used.has(s.type));
+    // Etwaige unkategorisierte Schiffe als "Sonstiges" (Mk2 nur wenn eingeblendet).
+    const rest = ships.filter((s) => !used.has(s.type) && (showMk2 || !isMk2(s.type)));
     if (rest.length) {
       groups.push({ key: 'other', label: 'Sonstiges', glyph: '🚀', icon: navIcon('fleet'), ships: rest });
     }
