@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { PlanetUnit, Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
-import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_META, metaFor } from '../../core/models/display';
+import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_META, isMk2, metaFor } from '../../core/models/display';
 import { defenseIcon, missionIcon, navIcon, rangeIcon, resourceIcon, shipIcon, statIcon, statusIcon, uiIcon, weaponIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
@@ -105,7 +105,7 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
           @for (q of queueView(); track q.id; let first = $first) {
             <div class="queue-row" [class.building]="first" [class.waiting]="!first">
               <span class="q-unit">
-                <app-icon-tile class="q-ico" [glyph]="unitMeta(q.type, q.category).glyph" [src]="unitIcon(q.type, q.category)" [size]="22" variant="muted" />{{ q.count }}× {{ unitMeta(q.type, q.category).label }}
+                <app-icon-tile class="q-ico" [glyph]="unitMeta(q.type, q.category).glyph" [src]="unitIcon(q.type, q.category)" [mk2]="isMk2(q.type)" [size]="22" variant="muted" />{{ q.count }}× {{ unitMeta(q.type, q.category).label }}
                 @if (first) {
                   <span class="q-status active">⏳ Im Bau</span>
                 } @else {
@@ -141,7 +141,8 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
           @for (s of view.items; track s.type) {
             <app-build-tile
               [attr.id]="'tile-' + s.type"
-              [iconSrc]="'assets/img/' + (view.cat === 'ship' ? 'ships' : 'defenses') + '/' + s.type + '.png'"
+              [iconSrc]="unitIcon(s.type, view.cat)"
+              [mk2]="isMk2(s.type)"
               [glyph]="unitMeta(s.type, view.cat).glyph"
               [name]="unitMeta(s.type, view.cat).label"
               [badge]="ownedCount(s.type, view.cat)"
@@ -180,6 +181,10 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
                     Besitz {{ s.capstone.owned }}/{{ s.capstone.cap }}
                     @if (s.cost.antimatter) { · <app-btn-icon [src]="resourceIcon('antimatter')" glyph="⚛️" [size]="14" /> {{ s.cost.antimatter }} }
                     @if (s.cost.dark_matter) { · <app-btn-icon [src]="resourceIcon('dark_matter')" glyph="🌑" [size]="14" /> {{ s.cost.dark_matter }} }
+                  </span>
+                } @else if (isMk2(s.type) && s.cost.antimatter) {
+                  <span class="hint small cap-line mk2-line">
+                    Mk II · <app-btn-icon [src]="resourceIcon('antimatter')" glyph="⚛️" [size]="14" /> {{ s.cost.antimatter }} Antimaterie
                   </span>
                 }
                 @if (!s.requirements_met) {
@@ -279,6 +284,10 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
       .stock-line { display: block; font-size: var(--fs-xs); color: var(--text-dim); margin-top: var(--sp-1); }
       .stock-line strong { color: var(--accent); font-variant-numeric: tabular-nums; }
 
+      /* Mk2/Elite-Antimaterie-Zeile (goldener Akzent, analog zur Capstone-Zeile). */
+      .cap-line { display: inline-flex; align-items: center; gap: 4px; }
+      .mk2-line { color: rgba(255, 198, 92, 0.95); }
+
       /* Bauschleifen-Zeile: Countdown + Abbrechen-Button rechts. */
       .q-right { display: flex; align-items: center; gap: var(--sp-2); flex: 0 0 auto; }
       .q-cancel { color: var(--text-faint); min-width: 30px; }
@@ -299,6 +308,8 @@ export class ShipyardComponent {
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly navIcon = navIcon;
   protected readonly resourceIcon = resourceIcon;
+  /** Mk2/Elite-Schiff erkennen (Rahmen + „Mk II"-Antimaterie-Zeile). */
+  protected readonly isMk2 = isMk2;
 
   protected readonly data = signal<ShipyardResponse | null>(null);
   protected readonly loading = signal(true);
@@ -323,8 +334,20 @@ export class ShipyardComponent {
     const used = new Set<string>();
     const groups: ShipGroup[] = [];
     for (const cat of SHIP_CATEGORY_ORDER) {
-      const rows = cat.types.map((t) => byType.get(t)).filter((s): s is ShipOption => !!s);
-      rows.forEach((s) => used.add(s.type));
+      const rows: ShipOption[] = [];
+      for (const t of cat.types) {
+        const base = byType.get(t);
+        if (base) {
+          rows.push(base);
+          used.add(base.type);
+        }
+        // Mk2/Elite-Variante (data-driven) direkt nach dem jeweiligen Mk1 einsortieren.
+        const mk2 = byType.get(t + '_mk2');
+        if (mk2) {
+          rows.push(mk2);
+          used.add(mk2.type);
+        }
+      }
       if (rows.length) {
         groups.push({ key: cat.key, label: cat.label, glyph: cat.glyph, icon: cat.icon, ships: rows });
       }

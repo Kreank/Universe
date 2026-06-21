@@ -62,8 +62,13 @@ export class GameStateService {
   readonly researchVersion = signal(0);
   readonly shipyardVersion = signal(0);
 
+  // Postfach-Badge: Diplomatie-Funksprueche zaehlen NICHT mit (leben im Diplomatie-Reiter).
   readonly unreadTransmissions = computed(
-    () => this.transmissions().filter((t) => !t.read).length,
+    () => this.transmissions().filter((t) => !t.read && t.type !== 'npc_diplomacy').length,
+  );
+  // Eigenes Ungelesen-Badge fuer den Diplomatie-Reiter.
+  readonly unreadDiplomacy = computed(
+    () => this.transmissions().filter((t) => !t.read && t.type === 'npc_diplomacy').length,
   );
   readonly pendingDecisions = computed(
     () => this.transmissions().filter((t) => t.requires_decision && !t.read).length,

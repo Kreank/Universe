@@ -178,6 +178,91 @@ async def mining_fields(
     return {"prospecting": prospecting, "range": reach, "home_galaxy": home, "fields": fields}
 
 
+@router.get("/conjunctions")
+async def conjunctions(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Welle 5 — aktive + kommende Konjunktions-Fenster fuer den Spieler (Frontend-Countdown).
+
+    Schlank gehalten: betrachtet nur Nachbar-Systeme im ``radius`` (balance.conjunction.radius) um
+    die eigenen Planeten-Systeme (KEIN O(n^2) ueber das Universum). Pro Eintrag: Quell-/Zielsystem
+    (g:s), aktueller Faktor + Rabatt-%, und entweder ``ends_at`` (laufendes Fenster) oder
+    ``starts_at``/``next_at`` (naechstes Fenster). Inter-Galaxie wird hier nicht aufgelistet."""
+    import datetime as _dt
+
+    from app.fleet.conjunction import (
+        active_window_end,
+        distance_factor,
+        is_conjunction,
+        load_cfg,
+        next_conjunction,
+    )
+
+    cfg = load_cfg()
+    if not cfg.get("enabled", True):
+        return {"enabled": False, "active": [], "upcoming": []}
+
+    bal = get_balance()
+    now = _dt.datetime.now(_dt.timezone.utc)
+    now_e = now.timestamp()
+    radius = int(cfg.get("radius", 12))
+    half_window = float(cfg.get("conjunction_window_hours", 0.5)) * 3600.0 / 2.0
+    max_sys = bal.systems_per_galaxy
+
+    def _iso(epoch: float) -> str:
+        return _dt.datetime.fromtimestamp(epoch, tz=_dt.timezone.utc).isoformat()
+
+    rows = (await session.execute(
+        select(Planet.galaxy, Planet.system).where(Planet.player_id == player.id)
+    )).all()
+    systems = sorted({(int(g), int(s)) for g, s in rows})
+
+    active: list[dict] = []
+    upcoming: list[dict] = []
+    seen: set[tuple[int, int, int]] = set()
+    for g, s in systems:
+        lo = max(1, s - radius)
+        hi = min(max_sys, s + radius)
+        for ts in range(lo, hi + 1):
+            if ts == s or (g, s, ts) in seen:
+                continue
+            seen.add((g, s, ts))
+            origin = (g, s, 1)
+            target = (g, ts, 1)
+            factor = distance_factor(origin, target, now_e, cfg)
+            entry = {
+                "from": f"{g}:{s}",
+                "to": f"{g}:{ts}",
+                "from_coords": {"galaxy": g, "system": s},
+                "to_coords": {"galaxy": g, "system": ts},
+                "factor": round(factor, 4),
+                "discount_pct": round((1.0 - factor) * 100.0, 1),
+            }
+            if is_conjunction(origin, target, now_e, cfg):
+                end = active_window_end(origin, target, now_e, cfg)
+                entry["active"] = True
+                entry["ends_at"] = _iso(end) if end is not None else None
+                active.append(entry)
+            else:
+                nc = next_conjunction(origin, target, now_e, cfg)
+                if nc is not None:
+                    entry["active"] = False
+                    entry["next_at"] = _iso(nc)
+                    entry["starts_at"] = _iso(nc - half_window)
+                    upcoming.append(entry)
+
+    active.sort(key=lambda e: e["discount_pct"], reverse=True)
+    upcoming.sort(key=lambda e: e["next_at"])
+    return {
+        "enabled": True,
+        "now": now.isoformat(),
+        "radius": radius,
+        "active": active,
+        "upcoming": upcoming[: int(cfg.get("max_upcoming", radius))],
+    }
+
+
 @router.get("/galaxy/{galaxy}/{system}", response_model=GalaxyViewOut)
 async def galaxy_view(
     galaxy: int,

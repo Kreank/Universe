@@ -108,6 +108,9 @@ async def _find_attack_target(session: AsyncSession, npc: NpcEmpire, cfg: dict) 
     """Nächster ungeschützter Spieler-Planet in der eigenen Galaxie (innerhalb Reichweite)."""
     max_sys = int(cfg.get("target_max_systems", 20))
     now = _now()
+    # Diplomatie (Welle 1): Spieler mit Buendnis/aktivem Waffenstillstand bei DIESEM NPC sind tabu.
+    from app.npc.diplomacy import protected_player_ids_for_npc
+    protected_ids = await protected_player_ids_for_npc(session, npc.id)
     rows = (await session.execute(
         select(Planet, Player)
         .join(Player, Planet.player_id == Player.id)
@@ -116,6 +119,8 @@ async def _find_attack_target(session: AsyncSession, npc: NpcEmpire, cfg: dict) 
     best: Planet | None = None
     best_key: tuple | None = None
     for planet, player in rows:
+        if player.id in protected_ids:
+            continue  # Pakt schuetzt diesen Spieler vor dem NPC
         vac = _aware(player.vacation_until)
         if vac is not None and vac > now:
             continue  # Urlaubsmodus -> nicht angreifbar

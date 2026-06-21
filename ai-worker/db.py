@@ -68,6 +68,83 @@ class Database:
             "UPDATE commanders SET persona = $2 WHERE id = $1", commander_id, persona
         )
 
+    # ------------------------------------------- commander memory (Welle 2)
+    async def get_commander_memories(self, commander_id: str, limit: int = 40) -> list[asyncpg.Record]:
+        """Die juengsten Erinnerungen eines Kommandeurs (fuer das Erinnerungs-Narrativ)."""
+        return await self.pool.fetch(
+            """
+            SELECT event_type, context, sentiment, created_at
+            FROM commander_memories WHERE commander_id = $1
+            ORDER BY created_at DESC LIMIT $2
+            """,
+            commander_id, limit,
+        )
+
+    async def get_commander_opinions(self, commander_id: str, limit: int = 20) -> list[asyncpg.Record]:
+        """Meinungen eines Kommandeurs ueber Gegner (Spieler-/NPC-Name aufgeloest)."""
+        return await self.pool.fetch(
+            """
+            SELECT o.opinion_type, o.strength,
+                   COALESCE(p.display_name, n.name) AS target_name
+            FROM commander_opinions o
+            LEFT JOIN players p ON p.id = o.about_player_id
+            LEFT JOIN npc_empires n ON n.id = o.about_npc_id
+            WHERE o.commander_id = $1
+            ORDER BY o.strength DESC LIMIT $2
+            """,
+            commander_id, limit,
+        )
+
+    async def get_commander_relationships(self, commander_id: str, limit: int = 20) -> list[asyncpg.Record]:
+        """Beziehungen eines Kommandeurs zu anderen Kommandeuren (Gegen-Name aufgeloest)."""
+        return await self.pool.fetch(
+            """
+            SELECT r.rel_type, r.strength,
+                   CASE WHEN r.commander_a_id = $1 THEN cb.name ELSE ca.name END AS other_name
+            FROM commander_relationships r
+            JOIN commanders ca ON ca.id = r.commander_a_id
+            JOIN commanders cb ON cb.id = r.commander_b_id
+            WHERE r.commander_a_id = $1 OR r.commander_b_id = $1
+            ORDER BY r.strength DESC LIMIT $2
+            """,
+            commander_id, limit,
+        )
+
+    async def get_commander_opinion_about(
+        self, commander_id: str, about_player_id: Optional[str], about_npc_id: Optional[str]
+    ) -> Optional[asyncpg.Record]:
+        """Die EINE Meinung des Kommandeurs ueber einen konkreten Gegner (oder None)."""
+        if about_player_id:
+            return await self.pool.fetchrow(
+                """
+                SELECT opinion_type, strength FROM commander_opinions
+                WHERE commander_id = $1 AND about_player_id = $2
+                """,
+                commander_id, about_player_id,
+            )
+        if about_npc_id:
+            return await self.pool.fetchrow(
+                """
+                SELECT opinion_type, strength FROM commander_opinions
+                WHERE commander_id = $1 AND about_npc_id = $2
+                """,
+                commander_id, about_npc_id,
+            )
+        return None
+
+    async def save_memory_summary(self, commander_id: str, summary: str) -> None:
+        """Schreibt das verdichtete Erinnerungs-Narrativ in persona.memory_summary (jsonb_set,
+        legt persona an, falls NULL/leer) und setzt last_digest_at = now()."""
+        await self.pool.execute(
+            """
+            UPDATE commanders
+            SET persona = jsonb_set(COALESCE(persona, '{}'::jsonb), '{memory_summary}', to_jsonb($2::text), true),
+                last_digest_at = now()
+            WHERE id = $1
+            """,
+            commander_id, summary,
+        )
+
     # --------------------------------------------------------------- npc_empires
     async def get_npc(self, npc_id: str) -> Optional[asyncpg.Record]:
         return await self.pool.fetchrow(
@@ -86,6 +163,82 @@ class Database:
     async def update_npc_name(self, npc_id: str, name: str) -> None:
         await self.pool.execute(
             "UPDATE npc_empires SET name = $2 WHERE id = $1", npc_id, name
+        )
+
+    # ------------------------------------------------------- npc_relations (Welle 1)
+    async def get_npc_relation(self, player_id: str, npc_id: str) -> Optional[asyncpg.Record]:
+        return await self.pool.fetchrow(
+            """
+            SELECT player_id, npc_id, status, alliance_since, ceasefire_until,
+                   tribute_metal_per_cycle, tribute_last_paid, betrayed_by_player,
+                   betrayed_by_npc, message_count, positive_actions, negative_actions,
+                   last_decision_at
+            FROM npc_relations WHERE player_id = $1 AND npc_id = $2
+            """,
+            player_id, npc_id,
+        )
+
+    async def upsert_npc_relation(self, player_id: str, npc_id: str, fields: dict[str, Any]) -> None:
+        """Schreibt die vom Worker berechneten Beziehungsfelder zurueck (Diplomatie-Apply).
+
+        ``fields`` enthaelt nur die Spalten, die der Worker setzt: status, alliance_since,
+        ceasefire_until, tribute_metal_per_cycle, tribute_last_paid, positive_actions,
+        last_decision_at. Die Zeile existiert i. d. R. schon (vom Backend angelegt); ON CONFLICT
+        deckt den seltenen Race ab."""
+        cols = list(fields.keys())
+        set_clause = ", ".join(f"{c} = EXCLUDED.{c}" for c in cols)
+        insert_cols = ", ".join(["player_id", "npc_id", *cols])
+        placeholders = ", ".join(f"${i}" for i in range(1, len(cols) + 3))
+        await self.pool.execute(
+            f"""
+            INSERT INTO npc_relations ({insert_cols})
+            VALUES ({placeholders})
+            ON CONFLICT (player_id, npc_id) DO UPDATE SET {set_clause}
+            """,
+            player_id, npc_id, *[fields[c] for c in cols],
+        )
+
+    async def insert_npc_decision(
+        self, npc_id: str, player_id: str, offer_type: str, offered_terms: dict[str, Any],
+        npc_choice: str, npc_reasoning: str, terms_result: dict[str, Any],
+    ) -> Any:
+        return await self.pool.fetchval(
+            """
+            INSERT INTO npc_decisions
+                (npc_id, player_id, offer_type, offered_terms, npc_choice, npc_reasoning, terms_result)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id
+            """,
+            npc_id, player_id, offer_type, offered_terms, npc_choice, npc_reasoning, terms_result,
+        )
+
+    async def insert_diplomacy_transmission(
+        self, player_id: str, subject: str, body: str,
+        requires_decision: bool, decision_payload: Optional[dict[str, Any]],
+    ) -> asyncpg.Record:
+        """Diplomatie-Funkspruch (type 'npc_diplomacy') ins Spieler-Postfach. ``requires_decision``
+        + ``decision_payload`` tragen ein Gegenangebot (counter)."""
+        return await self.pool.fetchrow(
+            """
+            INSERT INTO transmissions
+                (player_id, commander_id, type, subject, body, requires_decision, decision_payload)
+            VALUES ($1, NULL, 'npc_diplomacy'::transmission_type, $2, $3, $4, $5)
+            RETURNING id, player_id, commander_id, type::text AS type, subject, body,
+                      requires_decision, decision_payload, read, created_at
+            """,
+            player_id, subject, body, requires_decision, decision_payload,
+        )
+
+    # ------------------------------------------------------ game_chronicle (Welle 3)
+    async def update_chronicle(self, chronicle_id: str, title: str, body: str) -> None:
+        """Schreibt Titel+Text in eine pending-Chronik und veroeffentlicht sie."""
+        await self.pool.execute(
+            """
+            UPDATE game_chronicle
+            SET title = $2, body = $3, status = 'published', published_at = now()
+            WHERE id = $1
+            """,
+            chronicle_id, title, body,
         )
 
     async def active_player_ids(self) -> list[str]:

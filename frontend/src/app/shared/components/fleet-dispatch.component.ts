@@ -14,11 +14,13 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { BalanceService } from '../../core/services/balance.service';
-import { Coordinate, EscortOffer, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit, TradeIndex } from '../../core/models/api.models';
-import { MISSION_META, RANK_META, SHIP_META, metaFor } from '../../core/models/display';
-import { missionIcon, navIcon, resourceIcon, statIcon, uiIcon } from '../../core/models/icon-assets';
+import { FleetCalculationService } from '../../core/services/fleet-calculation.service';
+import { Conjunction, ConjunctionInfo, Coordinate, EscortOffer, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit, TradeIndex } from '../../core/models/api.models';
+import { MISSION_META, RANK_META, SHIP_META, isMk2, metaFor } from '../../core/models/display';
+import { missionIcon, navIcon, resourceIcon, shipIcon, statIcon, uiIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from './btn-icon.component';
 import { IconTileComponent } from './icon-tile.component';
+import { CountdownComponent } from './countdown.component';
 
 /**
  * Kompaktes Versand-Overlay (OGame-Schnellaktion): direkt aus der Galaxie
@@ -35,7 +37,7 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
 @Component({
   selector: 'app-fleet-dispatch',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, IconTileComponent, BtnIconComponent],
+  imports: [FormsModule, IconTileComponent, BtnIconComponent, CountdownComponent],
   host: { '(document:keydown.escape)': 'close.emit()' },
   template: `
     <div class="backdrop" (click)="close.emit()">
@@ -43,10 +45,44 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
         <button class="x" type="button" (click)="close.emit()" aria-label="Schliessen">✕</button>
 
         <header class="head">
-          <h2>{{ missionMeta(mission()).glyph }} Flotte entsenden</h2>
-          <span class="coord mono">→ [{{ target().galaxy }}:{{ target().system }}:{{ target().position }}]</span>
-          @if (targetName()) { <span class="tname">{{ targetName() }}</span> }
+          @if (patrolMode()) {
+            <h2><app-btn-icon [src]="missionIcon('attack')" glyph="⚔" [size]="18" /> Eigenes System patrouillieren</h2>
+            <span class="coord mono">@ [{{ effTarget().galaxy }}:{{ effTarget().system }}:{{ effTarget().position }}]</span>
+          } @else {
+            <h2>{{ missionMeta(mission()).glyph }} Flotte entsenden</h2>
+            @if (!editableTarget()) {
+              <span class="coord mono">→ [{{ effTarget().galaxy }}:{{ effTarget().system }}:{{ effTarget().position }}]</span>
+            }
+            @if (targetName()) { <span class="tname">{{ targetName() }}</span> }
+          }
         </header>
+
+        <!-- W0: editierbares Ziel (allgemeiner Versand aus dem Flotten-Screen) -->
+        @if (editableTarget() && !patrolMode()) {
+          <div class="target-edit">
+            <label class="cargo-title"><app-btn-icon [src]="uiIcon('target')" glyph="🎯" [size]="14" /> Ziel (Galaxie : System : Position)</label>
+            <div class="coord-inputs">
+              <input type="number" min="1" [ngModel]="tgtG()" (ngModelChange)="tgtG.set(+$event || 1)" aria-label="Galaxie" />
+              <span class="sep">:</span>
+              <input type="number" min="1" [ngModel]="tgtS()" (ngModelChange)="tgtS.set(+$event || 1)" aria-label="System" />
+              <span class="sep">:</span>
+              <input type="number" min="1" [ngModel]="tgtP()" (ngModelChange)="tgtP.set(+$event || 1)" aria-label="Position" />
+            </div>
+          </div>
+        }
+
+        @if (!patrolMode()) {
+        <!-- Welle 5: Konjunktions-Hinweis fuer die gewaehlte Route (reine Anzeige; Server rechnet beim Start). -->
+        @if (routeConjunction(); as rc) {
+          <div class="conj-badge active">
+            🌌 Konjunktion aktiv – Distanz/Sprit reduziert (−{{ rc.discount_pct.toFixed(0) }}%)
+            @if (rc.ends_at) { <span class="conj-cd">· endet in <app-countdown [target]="rc.ends_at" /></span> }
+          </div>
+        } @else if (nextRouteConjunction(); as nc) {
+          <div class="conj-badge upcoming">
+            🌌 Nächstes günstiges Fenster (−{{ nc.discount_pct.toFixed(0) }}%) in <app-countdown [target]="nc.starts_at ?? nc.next_at ?? null" />
+          </div>
+        }
 
         <!-- Missionswahl -->
         <div class="mission-tabs">
@@ -59,13 +95,14 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
             >@if (missionIcon(m); as mi) {<img class="mtab-ico" [src]="mi" alt="" (error)="hideImg($event)" />} @else {{{ missionMeta(m).glyph }} }{{ missionMeta(m).label }}</button>
           }
         </div>
+        }
 
         <!-- Schiffs-Picker -->
         <div class="ships">
           @for (s of availableShips(); track s.type) {
             <div class="ship" [class.picked]="shipCount(s.type) > 0">
               <div class="ship-art">
-                <app-icon-tile [glyph]="shipMeta(s.type).glyph" [src]="'assets/img/ships/' + s.type + '.png'" [size]="40" />
+                <app-icon-tile [glyph]="shipMeta(s.type).glyph" [src]="shipIcon(s.type)" [mk2]="isMk2(s.type)" [size]="40" />
                 <span class="avail" title="vorhanden">{{ s.count }}</span>
               </div>
               <div class="ship-name">{{ shipMeta(s.type).label }}</div>
@@ -87,7 +124,42 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
           <p class="hint small">{{ h }}</p>
         }
 
-        <!-- Cargo (Transport/Stationierung) -->
+        <!-- W0: Patrouillen-Radius (eigenes System abfangen) -->
+        @if (patrolMode()) {
+          <div class="opts">
+            <div class="field">
+              <label class="tip" data-tip="0 = nur das eigene System. Höhere Reichweite via Hyperraum-Interdiktion-Forschung (max 6).">📡 Abfang-Radius {{ patrolRadius() }} Sys</label>
+              <input type="number" min="0" max="6" [ngModel]="patrolRadius()" (ngModelChange)="patrolRadius.set(+$event || 0)" />
+            </div>
+          </div>
+          <p class="muted small">Die Schiffe bleiben im eigenen System und fangen durchreisende Feindflotten ab (kein Flug).</p>
+        }
+
+        <!-- W0: Abfangen (intercept) — Patrouillen-Radius am Zielsystem -->
+        @if (mission() === 'intercept' && !patrolMode()) {
+          <div class="opts">
+            <div class="field">
+              <label class="tip" data-tip="0 = nur das Zielsystem. Reichweite steigt mit Hyperraum-Interdiktion-Forschung (max 6).">📡 Abfang-Radius {{ interceptRadius() }} Sys</label>
+              <input type="number" min="0" max="6" [ngModel]="interceptRadius()" (ngModelChange)="interceptRadius.set(+$event || 0)" />
+            </div>
+          </div>
+        }
+
+        <!-- W0: Eskorte (escort) — Deckungs-Radius + Gebühr -->
+        @if (mission() === 'escort' && !patrolMode()) {
+          <div class="opts">
+            <div class="field">
+              <label class="tip" data-tip="Wie viele Systeme um das Stationssystem dein Geleitschutz-Angebot Handelsrouten deckt.">🛡 Eskort-Radius {{ escortRadius() }} Sys</label>
+              <input type="number" min="0" max="50" [ngModel]="escortRadius()" (ngModelChange)="escortRadius.set(+$event || 0)" />
+            </div>
+            <div class="field">
+              <label class="tip" data-tip="Dein Anteil am Frachtwert, den der Trader als Deuterium zahlt (max. 10 %).">Gebühr {{ escortFeePct() }} %</label>
+              <input type="number" min="0" max="10" step="0.5" [ngModel]="escortFeePct()" (ngModelChange)="escortFeePct.set(+$event || 0)" />
+            </div>
+          </div>
+        }
+
+        <!-- Cargo (Transport/Stationierung/Kolonisierung) -->
         @if (showCargo()) {
           <div class="cargo">
             <div class="cargo-head">
@@ -168,6 +240,7 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
           </div>
         }
 
+        @if (!patrolMode()) {
         <!-- Commander + Tempo -->
         <div class="opts">
           <div class="field">
@@ -197,6 +270,16 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
         }
 
         @if (mission() === 'expedition') {
+          <div class="field">
+            <label class="tip" data-tip="Offline-sicher: legt vorab fest, wie deine Expedition auf Ereignisse (z.B. ein Geisterschiff) reagiert. Vorsichtig = weniger Risiko & Ertrag; Risikofreudig = mehr Risiko, mehr Ertrag, hackt den Geisterschiff-Kern.">
+              <app-btn-icon [src]="missionIcon('expedition')" glyph="🌌" [size]="16" /> Expeditions-Doktrin
+            </label>
+            <div class="doctrine-row">
+              <button type="button" class="btn btn-sm" [class.btn-primary]="expeditionDoctrine() === 'cautious'" [class.btn-ghost]="expeditionDoctrine() !== 'cautious'" (click)="expeditionDoctrine.set('cautious')">🛡️ Vorsichtig</button>
+              <button type="button" class="btn btn-sm" [class.btn-primary]="expeditionDoctrine() === 'neutral'" [class.btn-ghost]="expeditionDoctrine() !== 'neutral'" (click)="expeditionDoctrine.set('neutral')">⚖️ Neutral</button>
+              <button type="button" class="btn btn-sm" [class.btn-primary]="expeditionDoctrine() === 'bold'" [class.btn-ghost]="expeditionDoctrine() !== 'bold'" (click)="expeditionDoctrine.set('bold')">🔥 Risikofreudig</button>
+            </div>
+          </div>
           <div class="field">
             @if (maxExpHours() > 0) {
               <label class="tip" data-tip="Länger = mehr Ertrag, aber mehr Risiko (Piraten/Aliens/Schwarzes Loch). Forschung Astrophysik hebt das Maximum (bis 24h).">
@@ -253,10 +336,15 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
             </div>
           </div>
         }
+        }
 
         <div class="actions">
           <button class="btn btn-primary" type="button" [disabled]="!canSend() || sending()" (click)="send()">
-            {{ sending() ? 'Sende…' : (missionMeta(mission()).glyph + ' ' + missionMeta(mission()).label + ' starten') }}
+            @if (patrolMode()) {
+              {{ sending() ? 'Sende…' : '⚔ Patrouille aufstellen' }}
+            } @else {
+              {{ sending() ? 'Sende…' : (missionMeta(mission()).glyph + ' ' + missionMeta(mission()).label + ' starten') }}
+            }
           </button>
         </div>
         @if (!hasSelection()) {
@@ -299,6 +387,24 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
       .head h2 { margin: 0; font-size: var(--fs-lg); }
       .coord { color: var(--accent); font-size: var(--fs-base); }
       .tname { color: var(--text-dim); font-size: var(--fs-sm); }
+
+      /* W0: editierbares Ziel (Koordinaten-Eingabe) */
+      .target-edit { margin-top: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-1); }
+      .coord-inputs { display: flex; align-items: center; gap: var(--sp-1); }
+      .coord-inputs input { width: 64px; text-align: center; min-height: 32px; padding: var(--sp-1); }
+      .coord-inputs .sep { color: var(--text-faint); font-weight: 700; }
+
+      /* Welle 5: Konjunktions-Hinweis fuer die Route */
+      .conj-badge {
+        margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md);
+        font-size: var(--fs-sm); display: flex; align-items: center; flex-wrap: wrap; gap: 4px var(--sp-2);
+        border: 1px solid var(--border);
+      }
+      .conj-badge.active {
+        color: #3ddc97; background: rgba(61,220,151,0.08); border-color: rgba(61,220,151,0.35);
+      }
+      .conj-badge.upcoming { color: var(--text-dim); background: rgba(255,255,255,0.03); }
+      .conj-badge .conj-cd { color: inherit; }
 
       .mission-tabs { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: var(--sp-3) 0; }
       .mtab {
@@ -352,6 +458,7 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
       .trade-grid { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
       .trade-grid .field { flex: 1 1 200px; display: flex; flex-direction: column; gap: var(--sp-1); }
       .trade-grid select, .trade-grid input { min-height: 30px; }
+      .doctrine-row { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
       .trade-preview { color: var(--accent); margin: var(--sp-2) 0 0; }
       .escorts { margin-top: var(--sp-2); }
       .escort-row { display: flex; align-items: center; gap: var(--sp-1); padding: 2px 0; cursor: pointer; }
@@ -393,26 +500,71 @@ export class FleetDispatchComponent {
   private readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
   private readonly balanceSvc = inject(BalanceService);
+  private readonly calc = inject(FleetCalculationService);
 
-  readonly target = input.required<Coordinate>();
+  /** Festes Ziel (Galaxie/Bergbau/Handel/Expedition). Bei editierbarem Ziel optional als Vorbelegung. */
+  readonly target = input<Coordinate | null>(null);
   readonly targetName = input<string | null>(null);
   readonly initialMission = input<FleetMission>('attack');
   /** 'moon' -> Angriff/Spionage zielt auf den Mond; 'station' -> Belagerung der Allianz-Station;
    *  'mining_fleet' -> Angriff auf die am Feld schuerfende Flotte. */
   readonly targetType = input<'moon' | 'station' | 'mining_fleet' | null>(null);
+  /** W0: editierbares Ziel (allgemeiner Versand aus dem Flotten-Screen) — zeigt Koordinaten-Eingaben
+   *  oben und bietet den vollen Missions-Satz. Bestehende Aufrufer (festes Ziel) lassen dies weg. */
+  readonly editableTarget = input<boolean>(false);
+  /** W0: Patrouillen-Modus — nur Schiffs-Picker + Radius, ruft api.patrolHome statt sendFleet
+   *  (eigenes System abfangen, ohne Flug). */
+  readonly patrolMode = input<boolean>(false);
 
   readonly close = output<void>();
   readonly sent = output<void>();
 
-  /** Missionswahl: am Deep-Space-Slot (Position 16) NUR Expedition, sonst die normalen Missionen. */
+  // -- Editierbares Ziel (nur bei editableTarget): Koordinaten-Eingaben -----------
+  protected readonly tgtG = signal(1);
+  protected readonly tgtS = signal(1);
+  protected readonly tgtP = signal(1);
+
+  /** Tatsächlich verwendetes Ziel: festes target() (readonly) ODER die getippten Koordinaten. */
+  protected readonly effTarget = computed<Coordinate>(() => {
+    if (this.patrolMode()) {
+      const p = this.state.activePlanet();
+      return p ? { galaxy: p.galaxy, system: p.system, position: p.position } : { galaxy: 1, system: 1, position: 1 };
+    }
+    if (!this.editableTarget()) {
+      const t = this.target();
+      if (t) {
+        return t;
+      }
+      const p = this.state.activePlanet();
+      return p ? { galaxy: p.galaxy, system: p.system, position: p.position } : { galaxy: 1, system: 1, position: 1 };
+    }
+    return { galaxy: this.tgtG(), system: this.tgtS(), position: this.tgtP() };
+  });
+
+  /** Missionswahl:
+   *  - editierbares Ziel (allgemeiner Flotten-Versand): voller Missions-Satz inkl. intercept/escort/recycle.
+   *  - festes Ziel am Deep-Space-Slot: NUR Expedition.
+   *  - festes Ziel sonst: die normalen Schnellaktionen (Galaxie/Bergbau/Handel). */
   protected readonly missions = computed<FleetMission[]>(() => {
+    if (this.editableTarget()) {
+      return ['attack', 'transport', 'spy', 'deploy', 'intercept', 'escort', 'recycle', 'colonize'];
+    }
     const deep = this.bnum((this.balanceSvc.value as any)?.expedition?.deep_space_position);
-    if (deep && this.target().position === deep) {
+    if (deep && this.effTarget().position === deep) {
       return ['expedition'];
     }
     return ['attack', 'transport', 'spy', 'deploy', 'colonize', 'mine', 'trade'];
   });
   protected readonly mission = linkedSignal<FleetMission>(() => this.initialMission());
+
+  // -- W0: Missions-spezifische Felder (aus der alten fleet.component übernommen) --
+  /** Abfangen (intercept): Patrouillen-Radius in Systemen (0 = nur Zielsystem). */
+  protected readonly interceptRadius = signal(0);
+  /** Eskorte (escort): Deckungs-Radius in Systemen + Gebühr (Prozent 0..10, Backend deckelt). */
+  protected readonly escortRadius = signal(5);
+  protected readonly escortFeePct = signal(2);
+  /** Patrouille (patrolMode): Abfang-Radius um das eigene System (0..6). */
+  protected readonly patrolRadius = signal(0);
 
   // NUR metal/crystal/deuterium — auch für die Handels-Dropdowns (kein NPC-Handel mit Exoten!).
   protected readonly cargoFields = [
@@ -473,9 +625,39 @@ export class FleetDispatchComponent {
   protected readonly escortOffers = signal<EscortOffer[]>([]);
   protected readonly chosenEscorts = signal<Set<string>>(new Set());
 
+  // --- Welle 5: Konjunktions-Fenster (reine Anzeige fuer die gewaehlte Route) ---
+  protected readonly conjunctions = signal<ConjunctionInfo | null>(null);
+
+  /** Trifft ein Konjunktions-Eintrag die aktuelle Route (Origin↔Ziel, Richtung egal)? */
+  private routeMatch(c: Conjunction): boolean {
+    const p = this.state.activePlanet();
+    const t = this.effTarget();
+    if (!p) {
+      return false;
+    }
+    const a = { g: p.galaxy, s: p.system };
+    const b = { g: t.galaxy, s: t.system };
+    const f = c.from_coords;
+    const to = c.to_coords;
+    return (
+      (f.galaxy === a.g && f.system === a.s && to.galaxy === b.g && to.system === b.s) ||
+      (f.galaxy === b.g && f.system === b.s && to.galaxy === a.g && to.system === a.s)
+    );
+  }
+
+  /** Gerade aktive Konjunktion auf der Route (oder null). */
+  protected readonly routeConjunction = computed<Conjunction | null>(() =>
+    (this.conjunctions()?.active ?? []).find((c) => this.routeMatch(c)) ?? null,
+  );
+
+  /** Naechstes guenstiges Fenster (discount_pct > 0) auf der Route, wenn keins aktiv ist. */
+  protected readonly nextRouteConjunction = computed<Conjunction | null>(() =>
+    (this.conjunctions()?.upcoming ?? []).find((c) => c.discount_pct > 0 && this.routeMatch(c)) ?? null,
+  );
+
   /** Eskort-Angebote, deren Station die Route (Origin↔Ziel) im Radius schneidet. */
   protected readonly coveringEscorts = computed<EscortOffer[]>(() => {
-    const t = this.target();
+    const t = this.effTarget();
     const p = this.state.activePlanet();
     if (!p) {
       return [];
@@ -533,6 +715,7 @@ export class FleetDispatchComponent {
     spy: { type: 'spy_probe', label: 'Spionagesonde' },
     colonize: { type: 'colony_ship', label: 'Kolonieschiff' },
     mine: { type: 'miner', label: 'Bergbauschiff' },
+    recycle: { type: 'recycler', label: 'Recycler' },
     expedition: { type: 'expedition_ship', label: 'Expeditionsschiff' },
   };
 
@@ -545,10 +728,22 @@ export class FleetDispatchComponent {
   }
 
   constructor() {
+    // W0: editierbares Ziel mit dem festen target() bzw. dem aktiven Planeten vorbelegen.
+    const seed = this.target() ?? this.state.activePlanet();
+    if (seed) {
+      this.tgtG.set(seed.galaxy);
+      this.tgtS.set(seed.system);
+      this.tgtP.set((seed as Coordinate).position ?? 1);
+    }
     // Globalen Handelskurs laden (immer verfuegbar — keine Aufklaerung noetig).
     this.api.getTradeIndex().subscribe((idx) => this.globalIndex.set(idx));
     // Eskort-Angebote (fuer die Routen-Auswahl im Handel) laden.
     this.api.getEscortOffers().subscribe((list) => this.escortOffers.set(list));
+    // Welle 5: Konjunktions-Fenster laden (fuer den Routen-Hinweis; Fehler stumm).
+    this.api.getConjunctions().subscribe({
+      next: (c) => this.conjunctions.set(c),
+      error: () => {},
+    });
     // Faehigkeiten-Katalog (fuer Labels der Scharfschalt-Auswahl).
     this.api.getAbilityCatalog().subscribe((c) => this.abilityCatalog.set(c.catalog as Record<string, { label: string }>));
     // Astrophysik-Stufe (begrenzt die Expeditions-Verweildauer).
@@ -579,7 +774,7 @@ export class FleetDispatchComponent {
     });
     // Kurs-Schnappschuss/Typ des Zielhaendlers laden (Handelszentrum vs. Legacy).
     effect(() => {
-      const t = this.target();
+      const t = this.effTarget();
       this.api.getGalaxyTargets().subscribe((list) => {
         const hit = list.find(
           (x) => x.galaxy === t.galaxy && x.system === t.system && x.position === t.position,
@@ -605,7 +800,10 @@ export class FleetDispatchComponent {
   );
 
   protected readonly showCargo = computed(
-    () => this.mission() === 'transport' || this.mission() === 'deploy',
+    () =>
+      this.mission() === 'transport' ||
+      this.mission() === 'deploy' ||
+      this.mission() === 'colonize', // W0: Fracht startet die neue Kolonie (Backend bucht sie ein)
   );
   protected readonly hasSelection = computed(() =>
     Object.values(this.selection()).some((n) => n > 0),
@@ -618,7 +816,14 @@ export class FleetDispatchComponent {
     return this.shipCount(req.type) > 0 ? null : `Diese Mission benötigt mindestens ein ${req.label}.`;
   });
   protected readonly canSend = computed(() => {
-    if (!this.hasSelection() || !this.state.activePlanetId() || this.missionHint()) {
+    if (!this.hasSelection() || !this.state.activePlanetId()) {
+      return false;
+    }
+    // Patrouille: kein Ziel/keine Reichweite/keine Pflicht-Schiffe — nur Auswahl nötig.
+    if (this.patrolMode()) {
+      return true;
+    }
+    if (this.missionHint()) {
       return false;
     }
     if (this.rangeInfo()?.inRange === false) {
@@ -636,56 +841,29 @@ export class FleetDispatchComponent {
     return true;
   });
 
-  // -- Treibstoff-Tank: Reichweite (Hin+Rück) + Spritkosten, gespiegelt aus fleet/service.py ----
+  // -- Treibstoff-Tank: Reichweite (Hin+Rück) + Spritkosten — Rechnung via FleetCalculationService.
   private bnum(v: unknown, d = 0): number {
     return typeof v === 'number' ? v : d;
   }
 
-  /** Max. einfache Distanz eines Schiffstyps mit vollem Tank (round_trip = Hin+Rück). */
-  private shipRange(type: string, roundTrip: boolean): number {
-    const bal = this.balanceSvc.value as any;
-    const cfg = bal?.ships?.[type];
-    if (!cfg) return Infinity;
-    const fuel = this.bnum(cfg.fuel);
-    if (fuel <= 0) return Infinity; // ortsfest -> keine Begrenzung
-    const f = bal.fleet;
-    const legs = roundTrip ? 2 : 1;
-    return (this.bnum(cfg.fuel_tank) * this.bnum(f.speed_factor)) / (fuel * this.bnum(f.fuel_per_distance_unit) * legs);
-  }
-
-  /** OGame-Distanzmodell (balance.fleet.distance), gespiegelt aus compute_distance. */
-  private distanceTo(): number | null {
+  /** Origin-Koordinaten des aktiven Planeten (für die Distanz/Reichweiten-Rechnung). */
+  private originCoord(): Coordinate | null {
     const p = this.state.activePlanet();
-    const t = this.target();
-    const bal = this.balanceSvc.value as any;
-    const d = bal?.fleet?.distance;
-    if (!p || !d) return null;
-    if (p.galaxy !== t.galaxy) return this.bnum(d.inter_galaxy_per_galaxy) * Math.abs(p.galaxy - t.galaxy);
-    if (p.system !== t.system) return this.bnum(d.same_galaxy_base) + this.bnum(d.same_galaxy_per_system) * Math.abs(p.system - t.system);
-    if (p.position !== t.position) return this.bnum(d.same_system_base) + this.bnum(d.same_system_per_position) * Math.abs(p.position - t.position);
-    return this.bnum(d.same_position);
+    return p ? { galaxy: p.galaxy, system: p.system, position: p.position } : null;
   }
 
   protected readonly rangeInfo = computed<{
     distance: number; maxRange: number; maxRangeText: string;
     limiting: string | null; fuel: number; roundTrip: boolean; inRange: boolean;
   } | null>(() => {
-    const entries = Object.entries(this.selection()).filter(([, n]) => n > 0);
-    const dist = this.distanceTo();
+    const sel = this.selection();
+    const entries = Object.entries(sel).filter(([, n]) => n > 0);
+    const bal = this.balanceSvc.value as any;
+    const dist = this.calc.distanceTo(this.originCoord(), this.effTarget(), bal);
     if (!entries.length || dist === null) return null;
     const roundTrip = this.mission() !== 'deploy';
-    let maxRange = Infinity;
-    let limiting: string | null = null;
-    for (const [type] of entries) {
-      const r = this.shipRange(type, roundTrip);
-      if (r < maxRange) { maxRange = r; limiting = type; }
-    }
-    const bal = this.balanceSvc.value as any;
-    const f = bal?.fleet;
-    const legs = roundTrip ? 2 : 1;
-    let total = 0;
-    for (const [type, n] of entries) total += this.bnum(bal?.ships?.[type]?.fuel) * n;
-    const fuel = Math.max(1, Math.ceil((total * dist) / this.bnum(f?.speed_factor, 1) * this.bnum(f?.fuel_per_distance_unit, 1) * legs));
+    const { maxRange, limiting } = this.calc.fleetMaxRange(sel, roundTrip, bal);
+    const fuel = this.calc.fuelCost(sel, dist, roundTrip, bal);
     return {
       distance: dist,
       maxRange,
@@ -703,11 +881,7 @@ export class FleetDispatchComponent {
 
   /** Gesamt-Frachtkapazitaet der gewaehlten Flotte + aktuell beladene Menge (OGame-artig). */
   protected readonly cargoInfo = computed(() => {
-    const bal = this.balanceSvc.value as any;
-    let capacity = 0;
-    for (const [type, n] of Object.entries(this.selection())) {
-      if (n > 0) capacity += this.bnum(bal?.ships?.[type]?.cargo) * n;
-    }
+    const capacity = this.calc.cargoCapacity(this.selection(), this.balanceSvc.value as any);
     let used = 0;
     if (this.mission() === 'trade') {
       used = this.bnum(this.offerAmount());
@@ -722,19 +896,8 @@ export class FleetDispatchComponent {
    * (daher konservativ/Obergrenze). null wenn keine Distanz/Auswahl. */
   protected readonly flightSecs = computed<number | null>(() => {
     const bal = this.balanceSvc.value as any;
-    const dist = this.distanceTo();
-    const sel = Object.entries(this.selection()).filter(([, n]) => n > 0);
-    if (dist === null || !sel.length) return null;
-    let slowest = Infinity;
-    for (const [type] of sel) {
-      const sp = this.bnum(bal?.ships?.[type]?.speed);
-      if (sp > 0 && sp < slowest) slowest = sp;
-    }
-    if (!isFinite(slowest) || slowest <= 0) return null;
-    const fleetSpeed = Math.max(0.01, this.bnum(bal?.universe?.fleet_speed, 1));
-    const pct = Math.max(1, this.speed());
-    const raw = 10 + (35000 / pct) * Math.sqrt((dist * 10) / slowest);
-    return raw / fleetSpeed;
+    const dist = this.calc.distanceTo(this.originCoord(), this.effTarget(), bal);
+    return this.calc.flightSeconds(dist, this.selection(), this.speed(), bal);
   });
 
   protected flightText(secs: number | null): string {
@@ -749,6 +912,8 @@ export class FleetDispatchComponent {
   // -- Expedition: Verweildauer (1..max, max aus Astrophysik) -------------------
   protected readonly astroLevel = signal(0);
   protected readonly expHours = signal(1);
+  /** Expeditions-Doktrin (offline-sichere Vorab-Wahl): biegt Risiko + Ertrag. */
+  protected readonly expeditionDoctrine = signal<'cautious' | 'neutral' | 'bold'>('neutral');
 
   /** Maximale Verweildauer = min(astrophysics * per_level, hour_cap); 0 = nicht freigeschaltet. */
   protected readonly maxExpHours = computed(() => {
@@ -774,12 +939,7 @@ export class FleetDispatchComponent {
 
   /** Auf dem aktiven Planeten verfuegbare Menge einer Ressource — Exoten liegen unter .exotic. */
   availOnPlanet(key: DispatchCargoKey): number {
-    const res = this.planetRes() as any;
-    if (!res) return 0;
-    if (key === 'antimatter' || key === 'dark_matter') {
-      return Math.floor(this.bnum(res.exotic?.[key]?.amount));
-    }
-    return Math.floor(this.bnum(res[key]?.amount));
+    return this.calc.availOnPlanet(this.state.activePlanet(), key);
   }
 
   /** Exoten-Ladefelder nur zeigen, wenn der Planet welche hat (oder schon geladen). */
@@ -802,10 +962,9 @@ export class FleetDispatchComponent {
    * der Flotte gar nicht beruecksichtigt.
    */
   cargoCapFor(key: DispatchCargoKey): number {
-    const c = this.cargo();
-    const others = CARGO_LOAD_KEYS.reduce((s, k) => s + this.bnum(c[k]), 0) - this.bnum(c[key]);
-    const room = Math.max(0, this.cargoInfo().capacity - others);
-    return Math.max(0, Math.min(this.availOnPlanet(key), room));
+    return this.calc.cargoCapFor(
+      key, this.cargo(), CARGO_LOAD_KEYS, this.cargoInfo().capacity, this.state.activePlanet(),
+    );
   }
 
   /** OGame „alles laden": Metall -> Kristall -> Deuterium -> Exoten bis die Kapazitaet voll ist. */
@@ -845,12 +1004,30 @@ export class FleetDispatchComponent {
         ships[type] = n;
       }
     }
+    // W0: Patrouillen-Modus -> eigenes System abfangen (kein Flug, kein Ziel).
+    if (this.patrolMode()) {
+      this.sending.set(true);
+      this.api.patrolHome(origin, { ships, radius: this.patrolRadius() }).subscribe({
+        next: () => {
+          this.sending.set(false);
+          this.notify.success('Patrouille aktiv', 'Deine Schiffe patrouillieren jetzt das eigene System.');
+          void this.state.reloadActivePlanet();
+          this.sent.emit();
+          this.close.emit();
+        },
+        error: (err) => {
+          this.sending.set(false);
+          this.notify.warning('Patrouille fehlgeschlagen', err?.error?.detail ?? 'Fehler.');
+        },
+      });
+      return;
+    }
     const cargo = this.showCargo()
       ? this.cargo()
       : { metal: 0, crystal: 0, deuterium: 0, antimatter: 0, dark_matter: 0 };
     const body: FleetSendRequest = {
       origin_planet_id: origin,
-      target: this.target(),
+      target: this.effTarget(),
       mission: this.mission(),
       ships,
       cargo,
@@ -858,8 +1035,19 @@ export class FleetDispatchComponent {
       speed_pct: this.speed(),
       ability_keys: [...this.armed()],
     };
+    // W0: Missions-spezifische Felder (gespiegelt aus der alten fleet.component-Logik).
+    if (this.mission() === 'intercept') {
+      body.radius = this.interceptRadius();
+    }
+    if (this.mission() === 'escort') {
+      body.escort_radius = this.escortRadius();
+      body.escort_fee_pct = this.escortFeePct() / 100; // Prozent -> Anteil (Backend deckelt)
+    }
     if (this.mission() === 'expedition') {
       body.expedition_hours = this.expHours();
+      if (this.expeditionDoctrine() !== 'neutral') {
+        body.expedition_doctrine = this.expeditionDoctrine() as 'cautious' | 'bold';
+      }
     }
     if (this.mission() === 'attack' && this.capturePriority() !== 'value') {
       body.capture_priority = this.capturePriority();
@@ -908,6 +1096,8 @@ export class FleetDispatchComponent {
   rankMeta = (r: string) => metaFor(RANK_META, r);
 
   /** Asset-Pfad-Helfer fuer das Template (Glyph-Fallback via (error)="hideImg"). */
+  protected readonly shipIcon = shipIcon;
+  protected readonly isMk2 = isMk2;
   protected readonly missionIcon = missionIcon;
   protected readonly resourceIcon = resourceIcon;
   protected readonly navIcon = navIcon;

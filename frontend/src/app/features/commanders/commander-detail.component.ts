@@ -10,6 +10,8 @@ import {
   AbilityCatalog,
   CommanderBonus,
   CommanderDetail,
+  CommanderMemoryDossier,
+  CommanderMemoryEntry,
   EquipmentCatalog,
   EquipmentItem,
   EquipmentState,
@@ -48,6 +50,22 @@ import { commanderDetailStyles } from './commander-detail.styles';
     <a class="back" routerLink="/commanders">← Zurueck zum Roster</a>
 
     @if (commander(); as c) {
+      <!-- Meuterei-Warnung: deutlich sichtbar ueber dem gesamten Profil -->
+      @if (mutinyState(c); as ms) {
+        <div class="mutiny-banner" [class.acute]="ms === 'acute'">
+          @if (ms === 'acute') {
+            <div class="mb-title">🔥 MEUTEREI — verweigert Befehle</div>
+            <p class="mb-body">{{ c.name }} gehorcht nicht mehr und steht keiner Flotte zur Verfügung.
+              Erfülle eine seiner Forderungen (Beförderung / Beuteanteil) im Postfach — das beendet die
+              Befehlsverweigerung und hebt die Treue. Ignorieren hält ihn außer Kontrolle.</p>
+          } @else {
+            <div class="mb-title">⚠️ Kurz vor der Meuterei</div>
+            <p class="mb-body">Treue und Unmut sind kritisch. Senke Unmut und Groll, indem du seine
+              Forderungen erfüllst — sonst verweigert er bald die Befehle.</p>
+          }
+        </div>
+      }
+
       <div class="grid layout">
         <section class="card profile">
           <div class="portrait" [class]="bandClass(c.morale)">
@@ -294,28 +312,115 @@ import { commanderDetailStyles } from './commander-detail.styles';
           </div>
         </section>
 
-        <!-- Funkspruch-Historie -->
-        <section class="card history">
-          <div class="panel-title"><app-btn-icon [src]="statusIcon('transmission_unread')" glyph="📡" [size]="16" /> Funkspruch-Historie</div>
-          @if (c.history.length) {
-            <ol class="timeline">
-              @for (h of c.history; track h.id) {
-                <li>
-                  <div class="dot"></div>
-                  <div class="entry">
-                    <div class="row-between">
-                      <strong>{{ h.subject }}</strong>
-                      <span class="faint small">{{ h.created_at | date: 'short' }}</span>
-                    </div>
-                    <p class="small body">{{ h.body }}</p>
-                  </div>
-                </li>
+        <div class="col-right">
+          <!-- Innenleben: Gedaechtnis, Meinungen, Beziehungen, Groll (Welle 2) -->
+          @if (dossier(); as d) {
+            <section class="card innenleben">
+              <div class="panel-title"><app-btn-icon [src]="uiIcon('ability')" glyph="🧠" [size]="16" /> Innenleben — Gedächtnis &amp; Beziehungen</div>
+
+              @if (d.memory_summary) {
+                <blockquote class="memory-summary">{{ d.memory_summary }}</blockquote>
               }
-            </ol>
-          } @else {
-            <p class="muted small">Noch keine Funksprueche von diesem Commander.</p>
+
+              @if (d.grievances.length) {
+                <div class="il-block">
+                  <div class="il-head"><app-btn-icon [src]="statusIcon('alert')" glyph="⚑" [size]="14" /> Offener Groll</div>
+                  <ul class="grievance-list">
+                    @for (g of d.grievances; track g.grievance_type) {
+                      <li class="grievance" [class.sev-high]="g.severity >= 6">
+                        <span class="g-dot"></span>
+                        <span class="g-label">{{ grievanceLabel(g.grievance_type) }}</span>
+                        @if (g.accumulated_count > 1) { <span class="g-count">×{{ g.accumulated_count }}</span> }
+                        <span class="g-sev">Schwere {{ g.severity }}</span>
+                      </li>
+                    }
+                  </ul>
+                  <p class="faint small">Offener Groll staut sich zu Unmut auf und treibt früher oder später in die Meuterei. Erfüllte Forderungen legen ihn bei.</p>
+                </div>
+              }
+
+              @if (d.opinions.length) {
+                <div class="il-block">
+                  <div class="il-head">Meinungen über Gegner</div>
+                  @for (o of d.opinions; track o.target_name + o.opinion_type) {
+                    <div class="opinion" [class.hated]="o.hated">
+                      <div class="op-row">
+                        <span class="op-verb" [class]="opinionClass(o.opinion_type)">{{ opinionLabel(o.opinion_type) }}</span>
+                        <span class="op-target">{{ o.target_name ?? 'Unbekannt' }}</span>
+                        <span class="op-kind faint small">{{ o.target_kind === 'npc' ? 'KI-Imperium' : 'Spieler' }}</span>
+                        @if (o.hated) { <span class="archenemy">☠ Erzfeind</span> }
+                      </div>
+                      <div class="bar op-bar" [class]="opinionClass(o.opinion_type)"><span class="fill" [style.width.%]="pct(o.strength)"></span></div>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (d.relationships.length) {
+                <div class="il-block">
+                  <div class="il-head">Beziehungen zu anderen Kommandeuren</div>
+                  @for (r of d.relationships; track r.other_commander_id) {
+                    <a class="relation" [class]="relClass(r.rel_type)" [routerLink]="['/commanders', r.other_commander_id]">
+                      <div class="op-row">
+                        <span class="op-verb" [class]="relClass(r.rel_type)">{{ relLabel(r.rel_type) }}</span>
+                        <span class="op-target">{{ r.other_name ?? 'Unbekannt' }}</span>
+                        <span class="rel-arrow">→</span>
+                      </div>
+                      <div class="bar op-bar" [class]="relClass(r.rel_type)"><span class="fill" [style.width.%]="pct(r.strength)"></span></div>
+                    </a>
+                  }
+                </div>
+              }
+
+              @if (d.memories.length) {
+                <div class="il-block">
+                  <div class="il-head">Gedächtnis</div>
+                  <ol class="mem-timeline">
+                    @for (m of d.memories; track $index) {
+                      <li class="mem" [class]="'sent-' + m.sentiment">
+                        <span class="mem-dot"></span>
+                        <div class="mem-entry">
+                          <div class="row-between">
+                            <strong>{{ memoryLabel(m.event_type) }}</strong>
+                            @if (m.created_at) { <span class="faint small">{{ m.created_at | date: 'short' }}</span> }
+                          </div>
+                          @if (memoryContext(m); as ctx) { <p class="small mem-ctx">{{ ctx }}</p> }
+                        </div>
+                      </li>
+                    }
+                  </ol>
+                </div>
+              }
+
+              @if (!d.memory_summary && !d.memories.length && !d.opinions.length && !d.relationships.length && !d.grievances.length) {
+                <p class="muted small">Dieser Kommandeur hat noch keine Geschichte geschrieben. Setze ihn ein — Siege, Niederlagen und Forderungen prägen seinen Charakter.</p>
+              }
+            </section>
           }
-        </section>
+
+          <!-- Funkspruch-Historie -->
+          <section class="card history">
+            <div class="panel-title"><app-btn-icon [src]="statusIcon('transmission_unread')" glyph="📡" [size]="16" /> Funkspruch-Historie</div>
+            @if (c.history.length) {
+              <ol class="timeline">
+                @for (h of c.history; track h.id) {
+                  <li>
+                    <div class="dot"></div>
+                    <div class="entry">
+                      <div class="row-between">
+                        <strong>{{ h.subject }}</strong>
+                        <span class="faint small">{{ h.created_at | date: 'short' }}</span>
+                      </div>
+                      <p class="small body">{{ h.body }}</p>
+                    </div>
+                  </li>
+                }
+              </ol>
+            } @else {
+              <p class="muted small">Noch keine Funksprueche von diesem Commander.</p>
+            }
+          </section>
+        </div>
       </div>
     } @else if (loading()) {
       <p class="empty-state">Lade Commander…</p>
@@ -339,6 +444,9 @@ export class CommanderDetailComponent {
   protected readonly planets = this.state.planets;
   protected readonly govPlanet = signal<string | null>(null);
   protected readonly abilityCatalog = signal<AbilityCatalog | null>(null);
+
+  /** Gedaechtnis-Dossier (Welle 2): Erinnerungen, Meinungen, Beziehungen, Groll. */
+  protected readonly dossier = signal<CommanderMemoryDossier | null>(null);
 
   // -- Ausruestung (Equipment) --
   protected readonly equipment = signal<EquipmentState | null>(null);
@@ -616,6 +724,7 @@ export class CommanderDetailComponent {
       return;
     }
     this.loading.set(true);
+    this.dossier.set(null);
     this.api.getCommander(id).subscribe({
       next: (c) => {
         this.commander.set(c);
@@ -624,6 +733,85 @@ export class CommanderDetailComponent {
       },
       error: () => this.loading.set(false),
     });
+    this.api.getCommanderMemory(id).subscribe({
+      next: (d) => this.dossier.set(d),
+      error: () => this.dossier.set(null),
+    });
+  }
+
+  /** Einstufung des Meuterei-Risikos fuer den Warnbanner. */
+  mutinyState(c: CommanderDetail): 'acute' | 'risk' | null {
+    const d = this.dossier();
+    if (c.status === 'mutinous' || d?.mutiny_warning) {
+      return 'acute';
+    }
+    const grievances = d?.grievances?.length ?? 0;
+    if (c.loyalty < 35 || (c.unrest ?? 0) >= 70 || grievances >= 2) {
+      return 'risk';
+    }
+    return null;
+  }
+
+  // -- Gedaechtnis-Dossier: Labels & Aufbereitung (Welle 2) ---------------
+  private readonly MEMORY_LABEL: Record<string, string> = {
+    combat_victory: 'Sieg in der Schlacht',
+    combat_crushing_victory: 'Vernichtender Sieg',
+    combat_close_win: 'Knapper Sieg',
+    combat_defeat: 'Niederlage im Kampf',
+    heavy_losses: 'Schwere Verluste',
+    expedition_success: 'Erfolgreiche Expedition',
+    demand_fulfilled: 'Forderung erfüllt',
+    demand_ignored: 'Forderung abgewiesen',
+    promotion: 'Beförderung',
+    mutiny: 'Meuterei',
+  };
+  private readonly OPINION_LABEL: Record<string, string> = {
+    respects: 'respektiert', despises: 'verachtet', fears: 'fürchtet', envies: 'beneidet',
+  };
+  private readonly REL_LABEL: Record<string, string> = {
+    rivalry: 'Rivalität', respect: 'Respekt', grudge: 'Groll', bond: 'Verbundenheit',
+  };
+  private readonly GRIEVANCE_LABEL: Record<string, string> = {
+    risky_missions: 'Riskante Dauereinsätze', ignored_demand: 'Ignorierte Forderung',
+    denied_promotion: 'Verwehrte Beförderung',
+  };
+  private readonly RES_LABEL: Record<string, string> = {
+    metal: 'Metall', crystal: 'Kristall', deuterium: 'Deuterium',
+  };
+
+  memoryLabel = (k: string) => this.MEMORY_LABEL[k] ?? k;
+  opinionLabel = (k: string) => this.OPINION_LABEL[k] ?? k;
+  opinionClass = (k: string) => `op-${k}`;
+  relLabel = (k: string) => this.REL_LABEL[k] ?? k;
+  relClass = (k: string) => `rel-${k}`;
+  grievanceLabel = (k: string) => this.GRIEVANCE_LABEL[k] ?? k;
+  pct = (s: number) => Math.round(Math.max(0, Math.min(1, s)) * 100);
+
+  /** Lesbarer Kontext-Einzeiler einer Erinnerung (Gegner/Ort/Ausgang/Beute/Rang). */
+  memoryContext(m: CommanderMemoryEntry): string {
+    const ctx = m.context ?? {};
+    const parts: string[] = [];
+    if (ctx.enemy_name) {
+      parts.push(`Gegner: ${ctx.enemy_name}`);
+    }
+    if (ctx.planet) {
+      parts.push(`Ort: ${ctx.planet}`);
+    }
+    if (ctx.outcome) {
+      parts.push(ctx.outcome === 'win' ? 'Ausgang: Sieg' : 'Ausgang: Niederlage');
+    }
+    const loot = (ctx.loot ?? {}) as Record<string, number>;
+    const lootText = Object.entries(loot)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${this.RES_LABEL[k] ?? k} ${v}`)
+      .join(', ');
+    if (lootText) {
+      parts.push(`Beute: ${lootText}`);
+    }
+    if (ctx.rank) {
+      parts.push(`Neuer Rang: ${this.rank(String(ctx.rank)).label}`);
+    }
+    return parts.join(' · ');
   }
 
   statusLabel(c: CommanderDetail): string {

@@ -11,8 +11,8 @@ import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { CombatSimPreloadService } from '../../core/services/combat-sim-preload.service';
 import { CombatReport, Commander } from '../../core/models/api.models';
-import { DEFENSE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { navIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
+import { DEFENSE_META, SHIP_META, isMk2, metaFor } from '../../core/models/display';
+import { defenseIcon, navIcon, shipIcon, statIcon, statusIcon, uiIcon } from '../../core/models/icon-assets';
 import { CombatReportComponent } from '../transmissions/combat-report.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
@@ -24,6 +24,8 @@ interface PickRow {
   glyph: string;
   /** Asset-Pfad des echten Einheiten-Bildes (Fallback: glyph via icon-tile). */
   icon: string;
+  /** Mk2/Elite-Schiff -> goldener Rahmen ueber dem Icon. */
+  mk2?: boolean;
 }
 
 /**
@@ -74,7 +76,7 @@ interface PickRow {
             @if (mode() === 'defense') { <div class="sub-head">Schiffe (Garnison)</div> }
             @for (s of combatShips(); track s.type) {
               <label class="row">
-                <app-icon-tile class="r-ico" [glyph]="s.glyph" [src]="s.icon" [size]="36" variant="accent" />
+                <app-icon-tile class="r-ico" [glyph]="s.glyph" [src]="s.icon" [mk2]="!!s.mk2" [size]="36" variant="accent" />
                 <span class="r-label">{{ s.label }}</span>
                 <input
                   type="number"
@@ -123,7 +125,7 @@ interface PickRow {
             <div class="sub-head">Schiffe</div>
             @for (s of combatShips(); track s.type) {
               <label class="row">
-                <app-icon-tile class="r-ico" [glyph]="s.glyph" [src]="s.icon" [size]="36" variant="magenta" />
+                <app-icon-tile class="r-ico" [glyph]="s.glyph" [src]="s.icon" [mk2]="!!s.mk2" [size]="36" variant="magenta" />
                 <span class="r-label">{{ s.label }}</span>
                 <input
                   type="number"
@@ -396,7 +398,7 @@ export class CombatSimComponent {
       // Nur echte, bewaffnete Schiffe (Notiz-Keys wie `_note` haben kein Profil/Waffentyp).
       if (prof && typeof prof === 'object' && prof.weapon_type) {
         const meta = metaFor(SHIP_META, type);
-        out.push({ type, label: meta.label, glyph: meta.glyph, icon: `assets/img/ships/${type}.png` });
+        out.push({ type, label: meta.label, glyph: meta.glyph, icon: shipIcon(type), mk2: isMk2(type) });
       }
     }
     return out;
@@ -413,7 +415,7 @@ export class CombatSimComponent {
       // Virtuelle Einheiten (z. B. Mond-Orbitalbatterie) sind nicht direkt baubar/wählbar.
       if (cfg && typeof cfg === 'object' && !(cfg as { virtual?: boolean }).virtual) {
         const meta = metaFor(DEFENSE_META, type);
-        out.push({ type, label: meta.label, glyph: meta.glyph, icon: `assets/img/defenses/${type}.png` });
+        out.push({ type, label: meta.label, glyph: meta.glyph, icon: defenseIcon(type) });
       }
     }
     return out;

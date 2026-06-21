@@ -382,6 +382,233 @@ _STATEMENTS: list[str] = [
     "ALTER TABLE asteroid_fields ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ",
     "UPDATE asteroid_fields SET expires_at = now() + (interval '24 hours') + (random() * interval '24 hours') WHERE expires_at IS NULL",
     "CREATE INDEX IF NOT EXISTS idx_asteroid_expires ON asteroid_fields(expires_at)",
+    # -- Feature: Verhandelbare KI-NPC-Imperien (Welle 1, 2026-06-20) ----------
+    # Diplomatischer Funkspruch des NPC an den Spieler (Antwort auf eine Verhandlung). Eigener
+    # Transmission-Typ, damit das Frontend die Verhandlungs-Antwort gezielt rendern kann
+    # (requires_decision + decision_payload tragen das Gegenangebot). ENUM-Wert MUSS vor seiner
+    # Nutzung committet sein (AUTOCOMMIT je Statement) — identisch zu 'spy_report'/'player_message'.
+    "ALTER TYPE transmission_type ADD VALUE IF NOT EXISTS 'npc_diplomacy'",
+    # Beziehung Spieler<->NPC-Imperium (eine Zeile je Paar). Status treibt NPC-Verhalten
+    # (allied/ceasefire = nicht angreifen), Tribut/Verrats-Flags + pos/neg Aktionen sind die
+    # Historie, die die KI-Entscheidung (npc_decision) faerbt.
+    """
+    CREATE TABLE IF NOT EXISTS npc_relations (
+        player_id               UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        npc_id                  UUID NOT NULL REFERENCES npc_empires(id) ON DELETE CASCADE,
+        status                  TEXT NOT NULL DEFAULT 'neutral',  -- neutral|allied|ceasefire|hostile|broken_pact
+        alliance_since          TIMESTAMPTZ,
+        ceasefire_until         TIMESTAMPTZ,
+        tribute_metal_per_cycle DOUBLE PRECISION NOT NULL DEFAULT 0,
+        tribute_last_paid       TIMESTAMPTZ,
+        betrayed_by_player      BOOLEAN NOT NULL DEFAULT false,
+        betrayed_by_npc         BOOLEAN NOT NULL DEFAULT false,
+        broken_at               TIMESTAMPTZ,
+        message_count           INT NOT NULL DEFAULT 0,
+        positive_actions        INT NOT NULL DEFAULT 0,
+        negative_actions        INT NOT NULL DEFAULT 0,
+        last_decision_at        TIMESTAMPTZ,
+        created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (player_id, npc_id)
+    )
+    """,
+    # Schnell-Zugriff fuer die Angriffs-Zielauswahl (welche Spieler sind bei DIESEM NPC geschuetzt)
+    # und fuer den Tribut-Tick (alle Zeilen mit laufendem Tribut).
+    "CREATE INDEX IF NOT EXISTS idx_npc_relations_npc ON npc_relations(npc_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_npc_relations_tribute ON npc_relations(tribute_metal_per_cycle)",
+    # Audit der KI-Entscheidungen (Nachvollziehbarkeit + spaetere Chronik/Analyse).
+    """
+    CREATE TABLE IF NOT EXISTS npc_decisions (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        npc_id        UUID NOT NULL REFERENCES npc_empires(id) ON DELETE CASCADE,
+        player_id     UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        offer_type    TEXT NOT NULL,                       -- alliance|ceasefire|tribute
+        offered_terms JSONB NOT NULL DEFAULT '{}'::jsonb,  -- vom Spieler angeboten (geklemmt)
+        npc_choice    TEXT,                                -- accept|reject|counter
+        npc_reasoning TEXT,
+        terms_result  JSONB NOT NULL DEFAULT '{}'::jsonb,  -- tatsaechlich angewandte/gegen-Konditionen
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_npc_decisions_player ON npc_decisions(player_id, npc_id)",
+    # Globaler Verrats-Ruf eines Spielers (wird in W3/Chronik wiederverwendet): wie oft hat er
+    # Pakte gebrochen, wie viele Buendnisse gehalten. Schlank gehalten.
+    """
+    CREATE TABLE IF NOT EXISTS player_reputation (
+        player_id         UUID PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+        betrayals         INT NOT NULL DEFAULT 0,
+        alliances_honored INT NOT NULL DEFAULT 0,
+        updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    # -- Feature: Kommandeure mit Gedaechtnis & Eigenleben (Welle 2, 2026-06-20) --
+    # Erlebnisse eines Kommandeurs (Schlachten/Expeditionen/Forderungen/Verluste). context traegt
+    # Gegner-Identitaet + Details; sentiment faerbt das Erinnerungs-Narrativ (ai-worker memory_digest)
+    # und damit die kuenftigen Funksprueche.
+    """
+    CREATE TABLE IF NOT EXISTS commander_memories (
+        id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        commander_id UUID NOT NULL REFERENCES commanders(id) ON DELETE CASCADE,
+        event_type   TEXT NOT NULL,
+        context      JSONB NOT NULL DEFAULT '{}'::jsonb,   -- {enemy_name, planet, outcome, value, ...}
+        sentiment    TEXT NOT NULL DEFAULT 'neutral',       -- positive | negative | neutral
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_commander_memories_lookup ON commander_memories(commander_id, created_at DESC)",
+    # Beziehungen zwischen zwei Kommandeuren DESSELBEN Spielers (a<b-Konvention in der PK).
+    """
+    CREATE TABLE IF NOT EXISTS commander_relationships (
+        commander_a_id   UUID NOT NULL REFERENCES commanders(id) ON DELETE CASCADE,
+        commander_b_id   UUID NOT NULL REFERENCES commanders(id) ON DELETE CASCADE,
+        rel_type         TEXT NOT NULL,                     -- rivalry | respect | grudge | bond
+        strength         DOUBLE PRECISION NOT NULL DEFAULT 0,
+        last_interaction TIMESTAMPTZ,
+        context          JSONB NOT NULL DEFAULT '{}'::jsonb,
+        PRIMARY KEY (commander_a_id, commander_b_id)
+    )
+    """,
+    # Meinung eines Kommandeurs ueber einen Gegner (Spieler ODER NPC). Eindeutigkeit pro
+    # (commander, ziel) ueber zwei partielle Unique-Indizes (genau eines von player/npc gesetzt).
+    """
+    CREATE TABLE IF NOT EXISTS commander_opinions (
+        id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        commander_id     UUID NOT NULL REFERENCES commanders(id) ON DELETE CASCADE,
+        about_player_id  UUID REFERENCES players(id) ON DELETE CASCADE,
+        about_npc_id     UUID REFERENCES npc_empires(id) ON DELETE CASCADE,
+        opinion_type     TEXT NOT NULL,                     -- respects | despises | fears | envies
+        strength         DOUBLE PRECISION NOT NULL DEFAULT 0,
+        last_reinforced_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_commander_opinion_player ON commander_opinions(commander_id, about_player_id) WHERE about_player_id IS NOT NULL",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_commander_opinion_npc ON commander_opinions(commander_id, about_npc_id) WHERE about_npc_id IS NOT NULL",
+    # Aufgestaute Kraenkungen -> Meuterei-Treiber. accumulated_count + severity je Vorfall.
+    """
+    CREATE TABLE IF NOT EXISTS commander_grievances (
+        id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        commander_id      UUID NOT NULL REFERENCES commanders(id) ON DELETE CASCADE,
+        grievance_type    TEXT NOT NULL,   -- ignored_demand | risky_missions | denied_promotion | combat_neglect
+        severity          INT NOT NULL DEFAULT 0,
+        accumulated_count INT NOT NULL DEFAULT 1,
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+        resolved_at       TIMESTAMPTZ
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_commander_grievances_open ON commander_grievances(commander_id) WHERE resolved_at IS NULL",
+    # Meuterei-Status (Welle 2): neue Kommandeur-Stati. 'mutinous' = Vorwarnung/akut, verweigert den
+    # naechsten Befehl; 'defected' existiert bereits. Telegrafiert + idempotent.
+    "ALTER TYPE commander_status ADD VALUE IF NOT EXISTS 'mutinous'",
+    # Anker fuer den Meuterei-Cooldown + Zeitpunkt des letzten Memory-Digests (ai-worker).
+    "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS last_mutiny_check_at TIMESTAMPTZ",
+    "ALTER TABLE commanders ADD COLUMN IF NOT EXISTS last_digest_at TIMESTAMPTZ",
+    # -- Feature: Lebende Galaxie-Chronik (Welle 3, 2026-06-20) ----------------
+    # Ein fortlaufendes „Geschichtsbuch" des Servers: der ai-worker (Erzaehler 'historian')
+    # verdichtet die echten Spieler-Taten eines Zeitfensters (groesste Schlachten, Auf-/Abstiege,
+    # Verrat, grosse Welt-Events) zu einem epischen, faktentreuen Saga-Eintrag. ``key_events``
+    # haelt sowohl die erzaehlwuerdigen Fakten ALS AUCH den Score-/Ruf-Snapshot des Fensters
+    # ({"events":[...],"snapshot":{...}}), damit die naechste Chronik die Veraenderung erkennt —
+    # ohne extra Snapshot-Tabelle. ``status`` = pending (Backend angelegt) -> published (ai-worker).
+    """
+    CREATE TABLE IF NOT EXISTS game_chronicle (
+        id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title        TEXT NOT NULL DEFAULT '',
+        body         TEXT NOT NULL DEFAULT '',
+        narrator     TEXT NOT NULL DEFAULT 'historian',
+        span_start   TIMESTAMPTZ,
+        span_end     TIMESTAMPTZ,
+        key_events   JSONB NOT NULL DEFAULT '[]'::jsonb,
+        status       TEXT NOT NULL DEFAULT 'pending',   -- pending | published
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        published_at TIMESTAMPTZ
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_game_chronicle_published ON game_chronicle(published_at DESC)",
+    # -- Welle 4: Die erwachende Galaxie (Feature 7) -------------------------
+    # Stuendliche Aggressions-Metrik des GESAMTEN Universums (eine Zeile je Stunde): aus den
+    # combat_reports des Fensters aggregiert. ``level`` ist der gewichtete Gesamt-Aggressionswert,
+    # ``status`` das Band (peaceful|tense|war|apocalypse). Dient als Verlauf + Frontend-Anzeige.
+    """
+    CREATE TABLE IF NOT EXISTS aggression_history (
+        hour            TIMESTAMPTZ PRIMARY KEY,
+        combat_count    INT NOT NULL DEFAULT 0,
+        total_debris    DOUBLE PRECISION NOT NULL DEFAULT 0,
+        unique_attackers INT NOT NULL DEFAULT 0,
+        level           DOUBLE PRECISION NOT NULL DEFAULT 0,
+        status          TEXT NOT NULL DEFAULT 'peaceful'
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_aggression_history_hour ON aggression_history(hour DESC)",
+    # Der uralte Waechter ("Der Erwachte"): server-weite Bedrohung, die erwacht, wenn das
+    # Aggressionsniveau aller Spieler eine Schwelle ueberschreitet. Der eigentliche KAMPF-Koerper
+    # ist ein NpcEmpire (``npc_id`` -> Wiederverwendung des Spieler<->NPC-Kampfes + NpcAttack);
+    # diese Zeile haelt nur den server-weiten LEBENSZYKLUS-Zustand (Aggression bei Geburt,
+    # Ablauf, Status, besiegt-Zeitpunkt, Teilnehmer + Beruhigungs-Cooldown). Es ist immer
+    # hoechstens EINE Zeile mit status='active' (Einzel-Waechter-Garantie ueber den Code-Pfad).
+    """
+    CREATE TABLE IF NOT EXISTS awakening_warden (
+        id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        npc_id           UUID REFERENCES npc_empires(id) ON DELETE SET NULL,
+        spawned_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+        aggression_level DOUBLE PRECISION NOT NULL DEFAULT 0,
+        fleet            JSONB NOT NULL DEFAULT '{}'::jsonb,
+        target_scope     TEXT NOT NULL DEFAULT 'global',
+        data             JSONB NOT NULL DEFAULT '{}'::jsonb,
+        expires_at       TIMESTAMPTZ,
+        status           TEXT NOT NULL DEFAULT 'active',   -- active | defeated | dormant
+        last_threat_at   TIMESTAMPTZ,
+        defeated_at      TIMESTAMPTZ,
+        calm_until       TIMESTAMPTZ,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_awakening_warden_status ON awakening_warden(status)",
+    # Handelshistorie (Handels-Umbau): eine Zeile je abgeschlossenem Handel. partner_id ist
+    # bewusst KEIN FK (Partner — NPC oder Spieler — soll nach Loeschung lesbar bleiben);
+    # partner_name haelt den Klartext. Best-effort aus resolve_trade geschrieben.
+    """
+    CREATE TABLE IF NOT EXISTS trade_log (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        player_id       UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        partner_kind    TEXT NOT NULL DEFAULT 'npc',
+        partner_id      UUID,
+        partner_name    TEXT,
+        offered_res     TEXT NOT NULL,
+        offered_amount  DOUBLE PRECISION NOT NULL DEFAULT 0,
+        received_res    TEXT NOT NULL,
+        received_amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_trade_log_player ON trade_log(player_id, created_at DESC)",
+    # -- Feature: Eskort-Gesuche-Board (Nachfrage-Seite, 2026-06-21) -----------
+    # Ein Trader postet aktiv einen Eskort-Auftrag (Route + geschaetzter Frachtwert + max. Gebuehr),
+    # Eskort-Anbieter nehmen ihn mit einer ihrer Eskort-Stationen (stationed_fleets) an. Spiegelt das
+    # bestehende Angebots-Modell (escort_covers); abgelaufene Gesuche werden beim Listen lazy auf
+    # 'expired' gesetzt. accepted_station_id/accepted_by ON DELETE SET NULL: Historie ueberlebt die
+    # Zerstoerung der Station / Loeschung des Anbieters.
+    """
+    CREATE TABLE IF NOT EXISTS escort_job (
+        id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        requester_id        UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        origin_galaxy       INT NOT NULL,
+        origin_system       INT NOT NULL,
+        origin_position     INT NOT NULL,
+        target_galaxy       INT NOT NULL,
+        target_system       INT NOT NULL,
+        target_position     INT NOT NULL,
+        cargo_value         DOUBLE PRECISION NOT NULL DEFAULT 0,
+        max_fee_pct         DOUBLE PRECISION NOT NULL DEFAULT 0,
+        min_power           DOUBLE PRECISION NOT NULL DEFAULT 0,
+        status              TEXT NOT NULL DEFAULT 'open',   -- open|accepted|cancelled|expired|done
+        accepted_station_id UUID REFERENCES stationed_fleets(id) ON DELETE SET NULL,
+        accepted_by         UUID REFERENCES players(id) ON DELETE SET NULL,
+        accepted_fee_pct    DOUBLE PRECISION,
+        created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at          TIMESTAMPTZ NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_escort_job_open ON escort_job(status, expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_escort_job_requester ON escort_job(requester_id, created_at DESC)",
 ]
 
 

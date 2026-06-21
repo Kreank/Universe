@@ -109,7 +109,9 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
                     >
                       {{ pending() === b.type ? '…' : 'Ausbauen → ' + b.option.next_level }}
                     </button>
-                    @if (b.option.position_ok === false) {
+                    @if (b.option.account_blocked) {
+                      <span class="hint warn small">Nur eines pro Imperium</span>
+                    } @else if (b.option.position_ok === false) {
                       <span class="hint warn small">Nur auf Position {{ (b.option.allowed_positions ?? []).join(', ') }}</span>
                     } @else if (!b.option.requirements_met) {
                       <span class="hint warn small">Voraussetzung fehlt</span>
@@ -333,6 +335,7 @@ export class BuildingsComponent {
       b.option.can_afford &&
       b.option.requirements_met &&
       b.option.position_ok !== false &&
+      !b.option.account_blocked &&
       !b.finishesAt
     );
   }
@@ -353,6 +356,9 @@ export class BuildingsComponent {
   buildingHint(b: BuildingRow): string | null {
     if (!b.option || b.finishesAt) {
       return null;
+    }
+    if (b.option.account_blocked) {
+      return 'Nur eines pro Imperium';
     }
     if (!b.option.requirements_met) {
       return 'Voraussetzung fehlt';

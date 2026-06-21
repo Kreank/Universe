@@ -102,6 +102,20 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
     energy_tech = research.get("energy_tech", 0)
     resources = await refresh_resources(session, planet)
     is_moon = planet.planet_type == "moon"
+    # One-per-account-Gebaeude (Handelszentrum): auf welchen ANDEREN Planeten besitzt/baut der
+    # Spieler bereits eines? -> zweiter Bau wird im Frontend gesperrt (account_blocked).
+    from sqlalchemy import or_ as _or
+    oneacc_types = [t for t, c in bal.buildings.items() if isinstance(c, dict) and c.get("one_per_account")]
+    oneacc_other: set[str] = set()
+    if oneacc_types:
+        oneacc_other = set((await session.execute(
+            select(Building.type).join(Planet, Building.planet_id == Planet.id).where(
+                Planet.player_id == planet.player_id,
+                Building.type.in_(oneacc_types),
+                Building.planet_id != planet.id,
+                _or(Building.level > 0, Building.upgrade_finishes_at.is_not(None)),
+            )
+        )).scalars().all())
     options: list[dict] = []
     for btype, bcfg in bal.buildings.items():
         # Mond-Gebaeude nur auf Monden, Nicht-Mond-Gebaeude nur auf Planeten.
@@ -138,8 +152,32 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
             "energy_delta": round(energy_next - energy_now, 1),
             "position_ok": position_ok,
             "allowed_positions": [int(p) for p in allowed_pos] if allowed_pos else [],
+            "one_per_account": bool(bcfg.get("one_per_account", False)),
+            "account_blocked": btype in oneacc_other,
         })
     return options
+
+
+async def one_per_account_blocked(session: AsyncSession, planet: Planet, building_type: str) -> bool:
+    """True, wenn ``building_type`` global-einmalig ist (``one_per_account``) und der Spieler
+    bereits eines auf einem ANDEREN Planeten besitzt (Stufe>=1) oder dort gerade baut.
+
+    Nur Planeten != ``planet`` zaehlen -> die EINE Instanz darf weiter ausgebaut werden, ein
+    zweiter Bau anderswo wird gesperrt. Nicht-einmalige Gebaeude -> immer False (kein Query)."""
+    cfg = get_balance().buildings.get(building_type, {})
+    if not cfg.get("one_per_account"):
+        return False
+    from sqlalchemy import func, or_
+    elsewhere = (await session.execute(
+        select(func.count()).select_from(Building).join(Planet, Building.planet_id == Planet.id)
+        .where(
+            Planet.player_id == planet.player_id,
+            Building.type == building_type,
+            Building.planet_id != planet.id,
+            or_(Building.level > 0, Building.upgrade_finishes_at.is_not(None)),
+        )
+    )).scalar() or 0
+    return int(elsewhere) > 0
 
 
 async def is_building_in_progress(session: AsyncSession, planet_id: uuid.UUID) -> bool:
@@ -168,6 +206,10 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
         raise ValueError(
             f"Dieses Gebaeude ist nur auf Position {', '.join(str(int(p)) for p in allowed_pos)} baubar"
         )
+    # Global-einmaliges Gebaeude (z.B. Handelszentrum): nur EINS pro Account.
+    if await one_per_account_blocked(session, planet, building_type):
+        raise RuntimeError("Du besitzt bereits ein Handelszentrum (nur eines pro Imperium).")
+
     if await is_building_in_progress(session, planet.id):
         raise RuntimeError("Es laeuft bereits ein Gebaeudeausbau auf diesem Planeten")
     # Feld-Budget erzwingen: jede Gebaeudestufe kostet ein Feld (Modell A, Doku 06a).

@@ -93,6 +93,31 @@ def test_ensure_market_keeps_existing_market():
     assert market == preset
 
 
+# --- ensure_market: Schwarzmarkt-Sonderkurs (black_market) ----------------
+
+def test_ensure_market_keeps_black_market_spec_and_bonus():
+    """Ein Schwarzmarkt-Markt (spec='black_market') wird NIE umgewuerfelt: Kennung +
+    rate_bonus bleiben erhalten; fehlender Bestand wird aufgefuellt (statt neu gewuerfelt)."""
+    npc = _FakeNpc(market={"spec": "black_market", "rate_bonus": 1.5, "stock": {}})
+    market = ensure_market(npc, CFG)
+    assert market["spec"] == "black_market"  # nicht zu einer normalen spec umgewuerfelt
+    assert market["rate_bonus"] == 1.5       # Bonus erhalten
+    # Bestand aufgefuellt (generalist-Sollbestand, da 'black_market' keine eigene spec hat).
+    generalist = market_setpoint("generalist", CFG)
+    for res in RESOURCES:
+        assert market["stock"][res] == round(generalist[res])
+    assert npc.market["spec"] == "black_market"
+
+
+def test_ensure_market_black_market_with_stock_is_idempotent():
+    """Hat der Schwarzmarkt bereits Bestand, bleibt alles unangetastet (idempotent)."""
+    preset = {"spec": "black_market", "rate_bonus": 1.5,
+              "stock": {"metal": 100, "crystal": 200, "deuterium": 300}}
+    npc = _FakeNpc(market=dict(preset))
+    market = ensure_market(npc, CFG)
+    assert market == preset
+
+
 # --- validate_trade_order -------------------------------------------------
 
 def test_validate_trade_order_accepts_valid():

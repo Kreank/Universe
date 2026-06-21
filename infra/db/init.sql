@@ -388,6 +388,21 @@ CREATE TABLE trade_reputation (
     PRIMARY KEY (player_id, npc_id)
 );
 
+-- Handelshistorie (Handels-Umbau): eine Zeile je abgeschlossenem Handel.
+CREATE TABLE trade_log (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    player_id       UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    partner_kind    TEXT NOT NULL DEFAULT 'npc',
+    partner_id      UUID,
+    partner_name    TEXT,
+    offered_res     TEXT NOT NULL,
+    offered_amount  DOUBLE PRECISION NOT NULL DEFAULT 0,
+    received_res    TEXT NOT NULL,
+    received_amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_trade_log_player ON trade_log(player_id, created_at DESC);
+
 -- ---------------------------------------------------------------------
 --  Allianzen: kooperative Ebene (Pool, Forschung, Station/Einflusszone)
 -- ---------------------------------------------------------------------

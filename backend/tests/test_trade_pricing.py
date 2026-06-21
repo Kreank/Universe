@@ -132,6 +132,51 @@ def test_higher_reputation_yields_more_received():
     assert high["received"] > low["received"]
 
 
+# --- Sonderkurs / rate_bonus (Schwarzmarkt-Event) -------------------------
+
+def test_rate_bonus_default_is_neutral():
+    """Ohne rate_bonus == mit rate_bonus=1.0 -> normaler Haendler unveraendert."""
+    st = _flat_stock()
+    base = simulate_swap("metal", 150_000, "crystal", st, SETPOINT, CFG)
+    one = simulate_swap("metal", 150_000, "crystal", st, SETPOINT, CFG, rate_bonus=1.0)
+    assert base == one
+
+
+def test_rate_bonus_yields_more_received_in_magnitude():
+    """Schwarzmarkt (rate_bonus=1.5) liefert beim IDENTISCHEN Tausch deutlich mehr
+    received als ein normaler Haendler (generalist) — in der Groessenordnung von +50%
+    (durch milde Slippage minimal darunter)."""
+    # generalist == default_setpoint; Bestand am Soll (fairer Ausgangskurs).
+    st = _flat_stock()
+    normal = simulate_swap("metal", 100_000, "crystal", st, SETPOINT, CFG)
+    black = simulate_swap("metal", 100_000, "crystal", st, SETPOINT, CFG, rate_bonus=1.5)
+    assert black["received"] > normal["received"]
+    ratio = black["received"] / normal["received"]
+    # ~+50% (Slippage druckt minimal, aber spuerbar besser als jeder normale Haendler).
+    assert 1.35 < ratio <= 1.5 + 1e-9
+    assert ratio == pytest.approx(1.5, rel=0.12)
+
+
+def test_rate_bonus_floored_to_one():
+    """rate_bonus < 1.0 wird auf 1.0 geklemmt (kein Schlechterstellen des Spielers)."""
+    st = _flat_stock()
+    base = simulate_swap("metal", 120_000, "crystal", st, SETPOINT, CFG)
+    worse = simulate_swap("metal", 120_000, "crystal", st, SETPOINT, CFG, rate_bonus=0.5)
+    assert worse["received"] == pytest.approx(base["received"])
+
+
+def test_rate_bonus_refund_not_exploitable_when_cargo_capped():
+    """Geschenkter Bonus wird NICHT miterstattet: bei Cargo-Limit darf refund_value den
+    echten Eigenanteil des Spielers (value_in*(1-margin)) nie ueberschreiten."""
+    st = _flat_stock()
+    cap = 10_000.0
+    black = simulate_swap(
+        "metal", 100_000, "crystal", st, SETPOINT, CFG, cargo_capacity=cap, rate_bonus=1.5
+    )
+    base_budget = black["value_in"] * (1.0 - black["margin"])
+    assert black["refund_value"] <= base_budget + 1e-6
+
+
 # --- Caps / Floor ---------------------------------------------------------
 
 def test_cargo_capacity_limits_received():

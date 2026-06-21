@@ -9,11 +9,14 @@ import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core
 @Component({
   selector: 'app-icon-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="tile" [class]="'tile-' + variant()" [style.--size.px]="size()">
+  template: `<span class="tile" [class]="'tile-' + variant()" [class.mk2]="mk2()" [style.--size.px]="size()">
     @if (src() && !broken()) {
       <img class="img" [src]="src()" alt="" loading="lazy" (error)="broken.set(true)" />
     } @else {
       <span class="glyph">{{ glyph() }}</span>
+    }
+    @if (mk2()) {
+      <img class="mk2-frame" src="assets/img/ui/mk2_frame.png" alt="" loading="lazy" />
     }
   </span>`,
   styles: [
@@ -54,6 +57,23 @@ import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core
         border-color: rgba(120, 150, 200, 0.25);
         box-shadow: none;
       }
+      /* Mk2/Elite-Schiff: goldener Rahmen-Overlay + dezenter Glow um die Kachel.
+         Der Rahmen (transparente Mitte) legt sich UEBER das Schiff-Icon des Parents. */
+      .tile.mk2 {
+        border-color: rgba(255, 198, 92, 0.55);
+        box-shadow: inset 0 0 14px rgba(255, 198, 92, 0.16), 0 0 9px rgba(255, 198, 92, 0.28);
+        overflow: visible;
+      }
+      .mk2-frame {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        pointer-events: none;
+        z-index: 2;
+        filter: drop-shadow(0 0 3px rgba(255, 198, 92, 0.5));
+      }
     `,
   ],
 })
@@ -63,5 +83,7 @@ export class IconTileComponent {
   readonly variant = input<'accent' | 'magenta' | 'muted'>('accent');
   /** Optionaler Asset-Pfad; faellt bei Ladefehler auf den Glyph zurueck. */
   readonly src = input<string | null>(null);
+  /** Mk2/Elite-Schiff: legt den goldenen Mk2-Rahmen + Glow ueber das Icon. */
+  readonly mk2 = input<boolean>(false);
   protected readonly broken = signal(false);
 }

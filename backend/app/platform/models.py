@@ -31,7 +31,7 @@ resource_type_enum = ENUM(
     name="resource_type", create_type=False,
 )
 commander_status_enum = ENUM(
-    "active", "training", "wounded", "captured", "dead", "defected",
+    "active", "training", "wounded", "captured", "dead", "defected", "mutinous",
     name="commander_status", create_type=False,
 )
 commander_rank_enum = ENUM(
@@ -57,7 +57,7 @@ occupant_type_enum = ENUM(
 )
 transmission_type_enum = ENUM(
     "routine", "reaction", "demand", "combat_report", "big_moment", "system",
-    "spy_report", "player_message",
+    "spy_report", "player_message", "npc_diplomacy",
     name="transmission_type", create_type=False,
 )
 
@@ -188,7 +188,87 @@ class Commander(Base):
     status: Mapped[str] = mapped_column(commander_status_enum, default="active")
     training_finishes_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_active_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    # Welle 2 (Gedaechtnis & Eigenleben): Anker fuer den Meuterei-Cooldown + letzten Memory-Digest.
+    last_mutiny_check_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_digest_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class CommanderMemory(Base):
+    """Eine Erinnerung eines Kommandeurs (Welle 2): Schlacht/Expedition/Forderung/Verlust.
+
+    ``context`` traegt die Details ({enemy_name, planet, outcome, value, about_player_id,
+    about_npc_id ...}), ``sentiment`` (positive|negative|neutral) faerbt das vom ai-worker
+    (memory_digest) verdichtete Erinnerungs-Narrativ — und damit die kuenftigen Funksprueche."""
+    __tablename__ = "commander_memories"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    commander_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="CASCADE")
+    )
+    event_type: Mapped[str] = mapped_column(Text, nullable=False)
+    context: Mapped[dict] = mapped_column(JSONB, default=dict)
+    sentiment: Mapped[str] = mapped_column(Text, default="neutral")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class CommanderRelationship(Base):
+    """Beziehung zwischen ZWEI Kommandeuren desselben Spielers (Welle 2).
+
+    PK (a, b) mit der Konvention ``a < b`` (lexikografisch nach UUID-String) -> jede Paarung
+    existiert genau einmal. ``rel_type`` = rivalry | respect | grudge | bond, ``strength`` 0..1."""
+    __tablename__ = "commander_relationships"
+
+    commander_a_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="CASCADE"), primary_key=True
+    )
+    commander_b_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="CASCADE"), primary_key=True
+    )
+    rel_type: Mapped[str] = mapped_column(Text, nullable=False)
+    strength: Mapped[float] = mapped_column(Float, default=0.0)
+    last_interaction: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    context: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+
+class CommanderOpinion(Base):
+    """Meinung eines Kommandeurs ueber einen Gegner (Welle 2): genau EINES von about_player_id /
+    about_npc_id ist gesetzt. Eindeutigkeit pro (commander, ziel) ueber partielle Unique-Indizes.
+    ``opinion_type`` = respects | despises | fears | envies, ``strength`` 0..1."""
+    __tablename__ = "commander_opinions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    commander_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="CASCADE")
+    )
+    about_player_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), nullable=True
+    )
+    about_npc_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("npc_empires.id", ondelete="CASCADE"), nullable=True
+    )
+    opinion_type: Mapped[str] = mapped_column(Text, nullable=False)
+    strength: Mapped[float] = mapped_column(Float, default=0.0)
+    last_reinforced_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class CommanderGrievance(Base):
+    """Aufgestaute Kraenkung eines Kommandeurs (Welle 2) -> Meuterei-Treiber.
+
+    ``grievance_type`` = ignored_demand | risky_missions | denied_promotion | combat_neglect.
+    Wiederholte Vorfaelle erhoehen ``severity`` + ``accumulated_count``; ``resolved_at`` != NULL
+    nimmt die Kraenkung aus der Meuterei-Summe (beigelegt)."""
+    __tablename__ = "commander_grievances"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    commander_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("commanders.id", ondelete="CASCADE")
+    )
+    grievance_type: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[int] = mapped_column(Integer, default=0)
+    accumulated_count: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    resolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class CommanderLink(Base):
@@ -519,6 +599,46 @@ class StationedFleet(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class EscortJob(Base):
+    """Eskort-Gesuch (Nachfrage-Seite des Geleitschutz-Marktes): ein Trader POSTET aktiv
+    einen Auftrag (Route + geschaetzter Frachtwert + max. Gebuehr), Eskort-Anbieter nehmen ihn
+    mit einer ihrer Eskort-Stationen (``StationedFleet``, escort_enabled) an.
+
+    Spiegelt das bestehende Angebots-Modell (escort_covers/charge_trade_escorts): die Route ist
+    galaxie-intern (origin_system -> target_system), eine Station deckt sie, wenn ihr System im
+    Intervall +/- escort_radius liegt. Lebenszyklus ueber ``status``; abgelaufene Gesuche
+    (``expires_at``) werden beim Listen lazy auf 'expired' gesetzt. Nach der Annahme ist die
+    angenommene Station ein normales Eskort-Angebot auf der Route -> der Trader bucht sie beim
+    Handel ueber den bestehenden escort_ids/charge_trade_escorts-Pfad (kein doppeltes Abrechnen)."""
+    __tablename__ = "escort_job"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    requester_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"))
+    origin_galaxy: Mapped[int] = mapped_column(Integer, nullable=False)
+    origin_system: Mapped[int] = mapped_column(Integer, nullable=False)
+    origin_position: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_galaxy: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_system: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_position: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Geschaetzter Frachtwert der Route (Basis fuer die Gebuehr = fee_pct * cargo_value).
+    cargo_value: Mapped[float] = mapped_column(Float, default=0.0)
+    # Hoechste Gebuehr (% Frachtwert), die der Trader zu zahlen bereit ist.
+    max_fee_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    # Mindest-Kampfkraft der Eskorte, die der Trader verlangt (0 = egal).
+    min_power: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    # 'open' | 'accepted' | 'cancelled' | 'expired' | 'done'.
+    status: Mapped[str] = mapped_column(Text, default="open", server_default="open")
+    accepted_station_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stationed_fleets.id", ondelete="SET NULL"), nullable=True
+    )
+    accepted_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="SET NULL"), nullable=True
+    )
+    accepted_fee_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class WorldMarket(Base):
     """Singleton (id=1) fuer den globalen Handelsindex.
 
@@ -583,6 +703,115 @@ class TradeReputation(Base):
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class TradeLog(Base):
+    """Handelshistorie: eine Zeile je abgeschlossenem Handel eines Spielers.
+
+    ``partner_kind`` = 'npc' (Haendler/Handelszentrum) oder 'player' (P2P-Hub, Folge-Schritt C).
+    ``partner_id`` ist NICHT als FK gebunden (der Partner — NPC oder Spieler — soll auch nach
+    seiner Loeschung in der Historie lesbar bleiben); ``partner_name`` haelt den Klartext.
+    Geschrieben best-effort aus ``resolve_trade`` (darf den Handel nie stoeren)."""
+    __tablename__ = "trade_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"))
+    partner_kind: Mapped[str] = mapped_column(Text, default="npc")  # npc | player
+    partner_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    partner_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    offered_res: Mapped[str] = mapped_column(Text, nullable=False)
+    offered_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    received_res: Mapped[str] = mapped_column(Text, nullable=False)
+    received_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class NpcRelation(Base):
+    """Beziehung Spieler<->NPC-Imperium (Welle 1: verhandelbare KI-Imperien).
+
+    Eine Zeile je (Spieler, NPC). ``status`` steuert das NPC-Verhalten:
+    ``allied``/``ceasefire`` (mit ``ceasefire_until`` > now) schuetzen den Spieler vor
+    NPC-Angriffen; ``hostile``/``broken_pact`` markieren gebrochene Pakte. Tribut +
+    Verrats-Flags + pos/neg Aktionen bilden die HISTORIE, die die KI-Entscheidung
+    (ai-worker ``npc_decision``) charaktertreu faerbt. Composite-PK — Vorbild: TradeReputation."""
+    __tablename__ = "npc_relations"
+
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), primary_key=True
+    )
+    npc_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("npc_empires.id", ondelete="CASCADE"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(Text, default="neutral")  # neutral|allied|ceasefire|hostile|broken_pact
+    alliance_since: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ceasefire_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    tribute_metal_per_cycle: Mapped[float] = mapped_column(Float, default=0.0)
+    tribute_last_paid: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    betrayed_by_player: Mapped[bool] = mapped_column(Boolean, default=False)
+    betrayed_by_npc: Mapped[bool] = mapped_column(Boolean, default=False)
+    broken_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    message_count: Mapped[int] = mapped_column(Integer, default=0)
+    positive_actions: Mapped[int] = mapped_column(Integer, default=0)
+    negative_actions: Mapped[int] = mapped_column(Integer, default=0)
+    last_decision_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class NpcDecision(Base):
+    """Audit einer KI-Verhandlungs-Entscheidung (Nachvollziehbarkeit + Chronik-Quelle, W3).
+
+    Haelt das vom Spieler angebotene (bereits geklemmte) Angebot, die LLM-Wahl
+    (accept|reject|counter) samt Begruendung und die tatsaechlich angewandten Konditionen."""
+    __tablename__ = "npc_decisions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    npc_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("npc_empires.id", ondelete="CASCADE"))
+    player_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"))
+    offer_type: Mapped[str] = mapped_column(Text, nullable=False)  # alliance|ceasefire|tribute
+    offered_terms: Mapped[dict] = mapped_column(JSONB, default=dict)
+    npc_choice: Mapped[str | None] = mapped_column(Text, nullable=True)  # accept|reject|counter
+    npc_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    terms_result: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PlayerReputation(Base):
+    """Globaler Verrats-Ruf eines Spielers (W1 gesetzt, in W3/Chronik wiederverwendet).
+
+    ``betrayals`` = gebrochene Pakte (sinkt das Vertrauen aller NPCs), ``alliances_honored``
+    = gehaltene Buendnisse. Bewusst schlank (eine Zeile je Spieler)."""
+    __tablename__ = "player_reputation"
+
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), primary_key=True
+    )
+    betrayals: Mapped[int] = mapped_column(Integer, default=0)
+    alliances_honored: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class GameChronicle(Base):
+    """Ein Eintrag der „Lebenden Galaxie-Chronik" (Welle 3): ein vom ai-worker (Erzaehler
+    'historian') geschriebener, epischer aber FAKTENTREUER Saga-Eintrag ueber die echten
+    Spieler-Taten eines Zeitfensters.
+
+    ``key_events`` haelt ein Objekt ``{"events": [...], "snapshot": {...}}``: die
+    erzaehlwuerdigen Fakten (Schlachten/Auf-Abstiege/Verrat/Welt-Events) UND den Score-/Ruf-
+    Snapshot des Fensters, damit die naechste Chronik die Veraenderung erkennt (kein extra
+    Snapshot-Tabellen-Zoo). ``status`` = pending (Backend legt an) -> published (ai-worker
+    schreibt title+body + published_at)."""
+    __tablename__ = "game_chronicle"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(Text, default="", server_default="")
+    body: Mapped[str] = mapped_column(Text, default="", server_default="")
+    narrator: Mapped[str] = mapped_column(Text, default="historian", server_default="historian")
+    span_start: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    span_end: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    key_events: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="[]")
+    status: Mapped[str] = mapped_column(Text, default="pending", server_default="pending")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    published_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Feedback(Base):
     """Spieler-Feedback aus der Testphase (Bug-Report / Idee / Sonstiges).
 
@@ -626,6 +855,53 @@ class CosmicEvent(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False, default="active")
     spawned_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
     expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class AggressionHistory(Base):
+    """Stuendlicher Aggressions-Messpunkt des GESAMTEN Universums (Welle 4).
+
+    Aus den ``combat_reports`` des Fensters aggregiert (Kampfanzahl, Gesamt-Truemmer,
+    eindeutige Angreifer). ``level`` ist der daraus gewichtete Aggressionswert, ``status``
+    das daraus abgeleitete Band (peaceful|tense|war|apocalypse). Verlauf + Frontend-Anzeige;
+    Treiber fuers Erwachen des Waechters. PK = volle Stunde (eine Zeile je Stunde)."""
+    __tablename__ = "aggression_history"
+
+    hour: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    combat_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    total_debris: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    unique_attackers: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    level: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    status: Mapped[str] = mapped_column(Text, default="peaceful", server_default="peaceful")
+
+
+class AwakeningWarden(Base):
+    """Der uralte Waechter „Der Erwachte" (Welle 4): server-weite, emergente Bedrohung.
+
+    Erwacht, wenn das Aggressionsniveau ALLER Spieler eine Schwelle ueberschreitet, bedroht/
+    greift die aggressivsten Imperien, funkt wuerdevoll-bedrohlich (KI) und beruhigt das
+    Universum bei seiner Niederlage (+ Belohnung der Beteiligten). Der eigentliche KAMPF-
+    Koerper ist ein ``NpcEmpire`` (``npc_id``) — so wird der bestehende Spieler<->NPC-Kampf
+    UND die ``NpcAttack``-Infrastruktur wiederverwendet. Diese Zeile haelt nur den server-
+    weiten Lebenszyklus-Zustand. Es existiert hoechstens EINE Zeile mit status='active'."""
+    __tablename__ = "awakening_warden"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    npc_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("npc_empires.id", ondelete="SET NULL"), nullable=True
+    )
+    spawned_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    aggression_level: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    fleet: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    target_scope: Mapped[str] = mapped_column(Text, default="global", server_default="global")
+    # Freies Status-/Tracking-Feld: {"participants": [player_id,...], "threats": int, ...}.
+    data: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    expires_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(Text, default="active", server_default="active")  # active|defeated|dormant
+    last_threat_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    defeated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Beruhigungs-Cooldown: bis dahin erwacht kein neuer Waechter (nach Niederlage/Rueckzug).
+    calm_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

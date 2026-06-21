@@ -686,3 +686,21 @@ Es gibt **zwei** Asset-Wurzeln:
   `frontend/src/assets/img/ui/<name>.png` (der `img/ui/`-Ordner existiert im Frontend noch NICHT → bitte
   anlegen). Sind im Code bereits verdrahtet (`uiIcon()`), zeigen bis dahin den Emoji-Fallback. Sie sitzen
   als kleines führendes Icon IN Buttons (neben Text) → schlichte, klar lesbare Silhouette wichtig, kein Rahmen.
+
+---
+
+## 🏴 Handels-Umbau (2026-06-21) — erledigt
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|---|---|---|---|---|
+| ✅ | trade_center | `buildings/` | PNG transparent, 512×512 | Gebäude „Handelszentrum": freistehende orbitale Handelshafen-Station (Markthalle/Kuppel, Andock-Arme, Frachtcontainer, Holo-Handelsanzeigen). Stil-Anker: command_center/shipyard. Master + Spiegel `frontend/src/assets/img/buildings/`. |
+| ✅ | trade_network | `icons/tech/` | PNG transparent, 256×256 | Forschung „Handelsnetz": rundes Tech-Medaillon, cyan Knoten-/Routen-Netz zwischen Sternen + zentrale Frachtcontainer. Stil-Anker: astrophysics/alliance_trade. Master + Spiegel `frontend/src/assets/img/tech/`. |
+
+---
+
+## 🏗️ Frontend-Konsistenz-Epos (2026-06-21) — erledigt
+
+| Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
+|---|---|---|---|---|
+| ✅ | mk2_frame | `icons/ui/` | PNG transparent (Mitte+Ecken), 256×256 | Mk2/Elite-Rahmen-Overlay: goldener Sci-fi-Rahmen + Glow am Rand, transparente Mitte (legt sich um ein Schiff-Icon). Master + Spiegel `frontend/src/assets/img/ui/`. |
+| ✅ | targets | `icons/nav/` | PNG transparent, 256×256 | Nav-Icon „Ziele/Bedrohungen": Metallrahmen + cyan Fadenkreuz/Radar-Sweep mit rotem Bedrohungs-Blip. Stil-Anker diplomacy/command. Master + Spiegel `frontend/src/assets/img/nav/`. |

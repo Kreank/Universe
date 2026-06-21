@@ -107,6 +107,11 @@ class Balance:
         return self.data["npc"]
 
     @property
+    def awakening(self) -> dict[str, Any]:
+        """Welle 4: „Die erwachende Galaxie" — Aggressions-Metrik + Waechter."""
+        return self.data.get("awakening", {})
+
+    @property
     def trade(self) -> dict[str, Any]:
         return self.data["trade"]
 

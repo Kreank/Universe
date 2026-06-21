@@ -222,6 +222,8 @@ interface Graph {
         gap: var(--sp-2);
         padding: var(--sp-3);
         text-align: left;
+        /* <button> erbt keine Textfarbe -> sonst dunkel-auf-dunkel, Namen unlesbar. */
+        color: var(--text);
         cursor: pointer;
         box-sizing: border-box;
         z-index: 2;

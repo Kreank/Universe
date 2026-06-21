@@ -150,6 +150,11 @@ async def npc_behavior_tick() -> None:
             system_counts[key] = system_counts.get(key, 0) + 1
 
         for npc in npcs:
+            # Welle 4: Der Erwachte Wächter wird NICHT vom NPC-Tick gesteuert (kein passives
+            # Einkommen, kein Garnison-Wiederaufbau, keine Auto-Angriffe) — sein Lebenszyklus
+            # läuft ausschließlich im aggression_tick. So heilt er nicht zwischen Spieler-Angriffen.
+            if npc.behavior_profile == "warden":
+                continue
             # baseline beim ersten Tick als Schnappschuss der Soll-Garnison setzen (Template-Niveau, Tier 1).
             baseline = npc.baseline or {}
             if not baseline:

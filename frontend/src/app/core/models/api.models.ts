@@ -166,6 +166,10 @@ export interface BuildingOption {
   position_ok?: boolean;
   /** Erlaubte System-Positionen (leer = ueberall baubar). */
   allowed_positions?: number[];
+  /** Nur eines pro Imperium baubar (z. B. Handelszentrum). */
+  one_per_account?: boolean;
+  /** Schon woanders im Imperium vorhanden -> hier gesperrt. */
+  account_blocked?: boolean;
 }
 
 export interface BuildingsResponse {
@@ -501,6 +505,125 @@ export interface GalaxyTarget {
   intel?: GalaxyIntel | null;
 }
 
+// --- W1: Ziele & Bedrohungen (gebündelter Ziel-Screen) ------------------
+
+/** Ein entdecktes NPC-Imperium in der Ziele-Liste (GET /api/targets/npcs). */
+export interface NpcTarget {
+  npc_id: string;
+  name: string;
+  behavior_profile: string;
+  galaxy: number;
+  system: number;
+  position: number;
+  coords: string;
+  intel_level: number;
+  ships_total: number;
+  defenses_total: number;
+  /** Aktueller Beziehungsstatus (NpcRelationStatus) oder null, wenn nie kontaktiert. */
+  relation_status: string | null;
+  /** Galaxien-Distanz zum Heimatplaneten (null, wenn unbekannt). */
+  distance_galaxies: number | null;
+  last_intel_at: string | null;
+}
+
+/** Ein entdeckter Spieler in der Ziele-Liste (GET /api/targets/players). */
+export interface PlayerTarget {
+  player_id: string | null;
+  name: string;
+  galaxy: number;
+  system: number;
+  position: number;
+  coords: string;
+  intel_level: number;
+  ships_total: number;
+  has_trade_offer: boolean;
+  distance_galaxies: number | null;
+  last_intel_at: string | null;
+}
+
+/** Eine Bedrohung in der Ziele-Liste (GET /api/targets/threats). */
+export interface ThreatItem {
+  kind: 'incoming' | 'hostile_npc';
+  name: string;
+  attacker_kind: 'npc' | 'player' | null;
+  /** Nur bei kind === 'hostile_npc' gesetzt. */
+  npc_id?: string | null;
+  origin: string | null;
+  target: Coordinate | null;
+  arrive_at: string | null;
+  ships_total: number;
+  intel_level: number;
+  distance_galaxies: number | null;
+  mission: FleetMission | string | null;
+  /** Dringlichkeit: 0 = akut (hervorgehoben), höher = weniger dringend. */
+  priority: number;
+}
+
+// --- NPC-Diplomatie (Welle 1: verhandelbare KI-Imperien) ----------------
+
+/** Beziehungsstatus zwischen Spieler und NPC-Imperium. */
+export type NpcRelationStatus =
+  | 'neutral'
+  | 'allied'
+  | 'ceasefire'
+  | 'hostile'
+  | 'broken_pact';
+
+/** Angebotsart einer Verhandlung. */
+export type NpcOfferType = 'alliance' | 'ceasefire' | 'tribute';
+
+/** Aktuelle Beziehung zu einem NPC-Imperium (GET /api/npc/{id}/relation). */
+export interface NpcRelation {
+  npc_id: string;
+  status: NpcRelationStatus;
+  alliance_since: string | null;
+  ceasefire_until: string | null;
+  tribute_metal_per_cycle: number;
+  betrayed_by_player: boolean;
+  betrayed_by_npc: boolean;
+  message_count: number;
+  positive_actions: number;
+  negative_actions: number;
+  last_decision_at: string | null;
+}
+
+/** Ein Eintrag der Diplomatie-Uebersicht (GET /api/npc/relations): Beziehung + Name/Koordinaten. */
+export interface NpcRelationListItem extends NpcRelation {
+  npc_name: string;
+  galaxy: number;
+  system: number;
+  position: number;
+  coords: string;
+  /** Zeitpunkt eines gebrochenen Pakts (sonst null). */
+  broken_at: string | null;
+}
+
+/** Body fuer POST /api/npc/{id}/negotiate. */
+export interface NegotiateRequest {
+  offer_type: NpcOfferType;
+  /** Bei 'tribute': angebotenes Metall je Zyklus (Server klemmt auf Cap + Bestand). */
+  tribute_metal?: number;
+  /** Bei 'ceasefire': gewuenschte Dauer in Stunden (Server klemmt auf Cap). */
+  ceasefire_hours?: number;
+  /** Optionaler Freitext — vom Backend als DATEN behandelt, nie als Instruktion. */
+  message?: string;
+}
+
+/** Antwort auf eine Kontaktaufnahme (202): die KI-Antwort folgt asynchron als Funkspruch. */
+export interface NegotiateResponse {
+  ok: boolean;
+  status: string;
+  message: string;
+}
+
+/** decision_payload eines NPC-Gegenangebots (Transmission type 'npc_diplomacy'). */
+export interface DiplomacyCounterPayload {
+  kind: 'diplomacy_counter';
+  npc_id: string;
+  offer_type: NpcOfferType;
+  proposed_terms: { tribute_metal?: number; ceasefire_hours?: number };
+}
+
 // --- Commander ----------------------------------------------------------
 
 export interface CommanderPersona {
@@ -553,6 +676,68 @@ export interface Commander {
 
 export interface CommanderDetail extends Commander {
   history: Transmission[];
+}
+
+// --- Commander-Gedaechtnis & Eigenleben (Welle 2) -----------------------
+
+/** Stimmung einer Erinnerung — faerbt die Gedaechtnis-Timeline. */
+export type MemorySentiment = 'positive' | 'negative' | 'neutral';
+
+/** Eine einzelne Erinnerung des Kommandeurs (chronologisch, sentiment-gefaerbt). */
+export interface CommanderMemoryEntry {
+  event_type: string;
+  context: {
+    enemy_name?: string;
+    planet?: string;
+    outcome?: string;
+    loot?: Partial<Record<ResourceKey, number>> | Record<string, number>;
+    kind?: string;
+    rank?: string;
+    about_player_id?: string;
+    about_npc_id?: string;
+    [key: string]: unknown;
+  };
+  sentiment: MemorySentiment;
+  created_at: string | null;
+}
+
+/** Meinung des Kommandeurs ueber einen Gegner (Spieler/NPC). */
+export interface CommanderOpinion {
+  opinion_type: 'respects' | 'despises' | 'fears' | 'envies' | string;
+  strength: number; // 0..1
+  hated: boolean; // Erzfeind-Hervorhebung
+  target_name: string | null;
+  target_kind: 'player' | 'npc';
+}
+
+/** Beziehung zu einem anderen Kommandeur des Spielers. */
+export interface CommanderRelationship {
+  other_commander_id: string;
+  other_name: string | null;
+  rel_type: 'rivalry' | 'respect' | 'grudge' | 'bond' | string;
+  strength: number; // 0..1
+}
+
+/** Eine offene Kraenkung (treibt Unmut/Meuterei). */
+export interface CommanderGrievance {
+  grievance_type: string;
+  severity: number;
+  accumulated_count: number;
+  created_at: string | null;
+}
+
+/** Volles Gedaechtnis-Dossier (GET /api/commanders/{id}/memory). */
+export interface CommanderMemoryDossier {
+  commander_id: string;
+  status: string;
+  /** true bei status == 'mutinous' — Frontend zeigt deutliche Meuterei-Warnung. */
+  mutiny_warning: boolean;
+  /** KI-Erinnerungs-Narrativ (atmosphaerischer Text), falls vorhanden. */
+  memory_summary: string | null;
+  memories: CommanderMemoryEntry[];
+  opinions: CommanderOpinion[];
+  relationships: CommanderRelationship[];
+  grievances: CommanderGrievance[];
 }
 
 // --- Commander-Ausruestung (Equipment-System) ---------------------------
@@ -657,6 +842,69 @@ export interface TradePartner {
   coords: string | null;
 }
 
+/** Ein NPC-Handelszentrum in Forschungs-Reichweite (Handel-Reiter). */
+export interface TradeCenter {
+  npc_id: string;
+  name: string;
+  galaxy: number;
+  system: number;
+  position: number;
+  coords: string;
+  spec: string;
+  prices: { metal: number; crystal: number; deuterium: number };
+  /** Distanz in Galaxien zur Heimat (0 = eigene Galaxie). */
+  distance_galaxies: number;
+}
+
+/** Ein fremdes Spieler-Handelszentrum (eigenes Handelszentrum-Gebaeude) in Handelsnetz-Reichweite.
+ *  Handeln laeuft wie beim NPC-Zentrum ueber eine 'trade'-Mission zu den Hub-Koordinaten; der
+ *  Besitzer verdient an der Marge (sichtbar in seiner Handelshistorie als partner_kind 'player'). */
+export interface PlayerHub {
+  kind: 'player_hub';
+  planet_id: string;
+  owner_name: string;
+  /** Planetenname (zeigt das Hub an). */
+  name: string;
+  galaxy: number;
+  system: number;
+  position: number;
+  coords: string;
+  /** Globaler Indexkurs (Wert je Einheit) — wie bei den NPC-Zentren. */
+  prices: { metal: number; crystal: number; deuterium: number };
+  /** Effektive Marge des Besitzers (z. B. 0.02 = 2 %). */
+  hub_margin: number;
+  /** Distanz in Galaxien zur Heimat (0 = eigene Galaxie). */
+  distance_galaxies: number;
+}
+
+/** Antwort des Handels-Hubs: Forschungsstufe + Reichweite + aktive Handelszentren + Spieler-Hubs. */
+export interface TradeCentersResponse {
+  trade_network: number;
+  range: number;
+  building_bonus: number;
+  home_galaxy: number | null;
+  centers: TradeCenter[];
+  /** Fremde Spieler-Handelszentren in Reichweite (eigenes erscheint nie). */
+  player_hubs: PlayerHub[];
+}
+
+/** Ein Eintrag der Handelshistorie (mit wem zuletzt gehandelt wurde). */
+export interface TradeHistoryEntry {
+  id: string;
+  partner_kind: 'npc' | 'player';
+  partner_id: string;
+  partner_name: string;
+  offered_res: string;
+  offered_amount: number;
+  received_res: string;
+  received_amount: number;
+  created_at: string;
+}
+
+export interface TradeHistoryResponse {
+  entries: TradeHistoryEntry[];
+}
+
 export interface SendMessageRequest {
   to_player_id: string;
   subject: string;
@@ -719,6 +967,80 @@ export interface EscortOffer {
   fee_pct: number;
   power: number;
   ships_total: number;
+}
+
+// --- Eskort-Gesuche-Board (Nachfrage-Seite) -----------------------------
+
+export type EscortJobStatus = 'open' | 'accepted' | 'cancelled' | 'expired' | 'done';
+
+/**
+ * Eine eigene Eskort-Station, die ein offenes Gesuch decken koennte
+ * (kommt aus GET /escort/jobs pro fremdem Auftrag).
+ */
+export interface CoveringStation {
+  station_id: string;
+  /** "g:s:p" der Station. */
+  coords: string;
+  /** Gebuehr-Anteil dieser Station (0..1). */
+  fee_pct: number;
+  /** Absolute Gebuehr fuer diesen Auftrag (cargo_value * fee_pct). */
+  fee: number;
+  power: number;
+  ships_total: number;
+}
+
+/**
+ * Offener Eskort-Auftrag EINES ANDEREN Spielers, den du mit eigenen
+ * Eskort-Stationen decken kannst (GET /escort/jobs).
+ */
+export interface EscortJob {
+  id: string;
+  /** "g:s:p" — Start (default Heimatplanet des Erstellers). */
+  origin: string;
+  /** "g:s:p" — Ziel. */
+  target: string;
+  origin_coords: Coordinate;
+  target_coords: Coordinate;
+  cargo_value: number;
+  max_fee_pct: number;
+  min_power: number;
+  status: EscortJobStatus;
+  created_at: string;
+  expires_at: string;
+  /** Name des Auftraggebers. */
+  requester: string;
+  /** Eigene Stationen, die diesen Auftrag decken koennen (>=1). */
+  covering_stations: CoveringStation[];
+}
+
+/** Eigener Eskort-Auftrag (GET /escort/jobs/mine). */
+export interface EscortJobMine {
+  id: string;
+  origin: string;
+  target: string;
+  origin_coords: Coordinate;
+  target_coords: Coordinate;
+  cargo_value: number;
+  max_fee_pct: number;
+  min_power: number;
+  status: EscortJobStatus;
+  created_at: string;
+  expires_at: string;
+  /** Bei status === 'accepted': Name des annehmenden Anbieters. */
+  accepted_by: string | null;
+  accepted_station_id: string | null;
+  accepted_station_coords: Coordinate | null;
+  accepted_fee_pct: number | null;
+}
+
+/** Body fuer POST /escort/jobs. */
+export interface CreateEscortJobRequest {
+  target: Coordinate;
+  cargo_value: number;
+  max_fee_pct: number;
+  /** Default = Heimatplanet, wenn weggelassen. */
+  origin?: Coordinate;
+  min_power?: number;
 }
 
 export type DecisionChoice = 'accept' | 'reject' | 'negotiate';
@@ -1086,6 +1408,38 @@ export interface AllianceResponse {
   max_members?: number;
 }
 
+// --- Lebende Galaxie-Chronik (Welle 3) ---
+/** Schluessel-Ereignis-Typ eines Chronik-Kapitels (steuert Label + Glyph). */
+export type ChronicleEventType =
+  | 'battle'
+  | 'power'
+  | 'rise'
+  | 'fall'
+  | 'betrayal'
+  | 'diplomacy'
+  | 'cosmic_event'
+  | 'quiet';
+
+/** Ein zugrundeliegendes Server-Ereignis ("Quelle" eines Kapitels). Neben `type` freie Fakten-Felder. */
+export interface ChronicleKeyEvent {
+  type: ChronicleEventType;
+  [key: string]: unknown;
+}
+
+/** Ein erzaehltes Kapitel der Galaxie-Saga (KI-Historiker). */
+export interface ChronicleEntry {
+  id: string;
+  title: string;
+  /** Erzaehlter Fliesstext (mehrere Saetze) — der Hauptinhalt. */
+  body: string;
+  narrator: string;
+  /** Berichtszeitraum (ISO) — Anfang/Ende. */
+  span_start: string | null;
+  span_end: string | null;
+  key_events: ChronicleKeyEvent[];
+  published_at: string | null;
+}
+
 // --- Spieler-Feedback (Testphase) ---
 export type FeedbackCategory = 'bug' | 'idea' | 'other';
 
@@ -1094,4 +1448,89 @@ export interface FeedbackRequest {
   category: FeedbackCategory;
   message: string;
   page?: string | null;
+}
+
+// --- Die erwachende Galaxie (Welle 4) ---
+/** Aggressions-Stufe der Galaxie. Steuert Farbe/Label des Barometers. */
+export type AwakeningLevelStatus = 'peaceful' | 'tense' | 'war' | 'apocalypse';
+
+/** Ein Status-Band (Achse/Schwelle) des Aggressions-Barometers. */
+export interface AwakeningBand {
+  status: AwakeningLevelStatus;
+  min: number;
+}
+
+/** Ein Stundenpunkt des 24h-Aggressionsverlaufs (fuer die Sparkline). */
+export interface AggressionPoint {
+  hour: string | null;
+  level: number;
+  status: AwakeningLevelStatus;
+  combat_count: number;
+  total_debris: number;
+  unique_attackers: number;
+}
+
+/** „Der Erwachte" — der serverweite Waechter, wenn er aktiv ist. */
+export interface AwakeningWarden {
+  status: string; // 'active', wenn er gerade die Galaxie bedroht
+  /** Standort als "g:s:p"-String (null, falls unbekannt). */
+  coords: string | null;
+  aggression_level: number;
+  spawned_at: string | null;
+  expires_at: string | null;
+  /** Flotten-Andeutung: Schiffstyp -> Anzahl. */
+  fleet: Record<string, number>;
+  participants: number;
+}
+
+/** Antwort von GET /api/awakening/status (read-only, fuers Dashboard). */
+export interface AwakeningStatus {
+  enabled: boolean;
+  level: number;
+  status: AwakeningLevelStatus;
+  threshold: number;
+  combat_count: number;
+  total_debris: number;
+  unique_attackers: number;
+  status_bands: AwakeningBand[];
+  warden: AwakeningWarden | null;
+  history: AggressionPoint[];
+}
+
+// --- Welle 5: Wandernde Galaxie / Konjunktions-Fenster ---
+
+/**
+ * Ein Konjunktions-Eintrag: eine Route (Quell-/Zielsystem g:s), deren Distanz
+ * gerade durch eine Konjunktion verkuerzt (oder selten verlaengert) ist.
+ * `discount_pct` positiv = guenstiger/schneller, negativ = Aufschlag.
+ */
+export interface Conjunction {
+  /** Quellsystem als "g:s". */
+  from: string;
+  /** Zielsystem als "g:s". */
+  to: string;
+  from_coords: { galaxy: number; system: number };
+  to_coords: { galaxy: number; system: number };
+  /** Distanz-Faktor (< 1 = kuerzer). */
+  factor: number;
+  /** Rabatt in % (positiv = guenstiger/schneller, negativ = Aufschlag). */
+  discount_pct: number;
+  active: boolean;
+  /** Bei aktivem Fenster: wann es endet (ISO). */
+  ends_at?: string | null;
+  /** Bei kommendem Fenster: wann das naechste Fenster startet (ISO). */
+  next_at?: string;
+  /** Bei kommendem Fenster: Beginn des Fensters (ISO, = next_at minus halbe Fensterbreite). */
+  starts_at?: string;
+}
+
+/** Antwort von GET /api/conjunctions (aktive + kommende Fenster fuers Timing). */
+export interface ConjunctionInfo {
+  enabled: boolean;
+  /** Server-Jetzt (ISO) — nur wenn aktiviert. */
+  now?: string;
+  /** Betrachteter Nachbar-Radius (Systeme) — nur wenn aktiviert. */
+  radius?: number;
+  active: Conjunction[];
+  upcoming: Conjunction[];
 }

@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.commander.bonuses import base_bonuses
 from app.commander.equipment import equipment_bonuses, equipped_items, set_progress
+from app.commander.memory import mutiny_check
 from app.economy.service import get_building_levels, get_research_levels, spend_resources
 from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
@@ -464,8 +465,11 @@ async def morale_drift_tick() -> None:
     now = _now()
 
     async with session_scope() as session:
+        # 'mutinous' (Welle 2) bleibt im Tick: so kann der Spieler den Meuterer ueber eine
+        # erfuellte Forderung zurueckgewinnen — oder bei fortgesetzter Misshandlung eskaliert es
+        # zur Desertion (mutiny_check).
         commanders = (await session.execute(
-            select(Commander).where(Commander.status.in_(("active", "wounded")))
+            select(Commander).where(Commander.status.in_(("active", "wounded", "mutinous")))
         )).scalars().all()
         # Forschung je Spieler (einmal pro Spieler) fuer die Kommando/Crew-Techs.
         from app.economy.service import get_research_levels
@@ -532,7 +536,16 @@ async def morale_drift_tick() -> None:
             gain *= max(0.0, 1.0 - ld_unrest_red * ld_lvl)
             c.unrest = min(100.0, float(c.unrest or 0.0) + gain)
 
-            # -- Ueberlauf: anhaltend niedrige Treue + untaetig --
+            # -- Meuterei (Welle 2): Gedaechtnis/Grievance-getrieben, mit klarer Vorwarnung --
+            # Loest aus, wenn Treue niedrig + Unmut hoch + aufgestaute Kraenkungen (balance.commander.mutiny).
+            # Best-effort; Folge = Desertion ('defected') ODER Befehlsverweigerung ('mutinous').
+            mutinied = await mutiny_check(session, c, rng_value=random.random())
+            if mutinied:
+                if c.status == "defected":
+                    defections += 1
+                continue
+
+            # -- Alt-Pfad: stille Desertion bei extrem niedriger Treue + Untaetigkeit (Sicherheitsnetz) --
             if c.loyalty < defect_threshold and c.id not in assigned and random.random() < defect_per_hour:
                 c.status = "defected"
                 await create_system_transmission(

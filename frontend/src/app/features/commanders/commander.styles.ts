@@ -95,6 +95,7 @@ export const commanderStyles = `
   .trait { border-color: var(--border); }
   .risk { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
   .chip.warn { border-color: var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 8%, transparent); }
+  .chip.warn.mutiny { border-color: var(--danger); color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); font-weight: 700; }
 
   /* Inline-Icon in Chips/Badges (Rang, Spezialisierung, Traits). */
   .chip-ico {

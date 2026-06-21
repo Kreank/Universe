@@ -39,14 +39,17 @@ def price_of(resource: str, stock: float, setpoint: float, cfg: dict) -> float:
     return max(lo, min(hi, raw))
 
 
-def effective_margin(reputation_level: int, cfg: dict) -> float:
-    """Effektive Haendler-Marge nach Reputation.
+def effective_margin(reputation_level: int, cfg: dict, extra_reduction: float = 0.0) -> float:
+    """Effektive Haendler-Marge nach Reputation (+ optionalem Gebaeude-Bonus).
 
-    margin - rep_level * margin_reduction_per_level; rep_level wird auf [0, max_level]
-    gedeckelt und das Ergebnis auf >= 0 geklemmt (Marge wird nie negativ)."""
+    margin - rep_level * margin_reduction_per_level - extra_reduction; rep_level wird auf
+    [0, max_level] gedeckelt und das Ergebnis auf >= 0 geklemmt (Marge wird nie negativ).
+    ``extra_reduction`` traegt z.B. den Handelszentrum-Bonus (trade_margin_reduction) des
+    Besitzers — additiv zur Reputation. Default 0.0 -> unveraendertes Verhalten."""
     rep = cfg["reputation"]
     level = max(0, min(int(reputation_level), int(rep["max_level"])))
     margin = float(cfg["margin"]) - level * float(rep["margin_reduction_per_level"])
+    margin -= max(0.0, float(extra_reduction))
     return max(0.0, margin)
 
 
@@ -64,6 +67,8 @@ def simulate_swap(
     cfg: dict,
     reputation_level: int = 0,
     cargo_capacity: float | None = None,
+    rate_bonus: float = 1.0,
+    extra_margin_reduction: float = 0.0,
 ) -> dict[str, Any]:
     """Simuliert einen Tausch chunk-weise -> Slippage in BEIDE Richtungen.
 
@@ -88,6 +93,17 @@ def simulate_swap(
     mutiert (es wird auf Kopien gerechnet). Das nicht ausgegebene Budget verfaellt nicht,
     sondern wird als ``refund_value`` (Wert-Aequivalent in der Tauschwaehrung) zurueck-
     gegeben -> der Aufrufer entscheidet, ob er es als want_res ODER offer_res erstattet.
+
+    ``rate_bonus`` (>= 1.0) modelliert Sonderkurse (z.B. Schwarzmarkt-Event): die
+    Kaufkraft des Spielers wird beim Kauf von ``want_res`` um diesen Faktor erhoeht
+    (``budget *= rate_bonus``), sodass er bei sonst identischem Markt spuerbar mehr
+    ``want_res`` erhaelt (1.5 = ~+50%). Der Bonus ist ein Geschenk: nicht ausgegebenes
+    Budget wird vor der Erstattung wieder durch ``rate_bonus`` geteilt, damit der
+    Refund nie ueber den echten Eigenanteil des Spielers hinausgeht (kein Exploit).
+    Default 1.0 -> normaler Haendler, unveraendertes Verhalten.
+
+    ``extra_margin_reduction`` (>= 0.0) senkt die Haendler-Marge zusaetzlich zur Reputation
+    (z.B. Handelszentrum-Bonus des Besitzers). Default 0.0 -> unveraendertes Verhalten.
 
     Sonderfaelle: offer_res == want_res, offer_amount <= 0, unbekannte Ressource -> ValueError.
 
@@ -127,9 +143,10 @@ def simulate_swap(
         value_in += price_of(offer_res, stock_offer, sp_offer, cfg) * dq_sell
         stock_offer += dq_sell
 
-    # --- 2) Budget nach Marge ---
-    margin = effective_margin(reputation_level, cfg)
-    budget = value_in * (1.0 - margin)
+    # --- 2) Budget nach Marge (+ optionaler Sonderkurs-Bonus auf die Kaufkraft) ---
+    margin = effective_margin(reputation_level, cfg, extra_margin_reduction)
+    rate_bonus = max(1.0, float(rate_bonus))
+    budget = value_in * (1.0 - margin) * rate_bonus
 
     # --- 3) Kauf: Spieler kauft want_res chunk-weise (Bestand faellt -> Preis steigt) ---
     stock_want = float(stock[want_res])
@@ -179,7 +196,9 @@ def simulate_swap(
         spent += price * dq
         stock_want -= dq
 
-    refund_value = max(0.0, budget - spent)
+    # Nicht ausgegebenes Budget zuruck auf den Eigenanteil des Spielers normieren
+    # (Bonus ist ein Geschenk -> wird nicht miterstattet, sonst Exploit bei Cargo-/Stock-Limit).
+    refund_value = max(0.0, (budget - spent) / rate_bonus)
 
     new_stock = dict(stock)
     new_stock[offer_res] = stock_offer

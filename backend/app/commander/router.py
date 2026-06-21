@@ -28,7 +28,17 @@ from app.commander.service import commander_to_dict, compute_span, start_trainin
 from app.platform.balance import get_balance
 from app.messaging.service import transmission_to_dict
 from app.platform.db import get_session
-from app.platform.models import Commander, Planet, Player, Transmission
+from app.platform.models import (
+    Commander,
+    CommanderGrievance,
+    CommanderMemory,
+    CommanderOpinion,
+    CommanderRelationship,
+    NpcEmpire,
+    Planet,
+    Player,
+    Transmission,
+)
 from app.platform.security import get_current_player
 
 router = APIRouter(tags=["commander"])
@@ -338,6 +348,110 @@ async def get_commander(
     )).scalars().all()
     data["history"] = [transmission_to_dict(t) for t in history]
     return data
+
+
+@router.get("/commanders/{commander_id}/memory")
+async def get_commander_memory(
+    commander_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Gedaechtnis-Dossier (Welle 2): Erinnerungs-Timeline, Meinungen ueber Gegner, Beziehungen
+    zu anderen Kommandeuren, offene Kraenkungen. Speist die Frontend-Timeline (commander-detail)."""
+    c = await session.get(Commander, commander_id)
+    if c is None or c.player_id != player.id:
+        raise HTTPException(status_code=404, detail="Commander nicht gefunden")
+
+    from app.commander.memory import is_hated
+    op_cfg = get_balance().commander["opinions"]
+
+    memories = (await session.execute(
+        select(CommanderMemory)
+        .where(CommanderMemory.commander_id == c.id)
+        .order_by(CommanderMemory.created_at.desc())
+        .limit(60)
+    )).scalars().all()
+
+    opinions = (await session.execute(
+        select(CommanderOpinion).where(CommanderOpinion.commander_id == c.id)
+    )).scalars().all()
+    # Ziel-Namen (Spieler/NPC) aufloesen.
+    op_player_ids = {o.about_player_id for o in opinions if o.about_player_id}
+    op_npc_ids = {o.about_npc_id for o in opinions if o.about_npc_id}
+    pnames: dict[uuid.UUID, str] = {}
+    if op_player_ids:
+        for p in (await session.execute(select(Player).where(Player.id.in_(op_player_ids)))).scalars().all():
+            pnames[p.id] = p.display_name
+    nnames: dict[uuid.UUID, str] = {}
+    if op_npc_ids:
+        for n in (await session.execute(select(NpcEmpire).where(NpcEmpire.id.in_(op_npc_ids)))).scalars().all():
+            nnames[n.id] = n.name
+
+    rels = (await session.execute(
+        select(CommanderRelationship).where(
+            (CommanderRelationship.commander_a_id == c.id)
+            | (CommanderRelationship.commander_b_id == c.id)
+        )
+    )).scalars().all()
+    other_ids = {r.commander_a_id if r.commander_b_id == c.id else r.commander_b_id for r in rels}
+    cnames: dict[uuid.UUID, str] = {}
+    if other_ids:
+        for cc in (await session.execute(select(Commander).where(Commander.id.in_(other_ids)))).scalars().all():
+            cnames[cc.id] = cc.name
+
+    grievances = (await session.execute(
+        select(CommanderGrievance).where(
+            CommanderGrievance.commander_id == c.id,
+            CommanderGrievance.resolved_at.is_(None),
+        ).order_by(CommanderGrievance.severity.desc())
+    )).scalars().all()
+
+    return {
+        "commander_id": str(c.id),
+        "status": c.status,
+        # Frontend: bei 'mutinous' eine deutliche Meuterei-Warnung zeigen.
+        "mutiny_warning": c.status == "mutinous",
+        "memory_summary": (c.persona or {}).get("memory_summary"),
+        "memories": [
+            {
+                "event_type": m.event_type,
+                "context": m.context or {},
+                "sentiment": m.sentiment,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            }
+            for m in memories
+        ],
+        "opinions": [
+            {
+                "opinion_type": o.opinion_type,
+                "strength": round(float(o.strength or 0.0), 3),
+                "hated": is_hated(o.opinion_type, float(o.strength or 0.0), op_cfg),
+                "target_name": (
+                    pnames.get(o.about_player_id) if o.about_player_id else nnames.get(o.about_npc_id)
+                ),
+                "target_kind": "player" if o.about_player_id else "npc",
+            }
+            for o in opinions
+        ],
+        "relationships": [
+            {
+                "other_commander_id": str(r.commander_a_id if r.commander_b_id == c.id else r.commander_b_id),
+                "other_name": cnames.get(r.commander_a_id if r.commander_b_id == c.id else r.commander_b_id),
+                "rel_type": r.rel_type,
+                "strength": round(float(r.strength or 0.0), 3),
+            }
+            for r in rels
+        ],
+        "grievances": [
+            {
+                "grievance_type": g.grievance_type,
+                "severity": int(g.severity or 0),
+                "accumulated_count": int(g.accumulated_count or 0),
+                "created_at": g.created_at.isoformat() if g.created_at else None,
+            }
+            for g in grievances
+        ],
+    }
 
 
 @router.post("/commanders/train", status_code=202, response_model=TrainResponse)

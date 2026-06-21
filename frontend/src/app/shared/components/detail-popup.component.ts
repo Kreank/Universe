@@ -17,10 +17,11 @@ import {
   RANGE_META,
   SHIP_META,
   TECH_META,
+  isMk2,
   metaFor,
   TECH_EFFECTS,
 } from '../../core/models/display';
-import { statIcon, techIcon, uiIcon } from '../../core/models/icon-assets';
+import { shipIcon, statIcon, techIcon, uiIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from './btn-icon.component';
 import { CostLineComponent } from './cost-line.component';
 import { IconTileComponent } from './icon-tile.component';
@@ -84,6 +85,7 @@ interface RapidFireRow {
             [glyph]="meta().glyph"
             [src]="imgSrc()"
             [size]="84"
+            [mk2]="isMk2Ship()"
             [variant]="kind() === 'defense' ? 'magenta' : 'accent'"
           />
           <div class="head-text">
@@ -490,7 +492,11 @@ export class DetailPopupComponent {
 
   protected readonly meta = computed(() => metaFor(this.metaMap(), this.type()));
 
-  protected readonly description = computed(() => this.metaMap()[this.type()]?.desc ?? null);
+  /** Mk2/Elite-Schiff -> goldener Rahmen ueber dem Header-Icon. */
+  protected readonly isMk2Ship = computed(() => this.kind() === 'ship' && isMk2(this.type()));
+
+  /** Beschreibung erbt fuer Mk2-Schiffe automatisch vom Parent (via metaFor). */
+  protected readonly description = computed(() => this.meta().desc ?? null);
 
   /**
    * Reichweite/Gefechtsphase der Einheit (Nah/Mittel/Fern) für die taktische Aufschlüsselung —
@@ -521,7 +527,7 @@ export class DetailPopupComponent {
 
   protected readonly imgSrc = computed<string | null>(() => {
     switch (this.kind()) {
-      case 'ship': return `assets/img/ships/${this.type()}.png`;
+      case 'ship': return shipIcon(this.type());
       case 'building': return `assets/img/buildings/${this.type()}.png`;
       case 'defense': return `assets/img/defenses/${this.type()}.png`;
       case 'tech': return techIcon(this.type());

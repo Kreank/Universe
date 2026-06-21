@@ -348,9 +348,10 @@ export class TransmissionsComponent {
   );
 
   protected readonly visible = computed(() => {
-    const all = [...this.state.transmissions()].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    );
+    // NPC-Diplomatie-Funksprueche leben jetzt im Diplomatie-Reiter — hier ausblenden.
+    const all = [...this.state.transmissions()]
+      .filter((t) => t.type !== 'npc_diplomacy')
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return this.onlyUnread() ? all.filter((t) => !t.read) : all;
   });
 
@@ -566,6 +567,9 @@ export class TransmissionsComponent {
   }
 
   typeGlyph(t: Transmission): string {
+    if (t.type === 'npc_diplomacy') {
+      return '🕊️';
+    }
     if (t.requires_decision) {
       return '⚠️';
     }
@@ -586,6 +590,9 @@ export class TransmissionsComponent {
   }
 
   typeIconSrc(t: Transmission): string | null {
+    if (t.type === 'npc_diplomacy') {
+      return statusIcon('broadcast');
+    }
     if (t.requires_decision) {
       return statusIcon('alert');
     }
@@ -606,6 +613,9 @@ export class TransmissionsComponent {
   }
 
   typeLabel(t: Transmission): string {
+    if (t.type === 'npc_diplomacy') {
+      return 'Diplomatie';
+    }
     if (t.requires_decision) {
       return 'Forderung';
     }

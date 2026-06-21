@@ -28,3 +28,6 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# --- Discord-Ankuendigung (lokaler State) ---
+scripts/.announce_state

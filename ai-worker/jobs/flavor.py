@@ -40,7 +40,11 @@ async def run(job: Job, db: Database, ollama: OllamaClient, redis: aioredis.Redi
         return
 
     system, user = build_flavor_prompt(narrator, job.context)
-    body = await ollama.generate(system, user)  # EINMAL generieren (OllamaUnavailable -> requeue)
+    # Welle 4: optionaler Modell-/Thinking-Override (z.B. qwen3.5:9b think=false fuer die
+    # Waechter-Stimme). None -> Worker-Default (llama3.1:8b). EINMAL generieren (-> requeue bei Ausfall).
+    body = await ollama.generate(
+        system, user, model=job.context.model, think=job.context.think,
+    )
 
     # Ziel-Typ kommt vom Backend (z.B. spy_report fuer Spionage). Default routine — Flavor ist KEIN
     # Großmoment; big_moment nur, wenn das Backend es ausdruecklich setzt (z.B. Galaxie-News).

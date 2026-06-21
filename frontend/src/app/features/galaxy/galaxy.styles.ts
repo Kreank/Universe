@@ -185,4 +185,18 @@ export const galaxyStyles = `
     filter: sepia(1) saturate(3) hue-rotate(330deg); }
   .zone-chip.mine .zone-mark { filter: none; }
   .zone-tag { font-weight: 600; letter-spacing: .04em; }
+  /* Welle 5: Konjunktions-Marker (wandernde Galaxie) */
+  .conj-banner { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: var(--sp-1) 0 var(--sp-2); }
+  .conj-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+    font-size: var(--fs-xs); font-variant-numeric: tabular-nums;
+    color: #3ddc97; border: 1px solid rgba(61,220,151,.4); background: rgba(61,220,151,.08); }
+  .conj-chip.bane { color: var(--text-dim); border-color: var(--border); background: rgba(255,255,255,.03); }
+  /* W1: NPC-/Spieler-Ziel-Aktionen sind in den Ziele-Screen gewandert — dezenter Verweis. */
+  .acts.steer { gap: var(--sp-2); }
+  .steer-hint { font-size: var(--fs-xs); color: var(--text-dim); text-decoration: none; white-space: nowrap;
+    border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; background: rgba(255,255,255,.03);
+    transition: color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out); }
+  .steer-hint:hover { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); }
+  .steer-card { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
+  .steer-card .btn { align-self: flex-start; }
 `;

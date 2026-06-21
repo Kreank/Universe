@@ -28,11 +28,14 @@ from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.models import (
+    Building,
     Fleet,
     NpcEmpire,
     Planet,
+    Player,
     PlayerDiscovery,
     Ship,
+    TradeLog,
     TradeReputation,
     UniverseCell,
 )
@@ -44,6 +47,32 @@ RESOURCES = ("metal", "crystal", "deuterium")
 
 def _now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
+
+
+# -- Handelsnetz-Reichweite (Sichtbarkeit der NPC-Handelszentren) -------------
+
+def trade_network_reach(level: int, per_level: int, building_bonus: int = 0) -> int:
+    """Sichtbarkeits-Reichweite (Galaxien) der NPC-Handelszentren, rein/testbar.
+
+    Anders als die Ortung (Stufe 1 = Heimat-Galaxie) zeigt das Handelsnetz schon bei
+    Stufe 0 die eigene Galaxie (Handel ist nie hart hinter Forschung gesperrt):
+    reach = level * per_level. Ein gebautes Handelszentrum erweitert die Reichweite um
+    ``building_bonus`` Galaxien zusaetzlich zur Forschung. Reach 0 = nur die Heimat-Galaxie."""
+    return max(0, int(level)) * max(0, int(per_level)) + max(0, int(building_bonus))
+
+
+async def owns_trade_center(session: AsyncSession, player_id) -> bool:
+    """True, wenn der Spieler auf irgendeinem Planeten ein gebautes Handelszentrum (Stufe>=1) hat."""
+    from sqlalchemy import func
+    n = (await session.execute(
+        select(func.count()).select_from(Building).join(Planet, Building.planet_id == Planet.id)
+        .where(
+            Planet.player_id == player_id,
+            Building.type == "trade_center",
+            Building.level >= 1,
+        )
+    )).scalar() or 0
+    return int(n) > 0
 
 
 # -- Markt-Helfer (auch vom spaeteren Tick/Spawner wiederverwendbar) ----------
@@ -67,6 +96,15 @@ def ensure_market(npc, cfg: dict) -> dict:
     persistent), stock = setpoint (= default_setpoint * specializations[spec]).
     Setzt ``npc.market`` als NEUES dict (SQLAlchemy-Change-Tracking fuer JSONB)."""
     market = npc.market or {}
+    # Schwarzmarkt-Sondermarkt (Event): Kennung + rate_bonus NIE neu wuerfeln. Fehlt der
+    # Bestand, fuellen wir ihn aus dem (generalist-)Sollbestand auf, statt die spec zu verlieren.
+    if market.get("spec") == "black_market":
+        if not market.get("stock"):
+            setpoint = market_setpoint(market["spec"], cfg)  # unbekannte spec -> generalist
+            stock = {res: round(setpoint[res]) for res in RESOURCES}
+            market = {**market, "stock": stock}
+            npc.market = market  # neues dict -> Change-Tracking
+        return market
     if market.get("spec") and market.get("stock"):
         return market  # bereits initialisiert -> idempotent
 
@@ -174,6 +212,275 @@ async def _fleet_ships(session: AsyncSession, fleet_id) -> dict[str, int]:
     return {r.type: r.count for r in rows if r.count > 0}
 
 
+async def _trade_npc_at(
+    session: AsyncSession, galaxy: int, system: int, position: int
+) -> NpcEmpire | None:
+    """Liefert den Haendler-NPC (merchant/trade_center) an den Koordinaten, sonst None.
+
+    Zelle bevorzugt (occupant_type 'npc'), Koordinaten-Fallback wie ``resolve_attack``.
+    Eine Wahrheit fuer resolve_trade, den Anflug-Dispatcher und die Versand-Validierung."""
+    cell = (await session.execute(
+        select(UniverseCell).where(
+            UniverseCell.galaxy == galaxy,
+            UniverseCell.system == system,
+            UniverseCell.position == position,
+        )
+    )).scalar_one_or_none()
+    npc: NpcEmpire | None = None
+    if cell and cell.occupant_type == "npc" and cell.ref_id is not None:
+        npc = await session.get(NpcEmpire, cell.ref_id)
+    if npc is None:
+        npc = (await session.execute(
+            select(NpcEmpire).where(
+                NpcEmpire.galaxy == galaxy,
+                NpcEmpire.system == system,
+                NpcEmpire.position == position,
+            )
+        )).scalar_one_or_none()
+    if npc is not None and npc.behavior_profile in ("merchant", "trade_center"):
+        return npc
+    return None
+
+
+async def find_player_hub(
+    session: AsyncSession, galaxy: int, system: int, position: int
+) -> tuple[Planet, Player | None] | None:
+    """Liefert (planet, owner) eines Spieler-Hubs an den Koordinaten, sonst None.
+
+    Ein Spieler-Hub ist ein PLANET (kein Mond) mit einem gebauten Handelszentrum
+    (``trade_center``-Gebaeude, Stufe>=1). Reine Praesenz-Pruefung — die Selbst-Handel-
+    Sperre (owner == Trader) liegt im Resolver/der Versand-Validierung, damit der eigene
+    Hub fuer die Sichtbarkeits-/Filterlogik weiterhin als Hub erkennbar bleibt."""
+    planets = (await session.execute(
+        select(Planet).where(
+            Planet.galaxy == galaxy,
+            Planet.system == system,
+            Planet.position == position,
+        )
+    )).scalars().all()
+    for pl in planets:
+        if pl.planet_type == "moon":
+            continue
+        lvl = (await session.execute(
+            select(Building.level).where(
+                Building.planet_id == pl.id,
+                Building.type == "trade_center",
+            )
+        )).scalar_one_or_none()
+        if lvl is not None and int(lvl) >= 1:
+            owner = await session.get(Player, pl.player_id)
+            return pl, owner
+    return None
+
+
+# -- Reine Hub-Marge-Mathematik (Spieler-Hub-Einkommen, DB-frei testbar) -------
+
+def clamp_hub_margin(hub_margin: float, cap: float) -> float:
+    """Effektive Hub-Marge: ``hub_margin`` hart auf [0, cap] geklemmt (Anti-Exploit).
+
+    cap kommt aus balance (``buildings.trade_center.hub_margin_max``). Garantiert eine
+    Marge < 1 und damit, dass der Besitzer-Cut nie den getauschten Wert uebersteigt."""
+    return max(0.0, min(float(hub_margin), max(0.0, float(cap))))
+
+
+def hub_visible_to(
+    viewer_id, owner_id, hub_galaxy: int, home_galaxy: int, reach: int
+) -> bool:
+    """Ob ein Spieler-Hub fuer den Betrachter als FREMDES Handelsziel sichtbar ist, rein/testbar.
+
+    True nur, wenn der Hub einem ANDEREN Spieler gehoert (owner != viewer, nie der eigene Hub)
+    UND in Handelsnetz-Reichweite liegt (|hub_galaxy - home_galaxy| <= reach). Authoritative
+    Filterregel der ``/api/trade/centers``-Hub-Liste (und Doku der Versand-Selbstsperre)."""
+    if owner_id is None or owner_id == viewer_id:
+        return False
+    return abs(int(hub_galaxy) - int(home_galaxy)) <= max(0, int(reach))
+
+
+def hub_owner_cut(value: float, hub_margin: float, cap: float) -> float:
+    """Einkommen des Hub-Besitzers (Markt-WERT) aus einem fremden Hub-Handel, rein/testbar.
+
+    cut = max(0, value) * clamp_hub_margin(hub_margin, cap).
+    ``value`` ist der Handelswert (``value_in`` aus ``simulate_swap``, Marktwert des
+    Angebots). Da die effektive Marge < 1 ist, gilt stets ``cut <= value`` — der Besitzer
+    verdient nie ueber den real getauschten Wert hinaus (Leitplanke)."""
+    return max(0.0, float(value)) * clamp_hub_margin(hub_margin, cap)
+
+
+async def resolve_player_hub_trade(
+    session: AsyncSession, fleet: Fleet, hub_planet: Planet, owner: Player | None
+) -> dict | None:
+    """Wickelt einen Handel an einem fremden Spieler-Hub ab (Anfliegen-Modell).
+
+    Wie ``resolve_trade`` (globaler Index + ``simulate_swap``), aber: (1) KEIN Handel am
+    eigenen Hub, (2) der Hub-BESITZER verdient ``hub_margin`` × Handelswert als Einkommen
+    (gutgeschrieben auf den Hub-Planeten in der angebotenen Ressource), (3) der Trader
+    erhaelt entsprechend um die Marge reduzierte Ware. KEIN eigener Commit (fleet_arrive
+    committet). Liefert ein summary-dict oder None (kein gueltiges Ziel/Auftrag)."""
+    bal = get_balance()
+    cfg = bal.trade
+    coords = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+
+    # -- Anti-Exploit: kein Handel am EIGENEN Hub (kein Selbst-Einkommen) --
+    if owner is None or owner.id == fleet.player_id:
+        await create_system_transmission(
+            session,
+            player_id=fleet.player_id,
+            subject=f"Handel fehlgeschlagen ({coords})",
+            body=f"Du kannst nicht an deinem eigenen Handels-Knoten ({coords}) handeln. "
+                 f"Die Fracht kehrt unveraendert heim.",
+            ttype="system",
+        )
+        log.info("Selbst-Hub-Handel abgelehnt: player=%s coords=%s", fleet.player_id, coords)
+        return None
+
+    # -- Auftrag validieren --
+    order = validate_trade_order(fleet.mission_data, cfg)
+    if order is None:
+        await create_system_transmission(
+            session,
+            player_id=fleet.player_id,
+            subject=f"Ungueltiger Handelsauftrag ({coords})",
+            body=f"Der Handelsauftrag fuer den Handels-Knoten {coords} war ungueltig. "
+                 f"Die Fracht kehrt unveraendert heim.",
+            ttype="system",
+        )
+        return None
+    offer_res, offer_amount, want_res = order
+
+    # -- Markt = globaler Index (wie ein NPC-Handelszentrum) --
+    stock, setpoint = await index_market_for(session, cfg)
+
+    # -- Trader-Handelszentrum-Bonus: senkt seine eigene Marge (additiv, wie bei NPC) --
+    tc_cfg = bal.buildings.get("trade_center", {})
+    extra_margin = 0.0
+    if await owns_trade_center(session, fleet.player_id):
+        extra_margin = float(tc_cfg.get("trade_margin_reduction", 0.0))
+
+    # -- Cargo-Kapazitaet der Flotte --
+    from app.combat.service import _cargo_capacity
+    ships = await _fleet_ships(session, fleet.id)
+    capacity = _cargo_capacity(ships)
+
+    # -- Tausch simulieren (Spieler-Hubs fuehren KEINE NPC-Reputation -> level 0) --
+    result = simulate_swap(
+        offer_res, offer_amount, want_res, stock, setpoint, cfg,
+        reputation_level=0, cargo_capacity=capacity,
+        extra_margin_reduction=extra_margin,
+    )
+
+    # -- Besitzer-Cut (Marktwert) + um die Marge reduzierte Trader-Ware --
+    hub_margin = float(tc_cfg.get("hub_margin", 0.0))
+    cap = float(tc_cfg.get("hub_margin_max", hub_margin))
+    eff = clamp_hub_margin(hub_margin, cap)
+    owner_cut_value = hub_owner_cut(result["value_in"], hub_margin, cap)
+    received = round(result["received"] * (1.0 - eff), 1)
+
+    cargo = {want_res: received}
+    refund_offer = 0.0
+    if result["refund_value"] > 0:
+        refund_offer = round(result["refund_value"] / float(cfg["base_value"][offer_res]), 1)
+        if refund_offer > 0:
+            cargo[offer_res] = cargo.get(offer_res, 0.0) + refund_offer
+    fleet.cargo = cargo
+
+    # -- Besitzer-Gutschrift: Cut als angebotene Ressource auf den Hub-Planeten (Lager darf
+    #    ueberfuellen, wie jede externe Zufuhr). owner_gain <= offer_amount (eff < 1). --
+    owner_gain_offer = round(owner_cut_value / float(cfg["base_value"][offer_res]), 1)
+    if owner_gain_offer > 0:
+        from app.economy.service import add_resources
+        await add_resources(session, hub_planet, {offer_res: owner_gain_offer})
+
+    # -- Handelsbeleg an den Trader --
+    await create_system_transmission(
+        session,
+        player_id=fleet.player_id,
+        subject=f"Handelsbeleg — Handels-Knoten {coords}",
+        body=(
+            f"Handel am Handels-Knoten von {owner.display_name} ({coords}) abgeschlossen.\n"
+            f"Angeboten: {int(round(offer_amount))} {offer_res}.\n"
+            f"Erhalten: {received:g} {want_res} "
+            f"(Hub-Marge {eff * 100:.1f}% an den Besitzer)."
+        ),
+        ttype="system",
+    )
+
+    # -- Einkommens-Funkspruch an den Besitzer (sichtbar ohne History-Abfrage) --
+    if owner_gain_offer > 0:
+        await create_system_transmission(
+            session,
+            player_id=owner.id,
+            subject=f"💰 Hub-Einkommen ({coords})",
+            body=(
+                f"Eine fremde Handelsflotte hat an deinem Handels-Knoten ({coords}) gehandelt. "
+                f"Deine Marge: {owner_gain_offer:g} {offer_res} (Hub-Marge {eff * 100:.1f}%)."
+            ),
+            ttype="system",
+        )
+
+    # -- Handelshistorie fuer beide Seiten (best-effort: darf den Handel nie stoeren) --
+    try:
+        session.add(TradeLog(
+            player_id=fleet.player_id,
+            partner_kind="player",
+            partner_id=owner.id,
+            partner_name=owner.display_name,
+            offered_res=offer_res,
+            offered_amount=round(float(offer_amount), 1),
+            received_res=want_res,
+            received_amount=float(received),
+        ))
+        if owner_gain_offer > 0:
+            trader = await session.get(Player, fleet.player_id)
+            session.add(TradeLog(
+                player_id=owner.id,
+                partner_kind="player",
+                partner_id=fleet.player_id,
+                partner_name=trader.display_name if trader else None,
+                offered_res=want_res,
+                offered_amount=0.0,
+                received_res=offer_res,
+                received_amount=float(owner_gain_offer),
+            ))
+    except Exception:  # pragma: no cover - reine Absicherung
+        log.exception("hub trade_log konnte nicht geschrieben werden (ignoriert)")
+
+    summary = {
+        "hub_owner": owner.display_name,
+        "location": coords,
+        "offer_res": offer_res,
+        "offer_amount": round(offer_amount, 1),
+        "want_res": want_res,
+        "received": received,
+        "owner_cut": owner_gain_offer,
+        "hub_margin": eff,
+        "refund_offer": refund_offer,
+    }
+    log.info(
+        "Hub-Handel: trader=%s owner=%s %s %g->%s %g owner_cut=%g %s",
+        fleet.player_id, owner.id, offer_res, offer_amount, want_res, received,
+        owner_gain_offer, offer_res,
+    )
+    return summary
+
+
+async def resolve_trade_arrival(session: AsyncSession, fleet: Fleet) -> dict | None:
+    """Dispatch bei Ankunft einer 'trade'-Flotte: NPC-Haendler ODER Spieler-Hub.
+
+    NPC-Haendler/-Handelszentrum haben Vorrang (bestehendes Verhalten unveraendert). Steht
+    am Ziel kein NPC-Haendler, aber ein Spieler-Hub (fremder Planet mit trade_center>=1),
+    wird der Hub-Handel aufgeloest. Sonst uebernimmt ``resolve_trade`` die Fehlmeldung."""
+    npc = await _trade_npc_at(
+        session, fleet.target_galaxy, fleet.target_system, fleet.target_position
+    )
+    if npc is None:
+        hub = await find_player_hub(
+            session, fleet.target_galaxy, fleet.target_system, fleet.target_position
+        )
+        if hub is not None:
+            return await resolve_player_hub_trade(session, fleet, hub[0], hub[1])
+    return await resolve_trade(session, fleet)
+
+
 async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
     """Wickelt einen Handel bei Ankunft der Flotte ab (Anfliegen-Modell).
 
@@ -187,27 +494,11 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
     coords = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
 
     # -- 1) Haendler-NPC am Ziel finden (Zelle bevorzugt, Koordinaten-Fallback) --
-    cell = (await session.execute(
-        select(UniverseCell).where(
-            UniverseCell.galaxy == fleet.target_galaxy,
-            UniverseCell.system == fleet.target_system,
-            UniverseCell.position == fleet.target_position,
-        )
-    )).scalar_one_or_none()
+    npc = await _trade_npc_at(
+        session, fleet.target_galaxy, fleet.target_system, fleet.target_position
+    )
 
-    npc: NpcEmpire | None = None
-    if cell and cell.occupant_type == "npc" and cell.ref_id is not None:
-        npc = await session.get(NpcEmpire, cell.ref_id)
     if npc is None:
-        npc = (await session.execute(
-            select(NpcEmpire).where(
-                NpcEmpire.galaxy == fleet.target_galaxy,
-                NpcEmpire.system == fleet.target_system,
-                NpcEmpire.position == fleet.target_position,
-            )
-        )).scalar_one_or_none()
-
-    if npc is None or npc.behavior_profile not in ("merchant", "trade_center"):
         await create_system_transmission(
             session,
             player_id=fleet.player_id,
@@ -222,14 +513,22 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
     # -- 2) Markt: Handelszentrum -> globaler Index (synthetischer Markt aus dem
     #        Weltvorrat); Legacy-Haendler -> lokaler Bestand (lazy init) --
     is_center = npc.behavior_profile == "trade_center"
+    # Schwarzmarkt-Event-NPC (trade_center mit market.spec == 'black_market'): Sonderkurse.
+    # rate_bonus kommt aus dem NPC-Markt (Default 1.5), wird unten an simulate_swap durchgereicht.
+    _market_meta = npc.market or {}
+    is_black = _market_meta.get("spec") == "black_market"
+    rate_bonus = float(_market_meta.get("rate_bonus", 1.5)) if is_black else 1.0
     if is_center:
         stock, setpoint = await index_market_for(session, cfg)
-        spec = "trade_center"
+        spec = "black_market" if is_black else "trade_center"
     else:
         market = ensure_market(npc, cfg)
         spec = market["spec"]
         stock = dict(market["stock"])
         setpoint = market_setpoint(spec, cfg)
+        if spec == "black_market":
+            is_black = True
+            rate_bonus = float(market.get("rate_bonus", 1.5))
 
     # -- 3) Auftrag validieren --
     order = validate_trade_order(fleet.mission_data, cfg)
@@ -260,6 +559,13 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
     rep_cfg = cfg["reputation"]
     level = min(int(rep_cfg["max_level"]), int(rep.volume // float(rep_cfg["volume_per_level"])))
 
+    # -- 4b) Handelszentrum-Bonus des Besitzers: senkt die eigene Haendler-Marge (additiv
+    #        zur Reputation), aktiv solange irgendwo ein Handelszentrum (Stufe>=1) steht. --
+    tc_cfg = bal.buildings.get("trade_center", {})
+    extra_margin = 0.0
+    if await owns_trade_center(session, fleet.player_id):
+        extra_margin = float(tc_cfg.get("trade_margin_reduction", 0.0))
+
     # -- 5) Cargo-Kapazitaet der Flotte (Vorbild combat) --
     from app.combat.service import _cargo_capacity
     ships = await _fleet_ships(session, fleet.id)
@@ -268,14 +574,18 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
     # -- 6) Tausch simulieren (Slippage in beide Richtungen) --
     result = simulate_swap(
         offer_res, offer_amount, want_res, stock, setpoint, cfg,
-        reputation_level=level, cargo_capacity=capacity,
+        reputation_level=level, cargo_capacity=capacity, rate_bonus=rate_bonus,
+        extra_margin_reduction=extra_margin,
     )
 
     # -- 7) Haendler-Bestand aktualisieren (nur Legacy-lokaler Markt; ein Handelszentrum
     #        hat keinen persistenten Bestand -> sein Index folgt im naechsten Tick dem Weltvorrat) --
     if not is_center:
         new_stock = {**stock, **{r: round(v) for r, v in result["new_stock"].items()}}
-        npc.market = {"spec": spec, "stock": new_stock}
+        new_market = {"spec": spec, "stock": new_stock}
+        if is_black:  # Sonderkurs-Kennung erhalten (rate_bonus nicht verlieren)
+            new_market["rate_bonus"] = rate_bonus
+        npc.market = new_market
 
     # -- 8) Reputation hochzaehlen --
     rep.volume = float(rep.volume) + float(result["value_in"])
@@ -377,7 +687,7 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
             "name": npc.name,
             "merchant": True,
             "trade_center": True,
-            "spec": "trade_center",
+            "spec": spec,
             "prices": {r: round(price_of(r, stock[r], setpoint[r], cfg), 3) for r in RESOURCES},
             "prices_at": now.isoformat(),
         }
@@ -412,6 +722,10 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         f"(Fracht-/Bestandsgrenze des Haendlers)."
         if refund_offer > 0 else ""
     )
+    bonus_line = (
+        f"\n🏴 Schwarzmarkt-Sonderkurs aktiv: +{int(round((rate_bonus - 1.0) * 100))}% mehr Ware."
+        if is_black else ""
+    )
     body = (
         f"Handel mit {npc.name} ({coords}) abgeschlossen.\n"
         f"Angeboten: {int(round(offer_amount))} {offer_res} "
@@ -419,7 +733,7 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         f"Erhalten: {received:g} {want_res} "
         f"(Durchschnittskurs {avg_buy:.3f}).\n"
         f"Haendler-Marge {margin_pct:.1f}% (Reputationsstufe {level}/{rep_cfg['max_level']})."
-        f"{refund_line}"
+        f"{refund_line}{bonus_line}"
     )
     await create_system_transmission(
         session,
@@ -440,6 +754,21 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         await commander_flavor_reaction(
             session, player_id=fleet.player_id, commander=_rc,
             situation="trade_profit", context={"planet": coords})
+
+    # -- 12) Handelshistorie (best-effort: darf den Handel nie stoeren) --
+    try:
+        session.add(TradeLog(
+            player_id=fleet.player_id,
+            partner_kind="npc",
+            partner_id=npc.id,
+            partner_name=npc.name,
+            offered_res=offer_res,
+            offered_amount=round(float(offer_amount), 1),
+            received_res=want_res,
+            received_amount=float(received),
+        ))
+    except Exception:  # pragma: no cover - reine Absicherung
+        log.exception("trade_log konnte nicht geschrieben werden (ignoriert)")
 
     summary = {
         "npc": npc.name,

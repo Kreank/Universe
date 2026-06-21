@@ -24,7 +24,10 @@ export function resourceIcon(key: string): string {
 }
 
 export function shipIcon(key: string): string {
-  return `assets/img/ships/${key}.png`;
+  // Mk2/Elite-Schiffe (`<parent>_mk2`) nutzen dasselbe Schiff-Bild wie ihr Parent —
+  // unterschieden werden sie allein durch den Mk2-Rahmen (siehe icon-tile `[mk2]`).
+  const base = key.endsWith('_mk2') ? key.slice(0, -4) : key;
+  return `assets/img/ships/${base}.png`;
 }
 
 export function defenseIcon(key: string): string {

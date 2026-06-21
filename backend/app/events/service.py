@@ -200,11 +200,16 @@ async def _spawn_black_market(session: AsyncSession, bal, cfg: dict) -> CosmicEv
     lifetime = float(cfg.get("lifetime_hours", 24))
     rate_bonus = float(cfg.get("rate_bonus", 1.5))
     # Temporäres, unangreifbares Schwarzmarkt-NPC (Vorbild: ensure_trade_centers).
+    # Echter Bestand (generalist-Sollbestand), damit ensure_market die Sonder-Kennung nie
+    # neu wuerfelt; die spec 'black_market' + rate_bonus markieren die Sonderkurse.
+    from app.fleet.trade import market_setpoint
+    _setpoint = market_setpoint("generalist", bal.trade)
+    _stock = {r: round(_setpoint[r]) for r in ("metal", "crystal", "deuterium")}
     npc = NpcEmpire(
         name="Schwarzmarkt-Karawane",
         behavior_profile="trade_center",
         galaxy=g, system=s, position=p,
-        market={"spec": "black_market", "rate_bonus": rate_bonus, "stock": {}},
+        market={"spec": "black_market", "rate_bonus": rate_bonus, "stock": _stock},
     )
     session.add(npc)
     await session.flush()

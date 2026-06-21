@@ -419,27 +419,16 @@ async def send_fleet(
     # Handel erfordert einen Haendler-NPC am Ziel + einen gueltigen Auftrag.
     # Die Angebots-Ressource faehrt als Fracht mit (cargo wird vom Router gesetzt).
     if mission == "trade":
-        from app.fleet.trade import validate_trade_order
-        cell = (await session.execute(
-            select(UniverseCell).where(
-                UniverseCell.galaxy == target[0],
-                UniverseCell.system == target[1],
-                UniverseCell.position == target[2],
-            )
-        )).scalar_one_or_none()
-        merchant: NpcEmpire | None = None
-        if cell and cell.occupant_type == "npc" and cell.ref_id:
-            merchant = await session.get(NpcEmpire, cell.ref_id)
+        from app.fleet.trade import _trade_npc_at, find_player_hub, validate_trade_order
+        merchant = await _trade_npc_at(session, target[0], target[1], target[2])
         if merchant is None:
-            merchant = (await session.execute(
-                select(NpcEmpire).where(
-                    NpcEmpire.galaxy == target[0],
-                    NpcEmpire.system == target[1],
-                    NpcEmpire.position == target[2],
-                )
-            )).scalar_one_or_none()
-        if merchant is None or merchant.behavior_profile not in ("merchant", "trade_center"):
-            raise ValueError("Am Ziel ist kein Haendler")
+            # Kein NPC-Haendler -> Spieler-Hub (fremder Planet mit trade_center>=1) erlauben.
+            hub = await find_player_hub(session, target[0], target[1], target[2])
+            if hub is None:
+                raise ValueError("Am Ziel ist kein Haendler")
+            _hub_planet, hub_owner = hub
+            if hub_owner is None or hub_owner.id == player.id:
+                raise ValueError("Du kannst nicht an deinem eigenen Handels-Knoten handeln")
         order = validate_trade_order(mission_data, bal.trade)
         if order is None:
             raise ValueError("Ungueltiger Handelsauftrag")
@@ -518,7 +507,12 @@ async def send_fleet(
     # Distanz, Tempo, Sprit. Deploy bleibt einfach (Schiff bleibt vor Ort); alles andere kehrt
     # zurueck -> Sprit + Reichweite muessen Hin + Rueck decken.
     origin = (planet.galaxy, planet.system, planet.position)
-    distance = compute_distance(origin, target)
+    # Welle 5 — Konjunktions-Fenster: zeitabhaengige Distanz-Modulation NUR jetzt (beim Start).
+    # Bei conjunction.enabled=false liefert effective_distance exakt compute_distance (kein Unterschied).
+    # Das Ergebnis fliesst in Flugzeit, Sprit UND Reichweiten-Check und wird danach fix verbacken
+    # (arrive_at/return_at bleiben unveraendert -> interception/phalanx/spionage brechen nicht).
+    from app.fleet.conjunction import effective_distance
+    distance = effective_distance(origin, target)
     round_trip = mission not in ("deploy", "escort")
     # Reichweiten-Grenze (Treibstoff-Tank pro Schiff): das schwaechste Schiff begrenzt die Flotte.
     max_range, limiting = fleet_max_range(ships, round_trip=round_trip)
@@ -940,7 +934,7 @@ async def fleet_arrive(fleet_id: str) -> None:
     from app.fleet.harvest import resolve_harvest
     from app.fleet.mining import resolve_mine
     from app.fleet.stationing import resolve_deploy
-    from app.fleet.trade import resolve_trade
+    from app.fleet.trade import resolve_trade_arrival
     from app.planets.colonize import resolve_colonize
     from app.universe.spionage import resolve_spy
 
@@ -969,7 +963,7 @@ async def fleet_arrive(fleet_id: str) -> None:
         elif mission == "expedition":
             exp_result = await resolve_expedition(session, fleet)
         elif mission == "trade":
-            await resolve_trade(session, fleet)
+            await resolve_trade_arrival(session, fleet)
         elif mission == "transport":
             await resolve_transport(session, fleet)
         elif mission == "deploy":

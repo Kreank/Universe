@@ -292,6 +292,10 @@ export const TECH_META: Record<string, DisplayMeta> = {
     label: 'Routen-Planung', glyph: '🗺️', blurb: '+1 Feld je Farm-Route/Stufe · wiederholbar.',
     desc: 'Vorberechnete Flugkorridore und Ziel-Priorisierung verlängern den Aktionsradius jeder Farm-Route. Jede Stufe hängt +1 Feld an jede Route an — wiederholbar, damit deine Routinen mit jedem Ausbau mehr Ziele in einem Durchlauf abklappern.',
   },
+  veteran_shipyard: {
+    label: 'Veteranen-Werft', glyph: '🎖️', blurb: 'Schaltet Mk II / Elite-Schiffe frei.',
+    desc: 'Eine spezialisierte Werft-Erweiterung für veteranengeführte Eliteklassen. Schaltet die Mk II-Varianten aller regulären Schiffe frei (gleicher Rumpf, klar erkennbar am Mk II-Rahmen) — höhere Kampfwerte und größere Tanks, dafür teurer und zusätzlich mit Antimaterie bezahlt. Der Einstieg ins Schiffs-Endgame.',
+  },
 };
 
 /**
@@ -511,6 +515,10 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
     branch: 'Endgame',
     summary: 'Wiederholbar: +1 erlaubter Ernte-Titan je Stufe (Default 1).',
     levelEffect: { label: 'Ernte-Titan-Limit', perLevel: 1, unit: '', base: 1 },
+  },
+  veteran_shipyard: {
+    branch: 'Endgame',
+    summary: 'Schaltet die Mk II / Elite-Varianten aller regulären Schiffe frei — stärkere Kampfwerte und größere Tanks, dafür teurer und Antimaterie-gegatet.',
   },
 };
 
@@ -809,8 +817,36 @@ export function humanize(key: string): string {
     .join(' ');
 }
 
+/** Suffix der Mk2/Elite-Schiffe (balance.json-Key: `<parent>_mk2`). */
+export const MK2_SUFFIX = '_mk2';
+
+/** Parent-Schluessel eines Mk2-Schiffs (z. B. `cruiser_mk2` -> `cruiser`), sonst null. */
+export function mk2Parent(key: string): string | null {
+  return key.endsWith(MK2_SUFFIX) ? key.slice(0, -MK2_SUFFIX.length) : null;
+}
+
+/** True, wenn der Schluessel ein Mk2/Elite-Schiff ist. */
+export function isMk2(key: string): boolean {
+  return key.endsWith(MK2_SUFFIX);
+}
+
+/**
+ * Anzeige-Meta zu einem Key. Mk2/Elite-Schiffe (`<parent>_mk2`) werden generisch
+ * abgeleitet: Glyph/Blurb/Desc kommen vom Parent, das Label erhaelt den Zusatz „ Mk II".
+ * So profitieren ALLE Stellen (Werft, Dispatch, Flotten-Tooltips, Sim …) automatisch,
+ * ohne dass 27 eigene SHIP_META-Eintraege gepflegt werden muessen.
+ */
 export function metaFor(map: Record<string, DisplayMeta>, key: string): DisplayMeta {
-  return map[key] ?? { label: humanize(key), glyph: '◆' };
+  const direct = map[key];
+  if (direct) {
+    return direct;
+  }
+  const parent = mk2Parent(key);
+  if (parent) {
+    const pm = metaFor(map, parent);
+    return { ...pm, label: pm.label + ' Mk II' };
+  }
+  return { label: humanize(key), glyph: '◆' };
 }
 
 /**

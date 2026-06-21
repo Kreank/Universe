@@ -8,6 +8,7 @@ import {
   Commander,
   CommanderBonus,
   CommanderDetail,
+  CommanderMemoryDossier,
   MiningFieldsResponse,
   CommanderTrainResponse,
   EquipmentCatalog,
@@ -22,6 +23,13 @@ import {
   FleetSendRequest,
   GalaxyResponse,
   GalaxyTarget,
+  NpcTarget,
+  PlayerTarget,
+  ThreatItem,
+  NpcRelation,
+  NpcRelationListItem,
+  NegotiateRequest,
+  NegotiateResponse,
   Planet,
   PlanetDetail,
   RankBoard,
@@ -33,6 +41,9 @@ import {
   ShipyardBuildResponse,
   ShipyardResponse,
   EscortOffer,
+  EscortJob,
+  EscortJobMine,
+  CreateEscortJobRequest,
   PhalanxScanResult,
   SendMessageRequest,
   StationedFleet,
@@ -40,6 +51,8 @@ import {
   TradeIndex,
   TradePartner,
   TradeProfile,
+  TradeCentersResponse,
+  TradeHistoryResponse,
   Transmission,
   UpgradeResponse,
   DemolishResponse,
@@ -50,6 +63,9 @@ import {
   AllianceResponse,
   AllianceOverview,
   AllianceStation,
+  ChronicleEntry,
+  AwakeningStatus,
+  ConjunctionInfo,
 } from '../models/api.models';
 
 /**
@@ -177,6 +193,22 @@ export class ApiService {
     return this.http.get<MiningFieldsResponse>('/api/mining/fields');
   }
 
+  // --- W1: Ziele & Bedrohungen (gebündelter Ziel-Screen) ---
+  /** Entdeckte NPC-Imperien inkl. Relation/Intel (für den Ziele-Screen). */
+  getTargetNpcs(): Observable<NpcTarget[]> {
+    return this.http.get<NpcTarget[]>('/api/targets/npcs');
+  }
+
+  /** Entdeckte Spieler (für den Ziele-Screen). */
+  getTargetPlayers(): Observable<PlayerTarget[]> {
+    return this.http.get<PlayerTarget[]>('/api/targets/players');
+  }
+
+  /** Bedrohungen: eingehende Angriffe + nahe feindliche NPCs (vorsortiert). */
+  getThreats(): Observable<ThreatItem[]> {
+    return this.http.get<ThreatItem[]>('/api/targets/threats');
+  }
+
   getGalaxy(galaxy: number, system: number): Observable<GalaxyResponse> {
     return this.http.get<GalaxyResponse>(`/api/galaxy/${galaxy}/${system}`);
   }
@@ -196,6 +228,16 @@ export class ApiService {
 
   getTradePartners(): Observable<TradePartner[]> {
     return this.http.get<TradePartner[]>('/api/trade/partners');
+  }
+
+  /** Aktive NPC-Handelszentren in Forschungs-Reichweite (Handels-Hub). */
+  getTradeCenters(): Observable<TradeCentersResponse> {
+    return this.http.get<TradeCentersResponse>('/api/trade/centers');
+  }
+
+  /** Handelshistorie: mit wem zuletzt (NPC/Spieler) gehandelt wurde. */
+  getTradeHistory(limit = 30): Observable<TradeHistoryResponse> {
+    return this.http.get<TradeHistoryResponse>(`/api/trade/history?limit=${limit}`);
   }
 
   sendMessage(body: SendMessageRequest): Observable<Transmission> {
@@ -231,6 +273,53 @@ export class ApiService {
     return this.http.get<EscortOffer[]>('/api/escort/offers');
   }
 
+  // --- Eskort-Gesuche-Board (Nachfrage-Seite) ---
+  /** Neuen Eskort-Auftrag posten (Origin weglassen = Heimatplanet). */
+  createEscortJob(body: CreateEscortJobRequest): Observable<EscortJobMine> {
+    return this.http.post<EscortJobMine>('/api/escort/jobs', body);
+  }
+
+  /** Offene Auftraege ANDERER, die du mit eigenen Eskort-Stationen decken kannst. */
+  getEscortJobs(): Observable<EscortJob[]> {
+    return this.http.get<EscortJob[]>('/api/escort/jobs');
+  }
+
+  /** Eigene Eskort-Auftraege. */
+  getMyEscortJobs(): Observable<EscortJobMine[]> {
+    return this.http.get<EscortJobMine[]>('/api/escort/jobs/mine');
+  }
+
+  /** Auftrag annehmen (erste gewinnt; 409 wenn nicht mehr offen → Liste neu laden). */
+  acceptEscortJob(id: string, stationId: string): Observable<EscortJob> {
+    return this.http.post<EscortJob>(`/api/escort/jobs/${id}/accept`, { station_id: stationId });
+  }
+
+  /** Eigenen Auftrag stornieren. */
+  deleteEscortJob(id: string): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`/api/escort/jobs/${id}`);
+  }
+
+  // --- NPC-Diplomatie (Welle 1: verhandelbare KI-Imperien) ---
+  /** Kontakt aufnehmen / Angebot unterbreiten. 202 — die KI-Antwort kommt asynchron als Funkspruch. */
+  negotiateNpc(npcId: string, body: NegotiateRequest): Observable<NegotiateResponse> {
+    return this.http.post<NegotiateResponse>(`/api/npc/${npcId}/negotiate`, body);
+  }
+
+  /** Aktueller Beziehungsstatus zu einem NPC-Imperium (neutral, wenn nie kontaktiert). */
+  getNpcRelation(npcId: string): Observable<NpcRelation> {
+    return this.http.get<NpcRelation>(`/api/npc/${npcId}/relation`);
+  }
+
+  /** Alle Beziehungen des Spielers zu NPC-Imperien (Diplomatie-Reiter). */
+  getNpcRelations(): Observable<NpcRelationListItem[]> {
+    return this.http.get<NpcRelationListItem[]>('/api/npc/relations');
+  }
+
+  /** Bestehenden Pakt brechen (Verrat — Ruf-Konsequenzen, macht das Imperium feindlich). */
+  breakNpcPact(npcId: string): Observable<NpcRelation> {
+    return this.http.post<NpcRelation>(`/api/npc/${npcId}/break-pact`, {});
+  }
+
   // --- Commander ---
   getCommanders(): Observable<Commander[]> {
     return this.http.get<Commander[]>('/api/commanders');
@@ -238,6 +327,11 @@ export class ApiService {
 
   getCommander(id: string): Observable<CommanderDetail> {
     return this.http.get<CommanderDetail>(`/api/commanders/${id}`);
+  }
+
+  /** Gedaechtnis-Dossier (Welle 2): Erinnerungen, Meinungen, Beziehungen, Groll. */
+  getCommanderMemory(id: string): Observable<CommanderMemoryDossier> {
+    return this.http.get<CommanderMemoryDossier>(`/api/commanders/${id}/memory`);
   }
 
   trainCommander(
@@ -389,6 +483,24 @@ export class ApiService {
     return this.http.get<RankBoardResponse>(
       `/api/ranking?board=${board}&category=${category}&limit=${limit}`,
     );
+  }
+
+  // --- Lebende Galaxie-Chronik (Welle 3) ---
+  /** Erzaehlte Saga-Kapitel des Universums, neueste zuerst. */
+  getChronicle(limit = 20, offset = 0): Observable<ChronicleEntry[]> {
+    return this.http.get<ChronicleEntry[]>(`/api/chronicle?limit=${limit}&offset=${offset}`);
+  }
+
+  // --- Die erwachende Galaxie (Welle 4) ---
+  /** Aktuelles Aggressionsniveau + Waechter-Status + 24h-Verlauf (read-only). */
+  getAwakeningStatus(historyLimit = 24): Observable<AwakeningStatus> {
+    return this.http.get<AwakeningStatus>(`/api/awakening/status?history_limit=${historyLimit}`);
+  }
+
+  // --- Wandernde Galaxie / Konjunktions-Fenster (Welle 5) ---
+  /** Aktive + kommende Konjunktions-Fenster fuer die Routen rund um die eigenen Systeme (read-only). */
+  getConjunctions(): Observable<ConjunctionInfo> {
+    return this.http.get<ConjunctionInfo>('/api/conjunctions');
   }
 
   // --- Feedback (Testphase) ---

@@ -43,6 +43,10 @@ class BuildingOptionOut(BaseModel):
     # Positions-Gate (Exo-Minen): auf diesem Planeten-Slot baubar? + erlaubte Positionen.
     position_ok: bool = True
     allowed_positions: list[int] = []
+    # Global-einmaliges Gebaeude (Handelszentrum): nur EINS pro Account. account_blocked = True,
+    # wenn der Spieler bereits eines auf einem ANDEREN Planeten besitzt/baut (zweiter Bau gesperrt).
+    one_per_account: bool = False
+    account_blocked: bool = False
 
 
 class BuildingsResponse(BaseModel):

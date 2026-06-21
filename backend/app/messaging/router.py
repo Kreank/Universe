@@ -199,6 +199,11 @@ async def decide(
                 loyalty_delta = -ignore
             commander.loyalty = max(0, min(100, commander.loyalty + loyalty_delta))
             commander.last_demand_at = _dt.datetime.now(_dt.timezone.utc)
+            # Gedaechtnis & Eigenleben (Welle 2): erfuellte Forderung legt Groll bei + endet
+            # eine Befehlsverweigerung; ignorierte Forderung staut Groll auf (Meuterei-Treiber).
+            from app.commander.memory import on_demand_memory
+            _kind = (t.decision_payload or {}).get("kind") if t.decision_payload else None
+            await on_demand_memory(session, commander, body.choice, _kind)
 
     t.requires_decision = False
     t.read = True

@@ -346,9 +346,12 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
     # Friedlicher Moral-Gewinn + Funkspruch: eine (überlebte) Expedition belohnt + lässt den
     # begleitenden Kommandeur funken (auch ohne Kampf hört man jetzt von ihm).
     if not _wiped and getattr(fleet, "commander_id", None):
+        from app.commander.memory import on_expedition_memory
         from app.commander.service import reward_commander_activity
         from app.messaging.service import commander_flavor_reaction
         await reward_commander_activity(session, fleet.commander_id, "expedition_success")
+        # Gedaechtnis (Welle 2): die Expedition wird als positive Erinnerung festgehalten.
+        await on_expedition_memory(session, fleet.commander_id, result["location"])
         _rc = await session.get(Commander, fleet.commander_id)
         await commander_flavor_reaction(
             session, player_id=fleet.player_id, commander=_rc,

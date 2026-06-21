@@ -297,6 +297,116 @@ async def escort_offers(
     return out
 
 
+# -- Eskort-Gesuche-Board (Nachfrage-Seite: Trader postet Auftrag, Anbieter nimmt an) ---------
+
+class EscortJobCoords(BaseModel):
+    galaxy: int
+    system: int
+    position: int
+
+
+class EscortJobCreateRequest(BaseModel):
+    target: EscortJobCoords
+    cargo_value: float
+    max_fee_pct: float
+    origin: EscortJobCoords | None = None   # default = Heimatplanet
+    min_power: float = 0.0
+
+
+class EscortJobAcceptRequest(BaseModel):
+    station_id: str
+
+
+@router.post("/escort/jobs", status_code=201)
+async def create_escort_job_endpoint(
+    body: EscortJobCreateRequest,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Trader postet ein Eskort-Gesuch (Route + Frachtwert + max. Gebuehr + optionale Mindeststaerke)."""
+    from app.fleet.escort_jobs import _job_base, create_escort_job
+
+    try:
+        job = await create_escort_job(
+            session, player,
+            target=(body.target.galaxy, body.target.system, body.target.position),
+            cargo_value=body.cargo_value,
+            max_fee_pct=body.max_fee_pct,
+            origin=(body.origin.galaxy, body.origin.system, body.origin.position) if body.origin else None,
+            min_power=body.min_power,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    await session.commit()
+    return _job_base(job)
+
+
+@router.get("/escort/jobs")
+async def list_escort_jobs_endpoint(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    """Offene Gesuche ANDERER, die der Spieler mit einer eigenen Eskort-Station decken kann
+    (inkl. der deckenden Stationen je Auftrag zum Annehmen)."""
+    from app.fleet.escort_jobs import list_coverable_jobs
+
+    out = await list_coverable_jobs(session, player)
+    await session.commit()  # lazy-expire persistieren
+    return out
+
+
+@router.get("/escort/jobs/mine")
+async def list_my_escort_jobs_endpoint(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    """Eigene Gesuche (alle Status, inkl. angenommener Eskorte/Anbieter)."""
+    from app.fleet.escort_jobs import list_my_jobs
+
+    out = await list_my_jobs(session, player)
+    await session.commit()
+    return out
+
+
+@router.post("/escort/jobs/{job_id}/accept")
+async def accept_escort_job_endpoint(
+    job_id: uuid.UUID,
+    body: EscortJobAcceptRequest,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Eskort-Anbieter nimmt ein offenes Gesuch mit einer eigenen Eskort-Station an (erste gewinnt)."""
+    from app.fleet.escort_jobs import _job_base, accept_escort_job
+
+    try:
+        job = await accept_escort_job(session, player, job_id, uuid.UUID(body.station_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return _job_base(job)
+
+
+@router.delete("/escort/jobs/{job_id}")
+async def cancel_escort_job_endpoint(
+    job_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Ersteller storniert sein Gesuch (nur wenn open/accepted)."""
+    from app.fleet.escort_jobs import cancel_escort_job
+
+    try:
+        await cancel_escort_job(session, player, job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return {"ok": True}
+
+
 class PhalanxScanRequest(BaseModel):
     galaxy: int
     system: int

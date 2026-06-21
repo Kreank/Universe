@@ -220,6 +220,23 @@
       "factor": 2.0,
       "_note": "USP: erhoeht Span-of-Control"
     },
+    "trade_center": {
+      "cost": {
+        "metal": 60000,
+        "crystal": 40000,
+        "deuterium": 20000
+      },
+      "factor": 2.0,
+      "requires": {
+        "research_lab": 4
+      },
+      "one_per_account": true,
+      "trade_margin_reduction": 0.015,
+      "trade_network_range_bonus": 1,
+      "hub_margin": 0.02,
+      "hub_margin_max": 0.1,
+      "_note": "Handelszentrum: nur EINS pro Account (one_per_account -> Bau auf einem zweiten Planeten wird abgelehnt; die EINE Instanz darf weiter ausgebaut werden). Effekte fuer den Besitzer, aktiv ab Stufe 1: trade_margin_reduction senkt die eigene Haendler-Marge bei Trades (zusaetzlich zur Reputation), trade_network_range_bonus erweitert die Handelsnetz-Sichtweite um +N Galaxien zusaetzlich zur Forschung. hub_margin = Marge, die der Besitzer als Einkommen erhaelt, wenn ANDERE Spieler seinen Planeten als Handels-Knoten (trade_center>=1) anfliegen: der Besitzer skimmt hub_margin*Handelswert (in der angebotenen Ressource), der Trader bekommt entsprechend weniger Ware. hub_margin_max deckelt die effektive Marge hart (Anti-Exploit). Kein Handel am EIGENEN Hub. Sichtbar als kind='player_hub' in GET /api/trade/centers; Besitzer-Einkommen via trade_log/history + Transmission."
+    },
     "sensorphalanx": {
       "cost": {
         "metal": 20000,
@@ -416,7 +433,8 @@
       "combustion_drive_speed_per_level": 0.1,
       "impulse_drive_speed_per_level": 0.2,
       "hyperspace_drive_speed_per_level": 0.3,
-      "prospecting_range_per_level": 1
+      "prospecting_range_per_level": 1,
+      "trade_network_range_per_level": 1
     },
     "techs": {
       "energy_tech": {
@@ -952,11 +970,44 @@
           "spy_tech": 1
         },
         "effect": "Ortung: schaltet die Asteroiden-Übersicht frei (Stufe 1 = Heimat-Galaxie). Jede weitere Stufe erweitert die Reichweite um +1 Galaxie (bis das ganze Universum sichtbar ist)."
+      },
+      "trade_network": {
+        "cost": {
+          "metal": 3000,
+          "crystal": 6000,
+          "deuterium": 1500
+        },
+        "requires": {
+          "research_lab": 3
+        },
+        "effect": "Handelsnetz: stuft die Sichtbarkeit der NPC-Handelszentren. Stufe 0 zeigt bereits die eigene Galaxie (Handel ist nie hart gesperrt); jede Stufe erweitert die Reichweite um +1 Galaxie (trade_network_range_per_level)."
+      },
+      "veteran_shipyard": {
+        "cost": {
+          "metal": 250000,
+          "crystal": 200000,
+          "deuterium": 100000
+        },
+        "requires": {
+          "research_lab": 10,
+          "nanite_factory": 4,
+          "hyperspace_drive": 8,
+          "weapons_tech": 12
+        },
+        "effect": "Veteranen-Werft (Endgame): schaltet die Mk-II-Veredelung aller regulaeren Schiffe frei (<typ>_mk2). Mk-II-Ruempfe haben hoehere Kampfwerte und groessere Tanks, kosten mehr Ressourcen plus Antimaterie und brauchen diese Forschung als Gate."
       }
     }
   },
   "ships": {
     "_note": "Huelle = (metall+kristall)/10. Werte OGame-nah, fuer Vertical Slice konkret. Alle Kampfschiffe haben Rapidfire 5 gegen Spionagesonde und Solarsatellit.",
+    "_mk2_factors": {
+      "_note": "Faktoren fuer die generierten Mk-II-Veredelungen (scripts/gen_mk2.py). attack/shield werden multipliziert und gerundet; cost (metal/crystal/deuterium) ×cost; fuel + fuel_tank ×fuel; cost.antimatter = round(antimatter_pct × (metal+crystal) der Mk1-Kosten). cargo/speed bleiben unveraendert, rapidfire/Rollen-Profil werden vom Mk1 uebernommen. Capstones (capstone-Key) sind ausgenommen.",
+      "attack": 1.25,
+      "shield": 1.25,
+      "cost": 1.3,
+      "fuel": 1.3,
+      "antimatter_pct": 0.04
+    },
     "light_fighter": {
       "cost": {
         "metal": 3000,
@@ -1601,6 +1652,646 @@
       },
       "capstone": "harvest_command"
     }
+,
+    "light_fighter_mk2": {
+      "cost": {
+        "metal": 3900,
+        "crystal": 1300,
+        "deuterium": 0,
+        "antimatter": 160
+      },
+      "attack": 62,
+      "shield": 12,
+      "cargo": 50,
+      "speed": 12500,
+      "fuel": 26,
+      "fuel_tank": 9,
+      "rapidfire": {
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
+      "requires": {
+        "shipyard": 1,
+        "combustion_drive": 1,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "light_fighter"
+    },
+    "heavy_fighter_mk2": {
+      "cost": {
+        "metal": 7800,
+        "crystal": 5200,
+        "deuterium": 0,
+        "antimatter": 400
+      },
+      "attack": 188,
+      "shield": 31,
+      "cargo": 100,
+      "speed": 10000,
+      "fuel": 98,
+      "fuel_tank": 68,
+      "rapidfire": {
+        "small_cargo": 3,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
+      "requires": {
+        "shipyard": 2,
+        "impulse_drive": 2,
+        "armor_tech": 2,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "heavy_fighter"
+    },
+    "cruiser_mk2": {
+      "cost": {
+        "metal": 26000,
+        "crystal": 9100,
+        "deuterium": 2600,
+        "antimatter": 1080
+      },
+      "attack": 500,
+      "shield": 62,
+      "cargo": 800,
+      "speed": 15000,
+      "fuel": 390,
+      "fuel_tank": 494,
+      "rapidfire": {
+        "light_fighter": 6,
+        "heavy_fighter": 3,
+        "drone": 6,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
+      "requires": {
+        "shipyard": 3,
+        "impulse_drive": 4,
+        "ion_tech": 2,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "cruiser"
+    },
+    "small_cargo_mk2": {
+      "cost": {
+        "metal": 2600,
+        "crystal": 2600,
+        "deuterium": 0,
+        "antimatter": 160
+      },
+      "attack": 6,
+      "shield": 12,
+      "cargo": 5000,
+      "speed": 7500,
+      "fuel": 13,
+      "fuel_tank": 34,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 1,
+        "combustion_drive": 2,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "small_cargo"
+    },
+    "large_cargo_mk2": {
+      "cost": {
+        "metal": 7800,
+        "crystal": 7800,
+        "deuterium": 0,
+        "antimatter": 480
+      },
+      "attack": 6,
+      "shield": 31,
+      "cargo": 25000,
+      "speed": 5000,
+      "fuel": 65,
+      "fuel_tank": 169,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 2,
+        "combustion_drive": 6,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "large_cargo"
+    },
+    "colony_ship_mk2": {
+      "cost": {
+        "metal": 13000,
+        "crystal": 26000,
+        "deuterium": 0,
+        "antimatter": 1200
+      },
+      "attack": 62,
+      "shield": 125,
+      "cargo": 7500,
+      "speed": 2500,
+      "fuel": 1300,
+      "fuel_tank": 3380,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 4,
+        "impulse_drive": 3,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "colony_ship"
+    },
+    "recycler_mk2": {
+      "cost": {
+        "metal": 13000,
+        "crystal": 7800,
+        "deuterium": 2600,
+        "antimatter": 640
+      },
+      "attack": 1,
+      "shield": 12,
+      "cargo": 20000,
+      "speed": 2000,
+      "fuel": 390,
+      "fuel_tank": 1014,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 4,
+        "combustion_drive": 6,
+        "shield_tech": 2,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "recycler"
+    },
+    "solar_satellite_mk2": {
+      "cost": {
+        "metal": 0,
+        "crystal": 2600,
+        "deuterium": 0,
+        "antimatter": 80
+      },
+      "attack": 0,
+      "shield": 1,
+      "cargo": 0,
+      "speed": 0,
+      "fuel": 0,
+      "fuel_tank": 0,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 1,
+        "veteran_shipyard": 1
+      },
+      "energy_prod": {
+        "_note": "Solarsatellit: Energie je Sat = floor((temp_max + temp_offset) / divisor) (OGame). Heisse (sonnennahe) Planeten -> mehr Ertrag; aussen ~3x weniger. Auf dem Planeten stationiert (fleet_id NULL), zaehlt zur Energiebilanz.",
+        "temp_offset": 160,
+        "divisor": 6
+      },
+      "mk2_parent": "solar_satellite"
+    },
+    "spy_probe_mk2": {
+      "cost": {
+        "metal": 0,
+        "crystal": 1300,
+        "deuterium": 0,
+        "antimatter": 40
+      },
+      "attack": 0,
+      "shield": 0,
+      "cargo": 5,
+      "speed": 100000000,
+      "fuel": 1,
+      "fuel_tank": 4,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 1,
+        "spy_tech": 1,
+        "combustion_drive": 1,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "spy_probe"
+    },
+    "battleship_mk2": {
+      "cost": {
+        "metal": 58500,
+        "crystal": 19500,
+        "deuterium": 0,
+        "antimatter": 2400
+      },
+      "attack": 1250,
+      "shield": 250,
+      "cargo": 1500,
+      "speed": 10000,
+      "fuel": 650,
+      "fuel_tank": 819,
+      "rapidfire": {
+        "small_cargo": 3,
+        "large_cargo": 3,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
+      "requires": {
+        "shipyard": 6,
+        "hyperspace_drive": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "battleship"
+    },
+    "battlecruiser_mk2": {
+      "cost": {
+        "metal": 39000,
+        "crystal": 31200,
+        "deuterium": 10400,
+        "antimatter": 2160
+      },
+      "attack": 1250,
+      "shield": 500,
+      "cargo": 750,
+      "speed": 10000,
+      "fuel": 325,
+      "fuel_tank": 416,
+      "rapidfire": {
+        "battleship": 7,
+        "cruiser": 4,
+        "heavy_fighter": 4,
+        "small_cargo": 3,
+        "large_cargo": 3,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
+      "requires": {
+        "shipyard": 8,
+        "hyperspace_tech": 5,
+        "laser_tech": 12,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "battlecruiser"
+    },
+    "bomber_mk2": {
+      "cost": {
+        "metal": 65000,
+        "crystal": 32500,
+        "deuterium": 0,
+        "antimatter": 3000
+      },
+      "attack": 1250,
+      "shield": 625,
+      "cargo": 500,
+      "speed": 4000,
+      "fuel": 1300,
+      "fuel_tank": 1638,
+      "rapidfire": {
+        "rocket_launcher": 20,
+        "light_laser": 20,
+        "heavy_laser": 10,
+        "ion_cannon": 10,
+        "gauss_cannon": 5,
+        "plasma_turret": 5,
+        "orbital_gun": 10,
+        "solar_satellite": 5,
+        "spy_probe": 5
+      },
+      "requires": {
+        "shipyard": 7,
+        "impulse_drive": 6,
+        "plasma_tech": 5,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "bomber"
+    },
+    "destroyer_mk2": {
+      "cost": {
+        "metal": 71500,
+        "crystal": 53625,
+        "deuterium": 17875,
+        "antimatter": 3850
+      },
+      "attack": 2375,
+      "shield": 150,
+      "cargo": 2000,
+      "speed": 5000,
+      "fuel": 1300,
+      "fuel_tank": 1638,
+      "rapidfire": {
+        "battlecruiser": 3,
+        "cruiser": 2,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
+      "_note": "Artillerie/Glaskanone (Doku 03c/03d): hoher Fern-Schaden, DUENNE Huelle+Schild -> billig. Konter ist EMERGENT (kein Rapidfire mehr): schnelle Schiffe schliessen ueber die Reichweiten-Baender die Distanz und zerlegen die duenne Huelle; Standoff-Strafe schwaecht sie im Nahkampf.",
+      "requires": {
+        "shipyard": 7,
+        "hyperspace_drive": 6,
+        "plasma_tech": 5,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "destroyer"
+    },
+    "deathstar_mk2": {
+      "cost": {
+        "metal": 6500000,
+        "crystal": 5200000,
+        "deuterium": 1300000,
+        "antimatter": 360000
+      },
+      "attack": 250000,
+      "shield": 62500,
+      "cargo": 1000000,
+      "speed": 100,
+      "fuel": 1,
+      "fuel_tank": 3,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 12,
+        "graviton_tech": 1,
+        "hyperspace_drive": 7,
+        "hyperspace_tech": 6,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "deathstar"
+    },
+    "carrier_mk2": {
+      "cost": {
+        "metal": 58500,
+        "crystal": 26000,
+        "deuterium": 6500,
+        "antimatter": 2600
+      },
+      "attack": 188,
+      "shield": 500,
+      "cargo": 3000,
+      "speed": 6000,
+      "fuel": 780,
+      "fuel_tank": 988,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 8,
+        "hyperspace_drive": 5,
+        "plasma_tech": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "carrier"
+    },
+    "drone_mk2": {
+      "cost": {
+        "metal": 3900,
+        "crystal": 1300,
+        "deuterium": 0,
+        "antimatter": 160
+      },
+      "attack": 56,
+      "shield": 12,
+      "cargo": 0,
+      "speed": 13000,
+      "fuel": 13,
+      "fuel_tank": 5,
+      "rapidfire": {},
+      "requires": {
+        "computer_tech": 4,
+        "shipyard": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "drone"
+    },
+    "interdictor_mk2": {
+      "cost": {
+        "metal": 23400,
+        "crystal": 15600,
+        "deuterium": 6500,
+        "antimatter": 1200
+      },
+      "attack": 75,
+      "shield": 188,
+      "cargo": 500,
+      "speed": 9000,
+      "fuel": 390,
+      "fuel_tank": 273,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 7,
+        "hyperspace_drive": 4,
+        "ion_tech": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "interdictor"
+    },
+    "ewar_frigate_mk2": {
+      "cost": {
+        "metal": 11700,
+        "crystal": 11700,
+        "deuterium": 3900,
+        "antimatter": 720
+      },
+      "attack": 500,
+      "shield": 62,
+      "cargo": 100,
+      "speed": 11000,
+      "fuel": 260,
+      "fuel_tank": 182,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 5,
+        "ion_tech": 5,
+        "impulse_drive": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "ewar_frigate"
+    },
+    "boarder_mk2": {
+      "cost": {
+        "metal": 39000,
+        "crystal": 15600,
+        "deuterium": 5200,
+        "antimatter": 1680
+      },
+      "attack": 75,
+      "shield": 62,
+      "cargo": 5000,
+      "speed": 7000,
+      "fuel": 520,
+      "fuel_tank": 364,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 6,
+        "impulse_drive": 5,
+        "armor_tech": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "boarder"
+    },
+    "stealth_corvette_mk2": {
+      "cost": {
+        "metal": 10400,
+        "crystal": 10400,
+        "deuterium": 2600,
+        "antimatter": 640
+      },
+      "attack": 188,
+      "shield": 12,
+      "cargo": 100,
+      "speed": 16000,
+      "fuel": 195,
+      "fuel_tank": 136,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 5,
+        "laser_tech": 6,
+        "combustion_drive": 6,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "stealth_corvette"
+    },
+    "escort_frigate_mk2": {
+      "cost": {
+        "metal": 23400,
+        "crystal": 15600,
+        "deuterium": 2600,
+        "antimatter": 1200
+      },
+      "attack": 188,
+      "shield": 188,
+      "cargo": 300,
+      "speed": 10000,
+      "fuel": 325,
+      "fuel_tank": 228,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 4,
+        "armor_tech": 3,
+        "laser_tech": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "escort_frigate"
+    },
+    "warp_stabilizer_mk2": {
+      "cost": {
+        "metal": 18200,
+        "crystal": 13000,
+        "deuterium": 7800,
+        "antimatter": 960
+      },
+      "attack": 125,
+      "shield": 150,
+      "cargo": 200,
+      "speed": 12000,
+      "fuel": 390,
+      "fuel_tank": 273,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 6,
+        "hyperspace_drive": 5,
+        "impulse_drive": 5,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "warp_stabilizer"
+    },
+    "shield_tender_mk2": {
+      "cost": {
+        "metal": 26000,
+        "crystal": 32500,
+        "deuterium": 6500,
+        "antimatter": 1800
+      },
+      "attack": 0,
+      "shield": 1250,
+      "cargo": 200,
+      "speed": 6000,
+      "fuel": 520,
+      "fuel_tank": 364,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 6,
+        "shield_tech": 6,
+        "impulse_drive": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "shield_tender"
+    },
+    "interceptor_mk2": {
+      "cost": {
+        "metal": 3900,
+        "crystal": 1300,
+        "deuterium": 10400,
+        "antimatter": 160
+      },
+      "attack": 500,
+      "shield": 62,
+      "cargo": 50,
+      "speed": 18000,
+      "fuel": 130,
+      "fuel_tank": 46,
+      "rapidfire": {
+        "light_fighter": 4,
+        "heavy_fighter": 3,
+        "drone": 4,
+        "spy_probe": 5,
+        "solar_satellite": 5
+      },
+      "requires": {
+        "shipyard": 4,
+        "laser_tech": 5,
+        "impulse_drive": 3,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "interceptor"
+    },
+    "miner_mk2": {
+      "cost": {
+        "metal": 32500,
+        "crystal": 13000,
+        "deuterium": 2600,
+        "antimatter": 1400
+      },
+      "attack": 0,
+      "shield": 62,
+      "cargo": 15000,
+      "speed": 3000,
+      "fuel": 390,
+      "fuel_tank": 1014,
+      "rapidfire": {},
+      "requires": {
+        "combustion_drive": 4,
+        "shipyard": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "miner"
+    },
+    "deep_scout_mk2": {
+      "cost": {
+        "metal": 10400,
+        "crystal": 15600,
+        "deuterium": 1300,
+        "antimatter": 800
+      },
+      "attack": 0,
+      "shield": 62,
+      "cargo": 100,
+      "speed": 14000,
+      "fuel": 104,
+      "fuel_tank": 299,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 5,
+        "spy_tech": 3,
+        "impulse_drive": 4,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "deep_scout"
+    },
+    "expedition_ship_mk2": {
+      "cost": {
+        "metal": 39000,
+        "crystal": 26000,
+        "deuterium": 6500,
+        "antimatter": 2000
+      },
+      "attack": 75,
+      "shield": 188,
+      "cargo": 10000,
+      "speed": 6000,
+      "fuel": 1040,
+      "fuel_tank": 2730,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 6,
+        "hyperspace_drive": 4,
+        "computer_tech": 6,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "expedition_ship"
+    }
   },
   "defenses": {
     "_note": "Schildkuppeln (max 1/Planet) sowie Abfang-/Interplanetarrakete sind Phase 7. Hier nur als baubare Eintraege mit Stats, KEINE Sonderlogik.",
@@ -1977,6 +2668,150 @@
       "weapon_type": "orbital",
       "drive": 0,
       "range": "far"
+    }
+,
+    "light_fighter_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 5,
+      "range": "near"
+    },
+    "heavy_fighter_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 4,
+      "range": "near"
+    },
+    "cruiser_mk2": {
+      "weapon_type": "energy",
+      "drive": 4,
+      "range": "medium"
+    },
+    "small_cargo_mk2": {
+      "weapon_type": null,
+      "drive": 3,
+      "range": "near"
+    },
+    "large_cargo_mk2": {
+      "weapon_type": null,
+      "drive": 2,
+      "range": "near"
+    },
+    "colony_ship_mk2": {
+      "weapon_type": null,
+      "drive": 1,
+      "range": "near"
+    },
+    "recycler_mk2": {
+      "weapon_type": null,
+      "drive": 2,
+      "range": "near"
+    },
+    "solar_satellite_mk2": {
+      "weapon_type": null,
+      "drive": 0,
+      "range": "near"
+    },
+    "spy_probe_mk2": {
+      "weapon_type": null,
+      "drive": 5,
+      "range": "far"
+    },
+    "battleship_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "medium"
+    },
+    "battlecruiser_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "medium"
+    },
+    "bomber_mk2": {
+      "weapon_type": "missile",
+      "drive": 2,
+      "range": "medium"
+    },
+    "destroyer_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "far"
+    },
+    "deathstar_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 1,
+      "range": "medium"
+    },
+    "carrier_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "medium",
+      "carrier": true
+    },
+    "drone_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 4,
+      "range": "near"
+    },
+    "interdictor_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "medium",
+      "interdictor": true
+    },
+    "ewar_frigate_mk2": {
+      "weapon_type": "ion",
+      "drive": 4,
+      "range": "medium"
+    },
+    "boarder_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "near",
+      "boarder": true
+    },
+    "stealth_corvette_mk2": {
+      "weapon_type": "energy",
+      "drive": 5,
+      "range": "near",
+      "stealth": true
+    },
+    "escort_frigate_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "medium",
+      "point_defense": true
+    },
+    "warp_stabilizer_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 4,
+      "range": "near",
+      "stabilizer": true
+    },
+    "shield_tender_mk2": {
+      "weapon_type": null,
+      "drive": 2,
+      "range": "medium",
+      "shield_projector": true
+    },
+    "interceptor_mk2": {
+      "weapon_type": "energy",
+      "drive": 5,
+      "range": "near"
+    },
+    "miner_mk2": {
+      "weapon_type": null,
+      "drive": 1,
+      "range": "near"
+    },
+    "deep_scout_mk2": {
+      "weapon_type": null,
+      "drive": 4,
+      "range": "far",
+      "sensor": true
+    },
+    "expedition_ship_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 3,
+      "range": "medium"
     }
   },
   "tech_bonus": {
@@ -2740,6 +3575,83 @@
         "aggressive": 1.2,
         "loyal": 0.15,
         "honorable": 0.6
+      }
+    },
+    "memory": {
+      "_note": "Welle 2 — Kommandeure mit Gedaechtnis & Eigenleben. Erinnerungen (commander_memories) faerben Funksprueche; Meinungen (commander_opinions) ueber Gegner; Beziehungen (commander_relationships) untereinander; Grievances (commander_grievances) -> Meuterei. Code zieht NUR Leitplanken/Schwellen, die KI formuliert/bewertet emergent.",
+      "max_events": 200,
+      "_max_events_note": "Maximale gespeicherte Erinnerungen je Kommandeur (aelteste werden beim Digest gekappt).",
+      "retention_days": 45,
+      "digest_trigger_count": 5,
+      "_digest_note": "Ab so vielen NEUEN Erinnerungen seit dem letzten Digest verdichtet der ai-worker (memory_digest) zu persona.memory_summary.",
+      "sentiment": {
+        "_note": "Ableitung des Gefuehls einer Erinnerung aus dem event_type (Fallback neutral).",
+        "combat_victory": "positive",
+        "combat_crushing_victory": "positive",
+        "combat_close_win": "positive",
+        "combat_defeat": "negative",
+        "heavy_losses": "negative",
+        "expedition_success": "positive",
+        "promotion": "positive",
+        "demand_fulfilled": "positive",
+        "demand_ignored": "negative"
+      }
+    },
+    "opinions": {
+      "_note": "Meinungen eines Kommandeurs ueber einen Gegner (Spieler ODER NPC). strength 0..1. Sieg ueber STARKEN Gegner -> Respekt; wiederholte Niederlagen gegen DENSELBEN -> Furcht/Groll; Sieg ueber klar SCHWAECHEREN -> Verachtung.",
+      "respect_strength_ratio": 1.2,
+      "_respect_ratio_note": "Gegner gilt als 'stark', wenn relative Staerke (Gegner/eigen) >= diesem Wert.",
+      "despise_strength_ratio": 0.6,
+      "_despise_ratio_note": "Gegner gilt als 'schwach', wenn relative Staerke <= diesem Wert.",
+      "fear_after_losses": 2,
+      "_fear_note": "Ab so vielen frueheren Niederlagen gegen DENSELBEN Gegner kippt eine weitere Niederlage in Furcht (sonst Groll).",
+      "respect_delta": 0.25,
+      "fear_delta": 0.22,
+      "grudge_delta": 0.18,
+      "despise_delta": 0.15,
+      "max_strength": 1.0,
+      "hated_threshold": 0.5,
+      "_hated_note": "Ab dieser Staerke gilt eine despises/fears/grudge-Meinung als 'verhasster Gegner' -> faerbt den Funkspruch spuerbar."
+    },
+    "relationships": {
+      "_note": "Beziehungen zwischen Kommandeuren DESSELBEN Spielers. strength 0..1, a<b-Konvention in der PK. Schlank: gemeinsame Schlacht -> Bond/Respekt; Beförderungs-Konkurrenz -> Rivalitaet.",
+      "co_battle_bond_delta": 0.15,
+      "shared_enemy_respect_delta": 0.1,
+      "promotion_rivalry_delta": 0.2,
+      "max_strength": 1.0
+    },
+    "grievances": {
+      "_note": "Aufgestaute Kraenkungen (commander_grievances). accumulated_count++ + severity je Vorfall; Summe der offenen Severities speist die Meuterei-Pruefung. resolved_at != NULL = beigelegt (z.B. Forderung doch erfuellt, Beförderung gewaehrt).",
+      "severity": {
+        "ignored_demand": 3,
+        "risky_missions": 2,
+        "denied_promotion": 4,
+        "combat_neglect": 2
+      },
+      "max_severity_per_grievance": 12,
+      "decay_days": 21,
+      "_decay_note": "Offene Grievances aelter als decay_days zaehlen nicht mehr in die Meuterei-Summe (Gelegenheits-Spieler nicht ewig bestrafen)."
+    },
+    "mutiny": {
+      "_note": "Meuterei = Eskalation NACH klarer Vorwarnung. Ausgeloest, wenn loyalty < loyalty_threshold UND unrest >= unrest_threshold UND Summe offener Grievance-Severities >= grievance_sum_threshold. Erst Warn-Transmission (warning_grievance_sum), dann — nach Cooldown — mit Wahrscheinlichkeit echte Folge. Schwellen GROSSZUEGIG, damit Gelegenheits-Spieler nicht unfair bestraft werden.",
+      "loyalty_threshold": 25,
+      "unrest_threshold": 70,
+      "grievance_sum_threshold": 8,
+      "warning_grievance_sum": 5,
+      "mutiny_chance_per_day": 0.4,
+      "mutiny_cooldown_hours": 48,
+      "defect_threshold": 15,
+      "_defect_threshold_note": "Sehr niedrige Treue: die Meuterei endet in Desertion (status 'defected') statt nur Befehlsverweigerung.",
+      "trait_mult": {
+        "hot_tempered": 1.6,
+        "aggressive": 1.2,
+        "loyal": 0.15,
+        "honorable": 0.6
+      },
+      "outcomes": {
+        "_note": "Folge der Meuterei. defect = Desertion (mit Flotte), refuse_order = verweigert den naechsten Befehl (telegrafiert, weniger hart).",
+        "defect": "defected",
+        "refuse": "refuse_next_order"
       }
     },
     "ability_catalog": {
@@ -4043,15 +4955,29 @@
       ]
     }
   },
+  "diplomacy": {
+    "_note": "Welle 1: Verhandelbare KI-NPC-Imperien. Der Spieler kontaktiert ein ENTDECKTES NPC-Imperium und verhandelt (alliance|ceasefire|tribute). Die KI (ai-worker job npc_decision, Modell decision_model) entscheidet EMERGENT (accept|reject|counter); dieser Block zieht nur die Leitplanken. tribute_max = harte Obergrenze fuer Metall/Zyklus (auch der Spieler-Bestand klemmt zusaetzlich). ceasefire_max_hours = max. Waffenstillstandsdauer. negotiate_cooldown_minutes = Sperre zwischen Verhandlungen je NPC. tribute_cycle_hours = wie oft Tribut faellig wird; tribute_tick_interval_seconds = Einzugs-Tick. alliance/ceasefire verhindern NPC-Angriffe.",
+    "decision_model": "qwen3.5:9b",
+    "tribute_max": 500000,
+    "ceasefire_max_hours": 168,
+    "negotiate_cooldown_minutes": 60,
+    "tribute_cycle_hours": 24,
+    "tribute_tick_interval_seconds": 3600,
+    "alliance": {
+      "protects_from_attack": true,
+      "_note": "Buendnis/Waffenstillstand: das NPC greift den Spieler nicht an (npc/attack.py). Weitere Koop-Effekte (gemeinsame Ziele) = Welle 2+."
+    }
+  },
   "phalanx": {
     "_note": "Sensorphalanx (Gebaeude): Scannt fremde Flottenbewegungen zu/von einem Ziel in Reichweite. range_systems = level^2 - 1 (gleiche Galaxie). Jeder Scan kostet Deuterium am scannenden Planeten. intercept_window_seconds = wie lange eine angekommene Handels-/Transportflotte am Ziel fangbar bleibt.",
     "scan_cost_deuterium": 5000,
     "intercept_window_seconds": 60
   },
   "escort": {
-    "_note": "Stationierte Eskort-Patrouillen (deploy). Ein Trader waehlt beim Versand Eskort-Angebote, die seine Route decken (Stationssystem im Routen-Intervall +/- escort_radius), und zahlt fee_pct des Frachtwerts an den Anbieter; die Patrouillen-Kampfkraft daempft das Routenrisiko. region_radius = Default-Deckungsradius, max_fee_pct = Gebuehren-Obergrenze.",
+    "_note": "Stationierte Eskort-Patrouillen (deploy) + Eskort-Gesuche-Board (Nachfrage-Seite). Angebot: ein Trader waehlt beim Versand Eskort-Angebote, die seine Route decken (Stationssystem im Routen-Intervall +/- escort_radius), und zahlt fee_pct des Frachtwerts an den Anbieter; die Patrouillen-Kampfkraft daempft das Routenrisiko. Nachfrage (Board): ein Trader postet einen Auftrag (Route + cargo_value + max_fee_pct + min_power), Anbieter nehmen mit einer deckenden Eskort-Station an. region_radius = Default-Deckungsradius, max_fee_pct = Gebuehren-Obergrenze, job_max_hours = Gueltigkeitsdauer eines Auftrags.",
     "region_radius": 5,
-    "max_fee_pct": 0.1
+    "max_fee_pct": 0.1,
+    "job_max_hours": 24
   },
   "spy": {
     "probe_type": "spy_probe",
@@ -4191,6 +5117,87 @@
     "inactive_days_before_decay": 14,
     "production_decay_per_day": 0.05,
     "vacation_mode": true
+  },
+  "chronicle": {
+    "_note": "Welle 3: Lebende Galaxie-Chronik. Ein periodischer Backend-Tick (chronicle_tick, alle interval_hours) sammelt die erzaehlwuerdigen ECHTEN Spieler-Taten der letzten lookback_hours (groesste Schlachten nach Truemmer, Auf-/Abstiege ggü. dem Snapshot der Vorchronik, neuer Verrat aus player_reputation, geschlossene NPC-Buendnisse, grosse Welt-Events) und legt eine game_chronicle-Zeile (status pending) an. Der ai-worker-Job 'chronicle' (Erzaehler 'historian', Modell model, think=false) schreibt daraus einen epischen, FAKTENTREUEN Saga-Eintrag (Titel+Text). min_events: ist zu wenig passiert, kommt trotzdem ein kurzer 'ruhige Zeiten'-Eintrag. broadcast: dezente '📜 Neue Chronik'-Funkmeldung an alle.",
+    "enabled": true,
+    "interval_hours": 24,
+    "lookback_hours": 24,
+    "min_events": 1,
+    "max_battles": 5,
+    "max_movers": 5,
+    "min_battle_debris": 1000,
+    "narrator": "historian",
+    "model": "qwen3.5:9b",
+    "broadcast": true
+  },
+  "awakening": {
+    "_note": "Welle 4: Die erwachende Galaxie. Ein stuendlicher Backend-Tick (aggression_tick) aggregiert die combat_reports der letzten lookback_hours zu einer Aggressions-Metrik (Kampfanzahl, Gesamt-Truemmer, eindeutige Angreifer) und berechnet daraus ueber 'weights' einen gewichteten level + Status-Band (status_bands, hoechstes min<=level gewinnt). Uebersteigt level den 'threshold' UND ist kein Waechter aktiv UND ist die Beruhigungsphase (calm_until) vorbei, ERWACHT 'Der Erwachte': ein NpcEmpire (behavior_profile 'warden', mit warden.base_fleet skaliert ueber Aggression + Top-Spieler-Punkte), server-weit angekuendigt (Broadcast + KI-Funkspruch narrator 'warden', Modell warden.model, think=false), telegrafiert (warning_hours Vorwarnung bevor er angreift). Waehrend er aktiv ist bedroht er pro Tick threat.targets_per_tick der aggressivsten Spieler (commit_fraction seiner Flotte je Angriff via NpcAttack, min_warning_hours Vorwarnung) und funkt dabei. Spieler besiegen ihn im normalen NPC-Kampf -> defeat_warden: Belohnung (reward) an alle Teilnehmer, Sieges-Broadcast, Beruhigung des Universums (calm_until = now+respawn_dormant_hours), Waechter dormant. Greift ihn niemand bis expires_at, zieht er sich zurueck (retreat, ebenfalls Beruhigung). FAIR + telegrafiert, kein Insta-Wipe.",
+    "enabled": true,
+    "tick_interval_hours": 1,
+    "lookback_hours": 6,
+    "weights": {
+      "combat": 1.0,
+      "debris": 0.000002,
+      "attackers": 4.0
+    },
+    "threshold": 60.0,
+    "status_bands": [
+      { "status": "peaceful", "min": 0.0 },
+      { "status": "tense", "min": 20.0 },
+      { "status": "war", "min": 40.0 },
+      { "status": "apocalypse", "min": 60.0 }
+    ],
+    "warning_hours": 4,
+    "lifetime_hours": 72,
+    "respawn_dormant_hours": 48,
+    "warden": {
+      "name": "Der Erwachte",
+      "model": "qwen3.5:9b",
+      "base_fleet": {
+        "deathstar": 1,
+        "battleship": 60,
+        "destroyer": 40,
+        "bomber": 25,
+        "cruiser": 90
+      },
+      "defenses": {
+        "plasma_turret": 200,
+        "large_shield_dome": 6,
+        "gauss_cannon": 150
+      },
+      "fleet_per_level": {
+        "battleship": 1.2,
+        "destroyer": 0.8,
+        "cruiser": 2.0
+      },
+      "fleet_top_player_scale": 0.0006,
+      "max_fleet_mult": 4.0
+    },
+    "threat": {
+      "targets_per_tick": 2,
+      "max_targets": 5,
+      "commit_fraction": 0.22,
+      "min_warning_hours": 2,
+      "cooldown_hours": 6
+    },
+    "reward": {
+      "metal": 2000000,
+      "crystal": 1500000,
+      "deuterium": 800000,
+      "dark_matter": 400
+    }
+  },
+  "conjunction": {
+    "_note": "Welle 5: Physikalisch wandernde Galaxie (Variante A). Die effektive Distanz zwischen zwei Systemen schwankt zeitabhaengig (deterministisch aus Koordinaten-Phase + globaler Zeit) und wird NUR beim Flotten-Start angewandt (effective_distance in fleet/conjunction.py) -> arrive_at/return_at bleiben danach fix, interception/phalanx/spionage brechen nicht. Jedes System-Paar hat einen deterministischen Phasen-Offset; ueber cycle_hours laeuft die Phase um. Im Konjunktions-Zentrum (Phase 0) sinkt der Faktor bis max_discount (schnelle/billige Route, Dauer conjunction_window_hours), am Anti-Punkt steigt er sanft bis max_surcharge. Faktor immer in [max_discount, max_surcharge]. Endpoint GET /api/conjunctions listet aktive + kommende Fenster fuer Systeme im radius um die eigenen Planeten (max_upcoming kommende). inter_galaxy_enabled steuert, ob auch Inter-Galaxie-Routen modulieren (Default aus).",
+    "enabled": true,
+    "cycle_hours": 6.0,
+    "conjunction_window_hours": 0.5,
+    "max_discount": 0.7,
+    "max_surcharge": 1.15,
+    "radius": 12,
+    "max_upcoming": 12,
+    "inter_galaxy_enabled": false
   },
   "starting_player": {
     "resources": {

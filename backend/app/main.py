@@ -14,7 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.alliance.router import router as alliance_router
 from app.auth.router import router as auth_router
+from app.awakening.router import router as awakening_router
 from app.buildings.router import router as buildings_router
+from app.chronicle.router import router as chronicle_router
 from app.combat.router import router as combat_router
 from app.commander.router import router as commander_router
 from app.commander.service import morale_drift_tick
@@ -23,11 +25,14 @@ from app.events.router import router as events_router
 from app.feedback.router import router as feedback_router
 from app.fleet.router import router as fleet_router
 from app.fleet.stationing import station_fuel_tick
+from app.fleet.trade_router import router as trade_router
 from app.fleet.trade import market_regen_tick
 from app.fleet.trade_index import index_tick
 from app.messaging.news import news_tick
 from app.messaging.router import router as messaging_router
+from app.npc.diplomacy import tribute_tick
 from app.npc.population import ensure_trade_centers, npc_population_tick
+from app.npc.router import router as npc_router
 from app.npc.service import npc_behavior_tick
 from app.platform.ai_jobs import bootstrap_nightly_batches, enqueue_nightly_batches
 from app.platform.balance import get_balance
@@ -41,6 +46,7 @@ from app.ranking.router import router as ranking_router
 from app.ranking.service import score_tick
 from app.megastructure.router import router as megastructure_router
 from app.research.router import router as research_router
+from app.targets.router import router as targets_router
 from app.universe.router import router as universe_router
 from app.ws import websocket_endpoint
 
@@ -105,6 +111,14 @@ async def lifespan(app: FastAPI):
         log.warning("AI-Bootstrap (nightly_batches) fehlgeschlagen — Scheduler holt es nach")
     # Galaxie-Nachrichten-Ticker (Phase 4): bemerkenswerte Schlachten als Broadcast-Bulletin.
     schedule_interval(news_tick, hours=6, job_id="galaxy-news")
+    # Lebende Galaxie-Chronik (Welle 3): taeglich die echten Spieler-Taten zu einem Saga-Eintrag
+    # verdichten (Erzaehler 'historian', ai-worker). Intervall/Schalter aus balance.chronicle.
+    from app.chronicle.service import chronicle_tick
+    _chron_cfg = get_balance().data.get("chronicle", {})
+    if _chron_cfg.get("enabled", True):
+        schedule_interval(
+            chronicle_tick, hours=float(_chron_cfg.get("interval_hours", 24)), job_id="galaxy-chronicle",
+        )
     # Treibstoff-Tick: vorgeschobene Stationierungen zehren ihren Deuterium-Vorrat; leer -> heim.
     schedule_interval(
         station_fuel_tick,
@@ -134,6 +148,22 @@ async def lifespan(app: FastAPI):
         cleanup_expired_buffs,
         seconds=int(_ev_cfg.get("buff_cleanup_interval_seconds", 3600)), job_id="events-buff-cleanup",
     )
+    # NPC-Diplomatie (Welle 1): faelligen Tribut einziehen; Zahlungsausfall bricht den Pakt.
+    schedule_interval(
+        tribute_tick,
+        seconds=int(get_balance().data.get("diplomacy", {}).get("tribute_tick_interval_seconds", 3600)),
+        job_id="npc-tribute",
+    )
+    # Die erwachende Galaxie (Welle 4): stuendlicher Aggressions-Tick -> Metrik + Waechter-
+    # Lebenszyklus (erwachen/bedrohen/besiegen). Schalter/Intervall aus balance.awakening.
+    from app.awakening.service import aggression_tick
+    _awk_cfg = get_balance().awakening
+    if _awk_cfg.get("enabled", False):
+        schedule_interval(
+            aggression_tick,
+            hours=float(_awk_cfg.get("tick_interval_hours", 1)),
+            job_id="awakening-aggression",
+        )
     try:
         yield
     finally:
@@ -156,14 +186,19 @@ app.add_middleware(
 # -- Alle Domaenen-Router unter /api ------------------------------------------
 for r in (
     auth_router,
+    awakening_router,
     economy_router,
     buildings_router,
+    chronicle_router,
     research_router,
     fleet_router,
     combat_router,
     commander_router,
     messaging_router,
+    npc_router,
     universe_router,
+    targets_router,
+    trade_router,
     ranking_router,
     megastructure_router,
     alliance_router,

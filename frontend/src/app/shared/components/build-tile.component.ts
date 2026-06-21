@@ -22,7 +22,7 @@ import { ResourceCost } from '../../core/models/api.models';
   template: `
     <div class="tile" [class.busy]="busy()" [class.locked]="locked()" [class.focused]="focused()">
       <button type="button" class="art" (click)="openDetail.emit()" [attr.aria-label]="name() + ' – Details'">
-        <app-icon-tile [glyph]="glyph()" [src]="iconSrc()" [size]="76" [variant]="variant()" />
+        <app-icon-tile [glyph]="glyph()" [src]="iconSrc()" [size]="76" [variant]="variant()" [mk2]="mk2()" />
         @if (badge() !== null) {
           <span class="badge-corner" [class.zero]="badge() === 0 || badge() === '0'" [attr.title]="badgeTip()">{{ badge() }}</span>
         }
@@ -132,6 +132,8 @@ export class BuildTileComponent {
   readonly available = input<Partial<Record<string, number>> | null>(null);
   readonly timeSeconds = input<number | null>(null);
   readonly variant = input<'accent' | 'magenta' | 'muted'>('accent');
+  /** Mk2/Elite-Schiff: zeigt den Mk2-Rahmen + Glow ueber dem Artwork. */
+  readonly mk2 = input<boolean>(false);
   readonly busy = input<boolean>(false);
   readonly locked = input<boolean>(false);
   /** Per Deeplink (Dashboard -> laufender Prozess) angesprungene Kachel: einmaliger Aufmerk-Flash. */

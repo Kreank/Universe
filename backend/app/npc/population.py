@@ -185,6 +185,9 @@ async def npc_population_tick() -> None:
             select(NpcEmpire).where(NpcEmpire.galaxy == galaxy)
         )).scalars().all()
         for npc in seeds:
+            # Wächter (Welle 4) NIE eine baseline geben -> er soll nicht nachbauen/heilen.
+            if npc.behavior_profile == "warden":
+                continue
             if not (npc.baseline or {}):
                 npc.baseline = {"fleet": dict(npc.fleet or {}), "defenses": dict(npc.defenses or {})}
 
@@ -202,8 +205,8 @@ async def npc_population_tick() -> None:
             for npc in seeds:
                 if removed >= d_max:
                     break
-                if npc.behavior_profile == "trade_center":
-                    continue
+                if npc.behavior_profile in ("trade_center", "warden"):
+                    continue  # Wächter (Welle 4) wird nie als "verwaist" entfernt
                 created = npc.created_at
                 if created is not None:
                     if created.tzinfo is None:

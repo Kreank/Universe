@@ -277,8 +277,9 @@ interface GradesConfig {
                   <span class="fill" [style.width.%]="c.morale"></span>
                 </div>
               </div>
-              @if (c.loyalty < 30 || (c.unrest ?? 0) >= 80) {
+              @if (c.status === 'mutinous' || c.loyalty < 30 || (c.unrest ?? 0) >= 80) {
                 <div class="risk small">
+                  @if (c.status === 'mutinous') { <span class="chip warn mutiny"><app-btn-icon [src]="statusIcon('alert')" glyph="🔥" [size]="14" /> MEUTEREI — verweigert Befehle</span> }
                   @if (c.loyalty < 30) { <span class="chip warn"><app-btn-icon [src]="statusIcon('alert')" glyph="⚠" [size]="14" /> Treue {{ c.loyalty }} — Meuterei/Überlauf-Risiko</span> }
                   @if ((c.unrest ?? 0) >= 80) { <span class="chip warn"><app-btn-icon [src]="statusIcon('alert')" glyph="⚑" [size]="14" /> Forderung steht bevor</span> }
                 </div>

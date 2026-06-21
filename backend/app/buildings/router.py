@@ -77,6 +77,8 @@ async def get_buildings(
                 energy_delta=o["energy_delta"],
                 position_ok=o.get("position_ok", True),
                 allowed_positions=o.get("allowed_positions", []),
+                one_per_account=o.get("one_per_account", False),
+                account_blocked=o.get("account_blocked", False),
             )
             for o in options
         ],

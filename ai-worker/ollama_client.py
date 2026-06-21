@@ -44,14 +44,30 @@ class OllamaClient:
         await self._client.aclose()
 
     # ------------------------------------------------------------------ generate
-    async def generate(self, system: str, prompt: str) -> str:
-        """Einen Text via POST /api/generate (stream=false) erzeugen."""
+    async def generate(
+        self,
+        system: str,
+        prompt: str,
+        *,
+        model: Optional[str] = None,
+        format: Optional[str] = None,
+        think: Optional[bool] = None,
+    ) -> str:
+        """Einen Text via POST /api/generate (stream=false) erzeugen.
+
+        ``model`` ueberschreibt das Default-Modell pro Aufruf (z. B. ``qwen3.5:9b`` fuer
+        Entscheidungen). ``format`` (z. B. ``"json"``) erzwingt strukturierte Ausgabe;
+        ``think`` schaltet den Thinking-Modus von Reasoning-Modellen gezielt ab (False)."""
         payload: dict[str, Any] = {
-            "model": self._model,
+            "model": model or self._model,
             "system": system,
             "prompt": prompt,
             "stream": False,
         }
+        if format is not None:
+            payload["format"] = format
+        if think is not None:
+            payload["think"] = think
         try:
             resp = await self._client.post(
                 "/api/generate", json=payload, timeout=settings.generate_timeout_seconds

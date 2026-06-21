@@ -72,9 +72,19 @@ export const routes: Routes = [
           import('./features/galaxy/galaxy.component').then((m) => m.GalaxyComponent),
       },
       {
+        path: 'targets',
+        loadComponent: () =>
+          import('./features/targets/targets.component').then((m) => m.TargetsComponent),
+      },
+      {
         path: 'mining',
         loadComponent: () =>
           import('./features/mining/mining.component').then((m) => m.MiningComponent),
+      },
+      {
+        path: 'expedition',
+        loadComponent: () =>
+          import('./features/expedition/expedition.component').then((m) => m.ExpeditionComponent),
       },
       {
         path: 'trade',
@@ -114,6 +124,16 @@ export const routes: Routes = [
         path: 'alliance',
         loadComponent: () =>
           import('./features/alliance/alliance.component').then((m) => m.AllianceComponent),
+      },
+      {
+        path: 'diplomacy',
+        loadComponent: () =>
+          import('./features/diplomacy/diplomacy.component').then((m) => m.DiplomacyComponent),
+      },
+      {
+        path: 'chronicle',
+        loadComponent: () =>
+          import('./features/chronicle/chronicle.component').then((m) => m.ChronicleComponent),
       },
     ],
   },

@@ -127,6 +127,9 @@ interface NavGroup {
                   @if (item.path === '/transmissions' && state.unreadTransmissions() > 0) {
                     <span class="badge">{{ state.unreadTransmissions() }}</span>
                   }
+                  @if (item.path === '/diplomacy' && state.unreadDiplomacy() > 0) {
+                    <span class="badge">{{ state.unreadDiplomacy() }}</span>
+                  }
                 </a>
               }
             </div>
@@ -173,7 +176,7 @@ interface NavGroup {
         <button class="bn-item" type="button" [class.active]="navOpen()" (click)="toggleNav()">
           <span class="bn-glyph">
             ☰
-            @if (state.unreadTransmissions() > 0) {
+            @if (state.unreadTransmissions() > 0 || state.unreadDiplomacy() > 0) {
               <span class="bn-dot"></span>
             }
           </span>
@@ -231,20 +234,24 @@ export class ShellComponent implements OnInit, OnDestroy {
     fleet: { path: '/fleet', label: 'Flotte', glyph: '🚀', icon: 'assets/img/nav/fleet.png' },
     combat: { path: '/combat-sim', label: 'Simulator', glyph: '⚔️', icon: 'assets/img/nav/simulator.png' },
     galaxy: { path: '/galaxy', label: 'Galaxie', glyph: '🌌', icon: 'assets/img/nav/map.png' },
+    targets: { path: '/targets', label: 'Ziele', glyph: '🎯', icon: 'assets/img/nav/targets.png' },
+    expedition: { path: '/expedition', label: 'Expedition', glyph: '🪐', icon: 'assets/img/missions/expedition.png' },
     routines: { path: '/routines', label: 'Routinen', glyph: '🛰', icon: 'assets/img/nav/routines.png' },
     mining: { path: '/mining', label: 'Bergbau', glyph: '⛏️', icon: 'assets/img/nav/routines.png' },
     trade: { path: '/trade', label: 'Handel', glyph: '💱', icon: 'assets/img/nav/market.png' },
     commanders: { path: '/commanders', label: 'Kommandozentrale', glyph: '🎖️', icon: 'assets/img/nav/command.png' },
     alliance: { path: '/alliance', label: 'Allianz', glyph: '🤝', icon: 'assets/img/nav/alliance.png' },
+    diplomacy: { path: '/diplomacy', label: 'Diplomatie', glyph: '🕊️', icon: 'assets/img/nav/diplomacy.png' },
     transmissions: { path: '/transmissions', label: 'Postfach', glyph: '📡', icon: 'assets/img/nav/mail.png' },
     ranking: { path: '/ranking', label: 'Rangliste', glyph: '🏆', icon: 'assets/img/nav/ranking.png' },
+    chronicle: { path: '/chronicle', label: 'Chronik', glyph: '📜', icon: 'assets/img/nav/ranking.png' },
   };
 
   protected readonly navGroups: NavGroup[] = [
     { label: 'Imperium', items: [ShellComponent.ITEMS['dashboard'], ShellComponent.ITEMS['buildings'], ShellComponent.ITEMS['research'], ShellComponent.ITEMS['techtree'], ShellComponent.ITEMS['shipyard'], ShellComponent.ITEMS['defense'], ShellComponent.ITEMS['megastructures']] },
-    { label: 'Militaer', items: [ShellComponent.ITEMS['fleet'], ShellComponent.ITEMS['combat'], ShellComponent.ITEMS['galaxy']] },
+    { label: 'Militaer', items: [ShellComponent.ITEMS['fleet'], ShellComponent.ITEMS['combat'], ShellComponent.ITEMS['galaxy'], ShellComponent.ITEMS['targets'], ShellComponent.ITEMS['expedition']] },
     { label: 'Bergbau', items: [ShellComponent.ITEMS['mining'], ShellComponent.ITEMS['routines']] },
-    { label: 'Reich & Sozial', items: [ShellComponent.ITEMS['trade'], ShellComponent.ITEMS['commanders'], ShellComponent.ITEMS['alliance'], ShellComponent.ITEMS['transmissions'], ShellComponent.ITEMS['ranking']] },
+    { label: 'Reich & Sozial', items: [ShellComponent.ITEMS['trade'], ShellComponent.ITEMS['commanders'], ShellComponent.ITEMS['alliance'], ShellComponent.ITEMS['diplomacy'], ShellComponent.ITEMS['transmissions'], ShellComponent.ITEMS['ranking'], ShellComponent.ITEMS['chronicle']] },
   ];
 
   /** Mobile-Bottom-Nav: 4 Kern-Screens; "Mehr" oeffnet den vollen Drawer. */

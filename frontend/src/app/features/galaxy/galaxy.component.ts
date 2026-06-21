@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
@@ -9,20 +8,18 @@ import {
   Coordinate,
   FleetMission,
   AllianceZone,
+  Conjunction,
+  ConjunctionInfo,
   GalaxyCell,
-  GalaxyIntel,
-  GalaxyTarget,
+  NpcRelation,
+  NpcRelationStatus,
 } from '../../core/models/api.models';
-import { NotificationService } from '../../core/services/notification.service';
-import { DEFENSE_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
 import { missionIcon, navIcon, uiIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
-import { MessageComposeComponent } from '../../shared/components/message-compose.component';
-import { PhalanxPanelComponent } from '../../shared/components/phalanx-panel.component';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
+import { CountdownComponent } from '../../shared/components/countdown.component';
 import { galaxyStyles } from './galaxy.styles';
-import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 
 /** Offenes Versand-Overlay (Schnellangriff / Schnelltransport / …). */
 interface DispatchCtx {
@@ -44,7 +41,7 @@ interface DispatchCtx {
 @Component({
   selector: 'app-galaxy',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, DatePipe, ShortNumberPipe, BtnIconComponent, FleetDispatchComponent, MessageComposeComponent, PhalanxPanelComponent, EmptyStateComponent],
+  imports: [FormsModule, RouterLink, ShortNumberPipe, BtnIconComponent, FleetDispatchComponent, CountdownComponent],
   template: `
     <h1>Galaxie · Karte</h1>
     <p class="sub">Erkunde Systeme, finde Ziele und entsende deine Flotten — Schnellaktionen direkt am Ziel.</p>
@@ -81,6 +78,18 @@ interface DispatchCtx {
                 <img class="zone-mark" src="assets/img/status/alliance_zone.png" alt="" aria-hidden="true" />
                 <span class="zone-tag">[{{ z.tag }}]</span>
                 <span class="small muted">{{ z.mine ? 'eigene Zone' : 'Einflusszone' }}</span>
+              </span>
+            }
+          </div>
+        }
+
+        <!-- Welle 5: Konjunktion aktiv im aktuell gescannten System (dezenter Marker). -->
+        @if (viewConjunctions().length) {
+          <div class="conj-banner" title="Wandernde Galaxie: Routen von/zu diesem System sind gerade verkürzt.">
+            @for (c of viewConjunctions(); track c.from + '>' + c.to) {
+              <span class="conj-chip" [class.bane]="c.discount_pct < 0">
+                🌌 [{{ conjPartner(c) }}] {{ c.discount_pct >= 0 ? '−' : '+' }}{{ abs(c.discount_pct).toFixed(0) }}%
+                @if (c.ends_at) { <span class="small muted">· <app-countdown [target]="c.ends_at" /></span> }
               </span>
             }
           </div>
@@ -123,6 +132,11 @@ interface DispatchCtx {
                   }
                   @if (c.event; as ev) {
                     <span class="chip event tip" [attr.data-tip]="eventTip(ev)">{{ eventGlyph(ev.event_type) }} {{ eventLabel(ev.event_type) }} · {{ eventCountdown(ev.expires_at) }}</span>
+                  }
+                  @if (npcRelation(c); as rel) {
+                    @if (rel.status !== 'neutral') {
+                      <span class="chip rel tip" [attr.data-tip]="relationTip(rel)">{{ relGlyph(rel.status) }} {{ relLabel(rel.status) }}</span>
+                    }
                   }
                 </div>
                 @if (c.asteroid) {
@@ -168,17 +182,11 @@ interface DispatchCtx {
                   }
                 }
                 @if (isHostile(c)) {
-                  <div class="acts">
+                  <div class="acts steer">
                     @if (c.discovered) {
-                      <span class="chip disc tip" data-tip="Automatisch aufgeklärt: spawnte nahe deinem Planeten (≤ 8 Systeme). Sende eine Sonde für tiefere/aktuellere Daten."><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="14" /> aufgeklärt</span>
+                      <span class="chip disc tip" data-tip="Automatisch aufgeklärt: spawnte nahe deinem Planeten (≤ 8 Systeme)."><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="14" /> aufgeklärt</span>
                     }
-                    @if (c.occupant_type === 'player' && c.player_id) {
-                      <button class="ic msg" type="button" (click)="messagePlayer(c)" title="Nachricht an Spieler"><app-btn-icon [src]="navIcon('mail')" glyph="✉" [size]="18" /></button>
-                    }
-                    <button class="ic phx" type="button" (click)="phalanxTarget.set(cellCoord(c))" title="Sensorphalanx-Scan (Flottenbewegungen)"><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" [size]="18" /></button>
-                    <button class="ic spy" type="button" (click)="quickSpy(cellCoord(c), c.name)" [title]="spyTitle()"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="18" /></button>
-                    <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), c.name, 'attack')" title="Angreifen"><app-btn-icon [src]="missionIcon('attack')" glyph="⚔" [size]="18" /></button>
-                    <button class="ic trp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'transport')" [title]="c.trade ? 'Transport (P2P-Handel: Ware schicken)' : 'Transport'"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" [size]="18" /></button>
+                    <a class="steer-hint" routerLink="/targets" title="NPC-Imperien & Spieler werden jetzt im Ziele-Screen gesteuert: Angriff, Spionage, Diplomatie, Transport, Nachricht, Phalanx.">🎯 im Ziele-Screen steuern →</a>
                   </div>
                 } @else if (isOwn(c)) {
                   <span class="chip own">dein Planet</span>
@@ -197,54 +205,15 @@ interface DispatchCtx {
         }
       </section>
 
-      <!-- Ziel-Verzeichnis ---------------------------------------------- -->
-      <section class="card targets">
-        <div class="panel-title"><app-btn-icon [src]="uiIcon('target')" glyph="🎯" [size]="16" /> Aufgeklärte Ziele</div>
-        @if (targets().length) {
-          <ul class="tgt-list">
-            @for (t of targets(); track t.coords) {
-              <li class="tgt">
-                <div class="tgt-top">
-                  <span class="tgt-name">{{ t.name }}</span>
-                  <span class="chip lvl">L{{ t.level ?? 1 }}/3</span>
-                  @if (t.intel?.trade_center) {
-                    <span class="chip trade tip" data-tip="Neutrales Handelszentrum (unangreifbar) · globaler Handelskurs">Handelszentrum</span>
-                  } @else if (t.intel?.merchant) {
-                    <span class="chip trade tip" [attr.data-tip]="'Händler · Spez.: ' + (t.intel?.spec ?? '?') + ' — handeln statt kämpfen'">Händler</span>
-                  }
-                  <span class="tgt-coords mono">[{{ t.coords }}]</span>
-                </div>
-                <div class="tgt-sub small">
-                  <span class="tgt-stat tip" [attr.data-tip]="intelTip(t)">
-                    <app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="14" /> {{ t.ships_total }}
-                  </span>
-                  <span class="tgt-stat">
-                    <app-btn-icon [src]="'assets/img/icons/spec/stat_shield.png'" glyph="🛡" [size]="14" /> {{ t.defenses_total }}
-                  </span>
-                  @if (t.discovered_at) {
-                    <span class="faint">· {{ t.discovered_at | date: 'short' }}</span>
-                  }
-                </div>
-                <div class="acts tgt-acts">
-                  <button class="ic" type="button" (click)="jumpTo(t)" title="Im Scanner zeigen"><app-btn-icon [src]="navIcon('map')" glyph="🌌" [size]="18" /></button>
-                  <button class="ic spy" type="button" (click)="quickSpy(targetCoord(t), t.name)" title="Spionieren"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="18" /></button>
-                  <button class="ic phx" type="button" (click)="phalanxTarget.set(targetCoord(t))" title="Sensorphalanx-Scan"><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" [size]="18" /></button>
-                  <button class="ic trp" type="button" (click)="openDispatch(targetCoord(t), t.name, 'transport')" title="Transport"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" [size]="18" /></button>
-                  @if (t.intel?.merchant) {
-                    <button class="ic trd" type="button" (click)="openDispatch(targetCoord(t), t.name, 'trade')" title="Handeln"><app-btn-icon [src]="navIcon('market')" glyph="💱" [size]="18" /></button>
-                  }
-                  @if (t.npc_id && !t.intel?.trade_center) {
-                    <button class="ic atk" type="button" (click)="openDispatch(targetCoord(t), t.name, 'attack')" title="Angreifen"><app-btn-icon [src]="missionIcon('attack')" glyph="⚔" [size]="18" /></button>
-                  }
-                </div>
-              </li>
-            }
-          </ul>
-        } @else {
-          <app-empty-state art="empty_search">
-            Noch keine Ziele aufgeklärt. Entsende Spionagesonden (🛰) auf belegte Felder im Scanner.
-          </app-empty-state>
-        }
+      <!-- Hinweis: Ziel-Steuerung ist in den Ziele-Screen gewandert ----- -->
+      <section class="card steer-card">
+        <div class="panel-title"><app-btn-icon [src]="uiIcon('target')" glyph="🎯" [size]="16" /> Ziele &amp; Bedrohungen</div>
+        <p class="muted small">
+          Angriff, Spionage, Diplomatie, Transport und Nachrichten gegen NPC-Imperien und Spieler
+          steuerst du jetzt gebündelt im <strong>Ziele-Screen</strong> — inkl. aller eingehenden
+          Bedrohungen. Die Galaxie bleibt für Erkundung &amp; Navigation.
+        </p>
+        <a class="btn btn-primary btn-sm" routerLink="/targets">🎯 Zu Zielen &amp; Bedrohungen →</a>
       </section>
     </div>
 
@@ -258,24 +227,12 @@ interface DispatchCtx {
         (close)="dispatch.set(null)"
       />
     }
-    @if (composePlayer(); as c) {
-      <app-message-compose
-        [toPlayerId]="c.id"
-        [toName]="c.name"
-        [initialSubject]="c.subject"
-        (close)="composePlayer.set(null)"
-      />
-    }
-    @if (phalanxTarget(); as pt) {
-      <app-phalanx-panel [target]="pt" (close)="phalanxTarget.set(null)" />
-    }
   `,
   styles: [galaxyStyles],
 })
 export class GalaxyComponent {
   private readonly api = inject(ApiService);
   protected readonly state = inject(GameStateService);
-  private readonly notify = inject(NotificationService);
   private readonly balance = inject(BalanceService);
   private readonly route = inject(ActivatedRoute);
 
@@ -283,9 +240,6 @@ export class GalaxyComponent {
   protected readonly missionIcon = missionIcon;
   protected readonly navIcon = navIcon;
   protected readonly uiIcon = uiIcon;
-
-  /** Standard-Sondenzahl der Schnell-Spionage (L2-Intel, balance.spy.level2_probes). */
-  private readonly DEFAULT_PROBES = 3;
 
   /** Universums-Grenzen aus balance.json (Fallback 8 / 200). */
   protected maxG(): number { return this.balance.value?.universe?.galaxies ?? 8; }
@@ -307,12 +261,32 @@ export class GalaxyComponent {
   viewS = 1;
   protected readonly cells = signal<GalaxyCell[]>([]);
   protected readonly zones = signal<AllianceZone[]>([]);
-  protected readonly targets = signal<GalaxyTarget[]>([]);
   protected readonly loading = signal(false);
   protected readonly dispatch = signal<DispatchCtx | null>(null);
-  protected readonly composePlayer = signal<{ id: string; name: string; subject: string } | null>(null);
-  protected readonly phalanxTarget = signal<Coordinate | null>(null);
+  /** Beziehungen zu NPC-Imperien je npc_id (fuer Status-Badge in der Zelle). */
+  protected readonly relations = signal<Record<string, NpcRelation>>({});
+  /** Welle 5: aktive Konjunktions-Fenster (wandernde Galaxie) — fuer den System-Marker. */
+  protected readonly conjunctions = signal<ConjunctionInfo | null>(null);
   private initialized = false;
+
+  /** Aktive Konjunktionen, die das aktuell gescannte System (viewG:viewS) betreffen. */
+  protected viewConjunctions(): Conjunction[] {
+    return (this.conjunctions()?.active ?? []).filter(
+      (c) =>
+        (c.from_coords.galaxy === this.viewG && c.from_coords.system === this.viewS) ||
+        (c.to_coords.galaxy === this.viewG && c.to_coords.system === this.viewS),
+    );
+  }
+
+  /** Das jeweils andere System der Route (g:s) — relativ zum gescannten System. */
+  protected conjPartner(c: Conjunction): string {
+    const here = c.from_coords.galaxy === this.viewG && c.from_coords.system === this.viewS;
+    return here ? c.to : c.from;
+  }
+
+  protected abs(n: number): number {
+    return Math.abs(n);
+  }
 
   /** Tooltip fuer die P2P-Handelsanzeige eines Spielers. */
   tradeTip(tr: { offer: string | null; want: string | null; rate: number | null; note: string | null }, name?: string | null): string {
@@ -322,33 +296,14 @@ export class GalaxyComponent {
     return `${head}${deal}${note} — Kurs aushandeln per Nachricht, liefern per Transport.`;
   }
 
-  messagePlayer(c: GalaxyCell): void {
-    if (!c.player_id) {
-      return;
-    }
-    const subj = c.trade?.offer && c.trade?.want
-      ? `Handel: dein ${c.trade.offer} gegen mein ${c.trade.want}`
-      : 'Handelsanfrage';
-    this.composePlayer.set({ id: c.player_id, name: c.player_name ?? c.name ?? 'Spieler', subject: subj });
-  }
-
   protected readonly scannedCount = computed(
     () => this.cells().filter((c) => c.occupant_type !== 'empty').length,
   );
 
-  /** Verfuegbare Spionagesonden auf dem aktiven Planeten. */
-  protected readonly probeCount = computed(
-    () => this.state.activePlanet()?.ships?.find((s) => s.type === 'spy_probe')?.count ?? 0,
-  );
-
-  protected readonly spyTitle = computed(
-    () => `Spionieren — sendet ${Math.min(this.probeCount(), this.DEFAULT_PROBES) || this.DEFAULT_PROBES} Sonde(n)`,
-  );
-
   constructor() {
-    // Aufgeklärte Ziele für das Verzeichnis laden (steuert NICHT den Scan-Ort).
-    this.api.getGalaxyTargets().subscribe({
-      next: (t) => this.targets.set(t),
+    // Welle 5: aktive Konjunktions-Fenster laden (wandernde Galaxie — System-Marker; Fehler stumm).
+    this.api.getConjunctions().subscribe({
+      next: (c) => this.conjunctions.set(c),
       error: () => {},
     });
 
@@ -380,6 +335,7 @@ export class GalaxyComponent {
         this.cells.set(res.cells);
         this.zones.set(res.zones ?? []);
         this.loading.set(false);
+        this.loadRelations(res.cells);
       },
       error: () => {
         this.cells.set([]);
@@ -403,18 +359,9 @@ export class GalaxyComponent {
     }
   }
 
-  jumpTo(t: GalaxyTarget): void {
-    this.viewG = t.galaxy;
-    this.viewS = t.system;
-    this.scan();
-  }
-
   // --- Koordinaten-Helfer ------------------------------------------------
   cellCoord(c: GalaxyCell): Coordinate {
     return { galaxy: this.viewG, system: this.viewS, position: c.position };
-  }
-  targetCoord(t: GalaxyTarget): Coordinate {
-    return { galaxy: t.galaxy, system: t.system, position: t.position };
   }
 
   // --- Schnellaktionen ---------------------------------------------------
@@ -428,77 +375,55 @@ export class GalaxyComponent {
     this.scan();
   }
 
-  /** Ein-Klick-Spionage: schickt sofort Standard-Sonden zum Ziel. */
-  quickSpy(target: Coordinate, _name: string | null): void {
-    const origin = this.state.activePlanetId();
-    if (!origin) {
+  // --- NPC-Diplomatie (Welle 1) -----------------------------------------
+  /** Laedt die Beziehungen zu allen sichtbaren NPC-Imperien (fuer Status-Badges). */
+  private loadRelations(cells: GalaxyCell[]): void {
+    const ids = cells
+      .filter((c) => c.occupant_type === 'npc' && c.npc_id)
+      .map((c) => c.npc_id as string);
+    if (!ids.length) {
+      this.relations.set({});
       return;
     }
-    const probes = Math.min(this.probeCount(), this.DEFAULT_PROBES);
-    if (probes < 1) {
-      this.notify.warning('Keine Spionagesonden', 'Baue Spionagesonden in der Werft, um zu spähen.');
-      return;
-    }
-    this.api
-      .sendFleet({
-        origin_planet_id: origin,
-        target,
-        mission: 'spy',
-        ships: { spy_probe: probes },
-        cargo: { metal: 0, crystal: 0, deuterium: 0 },
-        commander_id: null,
-        speed_pct: 100,
-      })
-      .subscribe({
-        next: () => {
-          this.notify.success('Sonden unterwegs', `${probes} Spionagesonde(n) gestartet → [${target.galaxy}:${target.system}:${target.position}].`);
-          void this.state.reloadFleets();
-          void this.state.reloadActivePlanet();
-        },
-        error: (err) => this.notify.warning('Spionage fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
+    for (const id of ids) {
+      this.api.getNpcRelation(id).subscribe({
+        next: (rel) => this.relations.update((m) => ({ ...m, [id]: rel })),
+        error: () => {},
       });
+    }
   }
 
-  /** Rendert eine {typ: anzahl}-Map kompakt. */
-  fmtUnits(map?: Record<string, number> | null): string {
-    if (!map) {
-      return '';
-    }
-    const parts = Object.entries(map)
-      .filter(([, n]) => n > 0)
-      .map(([type, n]) => {
-        const meta = SHIP_META[type] ?? metaFor(DEFENSE_META, type);
-        return `${n}× ${meta.label}`;
-      });
-    return parts.join(', ');
+  /** Beziehung zu einem NPC-Feld (oder null). */
+  npcRelation(c: GalaxyCell): NpcRelation | null {
+    return c.npc_id ? this.relations()[c.npc_id] ?? null : null;
   }
 
-  fmtRes(res?: GalaxyIntel['resources'] | null): string {
-    if (!res) {
-      return '';
-    }
-    const parts: string[] = [];
-    for (const key of ['metal', 'crystal', 'deuterium'] as const) {
-      const val = res[key];
-      if (val != null) {
-        parts.push(`${metaFor(RESOURCE_META, key).label} ${val.toLocaleString('de-DE')}`);
-      }
-    }
-    return parts.join(' · ');
+  private readonly REL_META: Record<NpcRelationStatus, { glyph: string; label: string }> = {
+    neutral: { glyph: '◌', label: 'neutral' },
+    allied: { glyph: '🤝', label: 'verbündet' },
+    ceasefire: { glyph: '🕊', label: 'Waffenstillstand' },
+    hostile: { glyph: '⚔', label: 'feindlich' },
+    broken_pact: { glyph: '💔', label: 'Pakt gebrochen' },
+  };
+  relGlyph(s: NpcRelationStatus): string {
+    return this.REL_META[s]?.glyph ?? '◌';
   }
-
-  /** Aufklaerungs-Detail als Tooltip (Flotte/Verteidigung/Ressourcen) — entlastet die Liste. */
-  intelTip(t: GalaxyTarget): string {
-    const parts: string[] = [];
-    const f = this.fmtUnits(t.intel?.fleet);
-    if (f) { parts.push('Flotte: ' + f); }
-    const d = this.fmtUnits(t.intel?.defenses);
-    if (d) { parts.push('Verteidigung: ' + d); }
-    const r = this.fmtRes(t.intel?.resources);
-    if (r) { parts.push('Ressourcen: ' + r); }
-    return parts.length
-      ? parts.join('\n')
-      : `${t.ships_total} Schiffe · ${t.defenses_total} Verteidigung — mehr per Spionage`;
+  relLabel(s: NpcRelationStatus): string {
+    return this.REL_META[s]?.label ?? s;
+  }
+  relationTip(rel: NpcRelation): string {
+    const parts: string[] = [`Diplomatie: ${this.relLabel(rel.status)}`];
+    if (rel.tribute_metal_per_cycle > 0) {
+      parts.push(`Tribut: ${Math.round(rel.tribute_metal_per_cycle).toLocaleString('de-DE')} Metall/Zyklus`);
+    }
+    if (rel.betrayed_by_player) {
+      parts.push('Du hast einen Pakt gebrochen.');
+    }
+    if (rel.betrayed_by_npc) {
+      parts.push('Das Imperium hat dich verraten.');
+    }
+    parts.push('🎯 Steuern im Ziele-Screen.');
+    return parts.join('\n');
   }
 
   isOwn(c: GalaxyCell): boolean {

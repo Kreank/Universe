@@ -1,4 +1,27 @@
 export const dashboardStyles = `
+  /* Welle 5: Konjunktions-Karte (wandernde Galaxie) */
+  .conj-card { margin-bottom: var(--sp-4); }
+  .conj-card .panel-title { display: flex; align-items: baseline; gap: var(--sp-2); }
+  .conj-block + .conj-block { margin-top: var(--sp-3); }
+  .conj-head {
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: var(--sp-1);
+  }
+  .conj-row {
+    display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3);
+    padding: var(--sp-1) 0; border-top: 1px solid var(--border);
+  }
+  .conj-row:first-of-type { border-top: none; }
+  .conj-row.upcoming { opacity: 0.85; }
+  .conj-route { display: inline-flex; align-items: center; gap: var(--sp-1); font-variant-numeric: tabular-nums; }
+  .conj-arrow { color: var(--text-faint); }
+  .conj-disc {
+    font-variant-numeric: tabular-nums; font-weight: 600;
+    padding: 1px var(--sp-2); border-radius: var(--r-pill);
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  }
+  .conj-disc.boon { color: #3ddc97; border-color: rgba(61,220,151,0.35); }
+  .conj-disc.bane { color: var(--text-dim); }
+  .conj-cd { margin-left: auto; color: var(--text-dim); white-space: nowrap; }
   .sub { margin-top: calc(-1 * var(--sp-1)); font-size: var(--fs-sm); }
   .planet-name { color: var(--text); font-weight: 600; }
   /* Inline-Umbenennung des Planeten */
@@ -212,4 +235,121 @@ export const dashboardStyles = `
     box-shadow: 0 0 8px var(--band);
   }
   .span-line { margin-top: var(--sp-3); }
+
+  /* === Welle 4: Die erwachende Galaxie === */
+  /* Aggressions-Barometer — der „Puls" des Universums. --band = aktuelle Status-Farbe. */
+  .awakening-baro { border-left: 3px solid var(--band); }
+  .baro-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2);
+    margin-bottom: var(--sp-2);
+  }
+  .baro-title { font-weight: 600; letter-spacing: 0.02em; }
+  .baro-status {
+    font-size: var(--fs-sm); font-weight: 700; color: var(--band); text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .baro-bar {
+    position: relative; height: 12px; border-radius: var(--r-pill);
+    background: rgba(255,255,255,0.06); overflow: hidden; border: 1px solid var(--border-strong);
+  }
+  .baro-fill {
+    position: absolute; inset: 0 auto 0 0; height: 100%; border-radius: var(--r-pill);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--band) 55%, transparent), var(--band));
+    box-shadow: 0 0 12px var(--band);
+    transition: width var(--motion-slow) var(--ease-out);
+  }
+  .baro-tick {
+    position: absolute; top: -1px; bottom: -1px; width: 1px;
+    background: rgba(255,255,255,0.25); transform: translateX(-50%);
+  }
+  .baro-tick.peak { width: 2px; background: rgba(255,77,77,0.7); }
+  .baro-meta {
+    display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-2);
+    font-size: var(--fs-sm);
+  }
+  .baro-spark {
+    margin-left: auto; width: 96px; height: 20px; overflow: visible;
+  }
+  .baro-spark polyline {
+    fill: none; stroke: var(--band); stroke-width: 1.5;
+    stroke-linejoin: round; stroke-linecap: round;
+    filter: drop-shadow(0 0 3px var(--band));
+  }
+
+  /* „Der Erwachte"-Banner — dramatisch, ehrfurchtgebietend, oben im Dashboard. */
+  .warden-banner {
+    position: relative; display: flex; align-items: center; gap: var(--sp-4);
+    margin-bottom: var(--sp-4); padding: var(--sp-4) var(--sp-5);
+    border-radius: var(--r-md); text-decoration: none; color: var(--text);
+    overflow: hidden; cursor: pointer;
+    border: 1px solid rgba(255,77,77,0.55);
+    background:
+      radial-gradient(120% 140% at 0% 0%, rgba(255,77,77,0.20), transparent 60%),
+      linear-gradient(135deg, rgba(40,8,12,0.92), rgba(18,6,10,0.92));
+    box-shadow: 0 0 28px rgba(255,77,77,0.28), inset 0 0 40px rgba(255,77,77,0.06);
+    animation: warden-pulse 3.2s var(--ease-in-out) infinite;
+  }
+  @keyframes warden-pulse {
+    0%, 100% { box-shadow: 0 0 22px rgba(255,77,77,0.22), inset 0 0 40px rgba(255,77,77,0.05); }
+    50% { box-shadow: 0 0 40px rgba(255,77,77,0.42), inset 0 0 56px rgba(255,77,77,0.10); }
+  }
+  .warden-banner .wb-glow {
+    position: absolute; right: -40px; top: 50%; transform: translateY(-50%);
+    width: 220px; height: 220px; pointer-events: none;
+    background: radial-gradient(circle, rgba(255,140,60,0.28), transparent 70%);
+  }
+  .warden-banner .wb-body { position: relative; z-index: 1; flex: 1; min-width: 0; }
+  .wb-title {
+    font-size: var(--fs-xl); font-weight: 800; letter-spacing: 0.04em;
+    color: #ffd9a0; text-shadow: 0 0 14px rgba(255,120,40,0.55);
+  }
+  .wb-sub { font-size: var(--fs-sm); color: var(--text-dim); margin-top: 2px; }
+  .wb-stats {
+    display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3);
+  }
+  .wb-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: var(--fs-sm); font-variant-numeric: tabular-nums;
+    padding: 2px var(--sp-2); border-radius: var(--r-pill);
+    background: rgba(0,0,0,0.30); border: 1px solid rgba(255,255,255,0.10);
+  }
+  .wb-chip.danger { color: #ffb38a; border-color: rgba(255,77,77,0.45); }
+  .wb-fleet {
+    display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2);
+    font-size: var(--fs-xs); color: var(--text-faint);
+  }
+  .wb-ship {
+    padding: 1px var(--sp-2); border-radius: var(--r-sm);
+    background: rgba(255,255,255,0.04);
+  }
+  .warden-banner .wb-cta {
+    position: relative; z-index: 1; white-space: nowrap; align-self: center;
+    font-weight: 700; color: #ffd9a0;
+    transition: transform var(--motion-fast) var(--ease-out);
+  }
+  .warden-banner:hover .wb-cta { transform: translateX(3px); }
+
+  /* Alerts direkt nach dem Planeten-Header — volle Breite, etwas Abstand zur Spalten-Sektion. */
+  .alerts-top { margin-bottom: var(--sp-3); }
+
+  /* === Einklappbare Ambient-Karten (Konjunktionen / Aggressions-Barometer) === */
+  .collapsible { margin-bottom: var(--sp-3); }
+  /* Eingeklappt = nur eine schlanke Kopfzeile. */
+  .collapsible.collapsed { padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
+  .collapse-head {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+    width: 100%; font: inherit; text-align: left; cursor: pointer;
+    background: none; border: none; padding: 0; color: var(--text);
+    transition: color var(--motion-fast) var(--ease-out);
+  }
+  .collapse-head:hover { color: var(--accent); }
+  .collapse-head .ch-title {
+    display: inline-flex; align-items: baseline; gap: var(--sp-2);
+    font-weight: 600; letter-spacing: 0.02em;
+  }
+  .collapse-head .ch-arrow {
+    color: var(--text-dim); font-size: var(--fs-sm); flex: 0 0 auto;
+  }
+  .collapse-head:hover .ch-arrow { color: var(--accent); }
+  .collapse-body { margin-top: var(--sp-3); }
 `;

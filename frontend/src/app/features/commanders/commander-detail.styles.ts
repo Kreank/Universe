@@ -184,4 +184,109 @@ export const commanderDetailStyles = `
   }
   .set-th.active .th-n { border-color: var(--accent); color: var(--accent); }
   .chip.bonus.off { border-color: var(--border); color: var(--text-dim); background: transparent; }
+
+  /* --- Meuterei-Warnbanner (Welle 2) --- */
+  .mutiny-banner {
+    margin-bottom: var(--sp-4); padding: var(--sp-3) var(--sp-4);
+    border-radius: var(--r-md); border: 1px solid var(--warn);
+    background: color-mix(in srgb, var(--warn) 12%, transparent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--warn) 25%, transparent);
+  }
+  .mutiny-banner.acute {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 16%, transparent);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--danger) 38%, transparent);
+    animation: mutinyPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes mutinyPulse {
+    0%, 100% { box-shadow: 0 0 16px color-mix(in srgb, var(--danger) 30%, transparent); }
+    50% { box-shadow: 0 0 28px color-mix(in srgb, var(--danger) 55%, transparent); }
+  }
+  .mutiny-banner .mb-title {
+    font-family: var(--font-display); font-weight: 800; font-size: var(--fs-lg);
+    color: var(--warn); letter-spacing: 0.02em;
+  }
+  .mutiny-banner.acute .mb-title { color: var(--danger); }
+  .mutiny-banner .mb-body { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--text-dim); }
+
+  /* --- Rechte Spalte: Innenleben + Historie --- */
+  .col-right { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+  .innenleben { display: flex; flex-direction: column; gap: var(--sp-3); }
+  .il-block { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .il-head {
+    font-family: var(--font-display); font-size: var(--fs-xs); text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-dim);
+    border-bottom: 1px solid var(--border); padding-bottom: var(--sp-1);
+  }
+
+  /* Erinnerungs-Narrativ */
+  .memory-summary {
+    margin: 0; padding: var(--sp-3); border-left: 3px solid var(--accent);
+    background: var(--accent-soft); border-radius: var(--r-sm);
+    font-style: italic; color: var(--text); line-height: 1.5;
+  }
+
+  /* Groll */
+  .grievance-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+  .grievance {
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-2); border-radius: var(--r-sm);
+    border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--border));
+    background: color-mix(in srgb, var(--warn) 6%, transparent);
+  }
+  .grievance.sev-high { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+  .grievance .g-dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: var(--r-pill); background: var(--warn); }
+  .grievance.sev-high .g-dot { background: var(--danger); }
+  .grievance .g-label { flex: 1; font-size: var(--fs-sm); }
+  .grievance .g-count { font-family: var(--mono); font-size: var(--fs-xs); color: var(--warn); }
+  .grievance .g-sev { font-family: var(--mono); font-size: var(--fs-xs); color: var(--text-dim); }
+
+  /* Meinungen & Beziehungen (gemeinsame Optik) */
+  .opinion, .relation {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: var(--sp-2); border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+    margin-bottom: var(--sp-1); text-decoration: none; color: var(--text);
+  }
+  .relation { cursor: pointer; }
+  .relation:hover { border-color: var(--accent); }
+  .opinion.hated { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+  .op-row { display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap; }
+  .op-verb {
+    font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm);
+  }
+  .op-target { font-weight: 600; font-size: var(--fs-sm); }
+  .op-kind { margin-left: auto; }
+  .rel-arrow { margin-left: auto; color: var(--text-faint); }
+  .archenemy {
+    font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xs);
+    color: var(--danger); letter-spacing: 0.04em;
+  }
+  /* Stimmungs-/Beziehungs-Farben fuer Verb + Balken */
+  .op-respects, .rel-respect, .rel-bond { color: var(--ok); }
+  .op-fears, .op-despises, .rel-grudge { color: var(--danger); }
+  .op-envies, .rel-rivalry { color: var(--warn); }
+  .op-bar { height: 6px; }
+  .op-bar .fill { display: block; height: 100%; border-radius: var(--r-pill); background: var(--accent); }
+  .op-bar.op-respects .fill, .op-bar.rel-respect .fill, .op-bar.rel-bond .fill { background: var(--ok); }
+  .op-bar.op-fears .fill, .op-bar.op-despises .fill, .op-bar.rel-grudge .fill { background: var(--danger); }
+  .op-bar.op-envies .fill, .op-bar.rel-rivalry .fill { background: var(--warn); }
+
+  /* Gedaechtnis-Timeline (sentiment-gefaerbt) */
+  .mem-timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+  .mem-timeline::before {
+    content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--border);
+  }
+  .mem { position: relative; padding: 0 0 var(--sp-3) var(--sp-4); }
+  .mem .mem-dot {
+    position: absolute; left: 0; top: 4px; width: 12px; height: 12px;
+    border-radius: var(--r-pill); border: 2px solid var(--bg); background: var(--text-faint);
+  }
+  .mem.sent-positive .mem-dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .mem.sent-negative .mem-dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  .mem.sent-neutral .mem-dot { background: var(--text-dim); }
+  .mem-entry { border-left: 2px solid transparent; padding-left: var(--sp-2); }
+  .mem.sent-positive .mem-entry { border-left-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+  .mem.sent-negative .mem-entry { border-left-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+  .mem-ctx { color: var(--text-dim); margin: 2px 0 0; }
 `;

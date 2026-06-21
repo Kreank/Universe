@@ -129,8 +129,27 @@ async def run(job: Job, db: Database, ollama: OllamaClient, redis: aioredis.Redi
         raise  # transient -> Job zurueckstellen
 
     # 2) EINEN Funkspruch erzeugen, gegen die Bank deduplizieren (Retry).
+    # Welle 2: Erinnerungs-Narrativ (persona.memory_summary) + Meinung ueber DIESEN Gegner
+    # (frisch aus der DB, der Kampf-Hook hat sie bereits committet) faerben den Funkspruch.
+    persona = data.get("persona")
+    if isinstance(persona, str):
+        try:
+            persona = json.loads(persona)
+        except (json.JSONDecodeError, TypeError):
+            persona = {}
+    memory_summary = (persona or {}).get("memory_summary") if isinstance(persona, dict) else None
+    opinion = None
+    about_player_id = getattr(job.context, "about_player_id", None)
+    about_npc_id = getattr(job.context, "about_npc_id", None)
+    if about_player_id or about_npc_id:
+        rec = await db.get_commander_opinion_about(str(data["id"]), about_player_id, about_npc_id)
+        if rec is not None:
+            opinion = {"opinion_type": rec["opinion_type"], "strength": rec["strength"]}
+
     system = build_system_prompt(data)
-    user = build_big_moment_prompt(data, situation, job.context, lore)
+    user = build_big_moment_prompt(
+        data, situation, job.context, lore, memory_summary=memory_summary, opinion=opinion
+    )
 
     body: str | None = None
     candidate = ""

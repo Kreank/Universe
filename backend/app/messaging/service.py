@@ -169,6 +169,11 @@ async def after_combat_reaction(
                 "planet": context.get("planet"),
                 "loot": context.get("loot"),
                 "outcome": context.get("outcome"),
+                # Welle 2: Gegner-Identitaet -> der ai-worker laedt die FRISCHE Meinung des
+                # Kommandeurs ueber diesen Gegner (verhasst/gefuerchtet/geachtet) + sein
+                # Erinnerungs-Narrativ und faerbt den Funkspruch spuerbar.
+                "about_player_id": context.get("about_player_id"),
+                "about_npc_id": context.get("about_npc_id"),
             },
         })
 

@@ -685,6 +685,14 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
                 npc_fleet[typ] = npc_fleet.get(typ, 0) + int(n)
         npc.fleet = npc_fleet
         npc.resources = npc_resources
+        # Welle 4: War der Verteidiger der Erwachte Wächter? -> Teilnahme verbuchen + bei
+        # vollständiger Zerschlagung den Sieg auslösen (Belohnung + Beruhigung). Best-effort.
+        if npc.behavior_profile == "warden":
+            try:
+                from app.awakening.service import note_warden_combat
+                await note_warden_combat(session, npc, fleet.player_id, winner)
+            except Exception:  # noqa: BLE001 — der Wächter-Hook darf den Kampf nie brechen
+                log.exception("Wächter-Combat-Hook fehlgeschlagen")
     elif def_planet is not None:
         # PvP: Spieler-Garnison auf Ueberlebende, Verteidigung mit Regen, Kaperungen stationieren.
         def_survivors = dict(result["defender_survivors"])
@@ -949,9 +957,39 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
             "planet": location,
             "loot": loot,
             "outcome": "win" if winner == "attacker" else "loss",
+            # Welle 2: Gegner-Identitaet -> Funkspruch kann Meinung/Erinnerung beruecksichtigen.
+            "about_player_id": str(defender_player_id) if defender_player_id else None,
+            "about_npc_id": str(npc.id) if npc is not None else None,
         },
         decisive=decisive,
     )
+
+    # -- Gedaechtnis & Eigenleben (Welle 2): Erinnerung + Meinung ueber den Gegner -----------
+    # Best-effort (darf den Kampf-Auflöser nie stoeren). Strength-Ratio = Gegner/eigen, grob aus
+    # den Imperiumswerten geschaetzt und situationsabhaengig moduliert (crushing = schwach,
+    # close_win = stark) -> die KI-Funksprueche faerben sich spuerbar (verhasster Gegner etc.).
+    if commander is not None:
+        from app.commander.memory import on_combat_memory
+        _ratio = 1.0
+        if def_player is not None and attacker_player is not None:
+            _ratio = (float(def_player.score or 0) + 1.0) / (float(attacker_player.score or 0) + 1.0)
+        if situation == "crushing_victory":
+            _ratio *= 0.6
+        elif situation == "close_win":
+            _ratio *= 1.4
+        _heavy = commander_outcome.get("status") in ("wounded", "dead") or sum(atk_survivors.values()) == 0
+        await on_combat_memory(
+            session, commander,
+            situation=situation,
+            winner_is_attacker=(winner == "attacker"),
+            enemy_name=enemy_name,
+            enemy_player_id=defender_player_id,
+            enemy_npc_id=npc.id if npc is not None else None,
+            planet=location,
+            loot=loot,
+            strength_ratio=_ratio,
+            heavy_losses=bool(_heavy),
+        )
 
     # NPC-Imperium funkt zurueck (Phase 1): Trotz bei gelungener Abwehr / Rache nach Niederlage.
     if npc is not None:
@@ -1116,6 +1154,9 @@ async def _apply_commander(
         if _gidx >= grade_order.index(prog["grade_bonus_from"]):
             gained += int(prog["grade_bonus_points"])
         commander.skill_points = int(commander.skill_points or 0) + gained
+        # Gedaechtnis (Welle 2): Befoerderung als positive Erinnerung + legt Befoerderungs-Groll bei.
+        from app.commander.memory import on_promotion_memory
+        await on_promotion_memory(session, commander, new_rank["key"])
 
     # Permadeath/Evakuierung nur, wenn die Flotte des Commanders vernichtet ist.
     fleet_wiped = sum(atk_survivors.values()) == 0
