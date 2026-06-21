@@ -170,7 +170,9 @@ def test_warp_stabilizer_counters_interdictor():
 def test_boarder_captures_stranded_ships():
     """Piraterie-Loop: EWAR-Fregatten (Ionen) stranden die Kreuzer (Antrieb 0, Huelle heil),
     Enterschiffe kapern die Gestrandeten -> der Angreifer gewinnt die Schiffe."""
-    attacker = {"ships": {"ewar_frigate": 40, "boarder": 10}, "tech": {}, "attack_mult": 1.0}
+    # Wenige Enterer: gebuffte Enterschiffe (attack 150) wuerden in Masse die gestrandeten
+    # Kreuzer zerstoeren statt kapern -> wenige reichen, um die Kaper-Mechanik zu zeigen.
+    attacker = {"ships": {"ewar_frigate": 40, "boarder": 3}, "tech": {}, "attack_mult": 1.0}
     defender = {"ships": {"cruiser": 8}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
     result = simulate_battle(attacker, defender, 5, BALANCE)
     captured = result["attacker_captured"].get("cruiser", 0)
@@ -221,7 +223,7 @@ def test_capture_priority_prefers_chosen_type():
 def test_escort_point_defense_blocks_boarding():
     """Eskort-Fregatten (Punktverteidigung) fangen Enterer ab: dieselbe Pirat-Flotte kapert
     OHNE Eskorte die Kreuzer, MIT genug Eskorten gelingt keine Kaperung."""
-    pirates = {"ships": {"ewar_frigate": 40, "boarder": 10}, "tech": {}, "attack_mult": 1.0}
+    pirates = {"ships": {"ewar_frigate": 40, "boarder": 3}, "tech": {}, "attack_mult": 1.0}
     bare = {"ships": {"cruiser": 8}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
     escorted = {"ships": {"cruiser": 8, "escort_frigate": 25}, "defenses": {}, "tech": {}, "attack_mult": 1.0}
     r_bare = simulate_battle(pirates, bare, 5, BALANCE)

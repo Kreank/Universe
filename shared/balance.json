@@ -1391,8 +1391,8 @@
         "crystal": 12000,
         "deuterium": 5000
       },
-      "attack": 60,
-      "shield": 150,
+      "attack": 200,
+      "shield": 250,
       "cargo": 500,
       "speed": 9000,
       "fuel": 300,
@@ -1429,8 +1429,8 @@
         "crystal": 12000,
         "deuterium": 4000
       },
-      "attack": 60,
-      "shield": 50,
+      "attack": 150,
+      "shield": 300,
       "cargo": 5000,
       "speed": 7000,
       "fuel": 400,
@@ -1444,12 +1444,12 @@
     },
     "stealth_corvette": {
       "cost": {
-        "metal": 8000,
-        "crystal": 8000,
+        "metal": 10000,
+        "crystal": 10000,
         "deuterium": 2000
       },
       "attack": 150,
-      "shield": 10,
+      "shield": 80,
       "cargo": 100,
       "speed": 16000,
       "fuel": 150,
@@ -1486,8 +1486,8 @@
         "crystal": 10000,
         "deuterium": 6000
       },
-      "attack": 100,
-      "shield": 120,
+      "attack": 180,
+      "shield": 200,
       "cargo": 200,
       "speed": 12000,
       "fuel": 300,
@@ -1505,7 +1505,7 @@
         "crystal": 25000,
         "deuterium": 5000
       },
-      "attack": 0,
+      "attack": 150,
       "shield": 1000,
       "cargo": 200,
       "speed": 6000,
@@ -1684,6 +1684,7 @@
       },
       "capstone": "harvest_command"
     }
+
 
 
 ,
@@ -2086,8 +2087,8 @@
         "deuterium": 6500,
         "antimatter": 1200
       },
-      "attack": 75,
-      "shield": 188,
+      "attack": 250,
+      "shield": 312,
       "cargo": 625,
       "speed": 11250,
       "fuel": 390,
@@ -2130,8 +2131,8 @@
         "deuterium": 5200,
         "antimatter": 1680
       },
-      "attack": 75,
-      "shield": 62,
+      "attack": 188,
+      "shield": 375,
       "cargo": 6250,
       "speed": 8750,
       "fuel": 520,
@@ -2147,13 +2148,13 @@
     },
     "stealth_corvette_mk2": {
       "cost": {
-        "metal": 10400,
-        "crystal": 10400,
+        "metal": 13000,
+        "crystal": 13000,
         "deuterium": 2600,
-        "antimatter": 640
+        "antimatter": 800
       },
       "attack": 188,
-      "shield": 12,
+      "shield": 100,
       "cargo": 125,
       "speed": 20000,
       "fuel": 195,
@@ -2196,8 +2197,8 @@
         "deuterium": 7800,
         "antimatter": 960
       },
-      "attack": 125,
-      "shield": 150,
+      "attack": 225,
+      "shield": 250,
       "cargo": 250,
       "speed": 15000,
       "fuel": 390,
@@ -2218,7 +2219,7 @@
         "deuterium": 6500,
         "antimatter": 1800
       },
-      "attack": 0,
+      "attack": 188,
       "shield": 1250,
       "cargo": 250,
       "speed": 7500,
@@ -2597,7 +2598,7 @@
       "stabilizer": true
     },
     "shield_tender": {
-      "weapon_type": null,
+      "weapon_type": "kinetic",
       "drive": 2,
       "range": "medium",
       "shield_projector": true
@@ -2704,6 +2705,7 @@
       "drive": 0,
       "range": "far"
     }
+
 
 
 ,
@@ -2825,7 +2827,7 @@
       "stabilizer": true
     },
     "shield_tender_mk2": {
-      "weapon_type": null,
+      "weapon_type": "kinetic",
       "drive": 2,
       "range": "medium",
       "shield_projector": true
