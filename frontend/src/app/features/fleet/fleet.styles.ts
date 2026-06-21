@@ -86,4 +86,23 @@ export const fleetStyles = `
     .fleet-row { padding: var(--sp-3) 0; }
     .fleet-act .btn { min-height: 44px; }
   }
+
+  .hangar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: var(--sp-2);
+  }
+  .hship {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: var(--sp-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: rgba(255, 255, 255, 0.02);
+    text-align: center;
+  }
+  .hship-name { font-size: var(--fs-xs); color: var(--text-dim); line-height: 1.1; }
+  .hship-count { font-size: var(--fs-base); color: var(--text); font-variant-numeric: tabular-nums; }
 `;

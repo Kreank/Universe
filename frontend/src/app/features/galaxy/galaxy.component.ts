@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
+import { NotificationService } from '../../core/services/notification.service';
 import {
   Coordinate,
   FleetMission,
@@ -17,6 +18,9 @@ import {
 import { missionIcon, navIcon, uiIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
+import { NpcNegotiateComponent } from '../../shared/components/npc-negotiate.component';
+import { MessageComposeComponent } from '../../shared/components/message-compose.component';
+import { PhalanxPanelComponent } from '../../shared/components/phalanx-panel.component';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { galaxyStyles } from './galaxy.styles';
@@ -41,10 +45,20 @@ interface DispatchCtx {
 @Component({
   selector: 'app-galaxy',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, ShortNumberPipe, BtnIconComponent, FleetDispatchComponent, CountdownComponent],
+  host: { '(document:keydown.escape)': 'closeActions()' },
+  imports: [
+    FormsModule,
+    ShortNumberPipe,
+    BtnIconComponent,
+    FleetDispatchComponent,
+    NpcNegotiateComponent,
+    MessageComposeComponent,
+    PhalanxPanelComponent,
+    CountdownComponent,
+  ],
   template: `
     <h1>Galaxie · Karte</h1>
-    <p class="sub">Erkunde Systeme und navigiere die Galaxie. Gegner anzeigen → über „🎯 im Ziele-Screen steuern" handeln (Angriff/Spionage/Diplomatie); Asteroiden/Trümmer/Monde direkt am Ziel.</p>
+    <p class="sub">Erkunde Systeme und navigiere die Galaxie. Schnellaktionen per Klick aufs Ziel — Angriff/Spionage/Diplomatie/Transport, Asteroiden/Trümmer/Monde inklusive.</p>
 
     <div class="grid layout">
       <!-- System-Scanner ------------------------------------------------ -->
@@ -100,7 +114,13 @@ interface DispatchCtx {
         } @else {
           <div class="positions">
             @for (c of cells(); track c.position) {
-              <div class="row" [class]="rowClass(c)">
+              <div class="row" [class]="rowClass(c)" [class.actionable]="hasActions(c)"
+                   [attr.role]="hasActions(c) ? 'button' : null"
+                   [attr.tabindex]="hasActions(c) ? 0 : null"
+                   [attr.title]="hasActions(c) ? 'Schnellaktionen am Ziel öffnen' : null"
+                   (click)="hasActions(c) && openActions(c)"
+                   (keydown.enter)="hasActions(c) && openActions(c)"
+                   (keydown.space)="hasActions(c) && openActions(c)">
                 <span class="pos mono">{{ c.position }}</span>
                 <div class="vis">
                   @if (cellImage(c); as img) {
@@ -138,66 +158,14 @@ interface DispatchCtx {
                       <span class="chip rel tip" [attr.data-tip]="relationTip(rel)">{{ relGlyph(rel.status) }} {{ relLabel(rel.status) }}</span>
                     }
                   }
+                  @if (isHostile(c) && c.discovered) {
+                    <span class="chip disc tip" data-tip="Automatisch aufgeklärt: spawnte nahe deinem Planeten (≤ 8 Systeme)."><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="14" /> aufgeklärt</span>
+                  }
                 </div>
-                @if (c.asteroid) {
-                  <div class="acts">
-                    <button class="ic mine" type="button" (click)="openDispatch(cellCoord(c), 'Asteroidenfeld', 'mine')" title="Hier Erz abbauen (Bergbauschiff nötig)"><app-btn-icon [src]="missionIcon('mine')" glyph="⛏" [size]="18" /></button>
-                  </div>
-                }
-                @if (c.debris) {
-                  <div class="acts">
-                    <button class="ic recycle" type="button" (click)="openDispatch(cellCoord(c), 'Trümmerfeld', 'recycle')" title="Trümmerfeld abbauen (Recycler nötig)"><app-btn-icon [src]="missionIcon('recycle')" glyph="♻" [size]="18" /></button>
-                  </div>
-                }
-                @if (c.event; as ev) {
-                  <div class="acts">
-                    @if (ev.event_type === 'cosmic_anomaly') {
-                      <button class="ic spy" type="button" (click)="openDispatch(cellCoord(c), 'Anomalie', 'spy')" title="Spionagesonde schicken → Forschungstempo-Buff"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="18" /></button>
-                    }
-                    @if (ev.event_type === 'utopia_shipyard' || ev.event_type === 'black_market') {
-                      <button class="ic trp" type="button" (click)="openDispatch(cellCoord(c), eventLabel(ev.event_type), 'transport')" title="Per Transport liefern/handeln"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" [size]="18" /></button>
-                    }
-                  </div>
-                }
-                @if (c.moon; as m) {
-                  @if (!m.own) {
-                    <div class="acts">
-                      <button class="ic spy" type="button" (click)="openDispatch(cellCoord(c), m.name, 'spy', 'moon')" title="Mond spionieren"><app-btn-icon [src]="missionIcon('spy')" glyph="🌙🛰" [size]="18" /></button>
-                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), m.name, 'attack', 'moon')" title="Mond angreifen"><app-btn-icon [src]="missionIcon('attack')" glyph="🌙⚔" [size]="18" /></button>
-                    </div>
-                  }
-                }
-                @if (c.station; as st) {
-                  @if (!st.mine && st.status !== 'destroyed') {
-                    <div class="acts">
-                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), 'Allianz-Station [' + st.tag + ']', 'attack', 'station')" title="Allianz-Station belagern — chippt die Hülle; zur Zerstörung ≥2 verschiedene Angreifer nötig"><app-btn-icon [src]="missionIcon('attack')" glyph="🛰⚔" [size]="18" /></button>
-                    </div>
-                  }
-                }
-                @if (c.mining_fleet; as mf) {
-                  @if (!mf.mine) {
-                    <div class="acts">
-                      <button class="ic atk" type="button" (click)="openDispatch(cellCoord(c), '⛏ Flotte [' + (mf.owner ?? '?') + ']', 'attack', 'mining_fleet')" title="Schürfende Bergbauflotte angreifen — bei Sieg wird ihre Fracht (Erz + Exoten) erbeutet"><app-btn-icon [src]="missionIcon('attack')" glyph="⛏⚔" [size]="18" /></button>
-                    </div>
-                  }
-                }
-                @if (isHostile(c)) {
-                  <div class="acts steer">
-                    @if (c.discovered) {
-                      <span class="chip disc tip" data-tip="Automatisch aufgeklärt: spawnte nahe deinem Planeten (≤ 8 Systeme)."><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="14" /> aufgeklärt</span>
-                    }
-                    <a class="steer-hint" routerLink="/targets" title="NPC-Imperien & Spieler werden jetzt im Ziele-Screen gesteuert: Angriff, Spionage, Diplomatie, Transport, Nachricht, Phalanx.">🎯 im Ziele-Screen steuern →</a>
-                  </div>
-                } @else if (isOwn(c)) {
+                @if (isOwn(c)) {
                   <span class="chip own">dein Planet</span>
-                } @else if (c.occupant_type === 'deep_space') {
-                  <div class="acts">
-                    <button class="ic exp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'expedition')" title="Expedition in die galaktischen Weiten (Expeditionsschiff + Astrophysik nötig)"><app-btn-icon [src]="missionIcon('expedition')" glyph="🌌" [size]="18" /></button>
-                  </div>
-                } @else if (c.occupant_type === 'empty' && !c.station) {
-                  <div class="acts">
-                    <button class="ic col" type="button" (click)="openDispatch(cellCoord(c), null, 'colonize')" title="Hier kolonisieren (Kolonieschiff nötig)"><app-btn-icon [src]="missionIcon('colonize')" glyph="🌱" [size]="18" /></button>
-                  </div>
+                } @else if (hasActions(c) && c.occupant_type !== 'empty') {
+                  <span class="act-hint" aria-hidden="true">⚡</span>
                 }
               </div>
             }
@@ -206,6 +174,77 @@ interface DispatchCtx {
       </section>
 
     </div>
+
+    <!-- Klick→Overlay: kompaktes "Aktionen am Ziel"-Menü (kontextabhängige Schnellaktionen). -->
+    @if (actionMenu(); as c) {
+      <div class="am-backdrop" (click)="closeActions()">
+        <div class="glass am-popup" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+          <button class="x" type="button" (click)="closeActions()" aria-label="Schliessen">✕</button>
+          <header class="am-head">
+            <h2>{{ occupantLabel(c) }}@if (c.name) { <span class="faint"> · {{ c.name }}</span> }</h2>
+            <span class="coord mono">[{{ viewG }}:{{ viewS }}:{{ c.position }}]</span>
+          </header>
+          <div class="am-grid">
+            @if (c.occupant_type === 'npc') {
+              <button class="am-act atk" type="button" (click)="openDispatch(cellCoord(c), c.name, 'attack')"><app-btn-icon [src]="missionIcon('attack')" glyph="⚔" [size]="18" /> <span>Angreifen</span></button>
+              <button class="am-act trp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'transport')"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" [size]="18" /> <span>Transport</span></button>
+              <button class="am-act col" type="button" (click)="openDispatch(cellCoord(c), c.name, 'deploy')"><app-btn-icon [src]="missionIcon('deploy')" glyph="🛬" [size]="18" /> <span>Stationieren</span></button>
+              <button class="am-act spy" type="button" (click)="quickSpy(cellCoord(c), c.name)"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="18" /> <span>Spionage</span></button>
+              @if (c.npc_id) {
+                <button class="am-act dipl" type="button" (click)="openNegotiate(c.npc_id!, c.name)"><app-btn-icon [src]="navIcon('diplomacy')" glyph="🕊" [size]="18" /> <span>Diplomatie</span></button>
+              }
+              <button class="am-act phx" type="button" (click)="openPhalanx(cellCoord(c))"><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" [size]="18" /> <span>Phalanx</span></button>
+            }
+            @if (c.occupant_type === 'player' && !isOwn(c)) {
+              <button class="am-act atk" type="button" (click)="openDispatch(cellCoord(c), c.name, 'attack')"><app-btn-icon [src]="missionIcon('attack')" glyph="⚔" [size]="18" /> <span>Angreifen</span></button>
+              <button class="am-act trp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'transport')"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" [size]="18" /> <span>Transport</span></button>
+              <button class="am-act col" type="button" (click)="openDispatch(cellCoord(c), c.name, 'deploy')"><app-btn-icon [src]="missionIcon('deploy')" glyph="🛬" [size]="18" /> <span>Stationieren</span></button>
+              <button class="am-act spy" type="button" (click)="quickSpy(cellCoord(c), c.name)"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="18" /> <span>Spionage</span></button>
+              @if (c.player_id) {
+                <button class="am-act msg" type="button" (click)="openCompose(c.player_id!, c.name ?? c.player_name ?? 'Spieler')"><app-btn-icon [src]="navIcon('mail')" glyph="✉" [size]="18" /> <span>Nachricht</span></button>
+              }
+              <button class="am-act phx" type="button" (click)="openPhalanx(cellCoord(c))"><app-btn-icon [src]="'assets/img/buildings/sensorphalanx.png'" glyph="📡" [size]="18" /> <span>Phalanx</span></button>
+            }
+            @if (c.moon; as m) {
+              @if (!m.own) {
+                <button class="am-act atk" type="button" (click)="openDispatch(cellCoord(c), m.name, 'attack', 'moon')"><app-btn-icon [src]="missionIcon('attack')" glyph="🌙⚔" [size]="18" /> <span>Mond angreifen</span></button>
+                <button class="am-act spy" type="button" (click)="openDispatch(cellCoord(c), m.name, 'spy', 'moon')"><app-btn-icon [src]="missionIcon('spy')" glyph="🌙🛰" [size]="18" /> <span>Mond spionieren</span></button>
+              }
+            }
+            @if (c.station; as st) {
+              @if (!st.mine && st.status !== 'destroyed') {
+                <button class="am-act atk" type="button" (click)="openDispatch(cellCoord(c), 'Allianz-Station [' + st.tag + ']', 'attack', 'station')"><app-btn-icon [src]="missionIcon('attack')" glyph="🛰⚔" [size]="18" /> <span>Station belagern</span></button>
+              }
+            }
+            @if (c.mining_fleet; as mf) {
+              @if (!mf.mine) {
+                <button class="am-act atk" type="button" (click)="openDispatch(cellCoord(c), '⛏ Flotte [' + (mf.owner ?? '?') + ']', 'attack', 'mining_fleet')"><app-btn-icon [src]="missionIcon('attack')" glyph="⛏⚔" [size]="18" /> <span>Flotte angreifen</span></button>
+              }
+            }
+            @if (c.asteroid) {
+              <button class="am-act mine" type="button" (click)="openDispatch(cellCoord(c), 'Asteroidenfeld', 'mine')"><app-btn-icon [src]="missionIcon('mine')" glyph="⛏" [size]="18" /> <span>Minen</span></button>
+            }
+            @if (c.debris) {
+              <button class="am-act recycle" type="button" (click)="openDispatch(cellCoord(c), 'Trümmerfeld', 'recycle')"><app-btn-icon [src]="missionIcon('recycle')" glyph="♻" [size]="18" /> <span>Recyceln</span></button>
+            }
+            @if (c.event; as ev) {
+              @if (ev.event_type === 'cosmic_anomaly') {
+                <button class="am-act spy" type="button" (click)="openDispatch(cellCoord(c), 'Anomalie', 'spy')"><app-btn-icon [src]="missionIcon('spy')" glyph="🛰" [size]="18" /> <span>Anomalie spähen</span></button>
+              }
+              @if (ev.event_type === 'utopia_shipyard' || ev.event_type === 'black_market') {
+                <button class="am-act trp" type="button" (click)="openDispatch(cellCoord(c), eventLabel(ev.event_type), 'transport')"><app-btn-icon [src]="missionIcon('transport')" glyph="🚚" [size]="18" /> <span>Liefern/Handeln</span></button>
+              }
+            }
+            @if (c.occupant_type === 'deep_space') {
+              <button class="am-act exp" type="button" (click)="openDispatch(cellCoord(c), c.name, 'expedition')"><app-btn-icon [src]="missionIcon('expedition')" glyph="🌌" [size]="18" /> <span>Expedition</span></button>
+            }
+            @if (c.occupant_type === 'empty' && !c.station) {
+              <button class="am-act col" type="button" (click)="openDispatch(cellCoord(c), null, 'colonize')"><app-btn-icon [src]="missionIcon('colonize')" glyph="🌱" [size]="18" /> <span>Kolonisieren</span></button>
+            }
+          </div>
+        </div>
+      </div>
+    }
 
     @if (dispatch(); as d) {
       <app-fleet-dispatch
@@ -217,6 +256,24 @@ interface DispatchCtx {
         (close)="dispatch.set(null)"
       />
     }
+    @if (negotiate(); as n) {
+      <app-npc-negotiate
+        [npcId]="n.npcId"
+        [npcName]="n.name"
+        (changed)="scan()"
+        (close)="negotiate.set(null)"
+      />
+    }
+    @if (composePlayer(); as cp) {
+      <app-message-compose
+        [toPlayerId]="cp.id"
+        [toName]="cp.name"
+        (close)="composePlayer.set(null)"
+      />
+    }
+    @if (phalanxTarget(); as pt) {
+      <app-phalanx-panel [target]="pt" (close)="phalanxTarget.set(null)" />
+    }
   `,
   styles: [galaxyStyles],
 })
@@ -225,6 +282,10 @@ export class GalaxyComponent {
   protected readonly state = inject(GameStateService);
   private readonly balance = inject(BalanceService);
   private readonly route = inject(ActivatedRoute);
+  private readonly notify = inject(NotificationService);
+
+  /** Standard-Sondenzahl der Schnell-Spionage (analog Ziele-Screen). */
+  private readonly DEFAULT_PROBES = 3;
 
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly missionIcon = missionIcon;
@@ -253,6 +314,12 @@ export class GalaxyComponent {
   protected readonly zones = signal<AllianceZone[]>([]);
   protected readonly loading = signal(false);
   protected readonly dispatch = signal<DispatchCtx | null>(null);
+  /** Klick→Overlay: aktuell im "Aktionen am Ziel"-Menü gewählte Zelle (oder null). */
+  protected readonly actionMenu = signal<GalaxyCell | null>(null);
+  /** Geteilte Fach-Overlays (gespiegelt vom Ziele-Screen). */
+  protected readonly negotiate = signal<{ npcId: string; name: string | null } | null>(null);
+  protected readonly composePlayer = signal<{ id: string; name: string } | null>(null);
+  protected readonly phalanxTarget = signal<Coordinate | null>(null);
   /** Beziehungen zu NPC-Imperien je npc_id (fuer Status-Badge in der Zelle). */
   protected readonly relations = signal<Record<string, NpcRelation>>({});
   /** Welle 5: aktive Konjunktions-Fenster (wandernde Galaxie) — fuer den System-Marker. */
@@ -354,10 +421,95 @@ export class GalaxyComponent {
     return { galaxy: this.viewG, system: this.viewS, position: c.position };
   }
 
+  // --- Klick→Aktions-Overlay --------------------------------------------
+  /** Verfuegbare Spionagesonden auf dem aktiven Planeten (Schnell-Spionage). */
+  private probeCount(): number {
+    return this.state.activePlanet()?.ships?.find((s) => s.type === 'spy_probe')?.count ?? 0;
+  }
+
+  /** Hat die Zelle kontext-passende Schnellaktionen (-> Zeile klickbar)? Eigene Felder: nein. */
+  hasActions(c: GalaxyCell): boolean {
+    if (this.isOwn(c)) {
+      return false;
+    }
+    return !!(
+      this.isHostile(c) ||
+      (c.moon && !c.moon.own) ||
+      (c.station && !c.station.mine && c.station.status !== 'destroyed') ||
+      (c.mining_fleet && !c.mining_fleet.mine) ||
+      c.asteroid ||
+      c.debris ||
+      (c.event && ['cosmic_anomaly', 'utopia_shipyard', 'black_market'].includes(c.event.event_type)) ||
+      c.occupant_type === 'deep_space' ||
+      (c.occupant_type === 'empty' && !c.station)
+    );
+  }
+
+  /** Klick auf ein aktionierbares Ziel -> kompaktes Aktions-Overlay oeffnen. */
+  openActions(c: GalaxyCell): void {
+    this.actionMenu.set(c);
+  }
+
+  /** Aktions-Overlay schliessen (ESC/Backdrop/nach Auswahl einer Aktion). */
+  closeActions(): void {
+    this.actionMenu.set(null);
+  }
+
   // --- Schnellaktionen ---------------------------------------------------
-  /** Versand-Overlay fuer Angriff/Transport am Ziel oeffnen. */
+  /** Versand-Overlay fuer Angriff/Transport/… am Ziel oeffnen (schliesst das Aktions-Menü). */
   openDispatch(target: Coordinate, name: string | null, mission: FleetMission, targetType?: 'moon' | 'station' | 'mining_fleet'): void {
+    this.actionMenu.set(null);
     this.dispatch.set({ target, name, mission, targetType });
+  }
+
+  /** Diplomatie-Overlay (npc-negotiate) am NPC-Imperium oeffnen. */
+  openNegotiate(npcId: string, name: string | null): void {
+    this.actionMenu.set(null);
+    this.negotiate.set({ npcId, name });
+  }
+
+  /** Nachricht-Overlay (message-compose) an einen Spieler oeffnen. */
+  openCompose(playerId: string, name: string): void {
+    this.actionMenu.set(null);
+    this.composePlayer.set({ id: playerId, name });
+  }
+
+  /** Sensorphalanx-Overlay am Ziel oeffnen. */
+  openPhalanx(target: Coordinate): void {
+    this.actionMenu.set(null);
+    this.phalanxTarget.set(target);
+  }
+
+  /** Ein-Klick-Spionage: schickt sofort Standard-Sonden zum Ziel (analog Ziele-Screen). */
+  quickSpy(target: Coordinate, _name: string | null): void {
+    this.actionMenu.set(null);
+    const origin = this.state.activePlanetId();
+    if (!origin) {
+      return;
+    }
+    const probes = Math.min(this.probeCount(), this.DEFAULT_PROBES);
+    if (probes < 1) {
+      this.notify.warning('Keine Spionagesonden', 'Baue Spionagesonden in der Werft, um zu spähen.');
+      return;
+    }
+    this.api
+      .sendFleet({
+        origin_planet_id: origin,
+        target,
+        mission: 'spy',
+        ships: { spy_probe: probes },
+        cargo: { metal: 0, crystal: 0, deuterium: 0 },
+        commander_id: null,
+        speed_pct: 100,
+      })
+      .subscribe({
+        next: () => {
+          this.notify.success('Sonden unterwegs', `${probes} Spionagesonde(n) gestartet → [${target.galaxy}:${target.system}:${target.position}].`);
+          void this.state.reloadFleets();
+          void this.state.reloadActivePlanet();
+        },
+        error: (err) => this.notify.warning('Spionage fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
+      });
   }
 
   onDispatched(): void {
@@ -412,7 +564,7 @@ export class GalaxyComponent {
     if (rel.betrayed_by_npc) {
       parts.push('Das Imperium hat dich verraten.');
     }
-    parts.push('🎯 Steuern im Ziele-Screen.');
+    parts.push('Klick aufs Ziel öffnet die Schnellaktionen.');
     return parts.join('\n');
   }
 

@@ -10,10 +10,11 @@ import {
   IncomingAttack,
   StationedFleet,
 } from '../../core/models/api.models';
-import { MISSION_META, RESOURCE_META, SHIP_META, metaFor } from '../../core/models/display';
-import { fleetIcon, missionIcon, navIcon, statIcon, statusIcon } from '../../core/models/icon-assets';
+import { MISSION_META, RESOURCE_META, SHIP_META, isMk2, metaFor } from '../../core/models/display';
+import { fleetIcon, missionIcon, navIcon, shipIcon, statIcon, statusIcon } from '../../core/models/icon-assets';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
+import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { NotificationService } from '../../core/services/notification.service';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
@@ -32,7 +33,7 @@ import { fleetStyles } from './fleet.styles';
 @Component({
   selector: 'app-fleet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, RouterLink, CountdownComponent, BtnIconComponent, EmptyStateComponent, FleetDispatchComponent],
+  imports: [DecimalPipe, RouterLink, CountdownComponent, BtnIconComponent, IconTileComponent, EmptyStateComponent, FleetDispatchComponent],
   template: `
     <h1>Flotte</h1>
 
@@ -93,6 +94,24 @@ import { fleetStyles } from './fleet.styles';
         </button>
       </div>
       <p class="muted small">Ziel & Mission (Angriff, Transport, Spionage, Stationierung, Abfangen, Eskorte, Recycling, Kolonisierung) wählst du im Versand-Dialog.</p>
+    </section>
+
+    <!-- Schiffe auf dem aktiven Planeten (Hangar/Garnison) -->
+    <section class="card hangar">
+      <div class="panel-title"><app-btn-icon [src]="navIcon('shipyard')" glyph="🛠️" [size]="16" /> Schiffe auf diesem Planeten</div>
+      @if (hangarShips().length) {
+        <div class="hangar-grid">
+          @for (s of hangarShips(); track s.type) {
+            <div class="hship" [attr.title]="shipMeta(s.type).label">
+              <app-icon-tile [glyph]="shipMeta(s.type).glyph" [src]="shipIcon(s.type)" [size]="44" [mk2]="isMk2(s.type)" />
+              <span class="hship-name">{{ shipMeta(s.type).label }}</span>
+              <span class="hship-count mono">{{ s.count | number: '1.0-0' }}</span>
+            </div>
+          }
+        </div>
+      } @else {
+        <app-empty-state art="empty_fleet">Keine Schiffe auf diesem Planeten. <a href="/shipyard">Zur Werft →</a></app-empty-state>
+      }
     </section>
 
     <!-- Laufende Flotten -->
@@ -209,6 +228,13 @@ export class FleetComponent {
   protected readonly activeFleets = computed(() =>
     this.state.fleets().filter((f) => f.status !== 'returned'),
   );
+
+  /** Schiffe auf dem aktiven Planeten (Hangar/Garnison) — Bestands-Übersicht. */
+  protected readonly hangarShips = computed(() =>
+    (this.state.activePlanet()?.ships ?? []).filter((s) => s.count > 0),
+  );
+  protected readonly shipIcon = shipIcon;
+  protected readonly isMk2 = isMk2;
 
   constructor() {
     // Deep-Link aus der Galaxie-Ansicht: /fleet?g=&s=&p=&mission= -> Versand-Overlay vorbelegt öffnen.

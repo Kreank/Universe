@@ -825,7 +825,13 @@ export class DetailPopupComponent {
     const raw = this.entry()?.['cost'];
     if (raw && typeof raw === 'object') {
       const r = raw as Record<string, number>;
-      return { metal: r['metal'] ?? 0, crystal: r['crystal'] ?? 0, deuterium: r['deuterium'] ?? 0 };
+      return {
+        metal: r['metal'] ?? 0,
+        crystal: r['crystal'] ?? 0,
+        deuterium: r['deuterium'] ?? 0,
+        antimatter: r['antimatter'] ?? 0,
+        dark_matter: r['dark_matter'] ?? 0,
+      };
     }
     return null;
   });

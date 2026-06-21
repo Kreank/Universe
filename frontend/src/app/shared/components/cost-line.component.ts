@@ -48,7 +48,9 @@ export class CostLineComponent {
   readonly items = computed(() => {
     const cost = this.cost();
     const avail = this.available();
-    const keys: (keyof ResourceCost)[] = ['metal', 'crystal', 'deuterium'];
+    // Exoten (antimatter/dark_matter) NACH deuterium: da nur Werte > 0 gerendert werden,
+    // erscheinen sie automatisch nur bei Bauobjekten/Forschungen, die sie wirklich kosten.
+    const keys: (keyof ResourceCost)[] = ['metal', 'crystal', 'deuterium', 'antimatter', 'dark_matter'];
     return keys.map((key) => {
       const value = cost[key] ?? 0;
       const have = avail ? (avail[key] ?? 0) : Infinity;

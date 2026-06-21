@@ -191,12 +191,51 @@ export const galaxyStyles = `
     font-size: var(--fs-xs); font-variant-numeric: tabular-nums;
     color: #3ddc97; border: 1px solid rgba(61,220,151,.4); background: rgba(61,220,151,.08); }
   .conj-chip.bane { color: var(--text-dim); border-color: var(--border); background: rgba(255,255,255,.03); }
-  /* W1: NPC-/Spieler-Ziel-Aktionen sind in den Ziele-Screen gewandert — dezenter Verweis. */
-  .acts.steer { gap: var(--sp-2); }
-  .steer-hint { font-size: var(--fs-xs); color: var(--text-dim); text-decoration: none; white-space: nowrap;
-    border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; background: rgba(255,255,255,.03);
-    transition: color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out); }
-  .steer-hint:hover { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-soft); }
-  .steer-card { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
-  .steer-card .btn { align-self: flex-start; }
+
+  /* --- Klick→Overlay: aktionierbare Zeile + Aktions-Hinweis --- */
+  .row.actionable { cursor: pointer; }
+  .row.actionable:hover { border-color: var(--accent-dim); background: color-mix(in srgb, var(--accent) 7%, var(--surface-2)); }
+  .row.actionable:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .act-hint { justify-self: end; color: var(--text-faint); font-size: var(--fs-sm); opacity: .55;
+    transition: color var(--motion-fast) var(--ease-out), opacity var(--motion-fast) var(--ease-out); }
+  .row.actionable:hover .act-hint { color: var(--accent); opacity: 1; }
+
+  /* --- "Aktionen am Ziel"-Overlay (Stil wie die anderen Overlays) --- */
+  .am-backdrop {
+    position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+    padding: var(--sp-4); background: rgba(4, 7, 14, 0.72);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    animation: amFade var(--motion-fast) var(--ease-out);
+  }
+  @keyframes amFade { from { opacity: 0; } to { opacity: 1; } }
+  .am-popup { position: relative; width: min(440px, 100%); padding: var(--sp-4); }
+  .am-popup .x {
+    position: absolute; top: var(--sp-2); right: var(--sp-2); line-height: 1;
+    background: none; border: none; color: var(--text-dim); font-size: var(--fs-md); cursor: pointer;
+  }
+  .am-popup .x:hover { color: var(--text); }
+  .am-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--sp-3); padding-right: var(--sp-4); }
+  .am-head h2 { font-size: var(--fs-md); margin: 0; }
+  .am-head .faint { color: var(--text-faint); font-weight: 400; }
+  .am-head .coord { color: var(--text-faint); font-size: var(--fs-xs); }
+  .am-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--sp-2); }
+  .am-act {
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); text-align: left;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text);
+    cursor: pointer; font-size: var(--fs-sm);
+    transition: background var(--motion-fast) var(--ease-out),
+      border-color var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out);
+  }
+  .am-act:hover { background: rgba(255,255,255,0.08); border-color: var(--border-strong); }
+  .am-act.atk:hover { color: var(--danger); border-color: var(--danger); }
+  .am-act.spy:hover, .am-act.phx:hover, .am-act.msg:hover, .am-act.exp:hover { color: var(--accent); border-color: var(--accent-dim); }
+  .am-act.dipl:hover { color: var(--ok); border-color: var(--ok); }
+  .am-act.trp:hover, .am-act.col:hover { color: var(--ok); border-color: var(--ok); }
+  .am-act.mine:hover, .am-act.recycle:hover { color: var(--warn); border-color: var(--warn); }
+
+  @media (max-width: 720px) {
+    .am-grid { grid-template-columns: 1fr; }
+  }
 `;

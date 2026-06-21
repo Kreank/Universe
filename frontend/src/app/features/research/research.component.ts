@@ -311,9 +311,17 @@ export class ResearchComponent {
 
   protected readonly balances = computed(() => {
     const res = this.state.activePlanet()?.resources;
-    return res
-      ? { metal: res.metal.amount, crystal: res.crystal.amount, deuterium: res.deuterium.amount }
-      : null;
+    if (!res) {
+      return null;
+    }
+    const exo = res.exotic ?? {};
+    return {
+      metal: res.metal.amount,
+      crystal: res.crystal.amount,
+      deuterium: res.deuterium.amount,
+      antimatter: exo['antimatter']?.amount ?? 0,
+      dark_matter: exo['dark_matter']?.amount ?? 0,
+    };
   });
 
   constructor() {

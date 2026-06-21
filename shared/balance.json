@@ -622,7 +622,8 @@
         "cost": {
           "metal": 0,
           "crystal": 0,
-          "deuterium": 300000
+          "deuterium": 300000,
+          "dark_matter": 10000
         },
         "requires": {
           "research_lab": 12,
@@ -808,7 +809,8 @@
         "cost": {
           "metal": 6000,
           "crystal": 3000,
-          "deuterium": 1000
+          "deuterium": 1000,
+          "dark_matter": 500
         },
         "repeatable": true,
         "requires": {
@@ -821,7 +823,8 @@
         "cost": {
           "metal": 3000,
           "crystal": 6000,
-          "deuterium": 1000
+          "deuterium": 1000,
+          "dark_matter": 500
         },
         "repeatable": true,
         "requires": {
@@ -834,7 +837,8 @@
         "cost": {
           "metal": 9000,
           "crystal": 0,
-          "deuterium": 1000
+          "deuterium": 1000,
+          "dark_matter": 500
         },
         "repeatable": true,
         "requires": {
@@ -859,7 +863,8 @@
         "cost": {
           "metal": 8000,
           "crystal": 6000,
-          "deuterium": 2000
+          "deuterium": 2000,
+          "dark_matter": 700
         },
         "repeatable": true,
         "requires": {
@@ -885,7 +890,8 @@
         "cost": {
           "metal": 200000,
           "crystal": 150000,
-          "deuterium": 80000
+          "deuterium": 80000,
+          "dark_matter": 15000
         },
         "repeatable": true,
         "requires": {
@@ -898,7 +904,8 @@
         "cost": {
           "metal": 120000,
           "crystal": 90000,
-          "deuterium": 50000
+          "deuterium": 50000,
+          "dark_matter": 10000
         },
         "repeatable": true,
         "requires": {
@@ -911,7 +918,8 @@
         "cost": {
           "metal": 150000,
           "crystal": 100000,
-          "deuterium": 40000
+          "deuterium": 40000,
+          "dark_matter": 12000
         },
         "repeatable": true,
         "requires": {
@@ -924,7 +932,8 @@
         "cost": {
           "metal": 180000,
           "crystal": 120000,
-          "deuterium": 40000
+          "deuterium": 40000,
+          "dark_matter": 15000
         },
         "repeatable": true,
         "requires": {
@@ -986,7 +995,8 @@
         "cost": {
           "metal": 250000,
           "crystal": 200000,
-          "deuterium": 100000
+          "deuterium": 100000,
+          "dark_matter": 20000
         },
         "requires": {
           "research_lab": 10,

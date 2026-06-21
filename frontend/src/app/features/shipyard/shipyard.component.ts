@@ -4,7 +4,7 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { PlanetUnit, Requirement, ShipOption, ShipyardCategory, ShipyardResponse } from '../../core/models/api.models';
 import { BUILDING_META, DEFENSE_META, RANGE_META, SHIP_META, TECH_META, WEAPON_META, isMk2, metaFor } from '../../core/models/display';
-import { defenseIcon, missionIcon, navIcon, rangeIcon, resourceIcon, shipIcon, statIcon, statusIcon, uiIcon, weaponIcon } from '../../core/models/icon-assets';
+import { defenseIcon, missionIcon, navIcon, rangeIcon, shipIcon, statIcon, statusIcon, uiIcon, weaponIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { DetailPopupComponent, DetailTag } from '../../shared/components/detail-popup.component';
@@ -179,12 +179,6 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
                 @if (s.capstone) {
                   <span class="hint small cap-line">
                     Besitz {{ s.capstone.owned }}/{{ s.capstone.cap }}
-                    @if (s.cost.antimatter) { · <app-btn-icon [src]="resourceIcon('antimatter')" glyph="⚛️" [size]="14" /> {{ s.cost.antimatter }} }
-                    @if (s.cost.dark_matter) { · <app-btn-icon [src]="resourceIcon('dark_matter')" glyph="🌑" [size]="14" /> {{ s.cost.dark_matter }} }
-                  </span>
-                } @else if (isMk2(s.type) && s.cost.antimatter) {
-                  <span class="hint small cap-line mk2-line">
-                    Mk II · <app-btn-icon [src]="resourceIcon('antimatter')" glyph="⚛️" [size]="14" /> {{ s.cost.antimatter }} Antimaterie
                   </span>
                 }
                 @if (!s.requirements_met) {
@@ -284,9 +278,8 @@ const SHIP_CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: st
       .stock-line { display: block; font-size: var(--fs-xs); color: var(--text-dim); margin-top: var(--sp-1); }
       .stock-line strong { color: var(--accent); font-variant-numeric: tabular-nums; }
 
-      /* Mk2/Elite-Antimaterie-Zeile (goldener Akzent, analog zur Capstone-Zeile). */
+      /* Capstone-Besitz-Zeile (Limit-Anzeige). */
       .cap-line { display: inline-flex; align-items: center; gap: 4px; }
-      .mk2-line { color: rgba(255, 198, 92, 0.95); }
 
       /* Bauschleifen-Zeile: Countdown + Abbrechen-Button rechts. */
       .q-right { display: flex; align-items: center; gap: var(--sp-2); flex: 0 0 auto; }
@@ -307,8 +300,7 @@ export class ShipyardComponent {
 
   /** Asset-Pfad-Helfer fuers Template (Buttons mit Glyph-Fallback via app-btn-icon). */
   protected readonly navIcon = navIcon;
-  protected readonly resourceIcon = resourceIcon;
-  /** Mk2/Elite-Schiff erkennen (Rahmen + „Mk II"-Antimaterie-Zeile). */
+  /** Mk2/Elite-Schiff erkennen (Mk2-Rahmen ueber dem Artwork). */
   protected readonly isMk2 = isMk2;
 
   protected readonly data = signal<ShipyardResponse | null>(null);
@@ -322,9 +314,17 @@ export class ShipyardComponent {
 
   protected readonly balances = computed(() => {
     const res = this.state.activePlanet()?.resources;
-    return res
-      ? { metal: res.metal.amount, crystal: res.crystal.amount, deuterium: res.deuterium.amount }
-      : null;
+    if (!res) {
+      return null;
+    }
+    const exo = res.exotic ?? {};
+    return {
+      metal: res.metal.amount,
+      crystal: res.crystal.amount,
+      deuterium: res.deuterium.amount,
+      antimatter: exo['antimatter']?.amount ?? 0,
+      dark_matter: exo['dark_matter']?.amount ?? 0,
+    };
   });
 
   /** Gruppiert die Schiffe in Kategorien (Reihenfolge aus SHIP_CATEGORY_ORDER). */

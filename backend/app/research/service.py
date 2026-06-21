@@ -45,6 +45,9 @@ def cost_for_level(tech_type: str, current_level: int) -> dict[str, float]:
         "metal": round(base.get("metal", 0) * mult, 2),
         "crystal": round(base.get("crystal", 0) * mult, 2),
         "deuterium": round(base.get("deuterium", 0) * mult, 2),
+        # Endgame-Forschungen kosten zusaetzlich Dunkle Materie (skaliert mit derselben
+        # Stufen-Multiplikation wie m/c/d). Techs ohne dark_matter im Basis-Block -> 0.
+        "dark_matter": round(base.get("dark_matter", 0) * mult, 2),
     }
 
 
@@ -140,8 +143,11 @@ async def research_options(session: AsyncSession, player_id: uuid.UUID, lab_plan
         cost = cost_for_level(tech, level)
         secs = max(1, int(round(research_seconds(cost, lab_lvl) / nexus)))
         if resources is not None:
+            exotic = resources.get("exotic", {})
             can_afford = all(
                 resources[r]["amount"] + 1e-6 >= cost[r] for r in ("metal", "crystal", "deuterium")
+            ) and (
+                exotic.get("dark_matter", {}).get("amount", 0.0) + 1e-6 >= cost.get("dark_matter", 0)
             )
         else:
             can_afford = False

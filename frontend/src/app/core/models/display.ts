@@ -21,6 +21,8 @@ export const RESOURCE_META: Record<string, DisplayMeta> = {
   crystal: { label: 'Kristall', glyph: '💎', blurb: 'Elektronik und Forschung.' },
   deuterium: { label: 'Deuterium', glyph: '🛢️', blurb: 'Treibstoff und Fusion.' },
   energy: { label: 'Energie', glyph: '⚡', blurb: 'Treibt die Minen an.' },
+  antimatter: { label: 'Antimaterie', glyph: '⚛️', blurb: 'Exotisch — Elite-Schiffe & Endgame.' },
+  dark_matter: { label: 'Dunkle Materie', glyph: '🌑', blurb: 'Exotisch — Forschung & Endgame.' },
 };
 
 export const BUILDING_META: Record<string, DisplayMeta> = {

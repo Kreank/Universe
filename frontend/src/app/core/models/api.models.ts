@@ -110,6 +110,8 @@ export interface PlanetResources {
   crystal: ResourcePool;
   deuterium: ResourcePool;
   energy: EnergyBalance;
+  /** Exotische Materie pro Planet (antimatter/dark_matter); nur vorhanden, wenn je produziert/erhalten. */
+  exotic?: Record<string, { amount: number; rate: number }>;
 }
 
 export interface PlanetBuilding {
