@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Versionierter post-commit-Hook (aktiv via: git config core.hooksPath .githooks).
+# Kuendigt nach JEDEM Commit die spielrelevanten Aenderungen automatisch auf Discord an
+# (scripts/announce_discord.py: neue feat/fix/balance/asset/perf-Commits -> KI-Patchnotes).
+#
+# Nicht-blockierend + best-effort: laeuft abgekoppelt im Hintergrund, ein Fehler (Ollama/
+# Discord/Netz) beruehrt den Commit NIE. Ausgabe -> scripts/.announce.log (gitignored).
+# Postet nichts, wenn seit der letzten Ankuendigung kein spielrelevanter Commit dazukam.
+#
+# Bewusst NICHT abgedeckt: grosse Sammel-Commits ohne feat/fix(...)-Praefix werden
+# weggefiltert -> dafuer manuell:  python3 scripts/announce_discord.py --message "…"
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+SCRIPT="$ROOT/scripts/announce_discord.py"
+[ -f "$SCRIPT" ] || exit 0
+
+# Abgekoppelt starten, damit der Commit sofort zurueckkehrt (Ollama braucht ~15 s).
+( setsid python3 "$SCRIPT" >>"$ROOT/scripts/.announce.log" 2>&1 & ) >/dev/null 2>&1 || true
+echo "post-commit: Discord-Ankuendigung laeuft im Hintergrund (scripts/.announce.log)"
+exit 0

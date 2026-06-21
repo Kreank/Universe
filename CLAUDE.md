@@ -6,23 +6,33 @@ Live: `universe.tech-artist.de`. Branch `main`, Remote `github.com:Kreank/Univer
 Diese Datei wird automatisch in jeden Agenten-Kontext geladen. Ausführliche
 Übergabe + Verifikations-Loop-Eigenheiten: siehe `HANDOFF.md`.
 
-## ‼️ Deployen — IMMER über `./infra/deploy.sh`
+## ‼️ Discord-Ankündigung läuft automatisch beim **Commit**
 
-Jede KI, die das Spiel deployt, MUSS dafür das Wrapper-Skript benutzen:
+Spiel-Updates werden **automatisch auf Discord angekündigt** — ausgelöst vom
+versionierten **`post-commit`-Git-Hook** (`.githooks/post-commit`, aktiv via
+`core.hooksPath`). Nach jedem Commit postet er im Hintergrund (best-effort,
+blockiert den Commit nie) die neuen spielrelevanten Commits als KI-umformulierte
+deutsche Patch-Notes (Ollama `qwen3.5:9b` → Discord-Webhook in `infra/.env` →
+`DISCORD_WEBHOOK_URL`). Log: `scripts/.announce.log`.
 
-```bash
-./infra/deploy.sh
-```
+**Du musst dafür nichts extra tun — einfach normal committen.** Es gibt aber
+zwei Regeln, damit tatsächlich etwas (Sinnvolles) gepostet wird:
 
-Es baut die Code-Images (`game-server`, `ai-worker`, `frontend`), startet den
-Stack (`docker compose up -d`) und **kündigt die Änderungen anschließend
-automatisch auf Discord an** (KI-umformulierte deutsche Patch-Notes via Ollama,
-gepostet über den Webhook in `infra/.env` → `DISCORD_WEBHOOK_URL`).
+1. **Commit-Messages im `feat/fix/balance/asset/perf(scope): …`-Format.** Nur diese
+   Präfixe werden angekündigt (chore/docs/test/refactor werden bewusst gefiltert).
+   Eine Commit-Message OHNE solches Präfix → es wird NICHTS gepostet.
+2. **Keine riesigen Sammel-Commits.** Viele kleine, sauber betitelte Commits = schöne
+   Patch-Notes. Ein Sammel-Commit `Universe: alles Mögliche` wird weggefiltert und
+   muss dann **manuell** angekündigt werden:
+   ```bash
+   python3 scripts/announce_discord.py --message "…deine Patch-Notes…" \
+       --title "🚀 Universe — Großes Update"
+   ```
 
-- **Nicht** von Hand `docker compose build … && up -d` deployen — dann unterbleibt
-  die Ankündigung. Das Skript ist der einzige vorgesehene Deploy-Weg.
-- Deploy ohne Ankündigung (z. B. reiner Restart/Test): `ANNOUNCE=0 ./infra/deploy.sh`.
-- Die Ankündigung ist best-effort: schlägt sie fehl, ist der Deploy trotzdem durch.
+Weitere manuelle Befehle: `--dry-run` (Vorschau), `--since REF`, `--no-ai`.
+`./infra/deploy.sh` (build + up -d) ruft die Ankündigung ebenfalls auf — durch den
+Commit-Hook ist das aber redundant; der State-Marker (`scripts/.announce_state`)
+verhindert Doppel-Posts.
 
 ### Wie die Ankündigung funktioniert
 `scripts/announce_discord.py` (stdlib-only, läuft auf dem Host) liest die neuen
