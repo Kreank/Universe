@@ -49,10 +49,12 @@ class Unit:
     carrier: bool = False
     sensor: bool = False
     stabilizer: bool = False
+    aura_combat: bool = False  # Kommando-Aura-Schiff (Flaggschiff): bufft praesenz-basiert die GANZE Seite
     launched: bool = False  # vom Traeger gestartete Drohne (ephemer, zaehlt nicht als Schiff)
     hull: float = 0.0
     shield: float = 0.0
     drive: float = 0.0
+    shield_aura_mult: float = 1.0  # pro Runde gesetzter Schild-Cap-Multiplikator (Kommando-Aura)
 
     def __post_init__(self) -> None:
         self.hull = self.hull_max
@@ -86,6 +88,10 @@ def _build_units(
     order = catalogs["range_order"]
     drive_per_tier = catalogs["drive_per_tier"]
     sb = ship_bonuses or {}
+    # Raider-Schnellfeuer (Korsar): gegen ZIVILE/Fracht-Typen eine konfigurierte Rapidfire-Kette.
+    raider_cfg = catalogs.get("raider", {}) or {}
+    raider_civ_types = tuple(raider_cfg.get("civilian_types", []) or [])
+    raider_civ_rf = int(raider_cfg.get("civilian_rapidfire", 0) or 0)
 
     # Basis-Kampftech (+10%/Stufe) + wiederholbare Meisterschaft (+1%/Stufe, additiv, kein Cap)
     # + Megastruktur Antimaterie-Schmiede (+%/Stufe, antimaterie-befeuert).
@@ -117,14 +123,21 @@ def _build_units(
         prof = profile(typ)
         drive_max = float(prof.get("drive", 0)) * drive_per_tier
         ridx = order.index(prof["range"]) if prof.get("range") in order else 0
+        rf_map = dict(cfg.get("rapidfire", {}))
+        # Raider (Korsar): Schnellfeuer gegen zivile/Fracht-Typen einbrennen (max, falls schon vorhanden).
+        if raider_civ_rf > 1 and bool(prof.get("raider")):
+            for ct in raider_civ_types:
+                rf_map[ct] = max(int(rf_map.get(ct, 0)), raider_civ_rf)
+        aura_combat = bool(prof.get("aura") == "combat")
         for _ in range(int(count)):
             units.append(Unit(
-                typ, side, attack, shield, hull, dict(cfg.get("rapidfire", {})), False,
+                typ, side, attack, shield, hull, dict(rf_map), False,
                 prof.get("weapon_type"), drive_max, ridx,
                 bool(prof.get("interdictor", False)), bool(prof.get("boarder", False)),
                 bool(prof.get("point_defense", False)), bool(prof.get("shield_projector", False)),
                 bool(prof.get("stealth", False)), bool(prof.get("carrier", False)),
                 bool(prof.get("sensor", False)), bool(prof.get("stabilizer", False)),
+                aura_combat,
             ))
     # Option A (2026-06-10): Traeger starten KEINE ephemeren Drohnen mehr. Drohnen sind
     # echte Schiffe, die der Traeger beim Flottenstart aus der Garnison mitlaedt
@@ -267,7 +280,14 @@ def simulate_battle(
         "drive_per_tier": combat.get("drive_integrity_per_tier", 100),
         "carrier_cfg": combat.get("carrier", {}),
         "defense_integrity": defense_integrity,
+        "raider": combat.get("raider", {}),
     }
+
+    # Kommando-Aura (Flaggschiff): praesenz-basiert, pro Runde neu geprueft, symmetrisch fuer beide
+    # Seiten. +attack_bonus auf den ausgehenden Schaden, +shield_bonus auf den Schild-Cap der Seite.
+    aura_cfg = combat.get("aura", {})
+    aura_attack_bonus = float(aura_cfg.get("attack_bonus", 0.0))
+    aura_shield_bonus = float(aura_cfg.get("shield_bonus", 0.0))
 
     atk_units = _build_units(
         "attacker", attacker.get("ships", {}), {}, catalogs,
@@ -287,6 +307,25 @@ def simulate_battle(
 
     rounds: list[dict[str, Any]] = []
 
+    # Aktueller Aura-Zustand je Seite (pro Runde aus 'lebt ein Aura-Schiff?' neu berechnet).
+    aura_attack_mult = {"attacker": 1.0, "defender": 1.0}
+
+    def recompute_aura() -> None:
+        """Praesenz-basierte Kommando-Aura (kein Stapeln): setzt je Seite den Angriffs-Multiplikator
+        und den Schild-Cap-Multiplikator jeder Einheit. Re-Check pro Runde -> faellt das letzte
+        Aura-Schiff, erlischt der Bonus. Reine Multiplikatoren (keine RNG-Draws) -> ohne Aura
+        bleibt der Determinismus/RNG-Strom bestehender Schlachten identisch."""
+        a_present = any(u.aura_combat for u in atk_units)
+        d_present = any(u.aura_combat for u in def_units)
+        aura_attack_mult["attacker"] = 1.0 + (aura_attack_bonus if a_present else 0.0)
+        aura_attack_mult["defender"] = 1.0 + (aura_attack_bonus if d_present else 0.0)
+        a_sm = 1.0 + (aura_shield_bonus if a_present else 0.0)
+        d_sm = 1.0 + (aura_shield_bonus if d_present else 0.0)
+        for u in atk_units:
+            u.shield_aura_mult = a_sm
+        for u in def_units:
+            u.shield_aura_mult = d_sm
+
     def fire(unit: Unit, targets: list[Unit], penalty: float) -> float:
         """Ein Schuss (inkl. Rapidfire-Kette). ``penalty`` skaliert den Schaden (Standoff).
         Liefert den verursachten Gesamtschaden (fuer das Runden-Reporting)."""
@@ -298,7 +337,7 @@ def simulate_battle(
             mult = atk_ion_mult if unit.side == "attacker" else def_ion_mult
             if mult != 1.0:
                 m = {"shield": m["shield"] * mult, "drive": m["drive"] * mult, "hull": m["hull"]}
-        base = unit.attack * penalty * damage_scale
+        base = unit.attack * penalty * damage_scale * aura_attack_mult[unit.side]
         dealt = 0.0
         chain = True
         guard = 0
@@ -310,7 +349,7 @@ def simulate_battle(
             applied = 0.0  # tatsaechlich an Schild/Antrieb/Huelle angewandter Schaden (nur Reporting)
             if target.shield > 0:
                 sd = base * m["shield"]
-                if sd <= 0 or sd < bounce_ratio * target.shield_max:
+                if sd <= 0 or sd < bounce_ratio * target.shield_max * target.shield_aura_mult:
                     frac = 0.0  # prallt ab / wirkungslos auf den Schild
                 elif sd <= target.shield:
                     target.shield -= sd
@@ -444,6 +483,7 @@ def simulate_battle(
         # Flotte trifft erst zu Runde 1 ein und feuert ab da. Der Verteidiger SIEHT die
         # anfliegende Flotte und ist vorbereitet (Schilde oben) -> KEIN Schild-Reset; der
         # Stealth-Vorteil ist allein die einseitige Eroeffnungssalve der Tarnkappen-Schiffe.
+        recompute_aura()  # Aura wirkt auch auf die Ueberraschungssalve.
         ambush_fire = 0.0
         for u in list(atk_units):
             if not def_units:
@@ -469,11 +509,17 @@ def simulate_battle(
 
         distance = max(0, start_dist - (rnd - 1) * close_per_round)
 
+        # Kommando-Aura zu Rundenbeginn neu bestimmen (lebt noch ein Flaggschiff je Seite?).
+        recompute_aura()
+
         # Schilde regenerieren zu Rundenbeginn TEILWEISE (abnutzbarer Puffer, 03d; Antrieb/Huelle NICHT).
+        # Der Schild-Cap traegt den Aura-Bonus (shield_aura_mult) -> Aura-Seite haelt laenger.
         for u in atk_units:
-            u.shield = min(u.shield_max, u.shield + u.shield_max * shield_regen)
+            cap = u.shield_max * u.shield_aura_mult
+            u.shield = min(cap, u.shield + cap * shield_regen)
         for u in def_units:
-            u.shield = min(u.shield_max, u.shield + u.shield_max * shield_regen)
+            cap = u.shield_max * u.shield_aura_mult
+            u.shield = min(cap, u.shield + cap * shield_regen)
 
         attacker_fire = 0.0
         defender_fire = 0.0

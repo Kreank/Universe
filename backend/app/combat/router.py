@@ -174,8 +174,11 @@ async def simulate_combat(
     from app.combat.service import _combat_aura_mult, _commander_mods
     from app.platform.doctrine import combat_attack_mult
     doctrine_mult = combat_attack_mult(player.doctrine)
+    # aura_mult ist nur ein INFO-Wert fuer die Vorschau (sim_meta). Die Kampf-Aura wird IN der Engine
+    # pro Runde angewandt (sie sieht das Flaggschiff in player_ships) -> NICHT in attack_mult mischen,
+    # sonst doppelt gezaehlt.
     aura_mult = _combat_aura_mult(player_ships)
-    attack_mult = doctrine_mult * aura_mult
+    attack_mult = doctrine_mult
     ship_bonuses: dict[str, dict[str, float]] = {}
     commander_meta: dict | None = None
     if body.commander_id:

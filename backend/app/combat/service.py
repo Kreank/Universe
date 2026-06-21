@@ -73,9 +73,14 @@ def _commander_mods(commander: Commander | None, fleet_ship_types: int) -> float
 
 
 def _combat_aura_mult(ships: dict[str, int]) -> float:
-    """Flaggschiff-Kampf-Aura: ist EIN Schiff mit ``roster.aura == 'combat'`` in der Flotte, wird
-    die GANZE Flotte verstaerkt (Angriff + Schild via attack_mult). Praesenz-basiert → Auren
-    STAPELN NICHT (egal wie viele Flaggschiffe → eine Aura). Siehe project_universe_alliances_planned."""
+    """Flaggschiff-Kampf-Aura (Anzeige-/Preview-Wert): ist EIN Schiff mit ``roster.aura == 'combat'``
+    in der Flotte, kaempft die GANZE Flotte verstaerkt. Praesenz-basiert → Auren STAPELN NICHT
+    (egal wie viele Flaggschiffe → eine Aura).
+
+    WICHTIG: Die Aura wird im LIVE-Kampf von der Engine (engine.recompute_aura) pro Runde angewandt
+    (Angriff + Schild, faellt weg wenn das Flaggschiff zerstoert ist). Diese Funktion liefert nur den
+    informativen Multiplikator fuer die Sim-Vorschau (combat/router) und wird NICHT mehr auf
+    attack_mult der echten Schlacht multipliziert (sonst Doppel-Zaehlung)."""
     bal = get_balance()
     roster = bal.combat_roster
     present = any(
@@ -83,19 +88,49 @@ def _combat_aura_mult(ships: dict[str, int]) -> float:
     )
     if not present:
         return 1.0
-    return float(bal.data.get("capstone", {}).get("combat_aura", {}).get("attack_mult", 1.0))
+    return 1.0 + float(bal.combat.get("aura", {}).get("attack_bonus", 0.0))
 
 
 def _raider_loot_mult(ships: dict[str, int]) -> float:
     """Korsar-Raider-Bonus: ueberlebt ein Schiff mit ``roster.raider`` die Schlacht, traegt die
-    Flotte mehr Beute (effektiv groesserer Frachtraum). Praesenz-basiert (kein Stapeln)."""
+    Flotte mehr Beute (effektiv groesserer Frachtraum). Praesenz-basiert (kein Stapeln).
+    Balance: combat.raider.loot_bonus (Fallback: legacy capstone.raider_loot_bonus)."""
     bal = get_balance()
     roster = bal.combat_roster
     present = any(
         (roster.get(t) or {}).get("raider") and n > 0 for t, n in (ships or {}).items()
     )
-    bonus = float(bal.data.get("capstone", {}).get("raider_loot_bonus", 0.0)) if present else 0.0
+    if not present:
+        return 1.0
+    bonus = float(bal.combat.get("raider", {}).get(
+        "loot_bonus", bal.data.get("capstone", {}).get("raider_loot_bonus", 0.0)))
     return 1.0 + bonus
+
+
+def _battlefield_harvest(survivors: dict[str, int], debris: dict[str, float]) -> dict[str, float]:
+    """Ernte-Titan-Truemmer-Ernte: ueberlebende Harvester (``roster.harvester``) sammeln nach Sieg
+    einen Anteil des FRISCHEN Truemmerfelds direkt in den eigenen Laderaum. share = min(share_cap,
+    debris_share_per_titan * Anzahl Harvester), gedeckelt durch den Titan-Laderaum (metal zuerst,
+    dann crystal). Reine Funktion -> der Aufrufer zieht das Ergebnis vom Truemmerfeld ab und legt es
+    in die Fracht. Balance: combat.harvester.{debris_share_per_titan, share_cap}."""
+    bal = get_balance()
+    cfg = bal.combat.get("harvester", {})
+    per = float(cfg.get("debris_share_per_titan", 0.0))
+    cap_share = float(cfg.get("share_cap", 0.0))
+    roster = bal.combat_roster
+    n = 0
+    titan_cap = 0.0
+    for t, c in (survivors or {}).items():
+        if c > 0 and (roster.get(t) or {}).get("harvester"):
+            n += c
+            ship_cfg = bal.ships.get(t)
+            if ship_cfg:
+                titan_cap += float(ship_cfg.get("cargo", 0)) * c
+    if n <= 0 or per <= 0:
+        return {"metal": 0.0, "crystal": 0.0}
+    share = min(cap_share, per * n)
+    want = {"metal": float(debris.get("metal", 0)) * share, "crystal": float(debris.get("crystal", 0)) * share}
+    return _greedy_take(want, titan_cap, ("metal", "crystal"))
 
 
 def _debris(losses: dict[str, int]) -> dict[str, float]:
@@ -499,8 +534,9 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
                 await megastructure_levels(session, defender_player_id)
             ).get("antimatter_forge", 0)
 
-    # Flaggschiff-Kampf-Aura (flottenweit, praesenz-basiert, kein Stapeln) — beide Seiten.
-    attack_mult *= _combat_aura_mult(merged_attacker_ships)
+    # Flaggschiff-Kampf-Aura: wird jetzt IN der Engine pro Runde angewandt (engine.recompute_aura),
+    # praesenz-basiert + symmetrisch fuer beide Seiten, und erlischt wenn das Flaggschiff faellt.
+    # Daher hier KEINE statische attack_mult-Multiplikation mehr (sonst Doppel-Zaehlung).
 
     seed = random.randrange(1, 2 ** 62)
     attacker = {
@@ -513,7 +549,8 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
     }
     defender = {
         "ships": def_ships, "defenses": def_defenses, "tech": def_tech,
-        "attack_mult": _combat_aura_mult(def_ships) * defender_bonus_mult,
+        # Aura kommt aus der Engine (s. o.); hier nur die Allianz-/Koop-Verteidiger-Boni.
+        "attack_mult": defender_bonus_mult,
     }
 
     result = simulate_battle(attacker, defender, seed, bal.data)
@@ -615,7 +652,15 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
         "crystal": round(debris["crystal"] + def_debris["crystal"], 1),
     }
 
-    # Truemmerfeld am Zielort persistieren (akkumuliert) -> per Recycler einsammelbar.
+    # Ernte-Titan: ueberlebende Harvester der siegreichen Angreiferseite ernten direkt einen Anteil
+    # des FRISCHEN Truemmerfelds in die heimkehrende Fracht (kein Recycler noetig). Der geerntete
+    # Teil wird unten vom verbleibenden Feld abgezogen.
+    harvested = {"metal": 0.0, "crystal": 0.0}
+    if winner == "attacker":
+        harvested = _battlefield_harvest(atk_survivors, debris)
+
+    # Truemmerfeld am Zielort persistieren (akkumuliert) -> per Recycler einsammelbar. Der vom
+    # Ernte-Titan direkt eingesammelte Anteil bleibt NICHT im Feld zurueck (Truemmer-Erhaltung).
     if debris["metal"] > 0 or debris["crystal"] > 0:
         tgt_cell = cell
         if tgt_cell is None:
@@ -625,9 +670,14 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
             )
             session.add(tgt_cell)
         field = dict(tgt_cell.debris_field or {})
-        field["metal"] = round(field.get("metal", 0) + debris["metal"], 1)
-        field["crystal"] = round(field.get("crystal", 0) + debris["crystal"], 1)
+        field["metal"] = round(field.get("metal", 0) + debris["metal"] - harvested["metal"], 1)
+        field["crystal"] = round(field.get("crystal", 0) + debris["crystal"] - harvested["crystal"], 1)
         tgt_cell.debris_field = field
+
+    # Geerntete Truemmer in die heimkehrende(n) Angreifer-Flotte(n) legen (nach Frachtanteil),
+    # analog zur Beute-Verteilung. Keine Pluenderung -> getrennt vom loot-Wert.
+    if harvested["metal"] > 0 or harvested["crystal"] > 0:
+        _distribute_attacker_loot(attacker_sources, harvested)
 
     # Mond-Entstehung aus dem Truemmerfeld (nur an einem Spieler-Planeten).
     if def_planet is not None and (debris["metal"] > 0 or debris["crystal"] > 0):
@@ -910,6 +960,9 @@ async def resolve_attack(session: AsyncSession, fleet: Fleet, *, force_resolve: 
     outcome_json["commander_outcome"] = commander_outcome
     # Verteidigung nach dem Kampf wieder aufgebaut (70 % der zerstoerten) -> Bericht "repariert".
     outcome_json["defender_defense_rebuilt"] = defense_rebuilt
+    # Ernte-Titan: direkt vom Schlachtfeld geerntete Truemmer (zusaetzlich zur Beute).
+    if harvested["metal"] > 0 or harvested["crystal"] > 0:
+        outcome_json["harvested_debris"] = harvested
     if def_player is not None:
         outcome_json["defender_kind"] = "player"
         outcome_json["defender_name"] = def_player.display_name

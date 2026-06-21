@@ -3014,6 +3014,22 @@
       "max_radius": 6,
       "radius_per_interdiction_level": 1,
       "_radius_note": "Patrouillen-Reichweite: Default 0 (nur das Stationssystem). Waehlbar bis intercept_radius_cap = min(max_radius, base_radius + radius_per_interdiction_level * hyperspace_interdiction-Stufe). Ohne Forschung also bis 1; Forschung dehnt +1/Stufe, hart gedeckelt bei max_radius (6, bei Stufe 5)."
+    },
+    "aura": {
+      "_note": "Kommando-Aura des Flaggschiffs (combat_roster.aura == 'combat'). PRAESENZ-basiert (kein Stapeln): solange MINDESTENS EIN lebendes Aura-Schiff auf einer Seite steht, feuert die GANZE Seite mit +attack_bonus und haelt mit +shield_bonus. Pro Runde in der Engine neu geprueft -> faellt das letzte Aura-Schiff, erlischt der Bonus ab der naechsten Runde. Symmetrisch: beide Seiten koennen eine Aura haben. Der 'convoy'-Aura-Wert (Handels-Leviathan) ist KEINE Kampf-Aura (reiner Handelsroutenschutz, fleet/trade.py).",
+      "attack_bonus": 0.10,
+      "shield_bonus": 0.10
+    },
+    "raider": {
+      "_note": "Korsar-Kaper-/Pluender-Fantasy (combat_roster.raider == true). (a) Engine: Raider haben Schnellfeuer (rapidfire-Kette) gegen ZIVILE/Fracht-Schiffe (civilian_types) mit Faktor civilian_rapidfire -> ein Korsar metzelt Frachter weit schneller. Wirkt symmetrisch fuer jede Seite, die ein Raider-Schiff stellt (in die Unit-Rapidfire eingebrannt). (b) service.py: bei SIEG mit ueberlebendem Raider traegt die Flotte +loot_bonus Beute (groesserer effektiver Frachtraum). Praesenz-basiert (kein Stapeln).",
+      "civilian_rapidfire": 4,
+      "civilian_types": ["small_cargo", "large_cargo", "recycler", "colony_ship", "miner", "expedition_ship", "spy_probe", "solar_satellite"],
+      "loot_bonus": 0.25
+    },
+    "harvester": {
+      "_note": "Ernte-Titan-Truemmer-Ernte (combat_roster.harvester == true). Nach dem Kampf sammeln ueberlebende Harvester der SIEGREICHEN ANGREIFERSEITE automatisch einen Anteil des FRISCHEN Truemmerfelds direkt in die heimkehrende Fracht (kein Recycler noetig). share = min(share_cap, debris_share_per_titan * Anzahl Harvester); der geerntete Teil wird aus dem zurueckbleibenden Truemmerfeld abgezogen und durch den eigenen Titan-Laderaum gedeckelt. Angreiferseitig (Verteidiger schickt ggf. spaeter einen Recycler).",
+      "debris_share_per_titan": 0.15,
+      "share_cap": 0.6
     }
   },
   "harvest": {
