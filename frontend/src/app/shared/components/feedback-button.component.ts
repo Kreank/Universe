@@ -56,6 +56,11 @@ import { FeedbackCategory } from '../../core/models/api.models';
               <li>💾 Behalte nichts „für immer" – noch wird viel umgebaut.</li>
             </ul>
 
+            <a class="discord" href="https://discord.gg/7S2VST8d6" target="_blank" rel="noopener noreferrer">
+              <span class="dc-ico">💬</span>
+              <span>Komm auf unseren <b>Discord</b> – Austausch, News &amp; schnelle Hilfe →</span>
+            </a>
+
             <div class="ask">
               <b>Damit ich's schnell fixen kann, kurz:</b>
               <span>Was wolltest du tun? · Was ist passiert? · (bei Bug) hilft ein Screenshot per Telegram.</span>
@@ -99,6 +104,10 @@ import { FeedbackCategory } from '../../core/models/api.models';
               <div class="check">✅</div>
               <h2 class="title">Danke!</h2>
               <p class="lead">Deine Meldung ist angekommen. Du kannst jederzeit weiter melden.</p>
+              <a class="discord" href="https://discord.gg/7S2VST8d6" target="_blank" rel="noopener noreferrer">
+                <span class="dc-ico">💬</span>
+                <span>Komm auf unseren <b>Discord</b> →</span>
+              </a>
               <button class="btn btn-primary" type="button" (click)="close()">Schließen</button>
             </div>
           }
@@ -247,6 +256,36 @@ import { FeedbackCategory } from '../../core/models/api.models';
       }
       .ask span {
         color: var(--text-dim);
+      }
+      .discord {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        margin: 0 0 var(--sp-3);
+        padding: var(--sp-2) var(--sp-3);
+        border-radius: var(--r-md);
+        border: 1px solid rgba(88, 101, 242, 0.5);
+        background: rgba(88, 101, 242, 0.12);
+        color: var(--text);
+        font-size: var(--fs-sm);
+        line-height: 1.35;
+        text-decoration: none;
+        transition:
+          border-color var(--motion-fast) var(--ease-out),
+          background var(--motion-fast) var(--ease-out),
+          transform var(--motion-fast) var(--ease-out);
+      }
+      .discord:hover {
+        border-color: #5865f2;
+        background: rgba(88, 101, 242, 0.2);
+        transform: translateY(-1px);
+      }
+      .discord .dc-ico {
+        font-size: 1.2em;
+      }
+      .thanks .discord {
+        justify-content: center;
+        margin: var(--sp-3) 0;
       }
       .cats {
         display: flex;
