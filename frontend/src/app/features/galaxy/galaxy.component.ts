@@ -44,7 +44,7 @@ interface DispatchCtx {
   imports: [FormsModule, RouterLink, ShortNumberPipe, BtnIconComponent, FleetDispatchComponent, CountdownComponent],
   template: `
     <h1>Galaxie · Karte</h1>
-    <p class="sub">Erkunde Systeme, finde Ziele und entsende deine Flotten — Schnellaktionen direkt am Ziel.</p>
+    <p class="sub">Erkunde Systeme und navigiere die Galaxie. Gegner anzeigen → über „🎯 im Ziele-Screen steuern" handeln (Angriff/Spionage/Diplomatie); Asteroiden/Trümmer/Monde direkt am Ziel.</p>
 
     <div class="grid layout">
       <!-- System-Scanner ------------------------------------------------ -->
@@ -205,16 +205,6 @@ interface DispatchCtx {
         }
       </section>
 
-      <!-- Hinweis: Ziel-Steuerung ist in den Ziele-Screen gewandert ----- -->
-      <section class="card steer-card">
-        <div class="panel-title"><app-btn-icon [src]="uiIcon('target')" glyph="🎯" [size]="16" /> Ziele &amp; Bedrohungen</div>
-        <p class="muted small">
-          Angriff, Spionage, Diplomatie, Transport und Nachrichten gegen NPC-Imperien und Spieler
-          steuerst du jetzt gebündelt im <strong>Ziele-Screen</strong> — inkl. aller eingehenden
-          Bedrohungen. Die Galaxie bleibt für Erkundung &amp; Navigation.
-        </p>
-        <a class="btn btn-primary btn-sm" routerLink="/targets">🎯 Zu Zielen &amp; Bedrohungen →</a>
-      </section>
     </div>
 
     @if (dispatch(); as d) {
