@@ -206,6 +206,59 @@ async def used_fleet_slots(session: AsyncSession, player_id: uuid.UUID) -> int:
     return await active_fleet_count(session, player_id) + await active_patrol_count(session, player_id)
 
 
+# Reihenfolge = Anzeige-Reihenfolge im Frontend. Summe der Werte == used_fleet_slots.
+SLOT_CATEGORIES = ("flights", "expeditions", "mining", "recycling", "patrols")
+
+
+def slot_breakdown(missions: list[str], patrols: int) -> dict[str, int]:
+    """Reiner, testbarer Helfer: gruppiert laufende Flotten-Missionen + Abfang-Patrouillen in
+    benannte Slot-Kategorien. Expeditionen/Bergbau/Recycling sind eigene Kategorien, alles
+    andere (Angriff/Transport/Spionage/Kolonisierung/Handel/Deploy/Eskorte/Intercept-Anflug) faellt
+    unter 'flights'. Garantie: Summe der Werte == len(missions) + patrols == used_fleet_slots."""
+    out = {k: 0 for k in SLOT_CATEGORIES}
+    for m in missions:
+        if m == "expedition":
+            out["expeditions"] += 1
+        elif m == "mine":
+            out["mining"] += 1
+        elif m == "recycle":
+            out["recycling"] += 1
+        else:
+            out["flights"] += 1
+    out["patrols"] = int(patrols)
+    return out
+
+
+def summarize_slots(missions: list[str], patrols: int, max_slots: int) -> dict:
+    """Reiner, testbarer Helfer: baut die komplette Slot-Uebersicht.
+
+    used = Anzahl Flotten im Flug + Patrouillen; free = max - used (>= 0);
+    breakdown = slot_breakdown (Summe == used)."""
+    breakdown = slot_breakdown(missions, patrols)
+    used = len(missions) + int(patrols)
+    return {
+        "max": int(max_slots),
+        "used": used,
+        "free": max(0, int(max_slots) - used),
+        "breakdown": breakdown,
+    }
+
+
+async def fleet_slot_summary(session: AsyncSession, player_id: uuid.UUID) -> dict:
+    """Kapazitaets-Uebersicht der Flottenslots fuer das Frontend.
+
+    max  = fleet_slots (base + Computertechnik + Doktrin-Bonus)
+    used = used_fleet_slots (Flotten im Flug + aktive Abfang-Patrouillen)
+    free = max - used (>= 0)
+    breakdown = Anzahl aktiver Flotten je Kategorie (Summe == used)."""
+    missions = (await session.execute(
+        select(Fleet.mission).where(Fleet.player_id == player_id, Fleet.status.in_(ACTIVE_STATUSES))
+    )).scalars().all()
+    patrols = await active_patrol_count(session, player_id)
+    max_slots = await fleet_slots(session, player_id)
+    return summarize_slots(list(missions), patrols, max_slots)
+
+
 async def _fleet_ship_map(session: AsyncSession, fleet_id: uuid.UUID) -> dict[str, int]:
     rows = (await session.execute(
         select(Ship).where(Ship.fleet_id == fleet_id)

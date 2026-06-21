@@ -8,8 +8,15 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.fleet.schemas import FleetOut, IncomingAttackOut, SendFleetRequest
-from app.fleet.service import fleet_to_dict, jump_fleet, list_incoming_attacks, recall_fleet, send_fleet
+from app.fleet.schemas import FleetOut, FleetSlotsOut, IncomingAttackOut, SendFleetRequest
+from app.fleet.service import (
+    fleet_slot_summary,
+    fleet_to_dict,
+    jump_fleet,
+    list_incoming_attacks,
+    recall_fleet,
+    send_fleet,
+)
 from app.platform.db import get_session
 from app.platform.models import Fleet, Player
 from app.platform.security import get_current_player
@@ -28,6 +35,18 @@ async def list_fleets(
         .order_by(Fleet.created_at.desc())
     )).scalars().all()
     return [await fleet_to_dict(session, f) for f in rows]
+
+
+@router.get("/fleet/slots", response_model=FleetSlotsOut)
+async def fleet_slots_endpoint(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Kapazitaets-Anzeige der Flottenslots: max/used/free + Aufschluesselung nach Aktivitaet.
+
+    Expeditionen & Bergbau sind normale Flotten und teilen sich diesen gemeinsamen Slot-Pool
+    (es gibt KEINEN separaten Cap). Die Summe der breakdown-Werte entspricht 'used'."""
+    return await fleet_slot_summary(session, player.id)
 
 
 @router.get("/incoming-attacks", response_model=list[IncomingAttackOut])

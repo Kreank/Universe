@@ -315,6 +315,23 @@ export interface Fleet {
   } | null;
 }
 
+/** Aufschlüsselung der belegten Flotten-Slots nach Aktivität (Summe == used). */
+export interface FleetSlotBreakdown {
+  flights: number;
+  expeditions: number;
+  mining: number;
+  recycling: number;
+  patrols: number;
+}
+
+/** Kapazitäts-Anzeige der Flotten-Slots: belegt/frei + Aufschlüsselung. */
+export interface FleetSlots {
+  max: number;
+  used: number;
+  free: number;
+  breakdown: FleetSlotBreakdown;
+}
+
 /** Ein aktives Asteroidenfeld in der Bergbau-Übersicht (Reichweite via Ortungs-Forschung). */
 export interface MiningField {
   galaxy: number;

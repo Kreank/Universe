@@ -18,6 +18,7 @@ import {
   DecisionResponse,
   FeedbackRequest,
   Fleet,
+  FleetSlots,
   GameEvent,
   IncomingAttack,
   FleetSendRequest,
@@ -183,6 +184,11 @@ export class ApiService {
 
   getIncomingAttacks(): Observable<IncomingAttack[]> {
     return this.http.get<IncomingAttack[]>('/api/incoming-attacks');
+  }
+
+  /** Kapazitäts-Anzeige der Flotten-Slots: max/used/free + Aufschlüsselung nach Aktivität. */
+  getFleetSlots(): Observable<FleetSlots> {
+    return this.http.get<FleetSlots>('/api/fleet/slots');
   }
 
   getGalaxyTargets(): Observable<GalaxyTarget[]> {

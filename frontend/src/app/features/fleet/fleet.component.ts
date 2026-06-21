@@ -7,6 +7,7 @@ import {
   Coordinate,
   Fleet,
   FleetMission,
+  FleetSlots,
   IncomingAttack,
   StationedFleet,
 } from '../../core/models/api.models';
@@ -18,6 +19,7 @@ import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { NotificationService } from '../../core/services/notification.service';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
+import { FleetSlotsComponent } from '../../shared/components/fleet-slots.component';
 import { fleetStyles } from './fleet.styles';
 
 /**
@@ -33,9 +35,12 @@ import { fleetStyles } from './fleet.styles';
 @Component({
   selector: 'app-fleet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, RouterLink, CountdownComponent, BtnIconComponent, IconTileComponent, EmptyStateComponent, FleetDispatchComponent],
+  imports: [DecimalPipe, RouterLink, CountdownComponent, BtnIconComponent, IconTileComponent, EmptyStateComponent, FleetDispatchComponent, FleetSlotsComponent],
   template: `
     <h1>Flotte</h1>
+
+    <!-- Kapazitäts-Anzeige: belegte/freie Flotten-Slots + Aufschlüsselung nach Aktivität -->
+    <app-fleet-slots [slots]="slots()" />
 
     @if (incoming().length) {
       <section class="card incoming">
@@ -220,6 +225,7 @@ export class FleetComponent {
 
   protected readonly incoming = signal<IncomingAttack[]>([]);
   protected readonly stationed = signal<StationedFleet[]>([]);
+  protected readonly slots = signal<FleetSlots | null>(null);
 
   /** Offenes Versand-Overlay (editierbares Ziel) bzw. Patrouillen-Overlay. */
   protected readonly sendOverlay = signal<{ target: Coordinate | null; mission: FleetMission } | null>(null);
@@ -252,6 +258,15 @@ export class FleetComponent {
 
     this.loadIncoming();
     this.loadStationed();
+    this.loadSlots();
+  }
+
+  /** Slot-Kapazität (belegt/frei + Aufschlüsselung) frisch ziehen. */
+  loadSlots(): void {
+    this.api.getFleetSlots().subscribe({
+      next: (s) => this.slots.set(s),
+      error: () => this.slots.set(null),
+    });
   }
 
   /** Versand-Overlay mit editierbarem Ziel öffnen (Ziel + Mission wählt der Spieler dort). */
@@ -270,12 +285,14 @@ export class FleetComponent {
     void this.state.reloadFleets();
     this.loadIncoming();
     this.loadStationed();
+    this.loadSlots();
   }
 
   /** Nach erfolgreicher Patrouille: Overlay schließen + stationierte Flotten neu laden. */
   onPatrolled(): void {
     this.patrolOverlay.set(false);
     this.loadStationed();
+    this.loadSlots();
   }
 
   loadStationed(): void {
@@ -290,6 +307,7 @@ export class FleetComponent {
       next: () => {
         this.notify.success('Rueckruf gestartet', `Patrouille von [${s.coords}] kehrt in die Garnison zurueck.`);
         this.loadStationed();
+        this.loadSlots();
         void this.state.reloadFleets();
       },
       error: (err) => this.notify.warning('Rueckruf fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),
@@ -307,6 +325,7 @@ export class FleetComponent {
     this.api.recallFleet(fleetId).subscribe({
       next: () => {
         this.notify.info('Rueckruf', 'Flotte kehrt zur Basis zurueck.');
+        this.loadSlots();
         void this.state.reloadFleets();
       },
       error: (err) => this.notify.warning('Rueckruf fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),

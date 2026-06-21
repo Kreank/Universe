@@ -2,10 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
-import { Coordinate, MiningField, MiningFieldsResponse } from '../../core/models/api.models';
+import { Coordinate, FleetSlots, MiningField, MiningFieldsResponse } from '../../core/models/api.models';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
+import { FleetSlotsComponent } from '../../shared/components/fleet-slots.component';
 
 type SortKey = 'richness' | 'metal' | 'crystal' | 'expires';
 
@@ -21,7 +22,7 @@ const RICHNESS_RANK: Record<string, number> = { ergiebig: 3, reich: 2, normal: 1
 @Component({
   selector: 'app-mining',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, RouterLink, CountdownComponent, EmptyStateComponent, FleetDispatchComponent],
+  imports: [DecimalPipe, RouterLink, CountdownComponent, EmptyStateComponent, FleetDispatchComponent, FleetSlotsComponent],
   template: `
     <h1>Bergbau · Asteroidenfelder</h1>
     <p class="sub">
@@ -51,6 +52,11 @@ const RICHNESS_RANK: Record<string, number> = { ergiebig: 3, reich: 2, normal: 1
           <span class="chip ghost">{{ d.fields.length }} Felder</span>
           <button class="btn btn-sm btn-ghost" (click)="reload()">↻ Aktualisieren</button>
         </div>
+
+        <p class="slot-line muted small">
+          {{ slots()?.breakdown?.mining ?? 0 }} Bergbau-Flüge aktiv ·
+          <app-fleet-slots [slots]="slots()" [compact]="true" />
+        </p>
 
         @if (sortedFields().length) {
           <div class="sort-row">
@@ -103,6 +109,8 @@ const RICHNESS_RANK: Record<string, number> = { ergiebig: 3, reich: 2, normal: 1
     `
       .sub { color: var(--text-dim); margin-top: calc(-1 * var(--sp-2)); }
       .bar-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: var(--sp-3) 0; }
+      .slot-line { display: flex; align-items: baseline; gap: 0.35em; flex-wrap: wrap; margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); }
+      .slot-line app-fleet-slots { display: inline; }
       .chip { font-size: var(--fs-sm); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm); padding: 2px var(--sp-2); }
       .chip.ghost { background: transparent; color: var(--text-dim); }
       .lock { display: flex; gap: var(--sp-3); align-items: center; padding: var(--sp-4); }
@@ -132,6 +140,8 @@ export class MiningComponent {
   protected readonly sortKey = signal<SortKey>('richness');
   /** Offener Versand-Dialog (Bergbau-Flotte zum Feld schicken). */
   protected readonly dispatch = signal<{ target: Coordinate; name: string } | null>(null);
+  /** Flotten-Slot-Kapazität (gemeinsamer Pool — Bergbau-Flüge zählen mit). */
+  protected readonly slots = signal<FleetSlots | null>(null);
 
   protected readonly sortedFields = computed(() => {
     const fields = [...(this.data()?.fields ?? [])];
@@ -156,6 +166,14 @@ export class MiningComponent {
     this.api.getMiningFields().subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: () => { this.loading.set(false); },
+    });
+    this.loadSlots();
+  }
+
+  loadSlots(): void {
+    this.api.getFleetSlots().subscribe({
+      next: (s) => this.slots.set(s),
+      error: () => this.slots.set(null),
     });
   }
 

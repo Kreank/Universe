@@ -1,4 +1,8 @@
 export const dashboardStyles = `
+  /* Flotten-Slot-Kopfzeile in den Flottenbewegungen */
+  .slots-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; }
+  .slots-title-row app-fleet-slots { display: inline; font-weight: 400; }
+
   /* Welle 5: Konjunktions-Karte (wandernde Galaxie) */
   .conj-card { margin-bottom: var(--sp-4); }
   .conj-card .panel-title { display: flex; align-items: baseline; gap: var(--sp-2); }

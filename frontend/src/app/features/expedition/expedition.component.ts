@@ -5,11 +5,12 @@ import { ApiService } from '../../core/services/api.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { BalanceService } from '../../core/services/balance.service';
-import { Coordinate, Fleet, Transmission } from '../../core/models/api.models';
+import { Coordinate, Fleet, FleetSlots, Transmission } from '../../core/models/api.models';
 import { MISSION_META, metaFor } from '../../core/models/display';
 import { CountdownComponent } from '../../shared/components/countdown.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
+import { FleetSlotsComponent } from '../../shared/components/fleet-slots.component';
 
 /**
  * Expedition · Galaktische Weiten. Eigenständiger Bereich (analog Bergbau), aus dem
@@ -24,7 +25,7 @@ import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.c
 @Component({
   selector: 'app-expedition',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, CountdownComponent, EmptyStateComponent, FleetDispatchComponent],
+  imports: [FormsModule, RouterLink, CountdownComponent, EmptyStateComponent, FleetDispatchComponent, FleetSlotsComponent],
   template: `
     <h1>Expedition · Galaktische Weiten</h1>
     <p class="sub">
@@ -77,6 +78,10 @@ import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.c
 
     <section class="card running">
       <div class="panel-title">🛰️ Laufende Expeditionen</div>
+      <p class="slot-line muted small">
+        {{ runningExpeditions().length }} Expedition{{ runningExpeditions().length === 1 ? '' : 'en' }} aktiv ·
+        <app-fleet-slots [slots]="slots()" [compact]="true" />
+      </p>
       @if (runningExpeditions().length) {
         @for (f of runningExpeditions(); track f.id) {
           <div class="fleet-row">
@@ -149,6 +154,8 @@ import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.c
       .launch-btn { min-height: 38px; }
       .lnk { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
 
+      .slot-line { display: flex; align-items: baseline; gap: 0.35em; flex-wrap: wrap; margin: calc(-1 * var(--sp-2)) 0 var(--sp-2); }
+      .slot-line app-fleet-slots { display: inline; }
       .fleet-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
       .fleet-row:last-child { border-bottom: none; }
       .fleet-info { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
@@ -192,6 +199,9 @@ export class ExpeditionComponent {
   /** Offenes Versand-Overlay (Ziel = gewähltes System, Position = tiefer Raum). */
   protected readonly dispatch = signal<Coordinate | null>(null);
 
+  /** Flotten-Slot-Kapazität (gemeinsamer Pool — Expeditionen zählen mit). */
+  protected readonly slots = signal<FleetSlots | null>(null);
+
   protected readonly runningExpeditions = computed(() =>
     this.state.fleets().filter((f) => f.mission === 'expedition' && f.status !== 'returned'),
   );
@@ -216,6 +226,14 @@ export class ExpeditionComponent {
       error: () => {},
     });
     this.loadLog();
+    this.loadSlots();
+  }
+
+  loadSlots(): void {
+    this.api.getFleetSlots().subscribe({
+      next: (s) => this.slots.set(s),
+      error: () => this.slots.set(null),
+    });
   }
 
   loadLog(): void {
@@ -245,12 +263,14 @@ export class ExpeditionComponent {
     this.dispatch.set(null);
     void this.state.reloadFleets();
     this.loadLog();
+    this.loadSlots();
   }
 
   recall(fleetId: string): void {
     this.api.recallFleet(fleetId).subscribe({
       next: () => {
         this.notify.info('Rückruf', 'Expedition kehrt zur Basis zurück.');
+        this.loadSlots();
         void this.state.reloadFleets();
       },
       error: (err) => this.notify.warning('Rückruf fehlgeschlagen', err?.error?.detail ?? 'Fehler.'),

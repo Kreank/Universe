@@ -38,6 +38,23 @@ class FleetOut(BaseModel):
     mining: MiningProgressOut | None = None
 
 
+class SlotBreakdownOut(BaseModel):
+    """Aufschluesselung der belegten Flottenslots nach Aktivitaet (Summe == used)."""
+    flights: int = 0
+    expeditions: int = 0
+    mining: int = 0
+    recycling: int = 0
+    patrols: int = 0
+
+
+class FleetSlotsOut(BaseModel):
+    """Kapazitaets-Anzeige der Flottenslots (belegt/frei + Aufschluesselung)."""
+    max: int
+    used: int
+    free: int
+    breakdown: SlotBreakdownOut
+
+
 class IncomingAttackOut(BaseModel):
     id: uuid.UUID
     attacker: str

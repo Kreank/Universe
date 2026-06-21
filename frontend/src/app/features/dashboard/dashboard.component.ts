@@ -46,6 +46,7 @@ import {
   BuildQueueItem,
   BuildingState,
   Fleet,
+  FleetSlots,
   RankBoardEntry,
   ResearchState,
   AwakeningStatus,
@@ -58,11 +59,12 @@ import { dashboardStyles } from './dashboard.styles';
 import { OnboardingPanelComponent } from '../../shared/components/onboarding-panel.component';
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
+import { FleetSlotsComponent } from '../../shared/components/fleet-slots.component';
 
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent, OnboardingPanelComponent, IconTileComponent, BtnIconComponent],
+  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent, OnboardingPanelComponent, IconTileComponent, BtnIconComponent, FleetSlotsComponent],
   template: `
     <h1>Dashboard</h1>
 
@@ -310,7 +312,10 @@ import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 
         <!-- Flottenbewegungen -->
         <section class="card">
-          <div class="panel-title"><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="16" /> Flottenbewegungen</div>
+          <div class="panel-title slots-title-row">
+            <span><app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="16" /> Flottenbewegungen</span>
+            <app-fleet-slots [slots]="slots()" [compact]="true" />
+          </div>
           @if (activeFleets().length) {
             @for (f of activeFleets(); track f.id) {
               <div class="queue-row has-tip">
@@ -615,6 +620,9 @@ export class DashboardComponent {
   // --- Welle 4: Die erwachende Galaxie ---
   protected readonly awakening = signal<AwakeningStatus | null>(null);
 
+  // --- Flotten-Slots (gemeinsamer Pool: Flüge + Expeditionen + Bergbau + Patrouillen) ---
+  protected readonly slots = signal<FleetSlots | null>(null);
+
   // --- Welle 5: Wandernde Galaxie / Konjunktions-Fenster ---
   protected readonly conjunctions = signal<ConjunctionInfo | null>(null);
   protected readonly conjEnabled = computed(() => this.conjunctions()?.enabled ?? false);
@@ -753,6 +761,13 @@ export class DashboardComponent {
       error: () => {},
     });
 
+    // Flotten-Slots authoritativ vom Server ziehen — re-fetch, sobald sich die Flottenliste
+    // ändert (Versand/Rückkehr via Websocket), damit belegt/frei live aktuell bleibt.
+    effect(() => {
+      this.state.fleets();
+      this.loadSlots();
+    });
+
     // Reload der Timer, sobald ein anderer Planet aktiv wird.
     effect(() => {
       const id = this.state.activePlanetId();
@@ -763,6 +778,14 @@ export class DashboardComponent {
         this.activeResearch.set(null);
         this.shipyardQueue.set([]);
       }
+    });
+  }
+
+  /** Flotten-Slot-Kapazität (belegt/frei + Aufschlüsselung) frisch ziehen (Fehler stumm). */
+  loadSlots(): void {
+    this.api.getFleetSlots().subscribe({
+      next: (s) => this.slots.set(s),
+      error: () => this.slots.set(null),
     });
   }
 
