@@ -11,9 +11,18 @@ export const commanderDetailStyles = `
   .profile h1 { font-family: var(--font-display); margin: 0; }
   .portrait {
     width: 120px; height: 120px; border-radius: var(--r-lg); overflow: hidden;
+    /* Aeusserer Rahmen = Moral-Band; innerer Ring = Gueteklasse (--grade-ring). */
     border: 2px solid var(--band, var(--accent));
-    box-shadow: 0 0 18px color-mix(in srgb, var(--band, var(--accent)) 45%, transparent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--band, var(--accent)) 45%, transparent),
+      inset 0 0 0 4px color-mix(in srgb, var(--grade-ring, transparent) 90%, transparent),
+      inset 0 0 14px color-mix(in srgb, var(--grade-ring, transparent) 45%, transparent);
   }
+  .portrait.grade-e { --grade-ring: var(--text-faint); }
+  .portrait.grade-d { --grade-ring: var(--ok); }
+  .portrait.grade-c { --grade-ring: var(--info); }
+  .portrait.grade-b { --grade-ring: var(--deuterium); }
+  .portrait.grade-a { --grade-ring: var(--warn); }
+  .portrait.grade-s { --grade-ring: var(--energy); }
   .portrait img { width: 100%; height: 100%; display: block; }
   .badges { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
   .chip-ico {
@@ -21,12 +30,15 @@ export const commanderDetailStyles = `
     vertical-align: -0.2em; margin-right: 0.3em;
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
   }
+  /* Grad-Chip: eine eigene Farbe je Guete (E..S). */
   .grade-chip { font-family: var(--font-display); font-weight: 800; color: var(--bg-deep); border: none; }
-  .grade-chip.grade-low { background: var(--text-faint); }
-  .grade-chip.grade-mid { background: var(--info); }
-  .grade-chip.grade-high { background: var(--accent); }
-  /* Elite/SSS = Prestige (Gold->Cyan), bewusst KEIN Magenta. */
-  .grade-chip.grade-elite { background: linear-gradient(135deg, var(--energy), var(--accent-strong)); color: var(--bg-deep); }
+  .grade-chip.grade-e { background: var(--text-faint); }
+  .grade-chip.grade-d { background: var(--ok); }
+  .grade-chip.grade-c { background: var(--info); }
+  .grade-chip.grade-b { background: var(--deuterium); }
+  .grade-chip.grade-a { background: var(--warn); }
+  /* S = Prestige-Gold, bewusst KEIN Magenta. */
+  .grade-chip.grade-s { background: linear-gradient(135deg, var(--energy), var(--accent-strong)); color: var(--bg-deep); }
   .morale-bar .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--band) 50%, transparent), var(--band)); }
 
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin: 0; }

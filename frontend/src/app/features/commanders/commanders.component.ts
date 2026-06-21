@@ -12,9 +12,11 @@ import {
   TRAIT_META,
   commanderFace,
   gradeBadgeClass,
+  gradeCanonical,
   gradeLabel,
   metaFor,
 } from '../../core/models/display';
+import { forkJoin } from 'rxjs';
 import { equipmentItemIcon, navIcon, rankIcon, specIcon, statIcon, statusIcon, traitIcon } from '../../core/models/icon-assets';
 import { commanderStyles } from './commander.styles';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
@@ -32,8 +34,17 @@ interface TierOption {
 /** Ausschnitt der `commander.grades`-Sektion aus balance.json (nur Anzeige). */
 interface GradesConfig {
   order: string[];
+  potency?: Record<string, number>;
   training_base_cost: { metal: number; crystal: number; deuterium: number };
   training_tiers: { key: string; label: string; cost_mult: number; weights: Record<string, number> }[];
+}
+
+/** Eine Bonus-Zeile der Vorschau als Spanne ueber die erreichbaren Gueten. */
+interface RangeBonus {
+  stat: string;
+  target: string;
+  pctLow: number;
+  pctHigh: number;
 }
 
 @Component({
@@ -153,11 +164,11 @@ interface GradesConfig {
         }
 
         <div class="preview">
-          <span class="bonus-head faint small">Erwartetes Profil (Kadett, ohne Traits)</span>
+          <span class="bonus-head faint small">Erwartetes Profil (Kadett, ohne Traits{{ previewGradeLabel() ? ' · ' + previewGradeLabel() : '' }})</span>
           <div class="bonus-chips">
             @for (b of preview(); track b.stat + b.target) {
-              <span class="chip bonus tip" [class.neg]="b.pct < 0" [attr.data-tip]="bonusTip(b)">
-                <app-btn-icon [src]="statIcon(b.stat)" [glyph]="statGlyph(b.stat)" [size]="14" /> {{ signedPct(b.pct) }} {{ targetLabel(b.target) }}
+              <span class="chip bonus tip" [class.neg]="b.pctHigh < 0" [attr.data-tip]="rangeTip(b)">
+                <app-btn-icon [src]="statIcon(b.stat)" [glyph]="statGlyph(b.stat)" [size]="14" /> {{ rangeText(b) }} {{ targetLabel(b.target) }}
               </span>
             } @empty {
               <span class="faint small">—</span>
@@ -251,9 +262,9 @@ interface GradesConfig {
       <div class="grid roster">
         @for (c of commanders(); track c.id) {
           <a class="card cmd-card" [routerLink]="['/commanders', c.id]">
-            <div class="portrait" [class]="bandClass(c.morale)">
+            <div class="portrait" [class]="bandClass(c.morale) + ' ' + gradeClass(c.grade)">
               <img [src]="faceFor(c.id)" alt="" (error)="onFaceError($event)" />
-              <span class="grade-badge" [class]="gradeClass(c.grade)" [attr.data-tip]="'Gueteklasse ' + gradeText(c.grade)">{{ gradeText(c.grade) }}</span>
+              <span class="grade-badge tip" [class]="gradeClass(c.grade)" [attr.data-tip]="gradeTip(c.grade)">{{ gradeText(c.grade) }}</span>
               <span class="rank-badge"><img class="chip-ico" [src]="rankIcon(c.rank)" alt="" (error)="hideImg($event)" />{{ rank(c.rank).label }}</span>
               @if (c.training_finishes_at) {
                 <span class="status-tag">in Ausbildung</span>
@@ -382,15 +393,42 @@ export class CommandersComponent {
   protected readonly selSpec = signal('combat');
   protected readonly selFocus = signal(''); // '' = automatisch
   protected readonly selTier = signal('standard');
-  protected readonly preview = signal<CommanderBonus[]>([]);
+  protected readonly preview = signal<RangeBonus[]>([]);
   protected readonly specOptions = ['combat', 'logistics', 'spy', 'research', 'trade', 'admin'];
   protected readonly focusOptions = ['fighter', 'cruiser', 'capital', 'civil'];
 
-  // Investitions-Stufen aus balance.json (Kosten + Grad-Chance-Andeutung).
-  protected readonly tierOptions = computed<TierOption[]>(() => {
-    const grades = (this.balance.value?.commander as Record<string, unknown> | undefined)?.[
+  /** `commander.grades`-Sektion aus balance.json (oder undefined, falls noch nicht geladen). */
+  private gradesConfig(): GradesConfig | undefined {
+    return (this.balance.value?.commander as Record<string, unknown> | undefined)?.[
       'grades'
     ] as GradesConfig | undefined;
+  }
+
+  /** In der gewaehlten Investitions-Stufe erreichbare Gueten (E..S, Gewicht > 0). */
+  protected readonly reachableGrades = computed<string[]>(() => {
+    const grades = this.gradesConfig();
+    if (!grades) {
+      return [];
+    }
+    const tier = grades.training_tiers.find((t) => t.key === this.selTier());
+    const weights = tier?.weights ?? {};
+    return grades.order.filter((k) => (Number(weights[k]) || 0) > 0);
+  });
+
+  /** Label fuer die Vorschau-Ueberschrift, z. B. "Güte E–D" oder "Güte C". */
+  protected readonly previewGradeLabel = computed<string>(() => {
+    const r = this.reachableGrades();
+    if (!r.length) {
+      return '';
+    }
+    const lo = gradeLabel(r[0]);
+    const hi = gradeLabel(r[r.length - 1]);
+    return lo === hi ? `Güte ${lo}` : `Güte ${lo}–${hi}`;
+  });
+
+  // Investitions-Stufen aus balance.json (Kosten + Grad-Chance-Andeutung).
+  protected readonly tierOptions = computed<TierOption[]>(() => {
+    const grades = this.gradesConfig();
     if (!grades) {
       return [];
     }
@@ -487,12 +525,45 @@ export class CommandersComponent {
 
   onTierChange(tier: string): void {
     this.selTier.set(tier);
+    this.loadPreview();
   }
 
+  /**
+   * Vorschau als Spanne ueber die in der Stufe erreichbaren Gueten: ruft die
+   * Bonus-Preview fuer die NIEDRIGSTE und HOECHSTE erreichbare Guete (Spez + Fokus
+   * fliessen serverseitig ein) und zippt sie zu "+x% … +y%"-Zeilen.
+   */
   private loadPreview(): void {
-    this.api.getBonusPreview(this.selSpec(), this.selFocus() || null).subscribe({
-      next: (b) => this.preview.set(b),
+    const spec = this.selSpec();
+    const focus = this.selFocus() || null;
+    const reachable = this.reachableGrades();
+    const lo = reachable[0] ?? null;
+    const hi = reachable.length ? reachable[reachable.length - 1] : null;
+
+    forkJoin({
+      low: this.api.getBonusPreview(spec, focus, lo),
+      high: this.api.getBonusPreview(spec, focus, hi),
+    }).subscribe({
+      next: ({ low, high }) => this.preview.set(this.mergePreview(low, high)),
       error: () => this.preview.set([]),
+    });
+  }
+
+  /**
+   * Zippt zwei Bonus-Listen (niedrigste/hoechste Guete) zu Spannen-Zeilen.
+   * Defensiv ueber stat+target gematcht, falls die Listen abweichen sollten.
+   */
+  private mergePreview(low: CommanderBonus[], high: CommanderBonus[]): RangeBonus[] {
+    const key = (b: CommanderBonus) => `${b.stat}|${b.target}`;
+    const highMap = new Map(high.map((b) => [key(b), b.pct]));
+    return low.map((b) => {
+      const hp = highMap.get(key(b)) ?? b.pct;
+      return {
+        stat: b.stat,
+        target: b.target,
+        pctLow: Math.min(b.pct, hp),
+        pctHigh: Math.max(b.pct, hp),
+      };
     });
   }
 
@@ -540,6 +611,19 @@ export class CommandersComponent {
   gradeClass = (g?: string | null) => gradeBadgeClass(g);
   gradeText = (g?: string | null) => gradeLabel(g);
 
+  /** Bonus-Faktor (potency) einer Guete aus balance.json, oder null. */
+  private gradePotency(g?: string | null): number | null {
+    const pot = this.gradesConfig()?.potency?.[gradeCanonical(g)];
+    return typeof pot === 'number' ? pot : null;
+  }
+
+  /** Tooltip am Grad-Badge: "Güteklasse X (Bonus-Faktor ×Y)". */
+  gradeTip(g?: string | null): string {
+    const pot = this.gradePotency(g);
+    const base = `Güteklasse ${gradeLabel(g)}`;
+    return pot != null ? `${base} (Bonus-Faktor ×${pot})` : base;
+  }
+
   faceFor = (id: string) => commanderFace(id);
   onFaceError(event: Event): void {
     (event.target as HTMLImageElement).src = 'assets/img/commanders/silhouette_unknown.png';
@@ -566,5 +650,22 @@ export class CommandersComponent {
     const stat = CommandersComponent.STAT_LABEL[b.stat] ?? b.stat;
     const tgt = b.target === 'all' ? 'alle Schiffe' : this.classLabel(b.target);
     return `${this.signedPct(b.pct)} ${stat} auf ${tgt}\n(passiver Basiswert — wächst mit Rang/Güteklasse, im Kampf mit Moral skaliert; nicht über Skillpunkte)`;
+  }
+
+  // -- Vorschau-Spanne (Erwartetes Profil) --------------------------------
+  /** "+x%" bei einer Guete, sonst "+x% … +y%" ueber die erreichbaren Gueten. */
+  rangeText(b: RangeBonus): string {
+    const lo = this.signedPct(b.pctLow);
+    return Math.round(b.pctLow * 100) === Math.round(b.pctHigh * 100)
+      ? lo
+      : `${lo} … ${this.signedPct(b.pctHigh)}`;
+  }
+
+  rangeTip(b: RangeBonus): string {
+    const stat = CommandersComponent.STAT_LABEL[b.stat] ?? b.stat;
+    const tgt = b.target === 'all' ? 'alle Schiffe' : this.classLabel(b.target);
+    const range = this.rangeText(b);
+    const gueteHint = this.previewGradeLabel() ? ` über ${this.previewGradeLabel()}` : '';
+    return `${range} ${stat} auf ${tgt}\n(erwarteter Basiswert${gueteHint} — skaliert mit Güteklasse, Rang und im Kampf mit Moral)`;
   }
 }

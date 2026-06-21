@@ -474,6 +474,8 @@ export interface GalaxyIntel {
   fleet?: Record<string, number>;
   defenses?: Record<string, number>;
   resources?: { metal?: number; crystal?: number; deuterium?: number };
+  /** Aufgeklaerte Kampfforschung des Ziels (ab Stufe 2, Spieler UND NPC). */
+  combat_tech?: { weapons_tech?: number; shield_tech?: number; armor_tech?: number };
   scanned_at?: string;
   /** Haendler-Markt (aus merchant_intel): Spezialisierung + Kurs-Schnappschuss. */
   merchant?: boolean;

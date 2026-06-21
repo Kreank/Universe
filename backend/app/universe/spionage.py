@@ -136,6 +136,34 @@ async def _gather_target(
     return None
 
 
+def _combat_tech(tech: dict) -> dict[str, int]:
+    """Reduziert ein Tech-Dict auf die drei kampfrelevanten Kerntechs (Waffen/Schild/Panzerung).
+
+    Genau die Stufen, die ``combat.engine`` fuer Angriff/Schild/Huelle liest und die der
+    Combat-Simulator als ``defender_tech`` vorbelegen soll."""
+    return {
+        "weapons_tech": int(tech.get("weapons_tech", 0)),
+        "shield_tech": int(tech.get("shield_tech", 0)),
+        "armor_tech": int(tech.get("armor_tech", 0)),
+    }
+
+
+async def _npc_combat_tech(session: AsyncSession, npc: NpcEmpire, bal) -> dict[str, int]:
+    """Effektive NPC-Kampftech — EXAKT wie im echten Kampf (``combat.service.resolve_attack``):
+    ``tier_tech(npc_tech-Basis, effective_tier(Region+Spieler+Alter), tier_cfg)``.
+
+    Damit stimmt der Combat-Sim-Preload (Gegner-Tech aus Spionage) mit der Realitaet ueberein."""
+    from app.npc.scaling import effective_tier, nearest_player_score, tier_tech
+    tier_cfg = bal.npc.get("tier", {})
+    age = (_now() - npc.created_at).total_seconds() if npc.created_at else 0.0
+    eff = effective_tier(
+        npc.galaxy, npc.system, npc.position,
+        await nearest_player_score(session, npc.galaxy, npc.system, npc.position),
+        age, tier_cfg,
+    )
+    return tier_tech(bal.npc.get("attack", {}).get("npc_tech", {}), eff, tier_cfg)
+
+
 def _fmt_units(units: dict[str, int]) -> str:
     if not units:
         return "keine"
@@ -169,8 +197,15 @@ def _build_report_body(coords: str, intel: dict) -> str:
     if level >= 2:
         lines.append(f"Flotte: {_fmt_units(intel.get('fleet', {}))}")
         lines.append(f"Verteidigung: {_fmt_units(intel.get('defenses', {}))}")
+        ct = intel.get("combat_tech")
+        if ct:
+            lines.append(
+                f"Kampftech: Waffen {ct.get('weapons_tech', 0)} · "
+                f"Schild {ct.get('shield_tech', 0)} · Panzerung {ct.get('armor_tech', 0)}"
+            )
     else:
         lines.append("Flotten-/Verteidigungs-Zusammensetzung: unklar (mehr Sonden oder Spionagetech noetig).")
+        lines.append("Kampftech: nicht aufgeklaert (mehr Sonden oder Spionagetech noetig).")
     if level >= 3:
         lines.append(f"Ressourcen: {_fmt_resources(intel.get('resources', {}))}")
         if intel.get("buildings"):
@@ -261,6 +296,20 @@ async def resolve_spy(session: AsyncSession, fleet: Fleet) -> None:
     if level >= 2:
         intel["fleet"] = target["fleet"]
         intel["defenses"] = target["defenses"]
+        # Kampftech (Waffen/Schild/Panzerung): attack-relevante Kerninfo -> bereits ab Stufe 2.
+        # Spieler-Ziel: aus dessen Forschung. NPC-Ziel: die EFFEKTIVE Tech, mit der das NPC
+        # tatsaechlich kaempft (gleiche Quelle wie resolve_attack). Speist den Combat-Sim-Preload.
+        if target["kind"] == "player":
+            intel["combat_tech"] = _combat_tech(target.get("research", {}))
+        else:
+            _spy_npc = target.get("npc")
+            if _spy_npc is not None:
+                try:
+                    intel["combat_tech"] = _combat_tech(
+                        await _npc_combat_tech(session, _spy_npc, bal)
+                    )
+                except Exception:  # noqa: BLE001 — Kampftech-Intel darf den Bericht nie stoeren
+                    pass
     if level >= 3:
         intel["resources"] = target["resources"]
         # Voll-Dossier (Sascha-Entscheid): Gebaeude- + Forschungsstufen erst ab Stufe 3.

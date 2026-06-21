@@ -63,6 +63,27 @@ interface PickRow {
             : 'Du greifst an: stelle deine Angriffsflotte ein, der Gegner verteidigt mit Schiffen + Verteidigung.' }}
         </p>
 
+        @if (ownFleetPicks().length) {
+          <div class="card fleet-quick">
+            <div class="panel-title fq-head">
+              <app-btn-icon [src]="navIcon('fleet')" glyph="🚀" [size]="16" /> Meine Schiffe auf diesem Planeten
+              <button class="mini" type="button" title="Gesamte Garnison als deine Flotte übernehmen"
+                (click)="fillOwnFromFleet()">+ Alle übernehmen</button>
+            </div>
+            <div class="fq-rows">
+              @for (s of ownFleetPicks(); track s.type) {
+                <button class="fq-chip" type="button" title="{{ s.count }}× {{ s.label }} hinzufügen"
+                  (click)="addOwnShip(s.type, s.count)">
+                  <app-icon-tile class="fq-ico" [glyph]="s.glyph" [src]="s.icon" [mk2]="!!s.mk2" [size]="28" variant="accent" />
+                  <span class="fq-label">{{ s.label }}</span>
+                  <span class="fq-count mono">{{ s.count }}</span>
+                  <span class="fq-add">+ hinzufügen</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
         <div class="cols">
           <!-- DEINE Seite: Schiffe (+ Verteidigung im Verteidigungs-Modus) -->
           <div class="card col side-own">
@@ -230,6 +251,20 @@ interface PickRow {
     .ms-btn:hover { color: var(--text); }
     .ms-btn.active { background: var(--accent); color: #04201d; }
     .mode-hint { margin: var(--sp-2) 0 0; }
+
+    /* Schnellbefüllung aus der Garnison des aktiven Planeten. */
+    .fleet-quick { display: flex; flex-direction: column; gap: var(--sp-2); border-top: 2px solid var(--accent); }
+    .fq-head { justify-content: flex-start; }
+    .fq-rows { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+    .fq-chip { display: inline-flex; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-1) var(--sp-3); min-height: 44px; cursor: pointer;
+      background: var(--accent-soft); border: 1px solid var(--accent-dim);
+      border-radius: var(--r-pill); color: var(--text);
+      transition: background var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
+    .fq-chip:hover { background: rgba(47,227,210,0.18); box-shadow: var(--glow-soft); }
+    .fq-label { font-size: var(--fs-sm); }
+    .fq-count { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 700; }
+    .fq-add { font-size: var(--fs-xs); color: var(--accent); font-weight: 600; }
 
     .cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); align-items: start; }
     .col { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
@@ -450,6 +485,19 @@ export class CombatSimComponent {
       next[s.type] = s.count;
     }
     this.ownCounts.set(next);
+  }
+
+  /** Garnisons-Schiffe mit Anzeige-Meta (Label/Icon/Mk2) für die Schnellbefüllung. */
+  protected readonly ownFleetPicks = computed<(PickRow & { count: number })[]>(() => {
+    const metaByType = new Map(this.combatShips().map((s) => [s.type, s]));
+    return (this.state.activePlanet()?.ships ?? [])
+      .filter((s) => s.count > 0 && metaByType.has(s.type))
+      .map((s) => ({ ...metaByType.get(s.type)!, count: s.count }));
+  });
+
+  /** Einzelnen Garnisons-Schiffstyp zur eigenen Flotte addieren (kumulativ). */
+  addOwnShip(type: string, count: number): void {
+    this.ownCounts.update((m) => ({ ...m, [type]: (m[type] ?? 0) + count }));
   }
 
   /** Verteidigungsanlagen des aktiven Planeten (für „Meine Verteidigung übernehmen"). */

@@ -68,7 +68,7 @@ import { commanderDetailStyles } from './commander-detail.styles';
 
       <div class="grid layout">
         <section class="card profile">
-          <div class="portrait" [class]="bandClass(c.morale)">
+          <div class="portrait" [class]="bandClass(c.morale) + ' ' + gradeClass(c.grade)">
             <img [src]="faceFor(c.id)" alt="" (error)="onFaceError($event)" />
           </div>
           <h1>{{ c.name }}</h1>

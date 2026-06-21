@@ -29,9 +29,19 @@ export const commanderStyles = `
     position: relative;
     width: 84px; flex: 0 0 84px; height: 84px;
     border-radius: var(--r-md); overflow: hidden;
+    /* Aeusserer Rahmen = Moral-Band; innerer Ring = Gueteklasse (--grade-ring). */
     border: 2px solid var(--band, var(--accent));
-    box-shadow: 0 0 14px color-mix(in srgb, var(--band, var(--accent)) 40%, transparent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--band, var(--accent)) 40%, transparent),
+      inset 0 0 0 3px color-mix(in srgb, var(--grade-ring, transparent) 90%, transparent),
+      inset 0 0 10px color-mix(in srgb, var(--grade-ring, transparent) 45%, transparent);
   }
+  /* Gueteklassen-Ring ums Portrait: eine eigene Farbe je Guete (E..S). */
+  .portrait.grade-e { --grade-ring: var(--text-faint); }
+  .portrait.grade-d { --grade-ring: var(--ok); }
+  .portrait.grade-c { --grade-ring: var(--info); }
+  .portrait.grade-b { --grade-ring: var(--deuterium); }
+  .portrait.grade-a { --grade-ring: var(--warn); }
+  .portrait.grade-s { --grade-ring: var(--energy); }
   .portrait > img { width: 100%; height: 100%; display: block; }
   .rank-badge {
     position: absolute; bottom: 0; left: 0; right: 0;
@@ -58,13 +68,16 @@ export const commanderStyles = `
     color: var(--bg-deep); border: 1px solid rgba(255,255,255,0.25);
     box-shadow: 0 0 8px var(--grade-glow, transparent);
   }
-  .grade-badge.grade-low { background: var(--text-faint); --grade-glow: color-mix(in srgb, var(--text-faint) 50%, transparent); }
-  .grade-badge.grade-mid { background: var(--info); --grade-glow: color-mix(in srgb, var(--info) 60%, transparent); }
-  .grade-badge.grade-high { background: var(--accent); --grade-glow: color-mix(in srgb, var(--accent) 70%, transparent); }
-  /* Elite/SSS = Prestige (Gold->Cyan), bewusst KEIN Magenta. */
-  .grade-badge.grade-elite {
+  /* Eine eigene Farbe je Guete (E..S), passend zum Portrait-Ring. */
+  .grade-badge.grade-e { background: var(--text-faint); --grade-glow: color-mix(in srgb, var(--text-faint) 55%, transparent); }
+  .grade-badge.grade-d { background: var(--ok); --grade-glow: color-mix(in srgb, var(--ok) 60%, transparent); }
+  .grade-badge.grade-c { background: var(--info); --grade-glow: color-mix(in srgb, var(--info) 60%, transparent); }
+  .grade-badge.grade-b { background: var(--deuterium); --grade-glow: color-mix(in srgb, var(--deuterium) 65%, transparent); }
+  .grade-badge.grade-a { background: var(--warn); --grade-glow: color-mix(in srgb, var(--warn) 65%, transparent); }
+  /* S = Prestige-Gold (vormals .grade-elite), bewusst KEIN Magenta. */
+  .grade-badge.grade-s {
     background: linear-gradient(135deg, var(--energy), var(--accent-strong)); color: var(--bg-deep);
-    --grade-glow: color-mix(in srgb, var(--energy) 70%, transparent);
+    --grade-glow: color-mix(in srgb, var(--energy) 75%, transparent);
   }
 
   /* Investitions-Stufen-Auswahl. */

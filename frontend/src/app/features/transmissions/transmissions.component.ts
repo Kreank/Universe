@@ -40,6 +40,8 @@ interface SpyIntelView {
   /** Gebäude-/Forschungsstufen (L3, nur Spieler-Ziele). */
   buildings: IntelUnit[] | null;
   research: IntelUnit[] | null;
+  /** Aufgeklaerte Kampfforschung (ab Stufe 2, Spieler UND NPC). */
+  combatTech: IntelUnit[] | null;
   /** NPC-Wirtschaft (abgeleitete Ausbau-/Forschungsstufe), sonst null. */
   economy: { development: number; research: number } | null;
   scannedAt: string | null;
@@ -47,6 +49,7 @@ interface SpyIntelView {
   rawFleet: Record<string, number>;
   rawDefenses: Record<string, number>;
   rawResearch: Record<string, number>;
+  rawCombatTech: Record<string, number>;
 }
 
 /**
@@ -168,6 +171,16 @@ interface SpyIntelView {
                     <div class="intel-label"><app-btn-icon [src]="navIcon('research')" glyph="🔬" [size]="16" /> Forschung</div>
                     <div class="intel-rows">
                       @for (u of intel.research; track u.label) {
+                        <span class="unit"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ u.label }} <strong>Stufe {{ u.count }}</strong></span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (intel.combatTech) {
+                  <div class="intel-section">
+                    <div class="intel-label"><app-btn-icon [src]="statusIcon('attack')" glyph="⚔" [size]="16" /> Kampftech</div>
+                    <div class="intel-rows">
+                      @for (u of intel.combatTech; track u.label) {
                         <span class="unit"><app-icon-tile class="u-ico" [glyph]="u.glyph" [src]="u.icon" [size]="20" variant="muted" />{{ u.label }} <strong>Stufe {{ u.count }}</strong></span>
                       }
                     </div>
@@ -309,6 +322,12 @@ export class TransmissionsComponent {
         tech[k] = Number(intel.rawResearch[k]);
       }
     }
+    // Spionierte Kampftech (Stufe >=2, auch fuer NPC ohne Forschungs-Detail) ergaenzen/ueberschreiben.
+    for (const [k, v] of Object.entries(intel.rawCombatTech)) {
+      if (v) {
+        tech[k] = Number(v);
+      }
+    }
     const coordStr = intel.coords ? `${intel.coords[0]}:${intel.coords[1]}:${intel.coords[2]}` : '';
     this.simPreload.set({
       ships: { ...intel.rawFleet },
@@ -323,6 +342,7 @@ export class TransmissionsComponent {
   protected readonly missionIcon = missionIcon;
   protected readonly navIcon = navIcon;
   protected readonly statIcon = statIcon;
+  protected readonly statusIcon = statusIcon;
   protected readonly uiIcon = uiIcon;
 
   protected readonly onlyUnread = signal(false);
@@ -549,6 +569,7 @@ export class TransmissionsComponent {
       resources: resources && resources.length ? resources : null,
       buildings: units(p['buildings'], BUILDING_META, buildingIcon),
       research: units(p['research'], TECH_META, techIcon),
+      combatTech: units(p['combat_tech'], TECH_META, techIcon),
       economy: (() => {
         const e = p['economy'] as Record<string, number> | undefined;
         return e && typeof e === 'object'
@@ -559,6 +580,7 @@ export class TransmissionsComponent {
       rawFleet: asMap(p['fleet']),
       rawDefenses: asMap(p['defenses']),
       rawResearch: asMap(p['research']),
+      rawCombatTech: asMap(p['combat_tech']),
     };
   }
 

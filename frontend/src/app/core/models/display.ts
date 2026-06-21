@@ -773,26 +773,39 @@ export const RANK_META: Record<string, DisplayMeta> = {
 
 /**
  * Gueteklassen E..S (6 Stufen). `glyph` haelt die CSS-Klasse fuer die
- * Farbcodierung des Grad-Badges (E/D grau, C/B blau, A/S cyan).
+ * Farbcodierung — jede Guete hat eine EIGENE, klar unterscheidbare Farbe:
+ * E grau, D gruen, C blau, B violett, A bernstein, S gold-Gradient.
  * Alt-Grade (F/SS/SSS) sind Aliasse und werden als ihr effektives Pendant
  * angezeigt (F->E, SS/SSS->S), passend zur Backend-Normalisierung (kein DB-Write).
  */
 export const GRADE_META: Record<string, DisplayMeta> = {
-  E: { label: 'E', glyph: 'grade-low' },
-  D: { label: 'D', glyph: 'grade-low' },
-  C: { label: 'C', glyph: 'grade-mid' },
-  B: { label: 'B', glyph: 'grade-mid' },
-  A: { label: 'A', glyph: 'grade-high' },
-  S: { label: 'S', glyph: 'grade-high' },
+  E: { label: 'E', glyph: 'grade-e' },
+  D: { label: 'D', glyph: 'grade-d' },
+  C: { label: 'C', glyph: 'grade-c' },
+  B: { label: 'B', glyph: 'grade-b' },
+  A: { label: 'A', glyph: 'grade-a' },
+  S: { label: 'S', glyph: 'grade-s' },
   // Alt-Grade (Bestandsdaten) -> effektives Pendant.
-  F: { label: 'E', glyph: 'grade-low' },
-  SS: { label: 'S', glyph: 'grade-high' },
-  SSS: { label: 'S', glyph: 'grade-high' },
+  F: { label: 'E', glyph: 'grade-e' },
+  SS: { label: 'S', glyph: 'grade-s' },
+  SSS: { label: 'S', glyph: 'grade-s' },
 };
 
-/** CSS-Klassenname fuer das Grad-Badge (Farbcodierung). Fallback: blau (mid). */
+/** Roh-Grade auf das kanonische E..S-Schema abbilden (F->E, SS/SSS->S). */
+const GRADE_ALIASES: Record<string, string> = { F: 'E', SS: 'S', SSS: 'S' };
+
+/**
+ * Kanonischer Gueteklassen-Schluessel (E..S) fuer Lookups wie potency.
+ * Bildet Alt-Grade ab und faellt auf 'C' (Baseline) zurueck.
+ */
+export function gradeCanonical(grade: string | null | undefined): string {
+  const g = grade ?? 'C';
+  return GRADE_ALIASES[g] ?? g;
+}
+
+/** CSS-Klassenname fuer das Grad-Badge (eine Farbe je Guete). Fallback: blau (C). */
 export function gradeBadgeClass(grade: string | null | undefined): string {
-  return GRADE_META[grade ?? 'C']?.glyph ?? 'grade-mid';
+  return GRADE_META[grade ?? 'C']?.glyph ?? 'grade-c';
 }
 
 /** Anzeige-Label einer Gueteklasse (Fallback: Roh-Schluessel oder 'C'). */
