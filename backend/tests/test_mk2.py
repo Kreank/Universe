@@ -35,12 +35,17 @@ def _real_ships() -> dict:
 # ----------------------------------------------------------- Faktoren / Ableitung
 
 def test_mk2_factors_present_and_sane():
-    for key in ("attack", "shield", "cost", "fuel", "antimatter_pct"):
+    for key in ("attack", "shield", "cargo", "speed", "cost", "fuel", "fuel_tank", "antimatter_pct"):
         assert key in FACTORS
+    # Nutzen-Werte: +25% besser in der Rolle.
     assert FACTORS["attack"] == 1.25
     assert FACTORS["shield"] == 1.25
+    assert FACTORS["cargo"] == 1.25
+    assert FACTORS["speed"] == 1.25
+    # Nachteile/Kosten.
     assert FACTORS["cost"] == 1.3
     assert FACTORS["fuel"] == 1.3
+    assert FACTORS["fuel_tank"] == 1.3
     assert 0 < FACTORS["antimatter_pct"] < 1
 
 
@@ -51,8 +56,11 @@ def test_derived_values_for_examples():
         mk1 = SHIPS[name]
         mk2 = SHIPS[f"{name}_mk2"]
 
+        # Nutzen-Werte: jeder vorhandene ×eigener Faktor (+25% besser in der Rolle).
         assert mk2["attack"] == round(mk1["attack"] * f["attack"])
         assert mk2["shield"] == round(mk1["shield"] * f["shield"])
+        assert mk2["cargo"] == round(mk1["cargo"] * f["cargo"])
+        assert mk2["speed"] == round(mk1["speed"] * f["speed"])
 
         for k in ("metal", "crystal", "deuterium"):
             assert mk2["cost"][k] == round(mk1["cost"].get(k, 0) * f["cost"])
@@ -61,12 +69,28 @@ def test_derived_values_for_examples():
         assert mk2["cost"]["antimatter"] > 0
 
         assert mk2["fuel"] == round(mk1["fuel"] * f["fuel"])
-        assert mk2["fuel_tank"] == round(mk1["fuel_tank"] * f["fuel"])
+        assert mk2["fuel_tank"] == round(mk1["fuel_tank"] * f["fuel_tank"])
 
-        # cargo/speed bleiben unveraendert; rapidfire wird vom Mk1 uebernommen (Mk1-Ziele).
-        assert mk2["cargo"] == mk1["cargo"]
-        assert mk2["speed"] == mk1["speed"]
+        # rapidfire wird vom Mk1 uebernommen (Mk1-Ziele, kein Remapping).
         assert mk2.get("rapidfire", {}) == mk1.get("rapidfire", {})
+
+
+def test_mk2_is_better_in_its_role():
+    """Kernforderung: Mk2 ist in seiner ROLLE spuerbar besser (nicht nur Kampfwerte)."""
+    f = FACTORS
+    # Transporter: laedt mehr (cargo) — sonst waere ein Mk2-Transporter nutzlos.
+    for name in ("small_cargo", "large_cargo"):
+        mk1, mk2 = SHIPS[name], SHIPS[f"{name}_mk2"]
+        assert mk2["cargo"] == round(mk1["cargo"] * f["cargo"])
+        assert mk2["cargo"] > mk1["cargo"]
+        assert mk2["speed"] > mk1["speed"]
+    # Kampfschiff: schiesst staerker (attack) und fliegt schneller (speed).
+    for name in ("light_fighter", "cruiser", "battleship"):
+        mk1, mk2 = SHIPS[name], SHIPS[f"{name}_mk2"]
+        assert mk2["attack"] == round(mk1["attack"] * f["attack"])
+        assert mk2["attack"] > mk1["attack"]
+        assert mk2["speed"] == round(mk1["speed"] * f["speed"])
+        assert mk2["speed"] > mk1["speed"]
 
         # Gate-Forschung + Herkunft.
         assert mk2["requires"].get("veteran_shipyard") == 1

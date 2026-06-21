@@ -111,8 +111,15 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
                   [ngModel]="shipCount(s.type)" (ngModelChange)="setShip(s.type, $event, s.count)" aria-label="Menge" />
                 <button class="btn btn-ghost btn-sm" type="button" (click)="setShip(s.type, s.count, s.count)">alle</button>
               </div>
-              @if (shipCount(s.type) > 0 && shipCargo(s.type) > 0) {
-                <div class="ship-cargo faint mono"><app-btn-icon [src]="statIcon('cargo')" glyph="📦" [size]="14" /> {{ (shipCargo(s.type) * shipCount(s.type)).toLocaleString('de-DE') }}</div>
+              @if (shipCount(s.type) > 0 && (shipCargo(s.type) > 0 || shipFuelTank(s.type) > 0)) {
+                <div class="ship-cargo faint mono">
+                  @if (shipCargo(s.type) > 0) {
+                    <span><app-btn-icon [src]="statIcon('cargo')" glyph="📦" [size]="14" /> {{ (shipCargo(s.type) * shipCount(s.type)).toLocaleString('de-DE') }}</span>
+                  }
+                  @if (shipFuelTank(s.type) > 0) {
+                    <span class="ship-tank" title="Treibstofftank je Einheit">🛢️ {{ shipFuelTank(s.type).toLocaleString('de-DE') }}</span>
+                  }
+                </div>
               }
             </div>
           } @empty {
@@ -438,7 +445,8 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
       .ship-name { font-size: var(--fs-sm); text-align: center; line-height: 1.1; color: var(--text-dim); }
       .ship-pick { display: flex; gap: var(--sp-1); align-items: center; }
       .ship-pick input { width: 52px; text-align: center; min-height: 28px; padding: var(--sp-1); }
-      .ship-cargo { font-size: var(--fs-xs); color: var(--accent); }
+      .ship-cargo { font-size: var(--fs-xs); color: var(--accent); display: flex; flex-wrap: wrap; justify-content: center; gap: 2px var(--sp-2); }
+      .ship-cargo .ship-tank { color: var(--text-dim); }
 
       .cargo { margin-top: var(--sp-3); }
       .cargo-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
@@ -951,6 +959,12 @@ export class FleetDispatchComponent {
   /** Frachtkapazitaet eines Schiffstyps (pro Einheit) — fuer die Live-Anzeige im Picker. */
   shipCargo(type: string): number {
     return this.bnum((this.balanceSvc.value as any)?.ships?.[type]?.cargo);
+  }
+
+  /** Treibstofftank-Groesse eines Schiffstyps (pro Einheit, Reichweiten-Reserve) — fuer den Picker.
+   *  Lookup ueber den echten type-Key, daher zeigen Mk2-Varianten ihren groesseren Tank. */
+  shipFuelTank(type: string): number {
+    return this.bnum((this.balanceSvc.value as any)?.ships?.[type]?.fuel_tank);
   }
 
   /**

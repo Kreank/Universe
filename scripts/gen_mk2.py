@@ -5,14 +5,16 @@ Liest ``shared/balance.json`` und ergaenzt fuer JEDES regulaere Schiff einen
 ``<typ>_mk2``-Eintrag (Kampf/Rollen/zivil). Capstone-Schiffe (Key ``capstone``)
 sind ausgenommen — sie sind bereits Endgame. Ableitung aus ``ships._mk2_factors``:
 
-  * attack/shield  -> × factor, gerundet (int), nur falls vorhanden
+  * Nutzen-Werte attack/shield/cargo/speed -> × jeweiliger Faktor, gerundet (int),
+    nur falls am Schiff vorhanden. So ist ein Mk2 +25% besser in seiner ROLLE:
+    ein Transporter laedt mehr (cargo), ein Kampfschiff schiesst/fliegt staerker.
   * cost.{metal,crystal,deuterium} -> × cost-factor (int)
   * cost.antimatter -> round(antimatter_pct × (metal+crystal) der Mk1-Kosten)
-  * fuel, fuel_tank -> × fuel-factor (int)
-  * cargo, speed   -> UNVERAENDERT
-  * rapidfire      -> vom Mk1 uebernommen (KEIN Remapping auf Mk2-Ziele!)
-  * requires       -> Mk1.requires + { "veteran_shipyard": 1 }
-  * mk2_parent     -> "<typ>"
+  * fuel       -> × fuel-factor (hoeherer Verbrauch = Nachteil)
+  * fuel_tank  -> × fuel_tank-factor (Tank waechst mit)
+  * rapidfire  -> vom Mk1 uebernommen (KEIN Remapping auf Mk2-Ziele!)
+  * requires   -> Mk1.requires + { "veteran_shipyard": 1 }
+  * mk2_parent -> "<typ>"
 
 Zusaetzlich wird das Kampfprofil (``combat_roster[<typ>]``) 1:1 auf
 ``combat_roster[<typ>_mk2]`` kopiert (weapon_type/drive/range + Rollen-Flags),
@@ -24,8 +26,12 @@ IDEMPOTENT: legt nie ein Mk2 eines Mk2 an, ueberspringt bereits vorhandene
 ``<typ>_mk2``-Eintraege und schreibt nur, wenn sich etwas geaendert hat. Die Datei
 wird textchirurgisch ergaenzt (bestehende Formatierung bleibt unangetastet).
 
-Aufruf:  python3 scripts/gen_mk2.py [--check]
+Aufruf:  python3 scripts/gen_mk2.py [--check | --force]
   --check  : nichts schreiben, nur melden, wie viele Eintraege fehlen (Exit 1 falls welche fehlen).
+  --force  : REGENERATE — entfernt zuerst ALLE vorhandenen ``*_mk2``-Schiffe UND
+             ``combat_roster.*_mk2``-Profile (Textchirurgie) und erzeugt sie dann
+             mit den AKTUELLEN ``_mk2_factors`` neu. Noetig, wenn sich Faktoren
+             aendern (der Normallauf ueberspringt Bestehende = idempotent).
 """
 from __future__ import annotations
 
@@ -39,6 +45,8 @@ BALANCE_PATH = os.environ.get("BALANCE_PATH") or os.path.normpath(
     os.path.join(HERE, "..", "shared", "balance.json")
 )
 MK2_SUFFIX = "_mk2"
+# Nutzen-Werte, die ein Mk2 in seiner ROLLE besser machen (jeweils ×eigener Faktor).
+BENEFIT_KEYS = ("attack", "shield", "cargo", "speed")
 
 
 def _is_real(name: str, cfg: object) -> bool:
@@ -48,18 +56,18 @@ def _is_real(name: str, cfg: object) -> bool:
 
 def derive_mk2(name: str, cfg: dict, factors: dict) -> dict:
     """Leitet den Mk-II-Eintrag eines Mk1-Schiffs nach den Faktoren ab."""
-    f_atk = float(factors["attack"])
-    f_shd = float(factors["shield"])
     f_cost = float(factors["cost"])
     f_fuel = float(factors["fuel"])
+    f_tank = float(factors.get("fuel_tank", factors["fuel"]))
     am_pct = float(factors["antimatter_pct"])
 
     mk2 = copy.deepcopy(cfg)
 
-    if "attack" in cfg:
-        mk2["attack"] = int(round(cfg["attack"] * f_atk))
-    if "shield" in cfg:
-        mk2["shield"] = int(round(cfg["shield"] * f_shd))
+    # Nutzen-Werte: jeder am Schiff vorhandene Wert ×eigener Faktor (+25% besser in der Rolle).
+    # Nur anfassen, was das Schiff auch hat (ein reiner Transporter ohne attack bleibt ohne attack).
+    for key in BENEFIT_KEYS:
+        if key in cfg and key in factors:
+            mk2[key] = int(round(cfg[key] * float(factors[key])))
 
     base_cost = cfg.get("cost", {})
     cost = {}
@@ -73,7 +81,7 @@ def derive_mk2(name: str, cfg: dict, factors: dict) -> dict:
     if "fuel" in cfg:
         mk2["fuel"] = int(round(cfg["fuel"] * f_fuel))
     if "fuel_tank" in cfg:
-        mk2["fuel_tank"] = int(round(cfg["fuel_tank"] * f_fuel))
+        mk2["fuel_tank"] = int(round(cfg["fuel_tank"] * f_tank))
 
     # rapidfire wird durch den deepcopy uebernommen (Mk1-Ziele bleiben — kein Mk2-Remapping).
     mk2["requires"] = {**cfg.get("requires", {}), "veteran_shipyard": 1}
@@ -151,11 +159,68 @@ def _insert_entries(text: str, key: str, entries: list[tuple[str, dict]], indent
     return text[:j] + block + text[j:]
 
 
+def _remove_entry(text: str, key: str, name: str) -> str:
+    """Entfernt den Eintrag ``"name": {...}`` (inkl. zugehoerigem Komma) aus dem
+    Objekt ``key`` per Textchirurgie. Sucht NUR innerhalb von ``key`` (gleicher
+    Name kann in ``ships`` und ``combat_roster`` vorkommen)."""
+    obj_start = text.index(f'"{key}": {{')
+    obj_close = _object_close_index(text, key)
+    idx = text.index(f'"{name}": {{', obj_start, obj_close)
+    # Schliessende Klammer dieses Eintrags via Tiefenzaehlung finden.
+    i = text.index("{", idx)
+    depth = 0
+    end = -1
+    while i < len(text):
+        c = text[i]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+        i += 1
+    if end < 0:
+        raise ValueError(f"Kein schliessendes }} fuer {name} gefunden")
+    line_start = text.rfind("\n", 0, idx) + 1
+    after = end + 1
+    if after < len(text) and text[after] == ",":
+        # Folge-Eintrag vorhanden: Eintrag + Komma + Zeilenumbruch entfernen.
+        after += 1
+        if after < len(text) and text[after] == "\n":
+            after += 1
+        return text[:line_start] + text[after:]
+    # Letzter Eintrag im Objekt: vorangehendes Komma mit entfernen.
+    j = line_start - 1
+    while j > 0 and text[j] in " \t\r\n":
+        j -= 1
+    if text[j] == ",":
+        return text[:j] + text[end + 1:]
+    return text[:line_start] + text[end + 1:]
+
+
+def _remove_entries(text: str, key: str, names: list[str]) -> str:
+    for name in names:
+        text = _remove_entry(text, key, name)
+    return text
+
+
 def main() -> int:
     check_only = "--check" in sys.argv
+    force = "--force" in sys.argv or "--regenerate" in sys.argv
     with open(BALANCE_PATH, encoding="utf-8") as fh:
         text = fh.read()
     data = json.loads(text)
+
+    if force and not check_only:
+        ships = data["ships"]
+        roster = data.get("combat_roster", {})
+        ship_mk2 = [k for k, v in ships.items() if k.endswith(MK2_SUFFIX) and _is_real(k, v)]
+        roster_mk2 = [k for k in roster if k.endswith(MK2_SUFFIX)]
+        text = _remove_entries(text, "ships", ship_mk2)
+        text = _remove_entries(text, "combat_roster", roster_mk2)
+        data = json.loads(text)  # neu parsen, damit plan() die entfernten wieder einplant
+        print(f"Mk2 regenerate: {len(ship_mk2)} Schiffe + {len(roster_mk2)} Roster-Profile entfernt.")
 
     new_ships, new_roster = plan(data)
     total = len(new_ships)

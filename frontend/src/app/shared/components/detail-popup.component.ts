@@ -691,7 +691,9 @@ export class DetailPopupComponent {
     if (this.kind() === 'ship') {
       push('📦', 'cargo', 'Frachtraum', num('cargo'));
       push('🚀', 'speed', 'Speed', num('speed'));
-      push('⛽', 'fuel', 'Treibstoff', num('fuel'));
+      push('⛽', 'fuel', 'Sprit/Distanz', num('fuel'));
+      // Treibstofftank = mitgeführter Sprit-Vorrat (Reichweiten-Reserve), getrennt vom Verbrauch oben.
+      push('🛢️', '', 'Treibstofftank', num('fuel_tank'));
     }
     // Solarsatellit: temperaturabhaengige Energie je Einheit (am aktuell gewaehlten Planeten).
     if (this.type() === 'solar_satellite') {
