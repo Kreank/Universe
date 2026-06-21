@@ -1463,12 +1463,12 @@
     },
     "escort_frigate": {
       "cost": {
-        "metal": 18000,
-        "crystal": 12000,
+        "metal": 24000,
+        "crystal": 16000,
         "deuterium": 2000
       },
-      "attack": 150,
-      "shield": 150,
+      "attack": 250,
+      "shield": 600,
       "cargo": 300,
       "speed": 10000,
       "fuel": 250,
@@ -1684,6 +1684,7 @@
       },
       "capstone": "harvest_command"
     }
+
 
 ,
     "light_fighter_mk2": {
@@ -2168,13 +2169,13 @@
     },
     "escort_frigate_mk2": {
       "cost": {
-        "metal": 23400,
-        "crystal": 15600,
+        "metal": 31200,
+        "crystal": 20800,
         "deuterium": 2600,
-        "antimatter": 1200
+        "antimatter": 1600
       },
-      "attack": 188,
-      "shield": 188,
+      "attack": 312,
+      "shield": 750,
       "cargo": 375,
       "speed": 12500,
       "fuel": 325,
@@ -2586,7 +2587,8 @@
       "weapon_type": "kinetic",
       "drive": 3,
       "range": "medium",
-      "point_defense": true
+      "point_defense": true,
+      "shield_projector": true
     },
     "warp_stabilizer": {
       "weapon_type": "kinetic",
@@ -2703,6 +2705,7 @@
       "range": "far"
     }
 
+
 ,
     "light_fighter_mk2": {
       "weapon_type": "kinetic",
@@ -2812,7 +2815,8 @@
       "weapon_type": "kinetic",
       "drive": 3,
       "range": "medium",
-      "point_defense": true
+      "point_defense": true,
+      "shield_projector": true
     },
     "warp_stabilizer_mk2": {
       "weapon_type": "kinetic",
