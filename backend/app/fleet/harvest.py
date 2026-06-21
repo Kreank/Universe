@@ -81,6 +81,32 @@ async def resolve_harvest(session: AsyncSession, fleet: Fleet) -> dict | None:
         "Harvest @ %d:%d:%d -> eingesammelt %s, Rest %s",
         fleet.target_galaxy, fleet.target_system, fleet.target_position, collected, rest,
     )
+
+    # Feedback an den Spieler: was wurde recycelt? (Tester-Feedback — vorher kam keine Meldung.)
+    _m, _c = int(collected["metal"]), int(collected["crystal"])
+    if _m or _c:
+        try:
+            from app.messaging.service import create_system_transmission
+            loc = f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}"
+            rest_note = ""
+            if rest["metal"] > 0 or rest["crystal"] > 0:
+                rest_note = (
+                    f" Frachtraum voll — {int(rest['metal']):,} Metall / {int(rest['crystal']):,} "
+                    f"Kristall bleiben im Trümmerfeld.".replace(",", ".")
+                )
+            await create_system_transmission(
+                session,
+                player_id=fleet.player_id,
+                subject=f"♻️ Recycling abgeschlossen ({loc})",
+                body=(
+                    f"Deine Recycler haben {_m:,} Metall und {_c:,} Kristall aus dem Trümmerfeld "
+                    f"geborgen (bei Rückkehr gutgeschrieben).{rest_note}".replace(",", ".")
+                ),
+                ttype="system",
+            )
+        except Exception:  # noqa: BLE001 — Meldung darf den Harvest nie stören
+            pass
+
     return {
         "location": f"{fleet.target_galaxy}:{fleet.target_system}:{fleet.target_position}",
         "collected": collected,
