@@ -85,7 +85,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
     label: 'Wirtschaft & Expansion',
     glyph: '⛏️',
     icon: techIcon('mining_efficiency'),
-    types: ['mining_efficiency', 'extraction_tech', 'storage_tech', 'astrophysics', 'expedition_tech'],
+    types: ['mining_efficiency', 'extraction_tech', 'prospecting', 'deuterium_prospecting', 'storage_tech', 'astrophysics', 'expedition_tech'],
   },
   {
     key: 'endgame',

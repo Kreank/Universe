@@ -609,6 +609,9 @@ _STATEMENTS: list[str] = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_escort_job_open ON escort_job(status, expires_at)",
     "CREATE INDEX IF NOT EXISTS idx_escort_job_requester ON escort_job(requester_id, created_at DESC)",
+    # 2026-06-21: Asteroidenfelder bekommen eine Metall:Kristall-KOMPOSITION (gewichtet gerollt
+    # beim Spawn). Alt-Felder/Default = 'balanced' (1.0/1.0) -> kein Einfluss auf bestehende Vorraete.
+    "ALTER TABLE asteroid_fields ADD COLUMN IF NOT EXISTS composition TEXT NOT NULL DEFAULT 'balanced'",
 ]
 
 

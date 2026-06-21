@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import random
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,49 @@ from app.universe.asteroids import mine_from_field, regen_field
 log = logging.getLogger("universe.mining")
 
 UTC = dt.timezone.utc
+
+
+# -- Deuterium-Zufalls-Fund (reine, testbare Logik) -----------------------------
+
+def deuterium_params(level: int, mining_cfg: dict, effects: dict) -> dict:
+    """Forschungs-skalierte Deuterium-Fund-Parameter aus der Balance + Forschungsstufe
+    ``deuterium_prospecting``. Reine Funktion (kein DB/RNG):
+
+        effective_chance = base_chance x (1 + chance_bonus x level)   [gedeckelt bei chance_cap]
+        yield_mult       = 1 + yield_bonus x level
+
+    Liefert {chance, min_frac, max_frac, yield_mult} — Fraktionen beziehen sich auf den
+    Erz-Ertrag (Metall+Kristall) derselben Schuerf-Abrechnung."""
+    level = max(0, int(level))
+    base = float(mining_cfg.get("deuterium_find_chance", 0.0))
+    cap = float(mining_cfg.get("deuterium_chance_cap", 0.9))
+    chance_bonus = float(effects.get("deuterium_chance_bonus_per_level", 0.0))
+    yield_bonus = float(effects.get("deuterium_yield_bonus_per_level", 0.0))
+    chance = min(cap, base * (1.0 + chance_bonus * level))
+    return {
+        "chance": max(0.0, chance),
+        "min_frac": float(mining_cfg.get("deuterium_find_min", 0.0)),
+        "max_frac": float(mining_cfg.get("deuterium_find_max", 0.0)),
+        "yield_mult": 1.0 + yield_bonus * level,
+    }
+
+
+def roll_deuterium_find(
+    rng: random.Random, ore_total: float, chance: float,
+    min_frac: float, max_frac: float, yield_mult: float = 1.0,
+) -> float:
+    """Rollt EINEN Deuterium-Zufalls-Fund: mit ``chance`` ein Betrag
+    ``ore_total x uniform(min_frac, max_frac) x yield_mult`` (sonst 0.0).
+
+    Deterministisch mit gegebenem ``rng`` (testbar). Bei chance>=1 IMMER ein Fund, bei
+    chance<=0 NIE. ``ore_total`` = Metall+Kristall-Ertrag derselben Abrechnung."""
+    if chance <= 0.0 or ore_total <= 0.0:
+        return 0.0
+    if rng.random() >= chance:
+        return 0.0
+    lo, hi = min(min_frac, max_frac), max(min_frac, max_frac)
+    frac = rng.uniform(lo, hi)
+    return round(ore_total * frac * max(0.0, yield_mult), 1)
 
 
 def _parse_iso(value) -> dt.datetime | None:
@@ -201,13 +245,27 @@ async def mining_projection(session: AsyncSession, fleet: Fleet, now: dt.datetim
             )
             mult = (1 + zb) if zb > 0 else 1.0
             metal, crystal = round(g["metal"] * mult, 1), round(g["crystal"] * mult, 1)
+    # Deuterium-Fund ist ZUFALL -> in der Live-Vorschau als Chance + Erwartungswert, nie als
+    # sichere Menge (sonst zeigt der Frachtbalken Deuterium, das evtl. nie kommt).
+    bal = get_balance()
+    mining_cfg = bal.data.get("mining", {})
+    effects = bal.data.get("research", {}).get("effects", {})
+    from app.economy.service import get_research_levels
+    levels = await get_research_levels(session, fleet.player_id)
+    dp = deuterium_params(int(levels.get("deuterium_prospecting", 0)), mining_cfg, effects)
+    avg_frac = (dp["min_frac"] + dp["max_frac"]) / 2.0
+    deut_expected = round((metal + crystal) * avg_frac * dp["yield_mult"] * dp["chance"], 1)
     return {
         "metal": metal, "crystal": crystal,
         "filled": round(cap, 0), "capacity": round(cap_total, 0), "progress": round(progress, 3),
+        "deuterium_chance": round(dp["chance"], 3), "deuterium_expected": deut_expected,
     }
 
 
-async def settle_mining(session: AsyncSession, fleet: Fleet, now: dt.datetime | None = None) -> dict | None:
+async def settle_mining(
+    session: AsyncSession, fleet: Fleet, now: dt.datetime | None = None,
+    rng: random.Random | None = None,
+) -> dict | None:
     """Beendet die Schuerf-Session: foerdert das bis ``now`` ANTEILIG (verstrichene Verweilzeit)
     Geschuerfte real aus dem Feld in ``fleet.cargo`` und markiert die Session als erledigt.
 
@@ -256,9 +314,27 @@ async def settle_mining(session: AsyncSession, fleet: Fleet, now: dt.datetime | 
                 "crystal": round(g["crystal"] * mult, 1),
             } if mult != 1.0 else g
 
+    # Deuterium-Zufalls-Fund: mit (forschungs-skalierter) Chance zusaetzliches Deuterium
+    # relativ zum Erz-Ertrag. KEIN Feld-Vorrat — reiner Bonus-Fund.
+    from app.platform.balance import get_balance as _gb
+    bal = _gb()
+    mining_cfg = bal.data.get("mining", {})
+    effects = bal.data.get("research", {}).get("effects", {})
+    from app.economy.service import get_research_levels
+    levels = await get_research_levels(session, fleet.player_id)
+    dp = deuterium_params(int(levels.get("deuterium_prospecting", 0)), mining_cfg, effects)
+    ore_total = gained["metal"] + gained["crystal"]
+    deut = roll_deuterium_find(
+        rng or random.Random(), ore_total,
+        dp["chance"], dp["min_frac"], dp["max_frac"], dp["yield_mult"],
+    )
+    gained["deuterium"] = deut
+
     cargo = dict(fleet.cargo or {})
     cargo["metal"] = round(cargo.get("metal", 0) + gained["metal"], 1)
     cargo["crystal"] = round(cargo.get("crystal", 0) + gained["crystal"], 1)
+    if deut > 0:
+        cargo["deuterium"] = round(cargo.get("deuterium", 0) + deut, 1)
     fleet.cargo = cargo
     md["mine_active"] = False
     fleet.mission_data = md

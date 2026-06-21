@@ -312,6 +312,10 @@ export interface Fleet {
     filled: number;
     capacity: number;
     progress: number;
+    /** Forschungs-skalierte Deuterium-Fund-Chance (0…0.9). */
+    deuterium_chance?: number;
+    /** Erwartungswert des Deuterium-Fundes — UNSICHER, nicht garantiert. */
+    deuterium_expected?: number;
   } | null;
 }
 
@@ -332,6 +336,9 @@ export interface FleetSlots {
   breakdown: FleetSlotBreakdown;
 }
 
+/** Komposition eines Asteroidenfeldes (verschiebt das Metall:Kristall-Verhältnis). */
+export type MiningComposition = 'metal_rich' | 'balanced' | 'crystal_rich';
+
 /** Ein aktives Asteroidenfeld in der Bergbau-Übersicht (Reichweite via Ortungs-Forschung). */
 export interface MiningField {
   galaxy: number;
@@ -344,6 +351,8 @@ export interface MiningField {
   crystal: number;
   metal_max: number;
   crystal_max: number;
+  /** Verteilung der Vorräte: metalllastig / ausgewogen / kristalllastig. */
+  composition?: MiningComposition;
   expires_at: string | null;
 }
 
@@ -352,6 +361,8 @@ export interface MiningFieldsResponse {
   prospecting: number;
   range: number;
   home_galaxy: number | null;
+  /** Forschungs-skalierte Chance (0…0.9) auf einen Deuterium-Fund beim Schürfen. */
+  deuterium_chance?: number;
   fields: MiningField[];
 }
 

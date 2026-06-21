@@ -214,6 +214,14 @@ export const TECH_META: Record<string, DisplayMeta> = {
     label: 'Bergbau-Effizienz', glyph: '⛏️', blurb: '+Minen-Förderung je Stufe.',
     desc: 'Bessere Bohrköpfe, Förderbänder und Aufbereitung. Jede Stufe erhöht den Ertrag deiner Metall-, Kristall- und Deuteriumförderung — der stille Wachstumsmotor.',
   },
+  prospecting: {
+    label: 'Ortung', glyph: '🛰', blurb: '+Reichweite der Asteroiden-Ortung je Stufe.',
+    desc: 'Tiefenscanner spüren wandernde Asteroidenfelder auf. Stufe 1 erfasst deine Heimat-Galaxie, jede weitere Stufe erweitert die Reichweite um eine Galaxie — so findest du ergiebige Felder, ohne System für System durch die Galaxie-Karte zu klicken.',
+  },
+  deuterium_prospecting: {
+    label: 'Deuterium-Prospektion', glyph: '🛢️', blurb: '+Deuterium-Fund-Chance & -Menge beim Schürfen.',
+    desc: 'Spezialisierte Bohrspektrometer erschnüffeln Deuterium-Einschlüsse in Asteroiden. Jede Stufe erhöht sowohl die Chance auf einen Deuterium-Fund beim Asteroiden-Bergbau (gedeckelt bei 90 %) als auch die gefundene Menge. Ein zufälliger Bonus-Ertrag obendrauf — kein erschöpfbarer Feld-Vorrat, sondern reines Glück, das die Forschung zu deinen Gunsten verschiebt.',
+  },
   storage_tech: {
     label: 'Speichertechnik', glyph: '🏬', blurb: '+Lagerkapazität je Stufe.',
     desc: 'Verdichtete Lager, Druckspeicher, bessere Logistik. Jede Stufe erhöht die Kapazität deiner Lager — mehr Puffer für teure Großbauten und gegen überlaufende Minen.',
@@ -430,6 +438,16 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
     branch: 'Wirtschaft',
     summary: '+2 % Metall-/Kristall-/Deuteriumförderung je Stufe.',
     levelEffect: { label: 'Förderung', perLevel: 2, unit: '%' },
+  },
+  prospecting: {
+    branch: 'Wirtschaft',
+    summary: 'Schaltet die Asteroiden-Ortung frei und erweitert ihre Reichweite: Stufe 1 = Heimat-Galaxie, jede weitere Stufe +1 Galaxie.',
+    levelEffect: { label: 'Reichweite', perLevel: 1, unit: ' Gal' },
+  },
+  deuterium_prospecting: {
+    branch: 'Wirtschaft',
+    summary: '+25 % Deuterium-Fund-Chance je Stufe (gedeckelt bei 90 %) und zusätzlich mehr gefundene Deuterium-Menge beim Asteroiden-Bergbau.',
+    levelEffect: { label: 'Fund-Chance', perLevel: 25, unit: '%' },
   },
   storage_tech: {
     branch: 'Wirtschaft',

@@ -1121,12 +1121,14 @@ async def fleet_return(fleet_id: str) -> None:
                     await commander_flavor_reaction(
                         session, player_id=fleet.player_id, commander=_rc,
                         situation="mining_haul", context={"planet": _loc})
+                _deut_txt = (f" Zusaetzlich wurde ein Deuterium-Vorkommen angeschnitten: "
+                             f"+{int(_mined.get('deuterium', 0))} Deuterium!") if _mined.get("deuterium", 0) > 0 else ""
                 await create_system_transmission(
                     session, player_id=fleet.player_id,
                     subject=f"Bergbau abgeschlossen ({_loc})",
                     body=(f"Deine Bergbauflotte foerderte {int(_mined['metal'])} Metall + "
                           f"{int(_mined['crystal'])} Kristall und kehrt heim — wird dem Heimatplaneten "
-                          f"gutgeschrieben."),
+                          f"gutgeschrieben.{_deut_txt}"),
                 )
 
         # Expeditions-Bericht erst JETZT (bei der Heimkehr) zustellen — bei der Auflösung in den

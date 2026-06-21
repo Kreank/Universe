@@ -434,7 +434,9 @@
       "impulse_drive_speed_per_level": 0.2,
       "hyperspace_drive_speed_per_level": 0.3,
       "prospecting_range_per_level": 1,
-      "trade_network_range_per_level": 1
+      "trade_network_range_per_level": 1,
+      "deuterium_chance_bonus_per_level": 0.25,
+      "deuterium_yield_bonus_per_level": 0.15
     },
     "techs": {
       "energy_tech": {
@@ -979,6 +981,19 @@
           "spy_tech": 1
         },
         "effect": "Ortung: schaltet die Asteroiden-Übersicht frei (Stufe 1 = Heimat-Galaxie). Jede weitere Stufe erweitert die Reichweite um +1 Galaxie (bis das ganze Universum sichtbar ist)."
+      },
+      "deuterium_prospecting": {
+        "cost": {
+          "metal": 6000,
+          "crystal": 8000,
+          "deuterium": 4000
+        },
+        "requires": {
+          "research_lab": 4,
+          "prospecting": 1,
+          "mining_efficiency": 3
+        },
+        "effect": "Deuterium-Prospektion: erhoeht beim Asteroiden-Bergbau sowohl die Chance auf einen Deuterium-Fund (+deuterium_chance_bonus_per_level je Stufe, gedeckelt) als auch dessen Menge (+deuterium_yield_bonus_per_level je Stufe)."
       },
       "trade_network": {
         "cost": {
@@ -3028,7 +3043,12 @@
     "min_ships": 1,
     "mine_rate_per_miner_per_hour": 48000,
     "harvester_rate_units": 30,
-    "max_hold_seconds": 14400
+    "max_hold_seconds": 14400,
+    "_deuterium_note": "Zufalls-Fund: pro Schuerf-Abrechnung (settle_mining) wird mit deuterium_find_chance zusaetzlich Deuterium gefunden (KEIN erschoepfbarer Feld-Vorrat). Menge = (Metall+Kristall-Ertrag) x uniform(deuterium_find_min..max). Forschung 'deuterium_prospecting' skaliert Chance UND Menge (siehe research.effects). Chance gedeckelt bei deuterium_chance_cap.",
+    "deuterium_find_chance": 0.15,
+    "deuterium_find_min": 0.02,
+    "deuterium_find_max": 0.06,
+    "deuterium_chance_cap": 0.9
   },
   "asteroids": {
     "_note": "Asteroidenfelder: endliche, regenerierende Erz-Vorkommen, per RNG im Universum verteilt (eigene Zelle, occupant 'asteroid_field'). Reichtums-Tier (gewichtet gerollt) skaliert Vorrat UND Mining-Ertrag. capacity x mult = Max-Vorrat; erschoepft beim Minen, regeneriert lazy mit regen_ratio_per_hour x Max bis zur Deckelung. density_per_galaxy = Ziel-Anzahl Felder je Galaxie (auf leeren Zellen geseedet).",
@@ -3062,6 +3082,27 @@
       "metal": 240000,
       "crystal": 120000
     },
+    "_composition_note": "Zusaetzlich zum Reichtums-Tier (Vorrats-Skalierung) rollt jedes Feld eine gewichtete KOMPOSITION, die das Metall:Kristall-Verhaeltnis verschiebt (metal_mult/crystal_mult auf capacity x richness-mult). metal_rich liefert deutlich mehr Metall, crystal_rich deutlich mehr Kristall, balanced unveraendert (Default fuer Alt-Felder).",
+    "composition_variants": [
+      {
+        "name": "metal_rich",
+        "weight": 30,
+        "metal_mult": 2.0,
+        "crystal_mult": 0.5
+      },
+      {
+        "name": "balanced",
+        "weight": 40,
+        "metal_mult": 1.0,
+        "crystal_mult": 1.0
+      },
+      {
+        "name": "crystal_rich",
+        "weight": 30,
+        "metal_mult": 0.5,
+        "crystal_mult": 2.0
+      }
+    ],
     "regen_ratio_per_hour": 0.03,
     "lifetime_hours_min": 24,
     "lifetime_hours_max": 48,

@@ -55,11 +55,49 @@ def roll_richness(rng: random.Random, cfg: dict | None = None) -> tuple[str, flo
     return str(last.get("name", "normal")), float(last.get("mult", 1.0))
 
 
-def field_capacity(mult: float, cfg: dict | None = None) -> tuple[float, float]:
-    """Max-Vorrat eines Feldes = capacity x Reichtums-Multiplikator."""
+def roll_composition(rng: random.Random, cfg: dict | None = None) -> tuple[str, float, float]:
+    """Gewichtete Wahl einer Metall:Kristall-Komposition -> (name, metal_mult, crystal_mult).
+
+    Verschiebt zusaetzlich zum Reichtums-Tier das Verhaeltnis der Vorraete: metal_rich liefert
+    mehr Metall (z.B. 2.0/0.5), crystal_rich mehr Kristall, balanced bleibt 1.0/1.0. Fehlt der
+    Block, faellt alles auf 'balanced' (kein Effekt) zurueck -> Alt-Verhalten bleibt erhalten."""
+    cfg = cfg if cfg is not None else _cfg()
+    variants = cfg.get("composition_variants") or [
+        {"name": "balanced", "weight": 1, "metal_mult": 1.0, "crystal_mult": 1.0}
+    ]
+    total = sum(float(v.get("weight", 0)) for v in variants) or 1.0
+    pick = rng.random() * total
+    acc = 0.0
+    for v in variants:
+        acc += float(v.get("weight", 0))
+        if pick <= acc:
+            return (
+                str(v.get("name", "balanced")),
+                float(v.get("metal_mult", 1.0)),
+                float(v.get("crystal_mult", 1.0)),
+            )
+    last = variants[-1]
+    return (
+        str(last.get("name", "balanced")),
+        float(last.get("metal_mult", 1.0)),
+        float(last.get("crystal_mult", 1.0)),
+    )
+
+
+def field_capacity(
+    mult: float,
+    cfg: dict | None = None,
+    comp_metal_mult: float = 1.0,
+    comp_crystal_mult: float = 1.0,
+) -> tuple[float, float]:
+    """Max-Vorrat eines Feldes = capacity x Reichtums-Multiplikator x Kompositions-Multiplikator.
+
+    Ohne Kompositions-Mults (Default 1.0/1.0) identisch zum frueheren Verhalten."""
     cfg = cfg if cfg is not None else _cfg()
     cap = cfg.get("capacity", {})
-    return float(cap.get("metal", 0)) * mult, float(cap.get("crystal", 0)) * mult
+    metal = float(cap.get("metal", 0)) * mult * comp_metal_mult
+    crystal = float(cap.get("crystal", 0)) * mult * comp_crystal_mult
+    return metal, crystal
 
 
 def apply_regen(
@@ -191,10 +229,11 @@ async def ensure_asteroid_fields(session: AsyncSession | None = None) -> int:
                 continue  # bevorzugt freie Sektoren beim Seeden (kein Spawn auf Planet/NPC)
             existing.add((s_idx, p))
             name, mult = roll_richness(rng, cfg)
-            m_max, c_max = field_capacity(mult, cfg)
+            comp_name, comp_m, comp_c = roll_composition(rng, cfg)
+            m_max, c_max = field_capacity(mult, cfg, comp_m, comp_c)
             session.add(AsteroidField(
                 galaxy=g, system=s_idx, position=p,
-                richness=name, mult=mult,
+                richness=name, mult=mult, composition=comp_name,
                 metal_remaining=m_max, crystal_remaining=c_max,
                 metal_max=m_max, crystal_max=c_max,
                 expires_at=_roll_expiry(rng),

@@ -428,6 +428,7 @@ class AsteroidField(Base):
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     richness: Mapped[str] = mapped_column(Text, default="normal")  # Tier-Name
     mult: Mapped[float] = mapped_column(Float, default=1.0)        # Reichtums-Multiplikator
+    composition: Mapped[str] = mapped_column(Text, default="balanced")  # Metall:Kristall-Variante
     metal_remaining: Mapped[float] = mapped_column(Float, default=0.0)
     crystal_remaining: Mapped[float] = mapped_column(Float, default=0.0)
     metal_max: Mapped[float] = mapped_column(Float, default=0.0)

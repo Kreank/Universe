@@ -328,7 +328,7 @@ import { FleetSlotsComponent } from '../../shared/components/fleet-slots.compone
                 @if (f.mining; as m) {
                   <div class="mine-bar" title="Schürf-Fortschritt — der Frachtraum füllt sich über die Verweilzeit. Bei einem Abfang erbeutet der Gegner nur das bisher Geförderte.">
                     <div class="mb-track"><span class="mb-fill" [style.width.%]="m.progress * 100"></span></div>
-                    <span class="mb-amt mono">⛏ {{ m.metal | shortNumber }} · 💎 {{ m.crystal | shortNumber }}</span>
+                    <span class="mb-amt mono">⛏ {{ m.metal | shortNumber }} · 💎 {{ m.crystal | shortNumber }}@if (m.deuterium_expected) {<span class="mb-deut" title="Deuterium ist ein Zufallsfund beim Schürfen — die angezeigte Menge ist ein Erwartungswert, nicht garantiert. Die Forschung „Deuterium-Prospektion“ erhöht Chance und Menge."> · evtl. 🛢️ ~{{ m.deuterium_expected | shortNumber }}</span>}</span>
                   </div>
                 }
                 <div class="fleet-tip" role="tooltip">

@@ -185,6 +185,7 @@ export const dashboardStyles = `
   .mb-fill { display: block; height: 100%; border-radius: 999px;
     background: linear-gradient(90deg, var(--accent-dim), var(--accent)); transition: width var(--motion-base) var(--ease-out); }
   .mb-amt { font-size: var(--fs-xs); color: var(--text-dim); white-space: nowrap; }
+  .mb-deut { color: var(--text-faint); font-style: italic; }
   .alert { border-bottom: none; }
   .alert.danger { color: #ffb3d0; }
   .alert.decision { color: var(--accent); }
