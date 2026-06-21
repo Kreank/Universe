@@ -231,11 +231,12 @@
         "research_lab": 4
       },
       "one_per_account": true,
+      "max_level": 1,
       "trade_margin_reduction": 0.015,
       "trade_network_range_bonus": 1,
       "hub_margin": 0.02,
       "hub_margin_max": 0.1,
-      "_note": "Handelszentrum: nur EINS pro Account (one_per_account -> Bau auf einem zweiten Planeten wird abgelehnt; die EINE Instanz darf weiter ausgebaut werden). Effekte fuer den Besitzer, aktiv ab Stufe 1: trade_margin_reduction senkt die eigene Haendler-Marge bei Trades (zusaetzlich zur Reputation), trade_network_range_bonus erweitert die Handelsnetz-Sichtweite um +N Galaxien zusaetzlich zur Forschung. hub_margin = Marge, die der Besitzer als Einkommen erhaelt, wenn ANDERE Spieler seinen Planeten als Handels-Knoten (trade_center>=1) anfliegen: der Besitzer skimmt hub_margin*Handelswert (in der angebotenen Ressource), der Trader bekommt entsprechend weniger Ware. hub_margin_max deckelt die effektive Marge hart (Anti-Exploit). Kein Handel am EIGENEN Hub. Sichtbar als kind='player_hub' in GET /api/trade/centers; Besitzer-Einkommen via trade_log/history + Transmission."
+      "_note": "Handelszentrum: nur EINS pro Account (one_per_account -> Bau auf einem zweiten Planeten wird abgelehnt) UND nur Stufe 1 (max_level=1 -> kein Ausbau, der Bauplatz gehoert den Minen). Die Boni des Besitzers skalieren ueber die Forschung 'Handelsnetz' (trade_network), NICHT ueber die Gebaeude-Stufe. Das Gebaeude (Stufe>=1) ist der Unlock; ohne Handelszentrum keine Margen-Reduktion/kein Hub-Einkommen. trade_margin_reduction (Basiswert beim Bau) senkt die eigene Haendler-Marge bei eigenen Trades und waechst mit trade_network um trade_network_margin_per_level je Stufe (gedeckelt durch research.effects.trade_network_margin_max). trade_network_range_bonus erweitert die Handelsnetz-Sichtweite um +N Galaxien zusaetzlich zur Forschung. hub_margin (Basiswert) = Marge, die der Besitzer als Einkommen erhaelt, wenn ANDERE Spieler seinen Planeten als Handels-Knoten (trade_center>=1) anfliegen; sie waechst mit der trade_network-Stufe DES BESITZERS um trade_network_hub_margin_per_level je Stufe, hart geklemmt durch hub_margin_max (Anti-Exploit). Der Besitzer skimmt effektive_hub_margin*Handelswert (in der angebotenen Ressource), der Trader bekommt entsprechend weniger Ware. Kein Handel am EIGENEN Hub. Sichtbar als kind='player_hub' in GET /api/trade/centers; Besitzer-Einkommen via trade_log/history + Transmission."
     },
     "sensorphalanx": {
       "cost": {
@@ -435,6 +436,9 @@
       "hyperspace_drive_speed_per_level": 0.3,
       "prospecting_range_per_level": 1,
       "trade_network_range_per_level": 1,
+      "trade_network_margin_per_level": 0.005,
+      "trade_network_margin_max": 0.1,
+      "trade_network_hub_margin_per_level": 0.01,
       "deuterium_chance_bonus_per_level": 0.25,
       "deuterium_yield_bonus_per_level": 0.15
     },

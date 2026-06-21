@@ -27,6 +27,13 @@ from app.platform.scheduler import cancel_job, schedule_at
 log = logging.getLogger("universe.buildings")
 
 
+class MaxLevelError(RuntimeError):
+    """Gebaeude hat seine konfigurierte Maximalstufe (``max_level``) erreicht -> kein Ausbau.
+
+    Eigene Klasse (Subklasse von ``RuntimeError``), damit der Router sie als HTTP 400
+    abbilden kann, waehrend andere ``RuntimeError`` (laufender Bau o.ae.) 409 bleiben."""
+
+
 def _now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
 
@@ -139,6 +146,12 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
         # aber auf falscher Position als nicht-baubar markiert (Discoverability statt Verstecken).
         allowed_pos = bcfg.get("allowed_positions")
         position_ok = True if not allowed_pos else (planet.position in [int(p) for p in allowed_pos])
+        # Optionale Maximalstufe (generisch): ist sie erreicht, wird KEIN Ausbau mehr angeboten
+        # (maxed=True). Beim Handelszentrum (max_level=1) skalieren die Boni stattdessen ueber
+        # die Forschung 'Handelsnetz' (trade_network), nicht ueber die Gebaeude-Stufe.
+        raw_max = bcfg.get("max_level")
+        max_level = int(raw_max) if raw_max is not None else None
+        maxed = max_level is not None and level >= max_level
         options.append({
             "type": btype,
             "next_level": level + 1,
@@ -154,6 +167,8 @@ async def building_options(session: AsyncSession, planet: Planet) -> list[dict]:
             "allowed_positions": [int(p) for p in allowed_pos] if allowed_pos else [],
             "one_per_account": bool(bcfg.get("one_per_account", False)),
             "account_blocked": btype in oneacc_other,
+            "max_level": max_level,
+            "maxed": maxed,
         })
     return options
 
@@ -214,6 +229,12 @@ async def start_upgrade(session: AsyncSession, planet: Planet, building_type: st
         raise RuntimeError("Es laeuft bereits ein Gebaeudeausbau auf diesem Planeten")
     # Feld-Budget erzwingen: jede Gebaeudestufe kostet ein Feld (Modell A, Doku 06a).
     levels0 = await get_building_levels(session, planet.id)
+    # Optionale Maximalstufe (generisch): bei erreichter max_level kein weiterer Ausbau (HTTP 400).
+    raw_max = bal.buildings[building_type].get("max_level")
+    if raw_max is not None and levels0.get(building_type, 0) >= int(raw_max):
+        raise MaxLevelError(
+            f"Dieses Gebaeude ist auf Maximalstufe {int(raw_max)} und kann nicht weiter ausgebaut werden."
+        )
     req = bal.buildings[building_type].get("requires", {})
     if not all(levels0.get(rt, 0) >= rl for rt, rl in req.items()):
         raise RuntimeError("Voraussetzung nicht erfuellt")

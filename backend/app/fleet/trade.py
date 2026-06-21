@@ -283,6 +283,33 @@ def clamp_hub_margin(hub_margin: float, cap: float) -> float:
     return max(0.0, min(float(hub_margin), max(0.0, float(cap))))
 
 
+# -- Forschungs-Skalierung der Handelszentrum-Boni (trade_network), rein/testbar --
+
+def trade_network_margin_reduction(
+    base: float, level: int, per_level: float, cap: float
+) -> float:
+    """Effektive eigene Margen-Reduktion: ``base`` (Gebaeude-Unlock) + Forschung ``trade_network``.
+
+    reduction = max(0, base) + max(0, level) * max(0, per_level), hart geklemmt auf [0, cap].
+    Der Aufrufer ruft das NUR auf, wenn der Spieler ein Handelszentrum besitzt (Gebaeude =
+    Freischaltung); ohne Gebaeude bleibt die Reduktion 0. ``cap`` aus balance
+    (``research.effects.trade_network_margin_max``)."""
+    red = max(0.0, float(base)) + max(0, int(level)) * max(0.0, float(per_level))
+    return max(0.0, min(red, max(0.0, float(cap))))
+
+
+def trade_network_hub_margin(
+    base: float, level: int, per_level: float, cap: float
+) -> float:
+    """Effektive Hub-Marge des BESITZERS: ``base`` + ``trade_network``-Stufe des Besitzers.
+
+    margin = max(0, base) + max(0, level) * max(0, per_level), danach hart auf [0, cap]
+    geklemmt (``clamp_hub_margin``; cap = ``buildings.trade_center.hub_margin_max``). Auch bei
+    sehr hoher Forschung kann die Marge den Cap nie ueberschreiten (Anti-Exploit)."""
+    margin = max(0.0, float(base)) + max(0, int(level)) * max(0.0, float(per_level))
+    return clamp_hub_margin(margin, cap)
+
+
 def hub_visible_to(
     viewer_id, owner_id, hub_galaxy: int, home_galaxy: int, reach: int
 ) -> bool:
@@ -350,11 +377,21 @@ async def resolve_player_hub_trade(
     # -- Markt = globaler Index (wie ein NPC-Handelszentrum) --
     stock, setpoint = await index_market_for(session, cfg)
 
-    # -- Trader-Handelszentrum-Bonus: senkt seine eigene Marge (additiv, wie bei NPC) --
+    # -- Trader-Handelszentrum-Bonus: senkt seine eigene Marge (additiv, wie bei NPC).
+    #    Das Gebaeude (Stufe>=1) ist der Unlock; die Hoehe skaliert ueber die Forschung
+    #    'Handelsnetz' (trade_network), nicht ueber die Gebaeude-Stufe. --
     tc_cfg = bal.buildings.get("trade_center", {})
+    eff_cfg = bal.data["research"]["effects"]
     extra_margin = 0.0
     if await owns_trade_center(session, fleet.player_id):
-        extra_margin = float(tc_cfg.get("trade_margin_reduction", 0.0))
+        from app.economy.service import get_research_levels
+        tn = int((await get_research_levels(session, fleet.player_id)).get("trade_network", 0))
+        extra_margin = trade_network_margin_reduction(
+            float(tc_cfg.get("trade_margin_reduction", 0.0)),
+            tn,
+            float(eff_cfg.get("trade_network_margin_per_level", 0.0)),
+            float(eff_cfg.get("trade_network_margin_max", 0.1)),
+        )
 
     # -- Cargo-Kapazitaet der Flotte --
     from app.combat.service import _cargo_capacity
@@ -368,11 +405,19 @@ async def resolve_player_hub_trade(
         extra_margin_reduction=extra_margin,
     )
 
-    # -- Besitzer-Cut (Marktwert) + um die Marge reduzierte Trader-Ware --
-    hub_margin = float(tc_cfg.get("hub_margin", 0.0))
-    cap = float(tc_cfg.get("hub_margin_max", hub_margin))
-    eff = clamp_hub_margin(hub_margin, cap)
-    owner_cut_value = hub_owner_cut(result["value_in"], hub_margin, cap)
+    # -- Besitzer-Cut (Marktwert) + um die Marge reduzierte Trader-Ware. Die effektive
+    #    Hub-Marge skaliert mit der trade_network-Stufe DES BESITZERS (nicht des Traders),
+    #    hart geklemmt durch hub_margin_max (clamp_hub_margin). --
+    from app.economy.service import get_research_levels
+    owner_tn = int((await get_research_levels(session, owner.id)).get("trade_network", 0))
+    cap = float(tc_cfg.get("hub_margin_max", tc_cfg.get("hub_margin", 0.0)))
+    eff = trade_network_hub_margin(
+        float(tc_cfg.get("hub_margin", 0.0)),
+        owner_tn,
+        float(eff_cfg.get("trade_network_hub_margin_per_level", 0.0)),
+        cap,
+    )
+    owner_cut_value = hub_owner_cut(result["value_in"], eff, cap)
     received = round(result["received"] * (1.0 - eff), 1)
 
     cargo = {want_res: received}
@@ -560,11 +605,21 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
     level = min(int(rep_cfg["max_level"]), int(rep.volume // float(rep_cfg["volume_per_level"])))
 
     # -- 4b) Handelszentrum-Bonus des Besitzers: senkt die eigene Haendler-Marge (additiv
-    #        zur Reputation), aktiv solange irgendwo ein Handelszentrum (Stufe>=1) steht. --
+    #        zur Reputation), aktiv solange irgendwo ein Handelszentrum (Stufe>=1) steht.
+    #        Das Gebaeude ist der Unlock; die Hoehe skaliert ueber die Forschung 'Handelsnetz'
+    #        (trade_network), nicht ueber die Gebaeude-Stufe. --
     tc_cfg = bal.buildings.get("trade_center", {})
     extra_margin = 0.0
     if await owns_trade_center(session, fleet.player_id):
-        extra_margin = float(tc_cfg.get("trade_margin_reduction", 0.0))
+        from app.economy.service import get_research_levels
+        _eff = bal.data["research"]["effects"]
+        _tn = int((await get_research_levels(session, fleet.player_id)).get("trade_network", 0))
+        extra_margin = trade_network_margin_reduction(
+            float(tc_cfg.get("trade_margin_reduction", 0.0)),
+            _tn,
+            float(_eff.get("trade_network_margin_per_level", 0.0)),
+            float(_eff.get("trade_network_margin_max", 0.1)),
+        )
 
     # -- 5) Cargo-Kapazitaet der Flotte (Vorbild combat) --
     from app.combat.service import _cargo_capacity

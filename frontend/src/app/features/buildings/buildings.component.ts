@@ -101,24 +101,28 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
                   </button>
                 } @else {
                   @if (b.option) {
-                    <button
-                      class="btn btn-primary btn-sm full"
-                      type="button"
-                      [disabled]="!canUpgrade(b) || pending() === b.type || anyBuilding()"
-                      (click)="upgrade(b.type)"
-                    >
-                      {{ pending() === b.type ? '…' : 'Ausbauen → ' + b.option.next_level }}
-                    </button>
-                    @if (b.option.account_blocked) {
-                      <span class="hint warn small">Nur eines pro Imperium</span>
-                    } @else if (b.option.position_ok === false) {
-                      <span class="hint warn small">Nur auf Position {{ (b.option.allowed_positions ?? []).join(', ') }}</span>
-                    } @else if (!b.option.requirements_met) {
-                      <span class="hint warn small">Voraussetzung fehlt</span>
-                    } @else if (!b.option.can_afford) {
-                      <span class="hint warn small">Zu teuer</span>
-                    } @else if (anyBuilding()) {
-                      <span class="hint small">Bauschleife belegt</span>
+                    @if (b.option.maxed) {
+                      <span class="hint small">Stufe {{ b.option.max_level }} — kein Ausbau (Boni über Forschung Handelsnetz)</span>
+                    } @else {
+                      <button
+                        class="btn btn-primary btn-sm full"
+                        type="button"
+                        [disabled]="!canUpgrade(b) || pending() === b.type || anyBuilding()"
+                        (click)="upgrade(b.type)"
+                      >
+                        {{ pending() === b.type ? '…' : 'Ausbauen → ' + b.option.next_level }}
+                      </button>
+                      @if (b.option.account_blocked) {
+                        <span class="hint warn small">Nur eines pro Imperium</span>
+                      } @else if (b.option.position_ok === false) {
+                        <span class="hint warn small">Nur auf Position {{ (b.option.allowed_positions ?? []).join(', ') }}</span>
+                      } @else if (!b.option.requirements_met) {
+                        <span class="hint warn small">Voraussetzung fehlt</span>
+                      } @else if (!b.option.can_afford) {
+                        <span class="hint warn small">Zu teuer</span>
+                      } @else if (anyBuilding()) {
+                        <span class="hint small">Bauschleife belegt</span>
+                      }
                     }
                   }
                   @if (b.level > 0) {
@@ -148,7 +152,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
         [available]="balances()"
         [buildSeconds]="sel.option?.build_seconds ?? null"
         [requirements]="sel.option?.requirements ?? null"
-        [actionLabel]="sel.option && !sel.finishesAt ? ('Ausbauen → ' + sel.option.next_level) : null"
+        [actionLabel]="sel.option && !sel.finishesAt && !sel.option.maxed ? ('Ausbauen → ' + sel.option.next_level) : null"
         [actionDisabled]="!canUpgrade(sel) || anyBuilding()"
         [actionHint]="buildingHint(sel)"
         [pending]="pending() === sel.type"
@@ -344,6 +348,7 @@ export class BuildingsComponent {
       b.option.requirements_met &&
       b.option.position_ok !== false &&
       !b.option.account_blocked &&
+      !b.option.maxed &&
       !b.finishesAt
     );
   }
@@ -364,6 +369,9 @@ export class BuildingsComponent {
   buildingHint(b: BuildingRow): string | null {
     if (!b.option || b.finishesAt) {
       return null;
+    }
+    if (b.option.maxed) {
+      return `Stufe ${b.option.max_level} — kein Ausbau (Boni über Forschung Handelsnetz)`;
     }
     if (b.option.account_blocked) {
       return 'Nur eines pro Imperium';

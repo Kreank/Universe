@@ -222,6 +222,10 @@ def _patch_resolver_db(monkeypatch, *, capacity=10_000_000.0):
     async def _add_resources(session, planet, gain):
         credited.append((planet, dict(gain)))
 
+    async def _get_research_levels(session, pid):
+        # Besitzer ohne Handelsnetz-Forschung -> trade_network 0 -> Basis-Hub-Marge.
+        return {}
+
     monkeypatch.setattr(trade_mod, "index_market_for", _index_market_for)
     monkeypatch.setattr(trade_mod, "owns_trade_center", _owns_trade_center)
     monkeypatch.setattr(trade_mod, "_fleet_ships", _fleet_ships)
@@ -230,6 +234,7 @@ def _patch_resolver_db(monkeypatch, *, capacity=10_000_000.0):
     import app.economy.service as economy_service
     monkeypatch.setattr(combat_service, "_cargo_capacity", lambda ships: capacity)
     monkeypatch.setattr(economy_service, "add_resources", _add_resources)
+    monkeypatch.setattr(economy_service, "get_research_levels", _get_research_levels)
     return sent, credited
 
 

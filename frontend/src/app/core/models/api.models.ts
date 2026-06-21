@@ -172,6 +172,10 @@ export interface BuildingOption {
   one_per_account?: boolean;
   /** Schon woanders im Imperium vorhanden -> hier gesperrt. */
   account_blocked?: boolean;
+  /** Optionale Maximalstufe (z. B. Handelszentrum = 1); null = unbegrenzt. */
+  max_level?: number | null;
+  /** Maximalstufe erreicht -> kein weiterer Ausbau moeglich. */
+  maxed?: boolean;
 }
 
 export interface BuildingsResponse {

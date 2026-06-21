@@ -47,6 +47,10 @@ class BuildingOptionOut(BaseModel):
     # wenn der Spieler bereits eines auf einem ANDEREN Planeten besitzt/baut (zweiter Bau gesperrt).
     one_per_account: bool = False
     account_blocked: bool = False
+    # Optionale Maximalstufe (z. B. Handelszentrum = 1). null = unbegrenzt ausbaubar.
+    # maxed = True, wenn die aktuelle Stufe die Maximalstufe erreicht hat (kein Ausbau mehr).
+    max_level: int | None = None
+    maxed: bool = False
 
 
 class BuildingsResponse(BaseModel):

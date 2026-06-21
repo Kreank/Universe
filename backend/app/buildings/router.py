@@ -23,6 +23,7 @@ from app.buildings.schemas import (
     UpgradeResponse,
 )
 from app.buildings.service import (
+    MaxLevelError,
     building_options,
     cancel_upgrade,
     complete_overdue_builds,
@@ -79,6 +80,8 @@ async def get_buildings(
                 allowed_positions=o.get("allowed_positions", []),
                 one_per_account=o.get("one_per_account", False),
                 account_blocked=o.get("account_blocked", False),
+                max_level=o.get("max_level"),
+                maxed=o.get("maxed", False),
             )
             for o in options
         ],
@@ -95,6 +98,9 @@ async def upgrade_building(
     planet = await _owned_planet(session, player, planet_id)
     try:
         row = await start_upgrade(session, planet, type)
+    except MaxLevelError as exc:
+        # Maximalstufe erreicht (z. B. Handelszentrum Stufe 1) -> kein Ausbau (400).
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RuntimeError as exc:

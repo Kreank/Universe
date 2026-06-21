@@ -736,13 +736,23 @@ export class FleetDispatchComponent {
   }
 
   constructor() {
-    // W0: editierbares Ziel mit dem festen target() bzw. dem aktiven Planeten vorbelegen.
-    const seed = this.target() ?? this.state.activePlanet();
-    if (seed) {
-      this.tgtG.set(seed.galaxy);
-      this.tgtS.set(seed.system);
-      this.tgtP.set((seed as Coordinate).position ?? 1);
-    }
+    // W0/Bugfix: editierbares Ziel mit dem übergebenen target() (z.B. aus dem Spionagebericht-
+    // Deeplink) bzw. sonst dem aktiven Planeten vorbelegen. WICHTIG: target() ist ein Signal-Input
+    // und zur Konstruktionszeit noch NICHT gesetzt — daher per effect() nach der Input-Bindung
+    // EINMALIG seeden (sonst landeten fälschlich die eigenen Planeten-Koordinaten im Ziel).
+    let seeded = false;
+    effect(() => {
+      if (seeded || this.patrolMode()) {
+        return;
+      }
+      const seed = this.target() ?? this.state.activePlanet();
+      if (seed) {
+        this.tgtG.set(seed.galaxy);
+        this.tgtS.set(seed.system);
+        this.tgtP.set((seed as Coordinate).position ?? 1);
+        seeded = true;
+      }
+    });
     // Globalen Handelskurs laden (immer verfuegbar — keine Aufklaerung noetig).
     this.api.getTradeIndex().subscribe((idx) => this.globalIndex.set(idx));
     // Eskort-Angebote (fuer die Routen-Auswahl im Handel) laden.
