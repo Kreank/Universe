@@ -91,6 +91,12 @@ export class ApiService {
     return this.http.patch<Planet>(`/api/planets/${planetId}`, { name });
   }
 
+  /** Gibt eine Kolonie endgültig auf (Heimatplanet/letzter Planet tabu, HTTP 409 bei aktiven
+   * Flotten). Unwiderruflich — alles auf dem Planeten geht verloren. */
+  abandonPlanet(planetId: string): Observable<{ ok: boolean; name?: string; location?: string }> {
+    return this.http.delete<{ ok: boolean; name?: string; location?: string }>(`/api/planets/${planetId}`);
+  }
+
   // --- Gebaeude ---
   getBuildings(planetId: string): Observable<BuildingsResponse> {
     return this.http.get<BuildingsResponse>(`/api/planets/${planetId}/buildings`);

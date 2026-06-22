@@ -54,6 +54,11 @@ export const dashboardStyles = `
     background: color-mix(in srgb, var(--warn) 12%, transparent);
   }
   .moon-chip.jump:hover { background: color-mix(in srgb, var(--warn) 22%, transparent); }
+  .moon-chip.danger {
+    color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+  }
+  .moon-chip.danger:hover { background: color-mix(in srgb, var(--danger) 22%, transparent); }
 
   /* Imperiums-Punkte-Hero — prominent, gut erkennbar, klickbar. */
   .score-hero {

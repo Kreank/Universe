@@ -58,6 +58,24 @@ async def rename_planet(
     return planet
 
 
+@router.delete("/planets/{planet_id}")
+async def abandon_planet(
+    planet_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Gibt eine eigene Kolonie endgültig auf. Heimatplanet + letzter Planet sind tabu; aktive/
+    stationierte Flotten von hier müssen erst zurückgerufen werden. Unwiderruflich, ohne
+    Erstattung — alles auf dem Planeten (inkl. Mond) geht verloren."""
+    from app.planets.colonize import abandon_colony
+
+    planet = await _load_owned_planet(session, player, planet_id)
+    try:
+        return await abandon_colony(session, planet)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.get("/planets/{planet_id}", response_model=PlanetDetailOut)
 async def get_planet(
     planet_id: uuid.UUID,

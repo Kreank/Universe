@@ -60,11 +60,12 @@ import { OnboardingPanelComponent } from '../../shared/components/onboarding-pan
 import { IconTileComponent } from '../../shared/components/icon-tile.component';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { FleetSlotsComponent } from '../../shared/components/fleet-slots.component';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
 
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent, OnboardingPanelComponent, IconTileComponent, BtnIconComponent, FleetSlotsComponent],
+  imports: [RouterLink, ShortNumberPipe, CountdownComponent, JumpGateDialogComponent, OnboardingPanelComponent, IconTileComponent, BtnIconComponent, FleetSlotsComponent, ConfirmDialogComponent],
   template: `
     <h1>Dashboard</h1>
 
@@ -142,6 +143,10 @@ import { FleetSlotsComponent } from '../../shared/components/fleet-slots.compone
         @if (isMoon() && hasJumpGate()) {
           · <button class="moon-chip jump" type="button" (click)="showJump.set(true)"
               title="Sprungtor: Schiffe sofort zu einem anderen Mond versetzen"><app-btn-icon [src]="'assets/img/buildings/jump_gate.png'" glyph="🌀" [size]="14" /> Sprungtor</button>
+        }
+        @if (!p.is_homeworld && !isMoon()) {
+          · <button class="moon-chip danger" type="button" (click)="abandonConfirm.set(true)"
+              title="Diese Kolonie endgültig aufgeben (unwiderruflich)">🏳️ Aufgeben</button>
         }
       </p>
 
@@ -492,6 +497,18 @@ import { FleetSlotsComponent } from '../../shared/components/fleet-slots.compone
     @if (showJump()) {
       <app-jump-gate-dialog (close)="showJump.set(false)" />
     }
+
+    @if (abandonConfirm() && planet(); as ap) {
+      <app-confirm-dialog
+        title="Kolonie aufgeben?"
+        [message]="abandonMessage(ap)"
+        confirmLabel="Endgültig aufgeben"
+        tone="danger"
+        [pending]="abandoning()"
+        (confirm)="doAbandon(ap.id)"
+        (dismiss)="abandonConfirm.set(false)"
+      />
+    }
   `,
   styles: [dashboardStyles],
 })
@@ -503,6 +520,41 @@ export class DashboardComponent {
 
   /** Inline-Umbenennung des aktiven Planeten/Mondes. */
   protected readonly editingName = signal(false);
+
+  // -- Kolonie aufgeben (Gefahrenaktion, zweistufige Bestätigung via Dialog) --
+  protected readonly abandonConfirm = signal(false);
+  protected readonly abandoning = signal(false);
+
+  protected abandonMessage(p: { name: string; galaxy: number; system: number; position: number }): string {
+    return `„${p.name}" (${p.galaxy}:${p.system}:${p.position}) wird endgültig aufgegeben. `
+      + 'Alle Gebäude, Schiffe, Verteidigung und Ressourcen dort gehen unwiderruflich verloren '
+      + '(inkl. zugehörigem Mond). Keine Erstattung.';
+  }
+
+  protected doAbandon(planetId: string): void {
+    if (this.abandoning()) {
+      return;
+    }
+    this.abandoning.set(true);
+    this.api.abandonPlanet(planetId).subscribe({
+      next: (r) => {
+        this.abandoning.set(false);
+        this.abandonConfirm.set(false);
+        this.notify.success('Kolonie aufgegeben', `„${r.name ?? 'Kolonie'}" wurde aufgegeben.`);
+        // Auf den Heimatplaneten wechseln, dann die Planetenliste neu laden.
+        const home = this.state.planets().find((p) => p.is_homeworld && p.id !== planetId);
+        if (home) {
+          void this.state.selectPlanet(home.id);
+        }
+        void this.state.loadPlanets();
+      },
+      error: (e) => {
+        this.abandoning.set(false);
+        this.abandonConfirm.set(false);
+        this.notify.warning('Aufgeben nicht möglich', e?.error?.detail ?? 'Fehler.');
+      },
+    });
+  }
 
   protected startRename(): void {
     this.editingName.set(true);

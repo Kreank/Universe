@@ -16,10 +16,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.economy.service import RESOURCE_KEYS, refresh_resources
 from app.planets.derive import derive_planet, fields_max_for
 from app.platform.balance import get_balance
-from app.platform.models import Building, Fleet, Planet, Resource, Ship
-from app.universe.service import occupy_cell
+from app.platform.models import Building, Fleet, Planet, Resource, Ship, StationedFleet
+from app.universe.service import occupy_cell, vacate_cell
 
 log = logging.getLogger("universe.colonize")
+
+# Flotten-Status, die einen Heimathafen brauchen (Rueckkehr) -> blockieren das Aufgeben.
+_ACTIVE_FLEET_STATUSES = ("flying", "arrived", "returning")
 
 
 def colonize_check(
@@ -121,3 +124,59 @@ async def resolve_colonize(session: AsyncSession, fleet: Fleet) -> dict | None:
 
     log.info("Kolonie gegruendet @ %d:%d:%d (player=%s)", g, s, p, fleet.player_id)
     return {"ok": True, "location": f"{g}:{s}:{p}", "planet_id": str(planet.id)}
+
+
+async def abandon_colony(session: AsyncSession, planet: Planet) -> dict:
+    """Gibt eine eigene Kolonie ENDGUELTIG auf (Spieler-Feedback 2026-06-22).
+
+    Regeln: Heimatplanet + letzter (Nicht-Mond-)Planet sind tabu. Blockiert, solange Flotten von
+    hier aktiv sind oder hier stationieren (erst zurueckrufen) — sonst haetten Rueckkehrer keinen
+    Hafen. Loescht Planet + zugehoerigen Mond samt allem darauf (Gebaeude/Ressourcen/Schiffe/
+    Verteidigung/Bau-Queue) ueber die DB-Cascade-Constraints und gibt die Koordinate frei.
+    Unwiderruflich, KEINE Erstattung (alles auf dem Planeten ist verloren)."""
+    if planet.is_homeworld:
+        raise RuntimeError("Der Heimatplanet kann nicht aufgegeben werden.")
+    if planet.parent_planet_id is not None:
+        raise RuntimeError("Ein Mond kann nicht einzeln aufgegeben werden — er fällt mit seinem Planeten.")
+
+    # Letzter Planet? (Monde zaehlen nicht als eigenstaendige Planeten.)
+    cnt = (await session.execute(
+        select(func.count()).select_from(Planet).where(
+            Planet.player_id == planet.player_id, Planet.parent_planet_id.is_(None)
+        )
+    )).scalar_one()
+    if int(cnt) <= 1:
+        raise RuntimeError("Du kannst deinen letzten Planeten nicht aufgeben.")
+
+    moon = (await session.execute(
+        select(Planet).where(Planet.parent_planet_id == planet.id)
+    )).scalar_one_or_none()
+    planet_ids = [planet.id] + ([moon.id] if moon is not None else [])
+
+    # Aktive Flotten von hier (Rueckkehr braeuchte den Heimathafen) -> erst zurueckrufen.
+    busy = (await session.execute(
+        select(Fleet.id).where(
+            Fleet.player_id == planet.player_id,
+            Fleet.status.in_(_ACTIVE_FLEET_STATUSES),
+            Fleet.origin_planet_id.in_(planet_ids),
+        )
+    )).first()
+    if busy is not None:
+        raise RuntimeError("Erst alle Flotten von dieser Kolonie zurückrufen.")
+
+    # Hier stationierte/geparkte Flotten -> erst aufloesen/zurueckrufen.
+    stationed = (await session.execute(
+        select(StationedFleet.id).where(StationedFleet.home_planet_id.in_(planet_ids))
+    )).first()
+    if stationed is not None:
+        raise RuntimeError("Erst die hier stationierten Flotten zurückrufen.")
+
+    name = planet.name
+    g, s, p = planet.galaxy, planet.system, planet.position
+    # Koordinate freigeben (Planet + Mond teilen sie) und Planet loeschen -> DB-Cascade raeumt
+    # Gebaeude/Ressourcen/Schiffe/Verteidigung/Bau-Queue/Mond.
+    await vacate_cell(session, g, s, p)
+    await session.delete(planet)
+    await session.commit()
+    log.info("Kolonie aufgegeben @ %d:%d:%d (player=%s)", g, s, p, planet.player_id)
+    return {"ok": True, "name": name, "location": f"{g}:{s}:{p}"}
