@@ -309,6 +309,7 @@ Es gibt **zwei** Asset-Wurzeln:
 | Status | Name | Kategorie / Pfad | Format | Beschreibung / Referenz |
 |:---:|---|---|---|---|
 | ✅ | warp_stabilizer | `ships/warp_stabilizer.png` | PNG transparent, 512×512 (Stil = `ships/interdictor.png`) | **Warp-Stabilisator** (Konter zum Interdiktor): mittelgroßes Kampfschiff mit Stabilisator-Feld-Emittern/Gyroskop-Ringen (Gegenstück zu den Interdiktor-Feldpods), cyan `#2fe3d2` statt lila. Dunkler Metall-Rumpf, eigene Silhouette. |
+| ✅ | tanker | `ships/tanker.png` | PNG transparent, 512×512 (Stil = `ships/large_cargo.png`) | **Tankschiff** (Support/Logistik): bulliges Versorgungs-/Betankungsschiff mit prominenten zylindrischen Treibstofftanks und Betankungs-Auslegern/-Düsen + Rohrleitungen; klar als Tanker lesbar (NICHT Container-Frachter), kaum Bewaffnung. Dunkler Metall-Rumpf, cyan `#2fe3d2` Triebwerks-/Akzent-Glow + dezenter violetter (ziviler) Akzent. Eigene erkennbare Silhouette. |
 
 ### Kommando-Forschungen der Capstone-Schiffe (je +1 Besitz-Limit) — referenziert als `assets/img/tech/<name>.png`
 
