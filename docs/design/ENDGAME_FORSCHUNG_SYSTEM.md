@@ -76,7 +76,7 @@ für IGFN/Repeatables/Exotik-Techs, damit der Frühspieler nicht erschlagen wird
 ### 3.1 Zwei erspielte Ressourcen (beschlossen)
 | Ressource | Achse | Quelle (erspielt) | Verwendung | Haupt-Sink |
 |---|---|---|---|---|
-| **Dunkle Materie** | zivil/Forschung | Schwarzes-Loch-Vorkommen, Tiefraum-Expedition, seltene Drops | Repeatable-Hochstufen, Terraforming-Hochstufen, Megastruktur-Bau, Kommandeur-Veredelung | laufender Labor-Upkeep + eskalierende Bau-Kosten |
+| **Dunkle Materie** | zivil/Forschung | Schwarzes-Loch-Vorkommen, Tiefraum-Expedition, seltene Drops | Endgame-Forschung (Repeatables/Meisterschaften, Kapstein-Doktrinen, Graviton, Veteranen-Werft), Megastruktur-Bau, Kommandeur-Veredelung. **Ausnahmen ohne DM-Kosten (2026-06-22 bestätigt): Terraforming + Intergalaktisches Forschungsnetzwerk** | laufender Labor-Upkeep + eskalierende Bau-Kosten |
 | **Antimaterie** | militärisch/Energie | umkämpfte Sektoren, Kampf-/Trümmer-Drops, Raffinerie aus instabilem Vorprodukt | Top-Schiffsmodule, Antimaterie-Reaktor (Energie), Superwaffen | laufender Modul-Upkeep + Flottenverluste |
 
 **Design-Regeln (Stellaris/EVE):**
@@ -101,7 +101,7 @@ für IGFN/Repeatables/Exotik-Techs, damit der Frühspieler nicht erschlagen wird
 ### 3.3 Terraforming
 - Neue Forschung `terraforming`: **+5 Bauplätze (`fields_max`) je Stufe** auf allen
   Planeten (account-wide Research, additiv in `effective_fields_max`).
-- Kosten steil (Kristall+Deut); ab Stufe X zusätzlich **Dunkle Materie**.
+- Kosten steil (Kristall+Deut); **keine Dunkle Materie** (2026-06-22 bestätigte Ausnahme — Terraforming + Forschungsnetzwerk bleiben DM-frei, damit Expansion zugänglich bleibt).
 - Ewiger Bau-Sink: mehr Felder → mehr Gebäudestufen → mehr Ressourcen-Senke.
 
 ### 3.4 Produktions-Drohnen (Crawler-Analog, optional Phase 2b)
