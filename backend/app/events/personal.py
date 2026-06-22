@@ -207,16 +207,36 @@ async def spawn_pursuer_attack(
 
 # -- Minen-Streik ------------------------------------------------------------
 
+def pick_strike_tier(tiers: list[dict], roll: float) -> dict:
+    """Waehlt eine Streik-Schwere-Stufe gewichtet (``roll`` in [0,1)). Rein/testbar.
+    Leere/gewichtslose Liste -> {} (Aufrufer faellt auf die flachen cfg-Werte zurueck)."""
+    total = sum(float(t.get("weight", 0)) for t in (tiers or []))
+    if total <= 0:
+        return {}
+    target = roll * total
+    acc = 0.0
+    for t in tiers:
+        acc += float(t.get("weight", 0))
+        if target < acc:
+            return t
+    return tiers[-1]
+
+
 async def trigger_mine_strike(session: AsyncSession, player: Player, planet: Planet, cfg: dict) -> bool:
-    mult = float(cfg.get("production_mult", 0.5))
-    hours = float(cfg.get("duration_hours", 12))
-    bribe = int(cfg.get("bribe_deuterium", 30000))
+    # Streik-Schwere gewichtet wuerfeln (Spieler-Feedback 2026-06-22): hoher Bestechungspreis
+    # = staerkerer/laengerer Produktionseinbruch + hoeherer Moralverlust beim Brechen (gekoppelt).
+    tier = pick_strike_tier(cfg.get("tiers") or [], random.random())
+    mult = float(tier.get("production_mult", cfg.get("production_mult", 0.5)))
+    hours = float(tier.get("duration_hours", cfg.get("duration_hours", 12)))
+    bribe = int(tier.get("bribe_deuterium", cfg.get("bribe_deuterium", 30000)))
+    morale_penalty = int(tier.get("force_morale_penalty", cfg.get("force_morale_penalty", 10)))
     timeout_h = float(cfg.get("decision_timeout_hours", hours))
     ev = CosmicEvent(
         event_type="mine_strike", scope="personal", galaxy=planet.galaxy, system=planet.system,
         position=planet.position, player_id=player.id,
         data={"planet_id": str(planet.id), "production_mult": mult,
-              "bribe_deuterium": bribe, "morale_penalty": int(cfg.get("force_morale_penalty", 10))},
+              "bribe_deuterium": bribe, "morale_penalty": morale_penalty,
+              "tier": tier.get("key", "streik")},
         expires_at=_now() + dt.timedelta(hours=hours),
     )
     session.add(ev)

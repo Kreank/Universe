@@ -5257,7 +5257,13 @@
         "duration_hours": 12,
         "bribe_deuterium": 30000,
         "force_morale_penalty": 10,
-        "decision_timeout_hours": 12
+        "decision_timeout_hours": 12,
+        "_note_tiers": "2026-06-22 (Spieler-Feedback): die Streik-Schwere wird gewichtet gewuerfelt. Hoher Bestechungspreis = staerkerer/laengerer Produktionseinbruch bei Nichtzahlung UND hoeherer Moralverlust beim gewaltsamen Brechen (gekoppelt). Ohne 'tiers' fallen die flachen Werte oben als einzige Stufe zurueck.",
+        "tiers": [
+          { "key": "unruhe", "weight": 40, "bribe_deuterium": 12000, "production_mult": 0.7, "duration_hours": 8, "force_morale_penalty": 5 },
+          { "key": "streik", "weight": 40, "bribe_deuterium": 30000, "production_mult": 0.5, "duration_hours": 12, "force_morale_penalty": 10 },
+          { "key": "aufstand", "weight": 20, "bribe_deuterium": 60000, "production_mult": 0.3, "duration_hours": 18, "force_morale_penalty": 18 }
+        ]
       },
       "breakthrough": {
         "enabled": true,
