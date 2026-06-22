@@ -612,6 +612,9 @@ _STATEMENTS: list[str] = [
     # 2026-06-21: Asteroidenfelder bekommen eine Metall:Kristall-KOMPOSITION (gewichtet gerollt
     # beim Spawn). Alt-Felder/Default = 'balanced' (1.0/1.0) -> kein Einfluss auf bestehende Vorraete.
     "ALTER TABLE asteroid_fields ADD COLUMN IF NOT EXISTS composition TEXT NOT NULL DEFAULT 'balanced'",
+    # 2026-06-22: eigener Transmissions-Typ fuer Expeditionsberichte -> erscheinen NUR im
+    # Expeditionen-Screen, nicht mehr im allgemeinen Postfach.
+    "ALTER TYPE transmission_type ADD VALUE IF NOT EXISTS 'expedition'",
 ]
 
 

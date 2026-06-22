@@ -368,9 +368,10 @@ export class TransmissionsComponent {
   );
 
   protected readonly visible = computed(() => {
-    // NPC-Diplomatie-Funksprueche leben jetzt im Diplomatie-Reiter — hier ausblenden.
+    // NPC-Diplomatie-Funksprueche leben im Diplomatie-Reiter, Expeditionsberichte im
+    // Expeditionen-Screen — beide hier im allgemeinen Postfach ausblenden.
     const all = [...this.state.transmissions()]
-      .filter((t) => t.type !== 'npc_diplomacy')
+      .filter((t) => t.type !== 'npc_diplomacy' && t.type !== 'expedition')
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return this.onlyUnread() ? all.filter((t) => !t.read) : all;
   });

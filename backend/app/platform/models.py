@@ -57,7 +57,7 @@ occupant_type_enum = ENUM(
 )
 transmission_type_enum = ENUM(
     "routine", "reaction", "demand", "combat_report", "big_moment", "system",
-    "spy_report", "player_message", "npc_diplomacy",
+    "spy_report", "player_message", "npc_diplomacy", "expedition",
     name="transmission_type", create_type=False,
 )
 

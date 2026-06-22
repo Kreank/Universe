@@ -208,10 +208,11 @@ export class ExpeditionComponent {
 
   protected readonly loadingLog = signal(true);
   protected readonly transmissions = signal<Transmission[]>([]);
-  /** Expeditionsberichte = Transmissions mit „Expedition" im Betreff (System-/Kampfbericht). */
+  /** Expeditionsberichte: eigener Typ 'expedition' (seit 2026-06-22). Betreff-Fallback deckt
+   * Alt-Berichte ab, die noch als system/combat_report im Postfach liegen. */
   protected readonly expeditionLog = computed(() =>
     this.transmissions()
-      .filter((t) => (t.subject ?? '').includes('Expedition'))
+      .filter((t) => t.type === 'expedition' || (t.subject ?? '').includes('Expedition'))
       .slice(0, 8),
   );
 

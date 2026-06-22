@@ -313,7 +313,7 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
             await enqueue_flavor(
                 fleet.player_id, narrator="expedition_log", situation="Expedition in den galaktischen Weiten",
                 planet=result["location"], outcome=_otype_de.get(otype, otype), detail=_detail,
-                ttype="routine",
+                ttype="expedition",  # erzaehlerischer Bericht gehoert ebenfalls in den Expeditionen-Screen
             )
         except Exception:  # noqa: BLE001 — Flavor darf die Expedition nie stoeren
             pass
@@ -330,10 +330,13 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
     # auf, aber die Nachricht soll am Ende kommen, wenn die Flotte wirklich zurück ist (Spieler-
     # empfinden). Bei Totalverlust (kein Rückflug) wird sofort zugestellt.
     _wiped = bool(result.get("wiped"))
+    # Eigener Typ 'expedition' (2026-06-22): erscheint im Expeditionen-Screen, NICHT im Postfach
+    # (frueher system/combat_report -> landete im allgemeinen Postfach). Kampf-/Nicht-Kampf-Ausgang
+    # steht im Betreff/Body; ein eigener combat_report-Datensatz entsteht bei Expeditionen ohnehin nicht.
     _report = {
         "subject": f"{'💥 Expedition verloren' if _wiped else '🛰️ Expedition zurück'} ({result['location']})",
         "body": _expedition_report_body(result, hours),
-        "ttype": "combat_report" if _fought else "system",
+        "ttype": "expedition",
     }
     if _wiped:
         await create_system_transmission(
