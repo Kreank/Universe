@@ -174,9 +174,12 @@ export class FleetCalculationService {
     cargoKeys: readonly string[],
     capacity: number,
     planet: { resources?: any } | null,
+    reserve = 0,
   ): number {
     const others = cargoKeys.reduce((s, k) => s + this.bnum(cargo[k]), 0) - this.bnum(cargo[key]);
     const room = Math.max(0, capacity - others);
-    return Math.max(0, Math.min(this.availOnPlanet(planet, key), room));
+    // ``reserve`` (z.B. Spritbedarf bei Deuterium) bleibt am Planeten -> nicht ladbar.
+    const avail = Math.max(0, this.availOnPlanet(planet, key) - Math.max(0, reserve));
+    return Math.max(0, Math.min(avail, room));
   }
 }

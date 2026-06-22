@@ -1029,19 +1029,27 @@ export class FleetDispatchComponent {
    * der Flotte gar nicht beruecksichtigt.
    */
   cargoCapFor(key: DispatchCargoKey): number {
+    // Deuterium: den Spritbedarf der Flotte als Reserve am Planeten lassen, damit „max" den
+    // Flug nicht am Treibstoff scheitern lässt (Sprit kommt aus demselben Deuterium-Vorrat).
+    const reserve = key === 'deuterium' ? Math.ceil(this.rangeInfo()?.fuel ?? 0) : 0;
     return this.calc.cargoCapFor(
-      key, this.cargo(), CARGO_LOAD_KEYS, this.cargoInfo().capacity, this.state.activePlanet(),
+      key, this.cargo(), CARGO_LOAD_KEYS, this.cargoInfo().capacity, this.state.activePlanet(), reserve,
     );
   }
 
-  /** OGame „alles laden": Metall -> Kristall -> Deuterium -> Exoten bis die Kapazitaet voll ist. */
+  /** OGame „alles laden": Metall -> Kristall -> Deuterium -> Exoten bis die Kapazitaet voll ist.
+   * Bei Deuterium bleibt der Spritbedarf der Flotte als Reserve am Planeten. */
   fillAllCargo(): void {
     let remaining = this.cargoInfo().capacity;
+    const fuelReserve = Math.ceil(this.rangeInfo()?.fuel ?? 0);
     const next: Record<DispatchCargoKey, number> = {
       metal: 0, crystal: 0, deuterium: 0, antimatter: 0, dark_matter: 0,
     };
     for (const k of CARGO_LOAD_KEYS) {
-      const load = Math.max(0, Math.min(this.availOnPlanet(k), remaining));
+      const avail = k === 'deuterium'
+        ? Math.max(0, this.availOnPlanet(k) - fuelReserve)
+        : this.availOnPlanet(k);
+      const load = Math.max(0, Math.min(avail, remaining));
       next[k] = load;
       remaining -= load;
     }
