@@ -94,9 +94,43 @@ def ship_range(typ: str, round_trip: bool = True) -> float:
     return tank * sf / (fuel * fpu * legs)
 
 
+def _fleet_has_tanker(ships: dict[str, int]) -> bool:
+    """True, wenn ein Tankschiff (combat_roster[*].tanker == true) mitfliegt."""
+    roster = get_balance().combat_roster
+    return any((roster.get(t) or {}).get("tanker") and c > 0 for t, c in ships.items())
+
+
 def fleet_max_range(ships: dict[str, int], round_trip: bool = True) -> tuple[float, str | None]:
-    """Reichweite der gesamten Flotte = das schwaechste mitfliegende Schiff bestimmt sie.
-    Liefert (max_einfache_distanz, limitierender_schiffstyp)."""
+    """Reichweite der gesamten Flotte.
+
+    OHNE Tankschiff: das schwaechste mitfliegende Schiff begrenzt sie (Min-Modell).
+    MIT Tankschiff: der Sprit wird GEBUENDELT (Tankschiff betankt die Flotte) -> Reichweite =
+    Gesamttank / Gesamtverbrauch. Da das Tankschiff einen riesigen Tank bei geringem Eigen-
+    verbrauch hat, hebt es die Reichweite aller mit; das gepoolte Ergebnis ist nie kleiner als
+    das Min-Modell (gewichteter Mittelwert >= Minimum). Grosse Flotten brauchen mehrere Tanker.
+    Liefert (max_einfache_distanz, limitierender_schiffstyp | None)."""
+    if _fleet_has_tanker(ships):
+        bal = get_balance()
+        sf = bal.fleet["speed_factor"]
+        fpu = bal.fleet["fuel_per_distance_unit"]
+        legs = 2 if round_trip else 1
+        total_tank = 0.0
+        total_fuel = 0.0
+        for typ, count in ships.items():
+            if count <= 0:
+                continue
+            cfg = bal.ships.get(typ)
+            if not cfg:
+                continue
+            fuel = float(cfg.get("fuel", 0))
+            if fuel <= 0:
+                continue  # ortsfest -> traegt nichts zum Sprit-Pool bei
+            total_tank += float(cfg.get("fuel_tank", 0)) * count
+            total_fuel += fuel * count
+        if total_fuel <= 0:
+            return (float("inf"), None)
+        return (total_tank * sf / (total_fuel * fpu * legs), None)
+
     best: float | None = None
     limiting: str | None = None
     for typ, count in ships.items():

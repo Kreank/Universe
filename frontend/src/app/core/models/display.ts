@@ -635,6 +635,10 @@ export const SHIP_META: Record<string, DisplayMeta> = {
     label: 'Schild-Tender', glyph: '🔆', blurb: 'Projiziert Schilde im Gefecht.',
     desc: 'Spannt im Gefecht einen Schildschirm über benachbarte Schiffe. Selbst zerbrechlich, hält er andere am Leben — und wird vom Gegner zu Recht zuerst ins Visier genommen.',
   },
+  tanker: {
+    label: 'Tankschiff', glyph: '🛢️', blurb: 'Bündelt den Sprit — bringt die ganze Flotte weiter.',
+    desc: 'Ein fliegender Treibstoff-Vorrat. Solange ein Tankschiff mitfliegt, wird der Sprit der GANZEN Flotte gebündelt: Die Reichweite richtet sich dann nach Gesamttank ÷ Gesamtverbrauch statt nach dem kurzatmigsten Schiff. So kommen auch Jäger & Co. zu weit entfernten Zielen mit. Große Flotten brauchen entsprechend mehrere Tankschiffe. Kaum Kampfwert — ein reines Logistik-Schiff.',
+  },
   interceptor: {
     label: 'Abfangjaeger', glyph: '🏹', blurb: 'Sehr schnell, Anti-Jaeger.',
     desc: 'Gebaut für eine einzige Aufgabe: feindliche Jäger einholen und zerreißen. Extrem schnell, gegen größere Schiffe aber zerbrechlich — der Wächter über deinem eigenen Luftraum.',

@@ -1518,6 +1518,26 @@
         "impulse_drive": 4
       }
     },
+    "tanker": {
+      "_note": "Tankschiff (Support): grosser Spritvorrat, geringer Eigenverbrauch, kaum Kampfwert. Solange ein Tankschiff mitfliegt, wird der Sprit der GANZEN Flotte gebuendelt (fleet_max_range) -> Reichweite = Gesamttank/Gesamtverbrauch. Hebt die Reichweite aller Schiffe (auch kurzatmiger Jaeger); grosse Flotten brauchen mehrere Tanker. tunebar ueber fuel_tank/fuel.",
+      "cost": {
+        "metal": 30000,
+        "crystal": 25000,
+        "deuterium": 8000
+      },
+      "attack": 50,
+      "shield": 200,
+      "cargo": 500,
+      "speed": 10000,
+      "fuel": 300,
+      "fuel_tank": 4000,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 8,
+        "hyperspace_drive": 4,
+        "impulse_drive": 6
+      }
+    },
     "interceptor": {
       "cost": {
         "metal": 3000,
@@ -1684,6 +1704,7 @@
       },
       "capstone": "harvest_command"
     }
+
 
 
 
@@ -2234,6 +2255,29 @@
       },
       "mk2_parent": "shield_tender"
     },
+    "tanker_mk2": {
+      "_note": "Tankschiff (Support): grosser Spritvorrat, geringer Eigenverbrauch, kaum Kampfwert. Solange ein Tankschiff mitfliegt, wird der Sprit der GANZEN Flotte gebuendelt (fleet_max_range) -> Reichweite = Gesamttank/Gesamtverbrauch. Hebt die Reichweite aller Schiffe (auch kurzatmiger Jaeger); grosse Flotten brauchen mehrere Tanker. tunebar ueber fuel_tank/fuel.",
+      "cost": {
+        "metal": 39000,
+        "crystal": 32500,
+        "deuterium": 10400,
+        "antimatter": 2200
+      },
+      "attack": 62,
+      "shield": 250,
+      "cargo": 625,
+      "speed": 12500,
+      "fuel": 390,
+      "fuel_tank": 5200,
+      "rapidfire": {},
+      "requires": {
+        "shipyard": 8,
+        "hyperspace_drive": 4,
+        "impulse_drive": 6,
+        "veteran_shipyard": 1
+      },
+      "mk2_parent": "tanker"
+    },
     "interceptor_mk2": {
       "cost": {
         "metal": 3900,
@@ -2603,6 +2647,12 @@
       "range": "medium",
       "shield_projector": true
     },
+    "tanker": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "medium",
+      "tanker": true
+    },
     "interceptor": {
       "weapon_type": "energy",
       "drive": 5,
@@ -2705,6 +2755,7 @@
       "drive": 0,
       "range": "far"
     }
+
 
 
 
@@ -2831,6 +2882,12 @@
       "drive": 2,
       "range": "medium",
       "shield_projector": true
+    },
+    "tanker_mk2": {
+      "weapon_type": "kinetic",
+      "drive": 2,
+      "range": "medium",
+      "tanker": true
     },
     "interceptor_mk2": {
       "weapon_type": "energy",

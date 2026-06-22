@@ -50,12 +50,41 @@ export class FleetCalculationService {
     return (this.bnum(cfg.fuel_tank) * this.bnum(f.speed_factor)) / (fuel * this.bnum(f.fuel_per_distance_unit) * legs);
   }
 
-  /** Reichweite der Flotte = das schwächste (limitierende) Schiff der Auswahl. */
+  /** Reichweite der Flotte.
+   * Ohne Tankschiff: das schwächste (limitierende) Schiff der Auswahl.
+   * Mit Tankschiff (combat_roster[*].tanker): Sprit gebündelt -> Gesamttank/Gesamtverbrauch
+   * (das Tankschiff hebt die Reichweite aller mit; nie kleiner als das Min-Modell). */
   fleetMaxRange(
     selection: Record<string, number>,
     roundTrip: boolean,
     bal: any,
   ): { maxRange: number; limiting: string | null } {
+    const hasTanker = Object.entries(selection).some(
+      ([type, n]) => n > 0 && bal?.combat_roster?.[type]?.tanker,
+    );
+    if (hasTanker) {
+      const f = bal.fleet;
+      const legs = roundTrip ? 2 : 1;
+      let totalTank = 0;
+      let totalFuel = 0;
+      for (const [type, n] of Object.entries(selection)) {
+        if (n <= 0) {
+          continue;
+        }
+        const cfg = bal?.ships?.[type];
+        const fuel = this.bnum(cfg?.fuel);
+        if (!cfg || fuel <= 0) {
+          continue;
+        }
+        totalTank += this.bnum(cfg.fuel_tank) * n;
+        totalFuel += fuel * n;
+      }
+      if (totalFuel <= 0) {
+        return { maxRange: Infinity, limiting: null };
+      }
+      const pooled = (totalTank * this.bnum(f.speed_factor)) / (totalFuel * this.bnum(f.fuel_per_distance_unit) * legs);
+      return { maxRange: pooled, limiting: null };
+    }
     let maxRange = Infinity;
     let limiting: string | null = null;
     for (const [type, n] of Object.entries(selection)) {
