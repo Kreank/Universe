@@ -4767,6 +4767,14 @@
   "fleet": {
     "base_slots": 1,
     "slots_per_computer_tech": 1,
+    "_note_category_slots": "Eigene Obergrenzen, wie viele der Flottenslots gleichzeitig Expeditionen bzw. Bergbau sein duerfen (2026-06-22). expedition_slots = base + floor(sqrt(astrophysics)) (OGame-treu); mining_slots = base + floor(prospecting * per_prospecting). Beide HART gedeckelt auf die Gesamt-Flottenzahl (nie mehr als max. Flotten). Erzwungen in send_fleet, angezeigt in der Slot-Leiste.",
+    "expedition_slots": {
+      "base": 0
+    },
+    "mining_slots": {
+      "base": 1,
+      "per_prospecting": 0.5
+    },
     "fuel_per_distance_unit": 1.0,
     "upkeep": {
       "_note": "Anti-Snowball-Bremse (ewiges Universum): ueber der Versorgungskapazitaet (supply_base + supply_per_planet * Planeten) kosten Schiffe pro Stunde Deuterium vom Heimatplaneten. Neulinge (1-2 Planeten) liegen praktisch immer drunter -> kein Upkeep. Kapazitaet NICHT kaufbar (P2W-frei). Stuendlicher Job fleet_upkeep_tick.",

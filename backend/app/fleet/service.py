@@ -278,6 +278,23 @@ def summarize_slots(missions: list[str], patrols: int, max_slots: int) -> dict:
     }
 
 
+def max_expedition_slots(astro_level: int, total_slots: int, cfg: dict) -> int:
+    """Erlaubte GLEICHZEITIGE Expeditionen = base + ⌊√astrophysics⌋ (OGame-treu), hart gedeckelt
+    auf die Gesamt-Flottenzahl (nie mehr Expeditionen als Flotten). Rein/testbar."""
+    base = int(cfg.get("base", 0))
+    val = base + math.isqrt(max(0, int(astro_level)))
+    return max(0, min(val, int(total_slots)))
+
+
+def max_mining_slots(prospecting_level: int, total_slots: int, cfg: dict) -> int:
+    """Erlaubte GLEICHZEITIGE Bergbau-Flotten = base + ⌊prospecting · per_prospecting⌋, hart
+    gedeckelt auf die Gesamt-Flottenzahl. Rein/testbar."""
+    base = int(cfg.get("base", 1))
+    per = float(cfg.get("per_prospecting", 0.5))
+    val = base + int(math.floor(max(0, int(prospecting_level)) * per))
+    return max(0, min(val, int(total_slots)))
+
+
 async def fleet_slot_summary(session: AsyncSession, player_id: uuid.UUID) -> dict:
     """Kapazitaets-Uebersicht der Flottenslots fuer das Frontend.
 
@@ -290,7 +307,17 @@ async def fleet_slot_summary(session: AsyncSession, player_id: uuid.UUID) -> dic
     )).scalars().all()
     patrols = await active_patrol_count(session, player_id)
     max_slots = await fleet_slots(session, player_id)
-    return summarize_slots(list(missions), patrols, max_slots)
+    out = summarize_slots(list(missions), patrols, max_slots)
+    # Per-Kategorie-Obergrenzen (forschungs-abhaengig, gedeckelt auf max_slots) fuers Frontend.
+    bal = get_balance()
+    research = await get_research_levels(session, player_id)
+    out["caps"] = {
+        "expeditions": max_expedition_slots(
+            int(research.get("astrophysics", 0)), max_slots, bal.fleet.get("expedition_slots", {})),
+        "mining": max_mining_slots(
+            int(research.get("prospecting", 0)), max_slots, bal.fleet.get("mining_slots", {})),
+    }
+    return out
 
 
 async def _fleet_ship_map(session: AsyncSession, fleet_id: uuid.UUID) -> dict[str, int]:
@@ -397,6 +424,30 @@ async def send_fleet(
             f"Keine freien Flottenslots ({slots} belegt: {breakdown}). "
             "Zurückkehrende Flotten geben ihren Slot erst bei Ankunft wieder frei."
         )
+
+    # Per-Kategorie-Limit (2026-06-22): Expeditionen/Bergbau haben eigene, forschungs-abhaengige
+    # Obergrenzen — nie mehr als die Gesamt-Flottenzahl. Erhoehbar via Astrophysik bzw. Ortung.
+    if mission in ("expedition", "mine"):
+        cat_missions = (await session.execute(
+            select(Fleet.mission).where(
+                Fleet.player_id == player.id, Fleet.status.in_(ACTIVE_STATUSES)
+            )
+        )).scalars().all()
+        if mission == "expedition":
+            cap = max_expedition_slots(
+                int(research.get("astrophysics", 0)), slots, bal.fleet.get("expedition_slots", {}))
+            active = sum(1 for m in cat_missions if m == "expedition")
+            label, research_hint = "Expeditionen", "Astrophysik"
+        else:
+            cap = max_mining_slots(
+                int(research.get("prospecting", 0)), slots, bal.fleet.get("mining_slots", {}))
+            active = sum(1 for m in cat_missions if m == "mine")
+            label, research_hint = "Bergbau-Flotten", "Ortung"
+        if active >= cap:
+            raise RuntimeError(
+                f"Limit erreicht: höchstens {cap} {label} gleichzeitig (aktiv: {active}). "
+                f"Erhöhe das Limit per {research_hint}-Forschung (gedeckelt auf deine Flottenzahl)."
+            )
 
     # Schiffsbestand pruefen.
     planet_ships = (await session.execute(

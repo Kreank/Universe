@@ -3,7 +3,13 @@
 Die Slot-Uebersicht (max/used/free + breakdown) wird ueber reine Funktionen berechnet, daher
 ohne DB testbar (Stub-Missionslisten). Garantie-Invarianten: used == Summe breakdown,
 free == max - used (>= 0), Gruppierung nach Mission korrekt."""
-from app.fleet.service import SLOT_CATEGORIES, slot_breakdown, summarize_slots
+from app.fleet.service import (
+    SLOT_CATEGORIES,
+    max_expedition_slots,
+    max_mining_slots,
+    slot_breakdown,
+    summarize_slots,
+)
 
 
 def test_breakdown_groups_by_mission():
@@ -54,3 +60,30 @@ def test_summary_free_never_negative():
     s = summarize_slots(["attack", "mine", "expedition", "recycle"], patrols=2, max_slots=3)
     assert s["used"] == 6
     assert s["free"] == 0
+
+
+# -- Per-Kategorie-Caps (2026-06-22) ----------------------------------------
+
+def test_expedition_slots_sqrt_astrophysics():
+    cfg = {"base": 0}
+    assert max_expedition_slots(0, 20, cfg) == 0
+    assert max_expedition_slots(1, 20, cfg) == 1
+    assert max_expedition_slots(4, 20, cfg) == 2
+    assert max_expedition_slots(9, 20, cfg) == 3
+    assert max_expedition_slots(16, 20, cfg) == 4
+
+
+def test_expedition_slots_capped_by_total():
+    # ⌊√100⌋ = 10, aber nur 3 Flottenslots -> gedeckelt auf 3.
+    assert max_expedition_slots(100, 3, {"base": 0}) == 3
+
+
+def test_mining_slots_base_plus_prospecting():
+    cfg = {"base": 1, "per_prospecting": 0.5}
+    assert max_mining_slots(0, 20, cfg) == 1
+    assert max_mining_slots(2, 20, cfg) == 2
+    assert max_mining_slots(4, 20, cfg) == 3
+
+
+def test_mining_slots_capped_by_total():
+    assert max_mining_slots(100, 2, {"base": 1, "per_prospecting": 0.5}) == 2

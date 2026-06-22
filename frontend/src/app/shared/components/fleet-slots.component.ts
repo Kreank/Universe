@@ -54,6 +54,16 @@ import { FleetSlots } from '../../core/models/api.models';
           } @else {
             <p class="slots-empty">Aktuell keine Flotte unterwegs.</p>
           }
+          @if (limits().length) {
+            <div class="slots-limits">
+              @for (l of limits(); track l.label) {
+                <span class="slot-limit" [class.full]="l.used >= l.cap"
+                  [attr.title]="'Max. ' + l.cap + ' ' + l.label + ' gleichzeitig — erhöhbar via ' + l.hint">
+                  {{ l.label }}-Limit <b class="mono">{{ l.used }}/{{ l.cap }}</b>
+                </span>
+              }
+            </div>
+          }
         </section>
       }
     }
@@ -99,6 +109,14 @@ import { FleetSlots } from '../../core/models/api.models';
       }
       .slot-chip b { color: var(--text); }
       .slots-empty { margin: 0; color: var(--text-faint); font-size: var(--fs-xs, 0.8em); }
+      .slots-limits { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+      .slot-limit {
+        font-size: var(--fs-xs, 0.8em); padding: 2px var(--sp-2); border-radius: var(--radius-sm, 6px);
+        background: transparent; border: 1px dashed var(--border); color: var(--text-dim);
+      }
+      .slot-limit b { color: var(--text); }
+      .slot-limit.full { border-color: var(--warn); color: var(--warn); }
+      .slot-limit.full b { color: var(--warn); }
     `,
   ],
 })
@@ -134,4 +152,15 @@ export class FleetSlotsComponent {
       .map((c) => `${c.label}: ${c.count}`)
       .join(' · ') || 'Keine Flotte unterwegs',
   );
+
+  /** Per-Kategorie-Limits (belegt/Obergrenze) — zeigt, wie viele Slots Expeditionen/Bergbau
+   * sein dürfen (erhöhbar via Astrophysik bzw. Ortung, gedeckelt auf die Gesamt-Flottenzahl). */
+  protected readonly limits = computed(() => {
+    const s = this.slots();
+    if (!s?.caps) return [];
+    return [
+      { label: 'Expeditionen', used: s.breakdown.expeditions, cap: s.caps.expeditions, hint: 'Astrophysik' },
+      { label: 'Bergbau', used: s.breakdown.mining, cap: s.caps.mining, hint: 'Ortung' },
+    ];
+  });
 }

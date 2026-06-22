@@ -47,12 +47,19 @@ class SlotBreakdownOut(BaseModel):
     patrols: int = 0
 
 
+class SlotCapsOut(BaseModel):
+    """Per-Kategorie-Obergrenzen (max. gleichzeitige Expeditionen/Bergbau-Flotten)."""
+    expeditions: int = 0
+    mining: int = 0
+
+
 class FleetSlotsOut(BaseModel):
-    """Kapazitaets-Anzeige der Flottenslots (belegt/frei + Aufschluesselung)."""
+    """Kapazitaets-Anzeige der Flottenslots (belegt/frei + Aufschluesselung + Per-Kategorie-Caps)."""
     max: int
     used: int
     free: int
     breakdown: SlotBreakdownOut
+    caps: SlotCapsOut = SlotCapsOut()
 
 
 class IncomingAttackOut(BaseModel):

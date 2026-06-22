@@ -332,12 +332,19 @@ export interface FleetSlotBreakdown {
   patrols: number;
 }
 
-/** Kapazitäts-Anzeige der Flotten-Slots: belegt/frei + Aufschlüsselung. */
+/** Per-Kategorie-Obergrenzen (max. gleichzeitige Expeditionen/Bergbau-Flotten). */
+export interface FleetSlotCaps {
+  expeditions: number;
+  mining: number;
+}
+
+/** Kapazitäts-Anzeige der Flotten-Slots: belegt/frei + Aufschlüsselung + Per-Kategorie-Caps. */
 export interface FleetSlots {
   max: number;
   used: number;
   free: number;
   breakdown: FleetSlotBreakdown;
+  caps?: FleetSlotCaps;
 }
 
 /** Komposition eines Asteroidenfeldes (verschiebt das Metall:Kristall-Verhältnis). */
