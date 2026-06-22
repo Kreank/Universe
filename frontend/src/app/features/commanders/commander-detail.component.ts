@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { GameStateService } from '../../core/services/game-state.service';
@@ -422,6 +422,35 @@ import { commanderDetailStyles } from './commander-detail.styles';
           </section>
         </div>
       </div>
+
+      <!-- Gefahrenzone: Kommandeur endgueltig entlassen (Muell-Aufraeumen) -->
+      <section class="danger-zone">
+        <h3>Gefahrenzone</h3>
+        @if (c.assigned_fleet_id) {
+          <p class="muted small">
+            {{ c.name }} führt gerade eine Flotte. Rufe die Flotte erst zurück, dann lässt
+            er sich entlassen.
+          </p>
+        }
+        @if (!confirmDismiss()) {
+          <button class="danger-btn" [disabled]="!!c.assigned_fleet_id" (click)="confirmDismiss.set(true)">
+            🗑️ Kommandeur entlassen
+          </button>
+        } @else {
+          <p class="danger-warn">
+            <strong>{{ c.name }}</strong> endgültig entlassen? Das ist unwiderruflich und löscht
+            Erinnerungen, Beziehungen und Groll. Getragene Ausrüstung wandert zurück ins Inventar.
+          </p>
+          <div class="danger-actions">
+            <button class="danger-btn" [disabled]="dismissing()" (click)="dismiss(c)">
+              {{ dismissing() ? 'Entlasse…' : 'Endgültig entlassen' }}
+            </button>
+            <button class="ghost-btn" [disabled]="dismissing()" (click)="confirmDismiss.set(false)">
+              Abbrechen
+            </button>
+          </div>
+        }
+      </section>
     } @else if (loading()) {
       <p class="empty-state">Lade Commander…</p>
     } @else {
@@ -435,12 +464,16 @@ export class CommanderDetailComponent {
   private readonly balance = inject(BalanceService);
   private readonly state = inject(GameStateService);
   private readonly notify = inject(NotificationService);
+  private readonly router = inject(Router);
 
   /** Route-Parameter via withComponentInputBinding. */
   readonly id = input<string>('');
 
   protected readonly commander = signal<CommanderDetail | null>(null);
   protected readonly loading = signal(true);
+  // Entlassen (Gefahrenzone): zweistufige Bestaetigung, unwiderruflich.
+  protected readonly confirmDismiss = signal(false);
+  protected readonly dismissing = signal(false);
   protected readonly planets = this.state.planets;
   protected readonly govPlanet = signal<string | null>(null);
   protected readonly abilityCatalog = signal<AbilityCatalog | null>(null);
@@ -715,6 +748,29 @@ export class CommanderDetailComponent {
     this.api.setGovernor(planetId, null).subscribe({
       next: () => void this.state.loadPlanets(),
       error: () => void this.state.loadPlanets(),
+    });
+  }
+
+  /** Entlaesst den Kommandeur endgueltig. Bei Erfolg zurueck zum Roster; HTTP 409
+   * (aktiver Flotteneinsatz) -> Hinweis-Toast, Bestaetigung bleibt geschlossen. */
+  dismiss(c: CommanderDetail): void {
+    if (this.dismissing()) {
+      return;
+    }
+    this.dismissing.set(true);
+    this.api.dismissCommander(c.id).subscribe({
+      next: () => {
+        this.dismissing.set(false);
+        this.confirmDismiss.set(false);
+        this.notify.success('Kommandeur entlassen', `${c.name} wurde aus dem Dienst entlassen.`);
+        void this.state.reloadCommanders();
+        void this.router.navigate(['/commanders']);
+      },
+      error: (e) => {
+        this.dismissing.set(false);
+        this.confirmDismiss.set(false);
+        this.notify.warning('Entlassen nicht möglich', e?.error?.detail ?? 'Fehler.');
+      },
     });
   }
 

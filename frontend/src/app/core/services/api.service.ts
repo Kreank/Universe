@@ -335,6 +335,12 @@ export class ApiService {
     return this.http.get<CommanderDetail>(`/api/commanders/${id}`);
   }
 
+  /** Entlaesst einen Kommandeur endgueltig (Muell-Aufraeumen). Equipment wandert zurueck
+   * ins Inventar; blockiert nur bei aktivem Flotteneinsatz (HTTP 409). Unwiderruflich. */
+  dismissCommander(id: string): Observable<{ ok: boolean; name?: string }> {
+    return this.http.delete<{ ok: boolean; name?: string }>(`/api/commanders/${id}`);
+  }
+
   /** Gedaechtnis-Dossier (Welle 2): Erinnerungen, Meinungen, Beziehungen, Groll. */
   getCommanderMemory(id: string): Observable<CommanderMemoryDossier> {
     return this.http.get<CommanderMemoryDossier>(`/api/commanders/${id}/memory`);

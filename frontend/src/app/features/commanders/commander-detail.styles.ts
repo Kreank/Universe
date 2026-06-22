@@ -301,4 +301,26 @@ export const commanderDetailStyles = `
   .mem.sent-positive .mem-entry { border-left-color: color-mix(in srgb, var(--ok) 50%, transparent); }
   .mem.sent-negative .mem-entry { border-left-color: color-mix(in srgb, var(--danger) 50%, transparent); }
   .mem-ctx { color: var(--text-dim); margin: 2px 0 0; }
+
+  /* Gefahrenzone: Kommandeur entlassen */
+  .danger-zone {
+    margin-top: var(--sp-5); padding: var(--sp-4);
+    border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
+    border-radius: var(--r-2); background: color-mix(in srgb, var(--danger) 6%, transparent);
+  }
+  .danger-zone h3 { margin: 0 0 var(--sp-2); color: var(--danger); letter-spacing: 0.04em; }
+  .danger-warn { margin: 0 0 var(--sp-3); color: var(--text-dim); }
+  .danger-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+  .danger-btn {
+    padding: var(--sp-2) var(--sp-3); border-radius: var(--r-1); cursor: pointer;
+    border: 1px solid var(--danger); color: var(--danger); font-weight: 600;
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+  }
+  .danger-btn:hover:not([disabled]) { background: color-mix(in srgb, var(--danger) 24%, transparent); }
+  .danger-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .ghost-btn {
+    padding: var(--sp-2) var(--sp-3); border-radius: var(--r-1); cursor: pointer;
+    border: 1px solid var(--border); color: var(--text-dim); background: transparent;
+  }
+  .ghost-btn:hover:not([disabled]) { color: var(--text); border-color: var(--text-dim); }
 `;

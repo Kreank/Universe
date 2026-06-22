@@ -8,7 +8,7 @@ import logging
 import random
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.commander.bonuses import base_bonuses
@@ -19,7 +19,19 @@ from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
-from app.platform.models import Commander, Fleet, Planet, Transmission
+from app.platform.models import (
+    Commander,
+    CommanderGrievance,
+    CommanderItem,
+    CommanderLink,
+    CommanderMemory,
+    CommanderOpinion,
+    CommanderRelationship,
+    Fleet,
+    Planet,
+    ReactionBank,
+    Transmission,
+)
 
 log = logging.getLogger("universe.commander")
 
@@ -329,6 +341,58 @@ async def complete_training(commander_id: str) -> None:
         },
     })
     log.info("Commander %s ausgebildet", commander_id)
+
+
+async def dismiss_commander(session: AsyncSession, commander: Commander) -> dict:
+    """Entlaesst einen Kommandeur ENDGUELTIG (Muell-Aufraeumen, 2026-06-22).
+
+    Regeln (mit Sascha abgestimmt): blockiert NUR, wenn der Kommandeur gerade eine aktive
+    Flotte fuehrt (erst zurueckrufen). Sonst: Gouverneursposten + Flottenzuordnung werden
+    geraeumt, Equipment wandert zurueck ins Inventar (SET NULL), Gedaechtnis/Meinungen/Groll/
+    Beziehungen/Befehlskette/Persona-Bank werden geloescht. Laufende Ausbildung wird
+    abgebrochen — OHNE Kostenerstattung. Keine Kosten, unwiderruflich.
+
+    Die Span-of-Control wird automatisch frei (``compute_span`` zaehlt aktive Flotten dynamisch).
+    Loescht die Abhaengigen EXPLIZIT (statt sich auf DB-Cascades zu verlassen) -> robust.
+    """
+    fid = await assigned_fleet_id(session, commander.id)
+    if fid is not None:
+        raise RuntimeError("Kommandeur fuehrt eine aktive Flotte — erst zurueckrufen")
+
+    cid = commander.id
+    name = commander.name
+
+    # Laufenden Ausbildungs-Job abbrechen (idempotent; complete_training ist fuer einen
+    # geloeschten Commander ohnehin ein No-op).
+    if commander.status == "training":
+        from app.platform.scheduler import cancel_job
+        cancel_job(f"train:{cid}")
+
+    # SET-NULL-Referenzen raeumen.
+    await session.execute(
+        update(Planet).where(Planet.governor_commander_id == cid).values(governor_commander_id=None))
+    await session.execute(
+        update(Fleet).where(Fleet.commander_id == cid).values(commander_id=None))
+    await session.execute(
+        update(CommanderItem).where(CommanderItem.equipped_commander_id == cid)
+        .values(equipped_commander_id=None))  # Equipment zurueck ins Inventar
+    await session.execute(
+        update(Transmission).where(Transmission.commander_id == cid).values(commander_id=None))
+
+    # CASCADE-Abhaengige explizit loeschen.
+    await session.execute(delete(CommanderMemory).where(CommanderMemory.commander_id == cid))
+    await session.execute(delete(CommanderOpinion).where(CommanderOpinion.commander_id == cid))
+    await session.execute(delete(CommanderGrievance).where(CommanderGrievance.commander_id == cid))
+    await session.execute(delete(CommanderRelationship).where(
+        (CommanderRelationship.commander_a_id == cid) | (CommanderRelationship.commander_b_id == cid)))
+    await session.execute(delete(CommanderLink).where(
+        (CommanderLink.superior_id == cid) | (CommanderLink.subordinate_id == cid)))
+    await session.execute(delete(ReactionBank).where(ReactionBank.commander_id == cid))
+
+    await session.delete(commander)
+    await session.commit()
+    log.info("Commander %s (%s) entlassen", cid, name)
+    return {"ok": True, "dismissed": str(cid), "name": name}
 
 
 def _rank_index(rank: str, bal) -> int:

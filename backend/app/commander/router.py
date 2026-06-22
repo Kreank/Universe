@@ -24,7 +24,12 @@ from app.commander.equipment import (
     inventory_view,
     unequip_slot,
 )
-from app.commander.service import commander_to_dict, compute_span, start_training
+from app.commander.service import (
+    commander_to_dict,
+    compute_span,
+    dismiss_commander,
+    start_training,
+)
 from app.platform.balance import get_balance
 from app.messaging.service import transmission_to_dict
 from app.platform.db import get_session
@@ -348,6 +353,25 @@ async def get_commander(
     )).scalars().all()
     data["history"] = [transmission_to_dict(t) for t in history]
     return data
+
+
+@router.delete("/commanders/{commander_id}")
+async def dismiss(
+    commander_id: uuid.UUID,
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Entlaesst einen Kommandeur endgueltig (Muell-Aufraeumen). Blockiert nur bei aktivem
+    Flotteneinsatz (erst zurueckrufen). Equipment wandert zurueck ins Inventar; alle
+    Daten (Gedaechtnis/Beziehungen/Groll) werden geloescht. Keine Kosten, unwiderruflich."""
+    c = await _owned_commander(session, player, commander_id)
+    try:
+        result = await dismiss_commander(session, c)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    from app.platform.eventbus import event_bus
+    await event_bus.publish_ws(player.id, {"type": "commander_dismissed", "commander_id": str(commander_id)})
+    return result
 
 
 @router.get("/commanders/{commander_id}/memory")
