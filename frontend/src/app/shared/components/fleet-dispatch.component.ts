@@ -15,7 +15,7 @@ import { GameStateService } from '../../core/services/game-state.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { BalanceService } from '../../core/services/balance.service';
 import { FleetCalculationService } from '../../core/services/fleet-calculation.service';
-import { Conjunction, ConjunctionInfo, Coordinate, EscortOffer, FleetMission, FleetSendRequest, GalaxyIntel, PlanetUnit, TradeIndex } from '../../core/models/api.models';
+import { Conjunction, ConjunctionInfo, Coordinate, EscortOffer, FleetMission, FleetSendRequest, GalaxyIntel, Planet, PlanetUnit, TradeIndex } from '../../core/models/api.models';
 import { MISSION_META, RANK_META, SHIP_META, isMk2, metaFor } from '../../core/models/display';
 import { missionIcon, navIcon, resourceIcon, shipIcon, statIcon, uiIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from './btn-icon.component';
@@ -68,6 +68,21 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
               <span class="sep">:</span>
               <input type="number" min="1" [ngModel]="tgtP()" (ngModelChange)="tgtP.set(+$event || 1)" aria-label="Position" />
             </div>
+            @if (ownPlanetTargets().length) {
+              <div class="planet-quick">
+                <span class="pq-label">Eigene Planeten:</span>
+                @for (p of ownPlanetTargets(); track p.id) {
+                  <button
+                    type="button"
+                    class="pq-chip"
+                    [class.active]="isPlanetTarget(p)"
+                    (click)="pickPlanetTarget(p)"
+                  >
+                    {{ p.name }} <span class="mono faint">[{{ p.galaxy }}:{{ p.system }}:{{ p.position }}]</span>
+                  </button>
+                }
+              </div>
+            }
           </div>
         }
 
@@ -400,6 +415,17 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
       .coord-inputs { display: flex; align-items: center; gap: var(--sp-1); }
       .coord-inputs input { width: 64px; text-align: center; min-height: 32px; padding: var(--sp-1); }
       .coord-inputs .sep { color: var(--text-faint); font-weight: 700; }
+      /* Schnellauswahl: eigene Planeten als Ziel */
+      .planet-quick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); margin-top: var(--sp-1); }
+      .pq-label { color: var(--text-dim); font-size: var(--fs-sm); margin-right: var(--sp-1); }
+      .pq-chip {
+        padding: 3px var(--sp-2); border-radius: var(--r-pill); cursor: pointer;
+        border: 1px solid var(--border); background: var(--surface-2, transparent);
+        color: var(--text); font-size: var(--fs-sm); line-height: 1.4;
+      }
+      .pq-chip:hover { border-color: var(--accent); }
+      .pq-chip.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+      .pq-chip .faint { color: var(--text-faint); }
 
       /* Welle 5: Konjunktions-Hinweis fuer die Route */
       .conj-badge {
@@ -548,6 +574,23 @@ export class FleetDispatchComponent {
     }
     return { galaxy: this.tgtG(), system: this.tgtS(), position: this.tgtP() };
   });
+
+  /** Schnellauswahl: eigene Planeten als Ziel (ohne den Startplaneten selbst). */
+  protected readonly ownPlanetTargets = computed(() =>
+    this.state.planets().filter((p) => p.id !== this.state.activePlanetId()),
+  );
+
+  /** Übernimmt die Koordinaten eines eigenen Planeten ins editierbare Ziel. */
+  protected pickPlanetTarget(p: Planet): void {
+    this.tgtG.set(p.galaxy);
+    this.tgtS.set(p.system);
+    this.tgtP.set(p.position);
+  }
+
+  /** true, wenn das aktuelle Ziel auf diesen Planeten zeigt (Chip-Hervorhebung). */
+  protected isPlanetTarget(p: Planet): boolean {
+    return this.tgtG() === p.galaxy && this.tgtS() === p.system && this.tgtP() === p.position;
+  }
 
   /** Missionswahl:
    *  - editierbares Ziel (allgemeiner Flotten-Versand): voller Missions-Satz inkl. intercept/escort/recycle.
