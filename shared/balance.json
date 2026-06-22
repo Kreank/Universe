@@ -2966,7 +2966,7 @@
       "drive_repair_per_projector": 80
     },
     "carrier": {
-      "_note": "Option A: Traeger laden beim Angriffs-Flottenstart automatisch ECHTE Drohnen aus der Garnison nach (send_fleet), bis zur Kapazitaet je Traeger-Typ (capacity_by_type). Drohnen kaempfen als normale Schiffe. Todesstern (03d): Drohnentraeger mit 50 Basis, per computer_tech bis deathstar_capacity_max (100) erhoehbar.",
+      "_note": "Option A: Traeger laden bei JEDEM Flottenstart automatisch ECHTE Drohnen aus der Garnison nach (send_fleet), bis zur Kapazitaet je Traeger-Typ (capacity_by_type). Drohnen kaempfen als normale Schiffe. Todesstern (03d): Drohnentraeger mit 50 Basis, per computer_tech bis deathstar_capacity_max (100) erhoehbar. (2026-06-22: vorher nur Angriffe, auf Nutzerwunsch fuer alle Missionen.)",
       "drone_type": "drone",
       "drone_capacity": 8,
       "capacity_by_type": {

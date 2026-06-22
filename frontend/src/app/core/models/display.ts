@@ -600,12 +600,12 @@ export const SHIP_META: Record<string, DisplayMeta> = {
     desc: 'Eine Festung von der Größe eines Mondes, gebaut aus Gravitontechnik. Nahezu unzerstörbar und mit Geschützen, die ganze Flotten zerstäuben — die ultimative Machtdemonstration. Schwerfällig, aber Furcht erregend.',
   },
   carrier: {
-    label: 'Traeger', glyph: '🛸', blurb: 'Lädt beim Angriff Drohnen aus der Garnison.',
-    desc: 'Eine fliegende Drohnen-Basis. Schickst du einen Träger auf Angriff, lädt er automatisch bis zu seiner Kapazität Drohnen aus deiner Garnison ein — sie fliegen als echte Schiffe mit und kämpfen (mit echten Verlusten). Ohne gebaute Drohnen ist der Träger nur ein mittelschweres Schiff: erst Drohnen + Träger zusammen entfalten den Schwarm.',
+    label: 'Traeger', glyph: '🛸', blurb: 'Lädt beim Versand automatisch Drohnen aus der Garnison.',
+    desc: 'Eine fliegende Drohnen-Basis. Schickst du einen Träger auf eine Mission, lädt er automatisch bis zu seiner Kapazität Drohnen aus deiner Garnison ein — sie fliegen als echte Schiffe mit und kämpfen (mit echten Verlusten). Ohne gebaute Drohnen ist der Träger nur ein mittelschweres Schiff: erst Drohnen + Träger zusammen entfalten den Schwarm.',
   },
   drone: {
     label: 'Drohne', glyph: '🛩️', blurb: 'Schwarm-Einheit; Träger laden sie automatisch.',
-    desc: 'Unbemannt, spottbillig, in Massen verfügbar. Allein bedeutungslos, im Schwarm eine Lawine. Baue Drohnen in der Garnison — Träger laden sie beim Angriff automatisch ein und führen sie ins Gefecht. Du kannst sie aber auch wie jedes andere Schiff von Hand einer Flotte zuteilen.',
+    desc: 'Unbemannt, spottbillig, in Massen verfügbar. Allein bedeutungslos, im Schwarm eine Lawine. Baue Drohnen in der Garnison — Träger laden sie bei jedem Versand automatisch ein und führen sie mit. Du kannst sie aber auch wie jedes andere Schiff von Hand einer Flotte zuteilen.',
   },
   interdictor: {
     label: 'Interdiktor', glyph: '🧲', blurb: 'Fang-Feld: verhindert Flucht.',

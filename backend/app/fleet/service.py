@@ -370,19 +370,20 @@ async def send_fleet(
     )).scalars().all()
     by_type = {r.type: r for r in planet_ships}
 
-    # Option A: Traeger laden beim Angriff automatisch Drohnen aus der Garnison nach
-    # (bis zur Traeger-Kapazitaet drone_capacity). Diese fliegen als ECHTE Schiffe mit
-    # (echte Verluste). Bereits manuell gewaehlte Drohnen zaehlen auf die Kapazitaet an.
-    if mission == "attack":
-        capacity = carrier_drone_capacity(ships, int(research.get("computer_tech", 0)), bal.combat.get("carrier", {}))
-        if capacity > 0:
-            already = int(ships.get("drone", 0))
-            need = capacity - already
-            garrison_drones = by_type.get("drone")
-            avail = (garrison_drones.count - already) if garrison_drones else 0
-            take = max(0, min(need, avail))
-            if take > 0:
-                ships["drone"] = already + take
+    # Option A: Traeger laden bei JEDEM Flottenstart automatisch Drohnen aus der Garnison nach
+    # (bis zur Traeger-Kapazitaet je Typ). Diese fliegen als ECHTE Schiffe mit (echte Verluste,
+    # zaehlen in Treibstoff/Validierung unten). Self-gating: ohne Traeger/Todesstern in der
+    # Flotte ist die Kapazitaet 0 -> kein Nachladen. Bereits manuell gewaehlte Drohnen zaehlen
+    # auf die Kapazitaet an. (2026-06-22: vorher nur 'attack', auf Nutzerwunsch generell.)
+    capacity = carrier_drone_capacity(ships, int(research.get("computer_tech", 0)), bal.combat.get("carrier", {}))
+    if capacity > 0:
+        already = int(ships.get("drone", 0))
+        need = capacity - already
+        garrison_drones = by_type.get("drone")
+        avail = (garrison_drones.count - already) if garrison_drones else 0
+        take = max(0, min(need, avail))
+        if take > 0:
+            ships["drone"] = already + take
 
     for typ, count in ships.items():
         if typ not in bal.ships:
