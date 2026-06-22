@@ -253,13 +253,15 @@ async def maybe_grant_item(
     session.add(item)
     await session.flush()
     rar_label = cfg.get("rarities", {}).get(rarity, {}).get("label", rarity)
+    # Expeditions-Drops erscheinen im Expeditionen-Screen (2026-06-22), andere Quellen im Postfach.
+    drop_ttype = "expedition" if source == "expedition" else "system"
     await create_system_transmission(
         session,
         player_id=player_id,
         subject="Ausruestung erbeutet",
         body=f"Geborgen: {d.get('label', item_key)} ({rar_label}). Ruest sie einem Kommandeur "
              f"im Slot „{cfg.get('slot_labels', {}).get(d['slot'], d['slot'])}\" aus.",
-        ttype="system",
+        ttype=drop_ttype,
         publish=False,
     )
     return item

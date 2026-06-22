@@ -11,6 +11,7 @@ import { CountdownComponent } from '../../shared/components/countdown.component'
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import { FleetDispatchComponent } from '../../shared/components/fleet-dispatch.component';
 import { FleetSlotsComponent } from '../../shared/components/fleet-slots.component';
+import { CombatReportComponent } from '../transmissions/combat-report.component';
 
 /**
  * Expedition · Galaktische Weiten. Eigenständiger Bereich (analog Bergbau), aus dem
@@ -25,7 +26,7 @@ import { FleetSlotsComponent } from '../../shared/components/fleet-slots.compone
 @Component({
   selector: 'app-expedition',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, CountdownComponent, EmptyStateComponent, FleetDispatchComponent, FleetSlotsComponent],
+  imports: [FormsModule, RouterLink, CountdownComponent, EmptyStateComponent, FleetDispatchComponent, FleetSlotsComponent, CombatReportComponent],
   template: `
     <h1>Expedition · Galaktische Weiten</h1>
     <p class="sub">
@@ -114,6 +115,9 @@ import { FleetSlotsComponent } from '../../shared/components/fleet-slots.compone
               <span class="log-date muted small">{{ formatDate(t.created_at) }}</span>
             </div>
             <p class="log-body small">{{ t.body }}</p>
+            @if (reportIdOf(t); as rid) {
+              <button class="report-btn" type="button" (click)="openReportId.set(rid)">⚔️ Kampfbericht ansehen</button>
+            }
           </article>
         }
         <p class="muted small">
@@ -134,6 +138,10 @@ import { FleetSlotsComponent } from '../../shared/components/fleet-slots.compone
         (sent)="onSent()"
         (close)="dispatch.set(null)"
       />
+    }
+
+    @if (openReportId(); as rid) {
+      <app-combat-report [reportId]="rid" (close)="openReportId.set(null)" />
     }
   `,
   styles: [
@@ -168,6 +176,13 @@ import { FleetSlotsComponent } from '../../shared/components/fleet-slots.compone
       .log-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
       .log-subj { font-weight: 600; }
       .log-body { color: var(--text-dim); margin: var(--sp-1) 0 0; }
+      .report-btn {
+        margin-top: var(--sp-2); padding: 3px var(--sp-2); border-radius: var(--r-sm);
+        border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent); font-size: var(--fs-xs, 0.8em); cursor: pointer;
+      }
+      .report-btn:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
     `,
   ],
 })
@@ -208,6 +223,14 @@ export class ExpeditionComponent {
 
   protected readonly loadingLog = signal(true);
   protected readonly transmissions = signal<Transmission[]>([]);
+  /** Geöffneter Expeditions-Kampfbericht (report_id) — zeigt den CombatReport-Viewer. */
+  protected readonly openReportId = signal<string | null>(null);
+
+  /** report_id eines Expeditions-Gefechts aus dem decision_payload (sonst null). */
+  protected reportIdOf(t: Transmission): string | null {
+    const p = t.decision_payload as { report_id?: string } | null;
+    return p?.report_id ?? null;
+  }
   /** Expeditionsberichte: eigener Typ 'expedition' (seit 2026-06-22). Betreff-Fallback deckt
    * Alt-Berichte ab, die noch als system/combat_report im Postfach liegen. */
   protected readonly expeditionLog = computed(() =>

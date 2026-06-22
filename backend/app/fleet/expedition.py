@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.combat.engine import simulate_battle
 from app.messaging.service import create_system_transmission
 from app.platform.balance import get_balance
-from app.platform.models import Commander, Fleet, Research, Ship
+from app.platform.models import CombatReport, Commander, Fleet, Research, Ship
 
 log = logging.getLogger("universe.expedition")
 
@@ -338,10 +338,19 @@ async def resolve_expedition(session: AsyncSession, fleet: Fleet) -> dict | None
         "body": _expedition_report_body(result, hours),
         "ttype": "expedition",
     }
+    # Bei einem Gefecht: anklickbarer Kampfbericht (report_id aus _resolve_encounter) anhaengen.
+    if result.get("combat_report_id"):
+        _report["decision_payload"] = {
+            "report_id": result["combat_report_id"],
+            "role": "attacker",
+            "winner": result.get("winner"),
+            "location": result["location"],
+        }
     if _wiped:
         await create_system_transmission(
             session, player_id=fleet.player_id,
             subject=_report["subject"], body=_report["body"], ttype=_report["ttype"],
+            decision_payload=_report.get("decision_payload"),
         )
     else:
         fleet.mission_data = {**(fleet.mission_data or {}), "expedition_report": _report}
@@ -400,6 +409,7 @@ async def _resolve_encounter(session: AsyncSession, fleet: Fleet, kind: str, res
     result["winner"] = battle["winner"]
 
     # Bei Sieg: Beute aus zerstoerten Gegnern.
+    loot = {"metal": 0.0, "crystal": 0.0}
     if battle["winner"] == "attacker" and sum(survivors.values()) > 0:
         loot = _loot_from_losses(enemy_losses, bal.ships, float(enc.get("loot_ratio", 0)))
         if loot["metal"] or loot["crystal"]:
@@ -410,3 +420,24 @@ async def _resolve_encounter(session: AsyncSession, fleet: Fleet, kind: str, res
             result["loot"] = loot
     if sum(survivors.values()) == 0:
         result["wiped"] = True
+
+    # Anklickbarer Kampfbericht (2026-06-22, Spieler-Wunsch): Spieler = Angreifer, Gegner = NPC.
+    # Wie bei normalen Kaempfen persistiert; das Frontend laedt Runden/Verluste ueber die report_id.
+    enemy_name = "Aliens" if kind == "aliens" else "Piraten"
+    outcome_json = dict(battle)
+    outcome_json["situation"] = (
+        "crushing_victory" if battle["winner"] == "attacker" and not result.get("wiped")
+        else "defeat" if battle["winner"] != "attacker" else "victory")
+    outcome_json["defender_kind"] = "npc"
+    outcome_json["defender_name"] = enemy_name
+    outcome_json["npc_name"] = enemy_name
+    from app.combat.service import _debris
+    report = CombatReport(
+        attacker_id=fleet.player_id, defender_id=None, location=result.get("location", ""),
+        seed=seed, outcome=outcome_json,
+        loot={k: float(v) for k, v in loot.items() if v},
+        debris=_debris(enemy_losses),
+    )
+    session.add(report)
+    await session.flush()
+    result["combat_report_id"] = str(report.id)

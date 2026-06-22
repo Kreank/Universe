@@ -1228,6 +1228,7 @@ async def fleet_return(fleet_id: str) -> None:
                 await create_system_transmission(
                     session, player_id=fleet.player_id,
                     subject=_rep["subject"], body=_rep["body"], ttype=_rep.get("ttype", "system"),
+                    decision_payload=_rep.get("decision_payload"),
                 )
 
         if origin is not None:
