@@ -1002,6 +1002,7 @@ async def fleet_arrive(fleet_id: str) -> None:
         stationed = False
         staged = False
         exp_result: dict | None = None
+        trade_result: dict | None = None
         if mission == "attack":
             _ar = await resolve_attack(session, fleet)
             staged = bool(_ar and _ar.get("staged"))
@@ -1016,7 +1017,7 @@ async def fleet_arrive(fleet_id: str) -> None:
         elif mission == "expedition":
             exp_result = await resolve_expedition(session, fleet)
         elif mission == "trade":
-            await resolve_trade_arrival(session, fleet)
+            trade_result = await resolve_trade_arrival(session, fleet)
         elif mission == "transport":
             await resolve_transport(session, fleet)
         elif mission == "deploy":
@@ -1036,7 +1037,8 @@ async def fleet_arrive(fleet_id: str) -> None:
             )).scalars().first()
             consumed = _left is None
 
-        wiped = bool(exp_result and exp_result.get("wiped"))
+        wiped = bool((exp_result and exp_result.get("wiped"))
+                     or (trade_result and trade_result.get("wiped")))
         if wiped or consumed:
             # Totalverlust (Schwarzes Loch / vernichtende Begegnung) ODER verbrauchte Flotte:
             # keine Rueckkehr. Der bereits geplante fleet_return-Job laeuft ins Leere

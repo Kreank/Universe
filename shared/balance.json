@@ -4976,12 +4976,18 @@
     "stock_regen_per_tick": 0.1,
     "market_tick_interval_seconds": 1800,
     "route_risk": {
-      "_note": "Ungeschuetzte Handelsflotten werden auf der Route ueberfallen. chance = base_chance_per_system*distance, verstaerkt durch Frachtwert (bis 2x bei cargo_value_ref), gesenkt durch Eskort-Kampfkraft (escort_power_for_half halbiert), gedeckelt auf max_chance. Bei Treffer geht loss_fraction der Fracht verloren.",
+      "_note": "Ungeschuetzte Handelsflotten werden auf der Route ueberfallen. chance = base_chance_per_system*distance, verstaerkt durch Frachtwert (bis 2x bei cargo_value_ref), gesenkt durch Eskort-Kampfkraft (escort_power_for_half halbiert), gedeckelt auf max_chance. Bei Treffer faellt ein ECHTES Gefecht (2026-06-22): ein Raeuber-Geschwader (raid_*) greift an, der Spieler verteidigt mit den eigenen Flottenschiffen. Schiffe koennen zerstoert/gekapert werden, es entsteht ein anklickbarer Kampfbericht. Nur bei Raeuber-Sieg geht loss_fraction der Fracht verloren; eine bewaffnete Eskorte kann den Ueberfall abwehren (Fracht sicher) und sogar Raeuber kapern.",
       "base_chance_per_system": 0.012,
       "cargo_value_ref": 100000,
       "escort_power_for_half": 5000,
       "max_chance": 0.5,
-      "loss_fraction": 0.4
+      "loss_fraction": 0.4,
+      "raider_name": "Pluenderer-Geschwader",
+      "raid_roster": ["light_fighter", "heavy_fighter", "cruiser"],
+      "raid_tech": 2,
+      "raid_power_per_value": 0.0025,
+      "raid_power_min": 50,
+      "raid_power_max": 4000
     },
     "specializations": {
       "metal_world": {

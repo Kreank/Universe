@@ -29,6 +29,7 @@ from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.models import (
     Building,
+    CombatReport,
     Fleet,
     NpcEmpire,
     Planet,
@@ -175,6 +176,36 @@ def route_risk_chance(distance: int, escort_power: float, cargo_value: float, cf
     escort_power = max(0.0, float(escort_power))
     raw *= half / (half + escort_power)
     return max(0.0, min(float(rc["max_chance"]), raw))
+
+
+def generate_raider_fleet(cargo_value: float, rc: dict, catalog: dict) -> dict[str, int]:
+    """Generiert das Raeuber-Geschwader fuer einen Routen-Ueberfall (rein/testbar).
+
+    Kampfwert-Budget ~ Frachtwert (cargo_value * raid_power_per_value), geklemmt auf
+    [raid_power_min, raid_power_max] -> die Beute bestimmt die Bedrohung, nicht die
+    eigene Bewaffnung. Gleichmaessig ueber das raid_roster verteilt (Muster
+    ``expedition.generate_enemy_fleet``). Deterministisch (kein RNG)."""
+    roster = [t for t in rc.get("raid_roster", []) if t in catalog]
+    if not roster:
+        return {}
+    budget = max(0.0, float(cargo_value)) * float(rc.get("raid_power_per_value", 0.0))
+    budget = max(float(rc.get("raid_power_min", 0.0)), budget)
+    _cap = float(rc.get("raid_power_max", 0.0))
+    if _cap > 0:
+        budget = min(_cap, budget)
+    if budget <= 0:
+        return {}
+    per = budget / len(roster)
+    out: dict[str, int] = {}
+    for t in roster:
+        atk = max(1.0, float(catalog[t].get("attack", 1)))
+        n = int(per // atk)
+        if n > 0:
+            out[t] = n
+    if not out:
+        cheapest = min(roster, key=lambda t: float(catalog[t].get("attack", 1)) or 1)
+        out[cheapest] = 1
+    return out
 
 
 # -- Reine Auftrags-Validierung (testbar, DB-frei) ----------------------------
@@ -669,6 +700,7 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
     # Reine Risiko-Rechnung (route_risk_chance) + EIN Zufallswurf (gewollt nicht-deterministisch;
     # die Tests pruefen nur die reine Funktion, nicht diesen Wurf).
     raided = False
+    raid_wiped = False
     lost: dict[str, int] = {}
     route_cfg = cfg.get("route_risk")
     if route_cfg and cargo:
@@ -696,7 +728,8 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         # Forschung "Konvoi-Taktik" senkt das Routenrisiko.
         from app.economy.service import get_research_levels
         _eff = bal.data["research"]["effects"]
-        _convoy = int((await get_research_levels(session, fleet.player_id)).get("convoy_tactics", 0))
+        research_levels = await get_research_levels(session, fleet.player_id)
+        _convoy = int(research_levels.get("convoy_tactics", 0))
         chance *= max(0.0, 1.0 - _convoy * float(_eff.get("convoy_route_risk_reduction_per_level", 0.0)))
         # Handels-Leviathan Konvoi-Schutz-Aura (praesenz-basiert, kein Stapeln).
         _lev_ships = await _fleet_ships(session, fleet.id)
@@ -705,32 +738,119 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
             chance *= max(0.0, 1.0 - float(bal.data.get("capstone", {}).get("convoy_aura", {}).get("risk_reduction", 0.0)))
         if random.random() < chance:
             raided = True
-            # Jede Cargo-Position um loss_fraction kuerzen (gerundet), neues dict setzen.
+            # Echtes Gefecht statt reiner Fracht-Abzug (2026-06-22): ein Raeuber-Geschwader faellt
+            # ueber die Flotte her. Spieler = Verteidiger (eigene Schiffe), Raeuber = NPC-Angreifer.
+            # Es faellt ein anklickbarer Kampfbericht ab (Muster npc.attack.resolve_npc_attack).
+            from app.combat.engine import simulate_battle
+            from app.combat.service import _debris
+
+            ship_rows = (await session.execute(
+                select(Ship).where(Ship.fleet_id == fleet.id)
+            )).scalars().all()
+            def_ships = {r.type: r.count for r in ship_rows if r.count > 0}
+
+            raider = generate_raider_fleet(cargo_value, route_cfg, bal.ships)
+            _rt = int(route_cfg.get("raid_tech", 0))
+            raid_tech = {"weapons_tech": _rt, "shield_tech": _rt, "armor_tech": _rt}
+            def_tech = {k: research_levels.get(k, 0)
+                        for k in ("weapons_tech", "shield_tech", "armor_tech")}
+
+            raid_seed = random.randrange(1, 2 ** 62)
+            attacker = {"ships": raider, "tech": raid_tech, "attack_mult": 1.0}
+            defender = {"ships": def_ships, "defenses": {}, "tech": def_tech, "attack_mult": 1.0}
+            battle = simulate_battle(attacker, defender, raid_seed, bal.data)
+
+            winner = battle["winner"]
+            def_survivors = dict(battle["defender_survivors"])
+            def_losses = dict(battle["defender_losses"])
+
+            # Schiffsverluste auf die echten Flottenzeilen anwenden (zerstoert/gekapert -> weg).
+            for row in ship_rows:
+                surv = int(def_survivors.get(row.type, 0))
+                if surv <= 0:
+                    await session.delete(row)
+                else:
+                    row.count = surv
+            # Vom Verteidiger gekaperte Raeuber-Schiffe schliessen sich der heimkehrenden Flotte an.
+            _captured = battle.get("defender_captured", {})
+            for typ, n in _captured.items():
+                if int(n) > 0:
+                    session.add(Ship(planet_id=None, fleet_id=fleet.id, type=typ, count=int(n)))
+
+            # Total verloren nur, wenn nichts mehr fliegt (weder Ueberlebende noch Prisen).
+            raid_wiped = (sum(def_survivors.values()) + sum(int(n) for n in _captured.values())) == 0
+
+            # Fracht: die Raeuber pluendern loss_fraction (wie bisher) -- ES SEI DENN, die Eskorte
+            # vernichtet sie restlos (winner == 'defender'): dann kehrt die Fracht unversehrt heim.
+            # Bei einem Patt (Raeuber harassen die Flotte, entkommen aber) geht die Fracht verloren.
             loss_fraction = float(route_cfg["loss_fraction"])
-            new_cargo: dict[str, float] = {}
-            for res, amount in cargo.items():
-                lost_amt = round(float(amount) * loss_fraction)
-                if lost_amt > 0:
-                    lost[res] = lost_amt
-                new_cargo[res] = round(float(amount) - lost_amt, 1)
-            fleet.cargo = new_cargo
-            cargo = new_cargo
-            # Separater Warn-Funkspruch.
+            if winner != "defender":
+                new_cargo: dict[str, float] = {}
+                for res, amount in cargo.items():
+                    lost_amt = round(float(amount) * loss_fraction)
+                    if lost_amt > 0:
+                        lost[res] = lost_amt
+                    new_cargo[res] = round(float(amount) - lost_amt, 1)
+                fleet.cargo = new_cargo
+                cargo = new_cargo
+            if raid_wiped:
+                fleet.cargo = {}  # Totalverlust: keine Fracht kehrt heim
+                cargo = {}
+
+            # -- Kampfbericht persistieren (Verteidiger = Spieler, Angreifer = NPC-Raeuber) --
+            raider_name = str(route_cfg.get("raider_name", "Pluenderer-Geschwader"))
+            outcome_json = dict(battle)
+            outcome_json["situation"] = (
+                "defense_lost" if winner == "attacker"
+                else "defense_held" if winner == "defender" else "stalemate")
+            outcome_json["attacker_kind"] = "npc"
+            outcome_json["npc_name"] = raider_name
+            _d_atk = _debris(battle.get("attacker_losses", {}))
+            _d_def = _debris(def_losses)
+            raid_debris = {"metal": round(_d_atk["metal"] + _d_def["metal"], 1),
+                           "crystal": round(_d_atk["crystal"] + _d_def["crystal"], 1)}
+            report = CombatReport(
+                attacker_id=None, defender_id=fleet.player_id, location=coords,
+                seed=raid_seed, outcome=outcome_json,
+                loot={k: float(v) for k, v in lost.items()}, debris=raid_debris,
+            )
+            session.add(report)
+            await session.flush()
+            raid_report_id = report.id
+
+            # Anklickbarer Funkspruch (statt der reinen System-Warnung) -> oeffnet den Kampfbericht.
             loss_line = ", ".join(f"{amt:g} {res}" for res, amt in lost.items()) or "keine"
+            if winner != "defender":
+                subject = f"⚠ Frachter ueberfallen ({coords})"
+                if raid_wiped:
+                    body = (f"Deine Handelsflotte wurde auf der Route von {npc.name} ({coords}) von "
+                            f"{raider_name} ueberfallen und vollstaendig vernichtet. "
+                            f"Verlorene Fracht: {loss_line}.")
+                else:
+                    body = (f"Deine Handelsflotte wurde auf der Route von {npc.name} ({coords}) von "
+                            f"{raider_name} ueberfallen. Verlorene Fracht: {loss_line}.\n"
+                            f"Eine staerkere bewaffnete Eskorte wehrt den Ueberfall ab.")
+            else:
+                subject = f"🛡 Ueberfall abgewehrt ({coords})"
+                body = (f"{raider_name} versuchte, deine Handelsflotte auf der Route von {npc.name} "
+                        f"({coords}) zu ueberfallen — deine Eskorte schlug sie zurueck. "
+                        f"Die Fracht kehrt unversehrt heim.")
             await create_system_transmission(
                 session,
                 player_id=fleet.player_id,
-                subject=f"⚠ Frachter ueberfallen ({coords})",
-                body=(
-                    f"Deine ungeschuetzte Handelsflotte wurde auf der Route von {npc.name} "
-                    f"({coords}) ueberfallen. Verlorene Fracht: {loss_line}.\n"
-                    f"Eine staerkere Eskorte (bewaffnete Schiffe) senkt das Ueberfall-Risiko."
-                ),
-                ttype="system",
+                subject=subject,
+                body=body,
+                ttype="combat_report",
+                decision_payload={
+                    "report_id": str(raid_report_id),
+                    "role": "defender",
+                    "winner": winner,
+                    "location": coords,
+                },
             )
             log.info(
-                "Frachter ueberfallen: player=%s coords=%s chance=%.3f lost=%s",
-                fleet.player_id, coords, chance, lost,
+                "Frachter-Ueberfall: player=%s coords=%s chance=%.3f winner=%s lost=%s wiped=%s",
+                fleet.player_id, coords, chance, winner, lost, raid_wiped,
             )
 
     # -- 10) Preis-Snapshot in PlayerDiscovery (Upsert, Muster spionage.py) --
@@ -836,6 +956,7 @@ async def resolve_trade(session: AsyncSession, fleet: Fleet) -> dict | None:
         "reputation_level": level,
         "raided": raided,
         "lost": lost,
+        "wiped": raid_wiped,
     }
     log.info(
         "Handel: player=%s npc=%s %s %g->%s %g rep=%d refund=%g",
