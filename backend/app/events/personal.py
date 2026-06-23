@@ -223,6 +223,24 @@ def pick_strike_tier(tiers: list[dict], roll: float) -> dict:
 
 
 async def trigger_mine_strike(session: AsyncSession, player: Player, planet: Planet, cfg: dict) -> bool:
+    # Kein Doppel-Streik: laeuft auf dem Planeten bereits ein Streik, nichts tun (Spieler-Feedback
+    # 2026-06-23). Sonst stapeln sich ueber mehrere Ticks mehrere Streiks samt Produktions-Debuffs
+    # auf demselben Planeten — bezahlt der Spieler einen, bleibt der andere aktiv (auf der Karte
+    # sichtbar + Foerderung weiter gedrosselt).
+    existing = (await session.execute(
+        select(CosmicEvent.id).where(
+            CosmicEvent.event_type == "mine_strike",
+            CosmicEvent.player_id == player.id,
+            CosmicEvent.galaxy == planet.galaxy,
+            CosmicEvent.system == planet.system,
+            CosmicEvent.position == planet.position,
+            CosmicEvent.status == "active",
+            CosmicEvent.expires_at > _now(),
+        ).limit(1)
+    )).first()
+    if existing is not None:
+        return False
+
     # Streik-Schwere gewichtet wuerfeln (Spieler-Feedback 2026-06-22): hoher Bestechungspreis
     # = staerkerer/laengerer Produktionseinbruch + hoeherer Moralverlust beim Brechen (gekoppelt).
     tier = pick_strike_tier(cfg.get("tiers") or [], random.random())
@@ -288,9 +306,11 @@ async def trigger_breakthrough(session: AsyncSession, player: Player, planet: Pl
         gift = f"Stufe {row.level} der Technologie wurde dir GESCHENKT."
     else:
         # Rabatt-Buff: nächste Forschung doppelt so schnell (research_speed-Buff).
+        # replace=True -> nicht stapelbar: mehrere Durchbrüche erneuern den Buff statt sich
+        # multiplikativ aufzuschaukeln (sonst 3× ×2 = 8-fach, Spieler-Feedback 2026-06-23).
         await apply_buff(
             session, buff_type="research_speed", magnitude=2.0, duration_hours=48,
-            scope="player", player_id=player.id,
+            scope="player", player_id=player.id, replace=True,
         )
         gift = "Deine nächste Forschung läuft dank des Durchbruchs doppelt so schnell (48 h)."
     await create_system_transmission(

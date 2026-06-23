@@ -1,6 +1,11 @@
 """Minen-Streik: gewichtete Schwere-Stufen (2026-06-22, Spieler-Feedback). Testet den reinen
-Stufen-Wuerfel ``pick_strike_tier`` (DB-freier Helfer)."""
-from app.events.personal import pick_strike_tier
+Stufen-Wuerfel ``pick_strike_tier`` (DB-freier Helfer) und die Doppel-Streik-Sperre
+(2026-06-23, Spieler-Feedback: Streiks stapelten sich auf demselben Planeten)."""
+import asyncio
+import uuid
+from types import SimpleNamespace
+
+from app.events.personal import pick_strike_tier, trigger_mine_strike
 
 TIERS = [
     {"key": "unruhe", "weight": 40, "bribe_deuterium": 12000},
@@ -51,3 +56,42 @@ def test_higher_price_couples_with_severity_in_balance():
     assert prices == sorted(prices)
     assert mults == sorted(mults, reverse=True)   # teurer -> kleinerer mult (mehr Verlust)
     assert morale == sorted(morale)               # teurer -> mehr Moralverlust
+
+
+# -- Doppel-Streik-Sperre ----------------------------------------------------
+
+class _Result:
+    def __init__(self, row):
+        self._row = row
+
+    def first(self):
+        return self._row
+
+
+class _GuardSession:
+    """Minimal-Session: ``execute`` liefert einen Treffer (= bereits aktiver Streik am Planeten).
+    ``add`` wird mitgeschrieben, um zu pruefen, dass KEIN neues Event angelegt wird."""
+
+    def __init__(self, hit):
+        self._hit = hit
+        self.added = []
+
+    async def execute(self, *_a, **_k):
+        return _Result(("vorhandener-streik",) if self._hit else None)
+
+    def add(self, obj):
+        self.added.append(obj)
+
+    async def flush(self):
+        pass
+
+
+def test_mine_strike_skips_when_already_active():
+    # Laeuft auf dem Planeten schon ein Streik, darf kein zweiter angelegt werden (sonst
+    # stapeln sich Produktions-Debuffs und bezahlst du einen, bleibt der andere aktiv).
+    planet = SimpleNamespace(id=uuid.uuid4(), galaxy=1, system=89, position=2, name="Testwelt")
+    player = SimpleNamespace(id=uuid.uuid4())
+    session = _GuardSession(hit=True)
+    out = asyncio.run(trigger_mine_strike(session, player, planet, {}))
+    assert out is False
+    assert session.added == []  # kein neues CosmicEvent angelegt
