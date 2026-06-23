@@ -32,7 +32,9 @@ interface ResearchGroup {
   rows: ResearchRow[];
 }
 
-/** Kategorien des Techbaums: Antriebe, Kampftechnik, Fuehrung. */
+/** Kategorien des Techbaums: aktivitaets-naher Schnitt, damit der Baum durchsuchbar bleibt
+ * (Spieler-Feedback 2026-06-23: Bergbau/Expedition als eigene Reiter statt einem Sammel-Topf).
+ * Jede der 47 Techs ist genau einer Kategorie zugeordnet — der "Sonstiges"-Fallback bleibt leer. */
 const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string | null; types: string[] }[] = [
   {
     key: 'drive',
@@ -43,9 +45,9 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
       'energy_tech',
       'combustion_drive',
       'impulse_drive',
-      'hyperspace_drive',
       'hyperspace_tech',
-      'hyperspace_interdiction',
+      'hyperspace_drive',
+      'jump_gate_tech',
     ],
   },
   {
@@ -59,51 +61,73 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
       'armor_tech',
       'laser_tech',
       'ion_tech',
-      'ion_disruptors',
       'plasma_tech',
-      'boarding_doctrine',
+      'ion_disruptors',
       'graviton_tech',
+      'hyperspace_interdiction',
+      'boarding_doctrine',
     ],
   },
   {
     key: 'command',
-    label: 'Führung & Crew',
+    label: 'Kommandeure & Flotte',
     glyph: '🎖️',
     icon: techIcon('command_doctrine'),
     types: [
       'command_doctrine',
-      'logistics_tech',
-      'crew_psychology',
       'leadership_doctrine',
       'tactical_academy',
+      'crew_psychology',
+      'logistics_tech',
       'computer_tech',
-      'spy_tech',
-    ],
-  },
-  {
-    key: 'economy',
-    label: 'Wirtschaft & Expansion',
-    glyph: '⛏️',
-    icon: techIcon('mining_efficiency'),
-    types: ['mining_efficiency', 'extraction_tech', 'prospecting', 'deuterium_prospecting', 'storage_tech', 'astrophysics', 'expedition_tech'],
-  },
-  {
-    key: 'endgame',
-    label: 'Endgame',
-    glyph: '🌌',
-    icon: techIcon('research_network'),
-    types: [
-      'research_network',
-      'terraforming',
-      'weapons_mastery',
-      'shield_mastery',
-      'armor_mastery',
-      'extraction_mastery',
       'flagship_command',
       'corsair_command',
       'leviathan_command',
       'harvest_command',
     ],
+  },
+  {
+    key: 'mining',
+    label: 'Bergbau',
+    glyph: '⛏️',
+    icon: techIcon('mining_efficiency'),
+    types: [
+      'mining_efficiency',
+      'extraction_tech',
+      'extraction_mastery',
+      'deuterium_prospecting',
+      'prospecting',
+      'fleet_logistics',
+      'route_planning',
+    ],
+  },
+  {
+    key: 'expedition',
+    label: 'Expedition',
+    glyph: '🛰️',
+    icon: techIcon('expedition_tech'),
+    types: ['astrophysics', 'expedition_tech'],
+  },
+  {
+    key: 'economy',
+    label: 'Wirtschaft & Ausbau',
+    glyph: '🌍',
+    icon: techIcon('terraforming'),
+    types: ['storage_tech', 'terraforming', 'research_network', 'trade_network', 'convoy_tactics'],
+  },
+  {
+    key: 'intel',
+    label: 'Spionage & Sensorik',
+    glyph: '🛡️',
+    icon: techIcon('spy_tech'),
+    types: ['spy_tech', 'phalanx_tech', 'gravitics'],
+  },
+  {
+    key: 'endgame',
+    label: 'Endgame',
+    glyph: '🌌',
+    icon: techIcon('weapons_mastery'),
+    types: ['weapons_mastery', 'shield_mastery', 'armor_mastery', 'veteran_shipyard'],
   },
 ];
 
