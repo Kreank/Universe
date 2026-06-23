@@ -62,9 +62,15 @@ export class GameStateService {
   readonly researchVersion = signal(0);
   readonly shipyardVersion = signal(0);
 
-  // Postfach-Badge: Diplomatie-Funksprueche zaehlen NICHT mit (leben im Diplomatie-Reiter).
+  // Postfach-Badge: muss exakt dem zaehlen, was das Postfach (/transmissions) auch wirklich
+  // anzeigt. Diplomatie-Funksprueche leben im Diplomatie-Reiter, Expeditionsberichte im
+  // Expeditionen-Screen — beide sind im Postfach ausgeblendet und duerfen das Badge daher nicht
+  // hochzaehlen (sonst: "Badge zeigt Ungelesene, Postfach ist leer").
   readonly unreadTransmissions = computed(
-    () => this.transmissions().filter((t) => !t.read && t.type !== 'npc_diplomacy').length,
+    () =>
+      this.transmissions().filter(
+        (t) => !t.read && t.type !== 'npc_diplomacy' && t.type !== 'expedition',
+      ).length,
   );
   // Eigenes Ungelesen-Badge fuer den Diplomatie-Reiter.
   readonly unreadDiplomacy = computed(
