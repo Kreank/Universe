@@ -44,8 +44,24 @@ async def apply_buff(
     galaxy: int | None = None,
     system: int | None = None,
     source_event_id: uuid.UUID | None = None,
+    replace: bool = False,
 ) -> EventBuff:
-    """Legt einen neuen Buff an (NICHT committet — Aufrufer committet)."""
+    """Legt einen neuen Buff an (NICHT committet — Aufrufer committet).
+
+    ``replace=True`` = nicht-stapelnd: vorhandene aktive Buffs GLEICHEN Typs am selben Ziel werden
+    vorher entfernt, statt sich zu multiplizieren. Noetig fuer research_speed (Spieler-Feedback
+    2026-06-23: mehrere Forschungs-Durchbrueche stapelten sich multiplikativ — 3× ×2 = 8× = ein
+    30-min-Tech in ~3 min). So bleibt es bei „doppelt so schnell", wie der Event-Text verspricht."""
+    if replace:
+        scope_clause = _scope_filter(player_id, planet_id, galaxy, system)
+        if scope_clause is not None:
+            await session.execute(
+                delete(EventBuff).where(
+                    EventBuff.buff_type == buff_type,
+                    EventBuff.expires_at > _now(),
+                    scope_clause,
+                )
+            )
     buff = EventBuff(
         source_event_id=source_event_id,
         scope=scope,

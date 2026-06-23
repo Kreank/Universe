@@ -430,7 +430,7 @@ async def try_anomaly_probe(session: AsyncSession, player_id, g: int, s: int, p:
     damaged = random.random() < float(data.get("damage_chance", 0.15))
     await apply_buff(
         session, buff_type="research_speed", magnitude=buff, duration_hours=hours,
-        scope="player", player_id=player_id, source_event_id=ev.id,
+        scope="player", player_id=player_id, source_event_id=ev.id, replace=True,
     )
     pct = int((buff - 1.0) * 100)
     if damaged:
