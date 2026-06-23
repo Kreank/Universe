@@ -479,6 +479,13 @@ input::placeholder { color: var(--text-faint); }
   box-shadow: var(--e2);
 }
 .tip:hover::after { opacity: 1; }
+/* Tooltips an Elementen in der oben fixierten Topbar nach UNTEN klappen — sonst landen sie
+   ueber dem Viewport-Rand und werden (v.a. auf Tablets im Querformat) von der Browser-
+   Adressleiste verdeckt. */
+.topbar .tip::after {
+  bottom: auto;
+  top: 130%;
+}
 
 /* --- Scrollbars --- */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
