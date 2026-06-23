@@ -1,8 +1,12 @@
 export const galaxyStyles = `
   .sub { color: var(--text-dim); margin: calc(-1 * var(--sp-1)) 0 var(--sp-4); font-size: var(--fs-sm); }
   .small { font-size: var(--fs-xs); }
+  /* Einspaltig über die volle Breite: der System-Scanner ist das einzige Kind dieses Rasters.
+     Die fruehere zweite Spalte (Ziele-Verzeichnis) ist laengst ein eigener Screen — die alte
+     2-Spalten-Definition liess eine ~600px breite Geisterspalte immer leer (Spieler-Feedback
+     2026-06-23: Desktop nutzte nur die linke Bildschirmhaelfte). */
   .layout {
-    grid-template-columns: minmax(340px, 1.5fr) minmax(280px, 1fr);
+    grid-template-columns: 1fr;
     align-items: start;
   }
 
