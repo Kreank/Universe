@@ -142,3 +142,38 @@ def test_research_yields_more_deuterium_on_average():
                 for _ in range(3000)]
         return sum(vals) / len(vals)
     assert avg_find(4) > avg_find(0)
+
+
+# -- Bergbauschiff-Zaehlung (Feedback-Fix: Ernte-Titan zaehlt als Bergbauschiff) -----------
+
+from types import SimpleNamespace
+
+from app.fleet.mining import _mine_miners
+
+# combat_roster: harvest_titan traegt das harvester-Flag, miner/large_cargo nicht.
+_MINE_BAL = SimpleNamespace(
+    data={"mining": {"ship_type": "miner", "min_ships": 1}},
+    combat_roster={
+        "harvest_titan": {"harvester": True},
+        "miner": {},
+        "large_cargo": {},
+    },
+)
+
+
+def test_mine_miners_counts_standard_miner():
+    assert _mine_miners({"miner": 3}, _MINE_BAL) == 3
+
+
+def test_mine_miners_counts_harvest_titan_as_mining_ship():
+    # Feedback (Pflanzenextrakt): eine reine Ernte-Titan-Flotte MUSS als Bergbauflotte zaehlen.
+    assert _mine_miners({"harvest_titan": 1}, _MINE_BAL) == 1
+
+
+def test_mine_miners_ignores_non_mining_ships():
+    # Nur Transporter (kein Miner, kein Harvester) -> keine Bergbauschiffe -> Start blockiert.
+    assert _mine_miners({"large_cargo": 5}, _MINE_BAL) == 0
+
+
+def test_mine_miners_sums_miner_and_harvester():
+    assert _mine_miners({"miner": 2, "harvest_titan": 1, "large_cargo": 9}, _MINE_BAL) == 3

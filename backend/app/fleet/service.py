@@ -506,13 +506,16 @@ async def send_fleet(
         if ships.get(cs_type, 0) < 1:
             raise RuntimeError(f"Kolonisierung benoetigt ein {cs_type}")
 
-    # Mining erfordert Bergbauschiffe in der Flotte.
+    # Mining erfordert Bergbauschiffe in der Flotte. Als Bergbauschiff zaehlt der Standard-Miner
+    # UND jedes Schiff mit `harvester`-Flag (z. B. der Ernte-Titan) — dieselbe Zaehlung wie die
+    # Foerder-Logik (mining._mine_miners), damit auch eine reine Ernte-Titan-Flotte starten darf.
     if mission == "mine":
+        from app.fleet.mining import _mine_miners
         m_cfg = bal.data.get("mining", {})
-        mtype = m_cfg.get("ship_type", "miner")
-        if ships.get(mtype, 0) < m_cfg.get("min_ships", 1):
+        if _mine_miners(ships, bal) < m_cfg.get("min_ships", 1):
             raise RuntimeError(
-                f"Mining benoetigt mindestens {m_cfg.get('min_ships', 1)} {mtype}"
+                f"Mining benoetigt mindestens {m_cfg.get('min_ships', 1)} Bergbauschiff(e) "
+                f"(Bergbauschiff oder Ernte-Titan)"
             )
 
     # Abfangen: die Flotte fliegt zum Zielsystem und wird dort zur Abfang-Patrouille.

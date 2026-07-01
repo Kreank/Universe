@@ -762,13 +762,35 @@ export class FleetDispatchComponent {
     return Math.round(this.offerAmount() * (pIn / pOut) * 0.96); // 0.96 ≈ Standard-Marge
   });
 
-  private readonly missionRequires: Partial<Record<FleetMission, { type: string; label: string }>> = {
+  // altRosterFlag: zusaetzlich zum geforderten Typ erfuellt jedes ausgewaehlte Schiff mit
+  // diesem combat_roster-Flag die Pflicht. Fuer 'mine' zaehlt so der Ernte-Titan
+  // (harvest_titan, roster.harvester) als Bergbauschiff — konsistent zum Backend.
+  private readonly missionRequires: Partial<
+    Record<FleetMission, { type: string; label: string; altRosterFlag?: string }>
+  > = {
     spy: { type: 'spy_probe', label: 'Spionagesonde' },
     colonize: { type: 'colony_ship', label: 'Kolonieschiff' },
-    mine: { type: 'miner', label: 'Bergbauschiff' },
+    mine: { type: 'miner', label: 'Bergbauschiff', altRosterFlag: 'harvester' },
     recycle: { type: 'recycler', label: 'Recycler' },
     expedition: { type: 'expedition_ship', label: 'Expeditionsschiff' },
   };
+
+  /** Anzahl ausgewaehlter Schiffe, die eine Missions-Pflicht erfuellen: der geforderte
+   *  Typ PLUS (falls altRosterFlag gesetzt) jedes andere Schiff mit diesem combat_roster-Flag. */
+  private requirementShips(req: { type: string; altRosterFlag?: string }): number {
+    let n = this.shipCount(req.type);
+    if (req.altRosterFlag) {
+      const roster = (this.balanceSvc.value as any)?.combat_roster as
+        | Record<string, Record<string, unknown>>
+        | undefined;
+      for (const s of this.availableShips()) {
+        if (s.type !== req.type && roster?.[s.type]?.[req.altRosterFlag]) {
+          n += this.shipCount(s.type);
+        }
+      }
+    }
+    return n;
+  }
 
   toggleEscort(id: string): void {
     this.chosenEscorts.update((s) => {
@@ -874,7 +896,7 @@ export class FleetDispatchComponent {
     if (!req) {
       return null;
     }
-    return this.shipCount(req.type) > 0 ? null : `Diese Mission benötigt mindestens ein ${req.label}.`;
+    return this.requirementShips(req) > 0 ? null : `Diese Mission benötigt mindestens ein ${req.label}.`;
   });
   protected readonly canSend = computed(() => {
     if (!this.hasSelection() || !this.state.activePlanetId()) {
