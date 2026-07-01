@@ -190,6 +190,26 @@ export class GameStateService {
     this.transmissions.update((list) => list.filter((x) => !x.read || x.requires_decision));
   }
 
+  /** Postfach optimistisch alle als gelesen (Diplomatie/Expedition + offene Forderungen bleiben). */
+  markAllTransmissionsRead(): void {
+    this.transmissions.update((list) =>
+      list.map((t) =>
+        t.type !== 'npc_diplomacy' && t.type !== 'expedition' && !t.requires_decision
+          ? { ...t, read: true }
+          : t,
+      ),
+    );
+  }
+
+  /** Postfach optimistisch leeren (Diplomatie/Expedition + offene Forderungen bleiben). */
+  removeAllTransmissions(): void {
+    this.transmissions.update((list) =>
+      list.filter(
+        (t) => t.requires_decision || t.type === 'npc_diplomacy' || t.type === 'expedition',
+      ),
+    );
+  }
+
   reset(): void {
     this.ws.disconnect();
     this.planets.set([]);

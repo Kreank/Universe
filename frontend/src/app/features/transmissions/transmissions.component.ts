@@ -74,8 +74,16 @@ interface SpyIntelView {
         title="Der KI-Berater analysiert dein Imperium und schickt Empfehlungen ins Postfach">
         <app-btn-icon [src]="uiIcon('advisor')" glyph="🧠" /> {{ advisorBusy() ? 'Berater denkt…' : 'Berater fragen' }}
       </button>
+      <button class="btn btn-sm btn-ghost" [disabled]="!unreadCount()" (click)="markAllRead()"
+        title="Markiert alle Funksprüche als gelesen (offene Forderungen bleiben)">
+        ✓ Alle gelesen{{ unreadCount() ? ' (' + unreadCount() + ')' : '' }}
+      </button>
       <button class="btn btn-sm btn-ghost del-read" [disabled]="!readCount()" (click)="deleteRead()">
         <app-btn-icon [src]="uiIcon('trash')" glyph="🗑" /> Gelesene löschen{{ readCount() ? ' (' + readCount() + ')' : '' }}
+      </button>
+      <button class="btn btn-sm btn-ghost del-read" [disabled]="!clearableCount()" (click)="deleteAll()"
+        title="Leert das Postfach (offene Forderungen bleiben erhalten)">
+        <app-btn-icon [src]="uiIcon('trash')" glyph="🗑" /> Alles löschen{{ clearableCount() ? ' (' + clearableCount() + ')' : '' }}
       </button>
     </div>
 
@@ -381,6 +389,23 @@ export class TransmissionsComponent {
     () => this.state.transmissions().filter((t) => t.read && !t.requires_decision).length,
   );
 
+  /** Postfach-Funkspruch (Diplomatie/Expedition leben in eigenen Screens). */
+  private isPostfach(t: Transmission): boolean {
+    return t.type !== 'npc_diplomacy' && t.type !== 'expedition';
+  }
+  /** Ungelesene Postfach-Funksprueche ohne offene Forderung (fuer "Alle gelesen"). */
+  protected readonly unreadCount = computed(
+    () =>
+      this.state
+        .transmissions()
+        .filter((t) => this.isPostfach(t) && !t.read && !t.requires_decision).length,
+  );
+  /** Leerbare Postfach-Funksprueche (alles ausser offenen Forderungen; fuer "Alles löschen"). */
+  protected readonly clearableCount = computed(
+    () =>
+      this.state.transmissions().filter((t) => this.isPostfach(t) && !t.requires_decision).length,
+  );
+
   constructor() {
     void this.state.reloadTransmissions();
   }
@@ -501,6 +526,31 @@ export class TransmissionsComponent {
     this.state.removeReadTransmissions();
     this.api.deleteReadTransmissions().subscribe({
       next: () => this.notify.success('Postfach aufgeraeumt', `${n} gelesene Funksprueche geloescht.`),
+      error: () => void this.state.reloadTransmissions(),
+    });
+  }
+
+  markAllRead(): void {
+    const n = this.unreadCount();
+    if (!n) {
+      return;
+    }
+    this.state.markAllTransmissionsRead();
+    this.api.markAllTransmissionsRead().subscribe({
+      next: () => this.notify.success('Alles gelesen', `${n} Funksprueche als gelesen markiert.`),
+      error: () => void this.state.reloadTransmissions(),
+    });
+  }
+
+  deleteAll(): void {
+    const n = this.clearableCount();
+    if (!n) {
+      return;
+    }
+    this.state.removeAllTransmissions();
+    this.api.deleteAllTransmissions().subscribe({
+      next: () =>
+        this.notify.success('Postfach geleert', `${n} Funksprueche geloescht (offene Forderungen bleiben).`),
       error: () => void this.state.reloadTransmissions(),
     });
   }

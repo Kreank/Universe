@@ -456,6 +456,10 @@ export class ApiService {
     return this.http.post<{ ok: boolean }>(`/api/transmissions/${id}/read`, {});
   }
 
+  markAllTransmissionsRead(): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`/api/transmissions/read-all`, {});
+  }
+
   decideTransmission(id: string, choice: DecisionChoice): Observable<DecisionResponse> {
     return this.http.post<DecisionResponse>(`/api/transmissions/${id}/decide`, { choice });
   }
@@ -466,6 +470,10 @@ export class ApiService {
 
   deleteReadTransmissions(): Observable<{ ok: boolean }> {
     return this.http.delete<{ ok: boolean }>(`/api/transmissions/read`);
+  }
+
+  deleteAllTransmissions(): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`/api/transmissions/all`);
   }
 
   /** KI-Berater anfordern (Phase 5): der Rat trifft kurz darauf als Funkspruch im Postfach ein. */

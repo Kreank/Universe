@@ -5,7 +5,7 @@ import datetime as dt
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.messaging.schemas import (
@@ -21,6 +21,11 @@ from app.platform.models import Commander, Player, Transmission
 from app.platform.security import get_current_player
 
 router = APIRouter(tags=["messaging"])
+
+# Typen, die NICHT im allgemeinen Postfach leben (Diplomatie-Reiter / Expeditions-Screen).
+# Die Bulk-Aktionen (alle lesen / alles loeschen) klammern sie aus — analog zum Frontend-Postfach,
+# damit sie das Diplomatie-Badge und die Expeditionsberichte nicht mit anfassen.
+POSTFACH_EXCLUDED_TYPES = ("npc_diplomacy", "expedition")
 
 
 @router.post("/advisor", status_code=202, response_model=OkResponse)
@@ -121,6 +126,27 @@ async def mark_read(
     return OkResponse(ok=True)
 
 
+@router.post("/transmissions/read-all", response_model=OkResponse)
+async def mark_all_read(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> OkResponse:
+    """Markiert alle ungelesenen Postfach-Funksprueche als gelesen. Offene Forderungen
+    (requires_decision) bleiben ungelesen — sie brauchen eine echte Entscheidung, kein Wegklicken.
+    Diplomatie/Expedition (eigene Screens) bleiben unberuehrt."""
+    await session.execute(
+        update(Transmission)
+        .where(
+            Transmission.player_id == player.id,
+            Transmission.read.is_(False),
+            Transmission.requires_decision.is_(False),
+            Transmission.type.notin_(POSTFACH_EXCLUDED_TYPES),
+        )
+        .values(read=True)
+    )
+    return OkResponse(ok=True)
+
+
 @router.delete("/transmissions/read", response_model=OkResponse)
 async def delete_read(
     player: Player = Depends(get_current_player),
@@ -132,6 +158,24 @@ async def delete_read(
             Transmission.player_id == player.id,
             Transmission.read.is_(True),
             Transmission.requires_decision.is_(False),
+        )
+    )
+    return OkResponse(ok=True)
+
+
+@router.delete("/transmissions/all", response_model=OkResponse)
+async def delete_all(
+    player: Player = Depends(get_current_player),
+    session: AsyncSession = Depends(get_session),
+) -> OkResponse:
+    """Leert das Postfach: loescht alle Funksprueche AUSSER offenen Forderungen
+    (requires_decision — die muessen entschieden, nicht weggeworfen werden). Diplomatie/
+    Expedition (eigene Screens) bleiben unberuehrt."""
+    await session.execute(
+        delete(Transmission).where(
+            Transmission.player_id == player.id,
+            Transmission.requires_decision.is_(False),
+            Transmission.type.notin_(POSTFACH_EXCLUDED_TYPES),
         )
     )
     return OkResponse(ok=True)
