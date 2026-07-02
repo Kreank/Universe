@@ -155,6 +155,9 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
             </div>
           </div>
           <p class="muted small">Die Schiffe bleiben im eigenen System und fangen durchreisende Feindflotten ab (kein Flug).</p>
+          @if (hasSelection()) {
+            <p class="small crew-line" [class.crew-short]="crewShort()">👥 Crew: {{ crewNeeded().toLocaleString('de-DE') }} / {{ availablePopulation().toLocaleString('de-DE') }}</p>
+          }
         }
 
         <!-- W0: Abfangen (intercept) — Patrouillen-Radius am Zielsystem -->
@@ -341,6 +344,9 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
               <div class="sum-cell tip" data-tip="Noch freie Frachtkapazität der gewählten Flotte">
                 <span class="faint">Frei</span><span class="mono" [class.over]="cargoInfo().over">{{ cargoInfo().free.toLocaleString('de-DE') }}</span>
               </div>
+              <div class="sum-cell tip" data-tip="Benötigte Crew (Bevölkerung vom Startplaneten), die diese Flotte beim Losschicken bindet">
+                <span class="faint">👥 Crew</span><span class="mono" [class.over]="crewShort()">{{ crewNeeded().toLocaleString('de-DE') }} / {{ availablePopulation().toLocaleString('de-DE') }}</span>
+              </div>
               @if (rangeInfo(); as r) {
                 <div class="sum-cell tip" data-tip="Distanz zwischen Startplanet und Ziel (OGame-Distanzmodell)">
                   <span class="faint"><app-btn-icon [src]="uiIcon('distance')" glyph="📏" [size]="14" /> Distanz</span><span class="mono">{{ r.distance.toLocaleString('de-DE') }}</span>
@@ -501,6 +507,8 @@ type DispatchCargoKey = (typeof CARGO_LOAD_KEYS)[number];
       .actions .btn { width: 100%; }
       .hint { color: var(--warn); margin: var(--sp-1) 0 0; }
       .small { font-size: var(--fs-sm); }
+      .crew-line { color: var(--text-dim); margin: var(--sp-1) 0 0; font-variant-numeric: tabular-nums; }
+      .crew-line.crew-short { color: var(--danger); font-weight: 600; }
 
       .fleet-summary {
         margin-top: var(--sp-3); padding: var(--sp-3);
@@ -891,7 +899,48 @@ export class FleetDispatchComponent {
   protected readonly hasSelection = computed(() =>
     Object.values(this.selection()).some((n) => n > 0),
   );
+
+  // -- Phase 2: Crew/Manpower — Losschicken bindet Bevölkerung vom Start-Planeten ----
+  /** Crew (Bevölkerung), die EIN Schiff dieses Typs beim Versand bindet. Mk2-Varianten
+   *  erben die Crew vom Elternschiff (population.crew[ ships[type].mk2_parent ]).
+   *  Autonome Einheiten (spy_probe, solar_satellite, drone …) stehen nicht in der Map -> 0. */
+  crewPerShip(type: string): number {
+    const bal = this.balanceSvc.value as any;
+    const crew = bal?.population?.crew ?? {};
+    if (typeof crew[type] === 'number') {
+      return crew[type];
+    }
+    const parent = bal?.ships?.[type]?.mk2_parent;
+    if (parent && typeof crew[parent] === 'number') {
+      return crew[parent];
+    }
+    return 0;
+  }
+
+  /** Gesamt-Crew, die die aktuelle Schiffs-Auswahl bindet (nur Schiffe mit Crew>0 tragen bei). */
+  protected readonly crewNeeded = computed(() => {
+    let n = 0;
+    for (const [type, count] of Object.entries(this.selection())) {
+      if (count > 0) {
+        n += this.crewPerShip(type) * count;
+      }
+    }
+    return n;
+  });
+
+  /** Verfügbare Bevölkerung des Start-Planeten (aktiver Planet = Start-Planet). */
+  protected readonly availablePopulation = computed(() =>
+    Math.floor(this.state.activePlanet()?.resources?.population?.amount ?? 0),
+  );
+
+  /** true, wenn die Auswahl mehr Crew braucht als der Planet an Bevölkerung hat. */
+  protected readonly crewShort = computed(() => this.crewNeeded() > this.availablePopulation());
+
   protected readonly missionHint = computed<string | null>(() => {
+    // Crew-Mangel gilt für ALLE Versände (auch Patrouille/Stationierung) -> zuerst prüfen.
+    if (this.crewShort()) {
+      return `Nicht genug Bevölkerung für die Crew (brauche ${this.crewNeeded().toLocaleString('de-DE')}, habe ${this.availablePopulation().toLocaleString('de-DE')}).`;
+    }
     const req = this.missionRequires[this.mission()];
     if (!req) {
       return null;
@@ -900,6 +949,11 @@ export class FleetDispatchComponent {
   });
   protected readonly canSend = computed(() => {
     if (!this.hasSelection() || !this.state.activePlanetId()) {
+      return false;
+    }
+    // Phase 2: Crew bindet Bevölkerung — gilt für ALLE Versände (auch Patrouille), daher vor
+    // der Patrouillen-Kurzausfahrt prüfen.
+    if (this.crewShort()) {
       return false;
     }
     // Patrouille: kein Ziel/keine Reichweite/keine Pflicht-Schiffe — nur Auswahl nötig.
