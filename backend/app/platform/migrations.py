@@ -221,6 +221,10 @@ _STATEMENTS: list[str] = [
     # AUTOCOMMIT je Statement).
     "ALTER TYPE resource_type ADD VALUE IF NOT EXISTS 'antimatter'",
     "ALTER TYPE resource_type ADD VALUE IF NOT EXISTS 'dark_matter'",
+    # -- Feature: Bevoelkerung & Nahrung (Phase 1) -> zwei neue resource_type-Werte (pro Planet
+    # als resources-Zeile lazy akkumuliert; population.rate = Wachstum/Schrumpf, food.rate = netto).
+    "ALTER TYPE resource_type ADD VALUE IF NOT EXISTS 'population'",
+    "ALTER TYPE resource_type ADD VALUE IF NOT EXISTS 'food'",
     # -- Feature: Farm-Routinen (automatisiertes Farmen von Asteroiden-/Truemmerfeldern) --
     """
     CREATE TABLE IF NOT EXISTS farm_routes (

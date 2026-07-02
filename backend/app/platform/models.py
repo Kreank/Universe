@@ -28,6 +28,7 @@ from app.platform.db import Base
 # -- PG-ENUM-Typen (existieren bereits in der DB) -------------------------------
 resource_type_enum = ENUM(
     "metal", "crystal", "deuterium", "energy", "antimatter", "dark_matter",
+    "population", "food",
     name="resource_type", create_type=False,
 )
 commander_status_enum = ENUM(

@@ -99,6 +99,98 @@ def exotic_energy_use(buildings: dict[str, int], position: int | None) -> float:
     return total
 
 
+# --- Bevoelkerung & Nahrung (Phase 1, docs/systems/POPULATION_PHASE1.md) ----------------------
+# Reine Funktionen -> testbar. Die Farm produziert Nahrung (energie-gedrosselt wie eine Mine),
+# das Wohnhaus setzt die Bevoelkerungs-Obergrenze. Die Bevoelkerung isst Nahrung; das Verhaeltnis
+# Produktion/Verbrauch bestimmt die Zufriedenheit (satt/neutral/hungernd) -> Arbeitskraft-Bonus
+# auf die MINEN sowie Wachstum/Schrumpf der Bevoelkerung.
+
+def farm_food_production(buildings: dict[str, int], energy_factor: float = 1.0) -> float:
+    """Nahrungs-Produktion/Stunde (speed=1) der Farm, energie-gedrosselt (wie eine Mine)."""
+    cfg = get_balance().buildings.get("farm")
+    level = int(buildings.get("farm", 0))
+    if not cfg or level <= 0:
+        return 0.0
+    raw = float(cfg["food_prod_base"]) * level * (float(cfg["food_prod_growth"]) ** level)
+    return raw * float(energy_factor)
+
+
+def population_capacity(buildings: dict[str, int]) -> float:
+    """Bevoelkerungs-Obergrenze aus den Wohnhaeusern (pop_cap_base * lvl * growth^lvl)."""
+    cfg = get_balance().buildings.get("housing")
+    level = int(buildings.get("housing", 0))
+    if not cfg or level <= 0:
+        return 0.0
+    return float(cfg["pop_cap_base"]) * level * (float(cfg["pop_cap_growth"]) ** level)
+
+
+def food_capacity(buildings: dict[str, int]) -> float:
+    """Nahrungs-Lagerkapazitaet: Grund-Cap + pro Farm-Stufe (kein eigenes Lagergebaeude)."""
+    pc = get_balance().data.get("population", {})
+    level = int(buildings.get("farm", 0))
+    return float(pc.get("food_base_cap", 0)) + level * float(pc.get("food_cap_per_farm_level", 0))
+
+
+def governor_satisfaction_shift(specialization: str | None) -> float:
+    """Zufriedenheits-Verschiebung (additiv auf das Verhaeltnis r) durch den Gouverneur-Archetyp."""
+    if not specialization:
+        return 0.0
+    shifts = get_balance().data.get("population", {}).get("commander_satisfaction_shift", {})
+    return float(shifts.get(str(specialization), 0.0))
+
+
+def population_dynamics(
+    population: float,
+    food_production: float,
+    food_stock: float,
+    pop_cap: float,
+    satisfaction_shift: float = 0.0,
+) -> dict:
+    """Reiner Tick-Kern: liefert {tier, workforce_mult, food_rate, pop_rate, consumption} (speed=1).
+
+    tier in {satt, neutral, hungernd}. food_rate = Produktion - Verbrauch (kann negativ sein).
+    Der Arbeitskraft-Bonus (workforce_mult) wirkt nur bei vorhandener Bevoelkerung. Wachstum nur
+    'satt', Schrumpf nur 'hungernd' (Nahrungslager leer UND Unterdeckung)."""
+    pc = get_balance().data["population"]
+    per_pop = float(pc["food_per_pop_per_hour"])
+    satt_surplus = float(pc["satt_surplus"])
+    wb = pc["workforce_bonus"]
+
+    consumption = max(0.0, float(population)) * per_pop
+    food_rate = float(food_production) - consumption
+    starving = food_rate < 0 and float(food_stock) <= 1e-6
+
+    if starving:
+        tier = "hungernd"
+    elif consumption <= 1e-9:
+        # Keine (essende) Bevoelkerung: satt, falls Nahrung+Wohnraum vorhanden (Wachstums-Saat).
+        tier = "satt" if (food_production > 0 and pop_cap > 0) else "neutral"
+    else:
+        r_eff = food_production / consumption + float(satisfaction_shift)
+        if r_eff >= 1.0 + satt_surplus:
+            tier = "satt"
+        else:
+            # r>=1: satt gedeckt aber kein Ueberschuss. r<1: zehrt von Reserven (Lager>0). Beide neutral.
+            tier = "neutral"
+
+    workforce_mult = 1.0 if float(population) <= 0 else 1.0 + float(wb.get(tier, 0.0))
+
+    if tier == "hungernd":
+        pop_rate = -float(population) * float(pc["starve_rate_per_hour"])
+    elif tier == "satt" and pop_cap > 0 and float(population) < pop_cap:
+        pop_rate = (pop_cap - float(population)) * float(pc["growth_rate_per_hour"])
+    else:
+        pop_rate = 0.0
+
+    return {
+        "tier": tier,
+        "workforce_mult": workforce_mult,
+        "food_rate": food_rate,
+        "pop_rate": pop_rate,
+        "consumption": consumption,
+    }
+
+
 def compute_production_and_energy(
     buildings: dict[str, int],
     temp_max: int,
@@ -163,6 +255,9 @@ def compute_production_and_energy(
     # Exo-Minen sind energiehungrig: ihr Verbrauch zaehlt mit -> ein Defizit drosselt (factor)
     # auch ihre eigene Foerderung. Das ist die gewollte natuerliche Bremse (Energie statt Cap).
     consumed += exotic_energy_use(buildings, position)
+    # Bevoelkerung Phase 1: Wohnhaus + Farm sind Energieverbraucher (ein Defizit drosselt so auch
+    # die Nahrungs-Produktion der Farm ueber denselben ``factor``).
+    consumed += energy_use("housing") + energy_use("farm")
 
     # -- Energie: Erzeugung (Solarkraftwerk + Solarsatelliten + Fusion) ------
     solar = b["solar_plant"]
@@ -298,11 +393,13 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     # Gouverneur-Bonus (Kommandeur auf dem Planeten) -> wirkt als production_mult NUR auf den
     # Minen-/Gebaeudeanteil (Befund D-1), daher vor compute_rates ermitteln.
     gov_mult = 1.0
+    gov_spec: str | None = None
     if getattr(planet, "governor_commander_id", None):
         from app.commander.service import governor_production_mult
         from app.platform.models import Commander as _Commander
         gov = await session.get(_Commander, planet.governor_commander_id)
         gov_mult = governor_production_mult(gov, get_balance())
+        gov_spec = getattr(gov, "specialization", None)
         # Verwaltungs-Garnitur (Equipment des Gouverneurs): +Produktion, moral-skaliert.
         from app.commander.equipment import commander_stat_bonus
         gov_mult *= (1.0 + await commander_stat_bonus(
@@ -312,10 +409,35 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     from app.events.buffs import buff_mult as _buff_mult
     gov_mult *= await _buff_mult(session, "production", planet_id=planet.id)
 
+    # --- Bevoelkerung & Nahrung (Phase 1): Arbeitskraft-Bonus fliesst als production_mult in die
+    # MINEN. Dafuer vorab die Energie-Drossel (Farm zaehlt in die Bilanz) + aktuellen Bestand von
+    # Bevoelkerung/Nahrung ermitteln und die Tick-Dynamik berechnen (docs POPULATION_PHASE1.md).
+    _raw_pre, _energy_pre = compute_production_and_energy(
+        buildings, planet.temp_max, energy_tech,
+        research.get("mining_efficiency", 0), solar_sats,
+        research.get("extraction_tech", 0), research.get("extraction_mastery", 0),
+        mega_mining_mult, planet.position,
+    )
+    pf_rows = (await session.execute(
+        select(Resource).where(
+            Resource.planet_id == planet.id,
+            Resource.type.in_(("population", "food")),
+        )
+    )).scalars().all()
+    pf_by_type = {r.type: r for r in pf_rows}
+    pop_amount = float(pf_by_type["population"].amount) if "population" in pf_by_type else 0.0
+    food_amount = float(pf_by_type["food"].amount) if "food" in pf_by_type else 0.0
+    food_prod = farm_food_production(buildings, _energy_pre["factor"])
+    pop_cap = population_capacity(buildings)
+    food_cap = food_capacity(buildings)
+    dyn = population_dynamics(
+        pop_amount, food_prod, food_amount, pop_cap, governor_satisfaction_shift(gov_spec)
+    )
+
     new_rates, energy, capacities = compute_rates(
         buildings, planet.temp_max, energy_tech,
         research.get("mining_efficiency", 0), research.get("storage_tech", 0),
-        solar_sats, production_mult=gov_mult,
+        solar_sats, production_mult=gov_mult * float(dyn["workforce_mult"]),
         extraction_level=research.get("extraction_tech", 0),
         extraction_mastery_level=research.get("extraction_mastery", 0),
         megastructure_mining_mult=mega_mining_mult,
@@ -392,6 +514,55 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
             "amount": round(row.amount, 2),
             "rate": round(row.rate, 2),
             "capacity": round(cap, 2),
+        }
+
+    # --- Bevoelkerung & Nahrung: Lazy-Akkumulator (eigene Dynamik, NICHT in RESOURCE_KEYS) --------
+    # Erst relevant, sobald der Spieler Wohnhaus/Farm gebaut hat (oder bereits Bestand existiert) —
+    # sonst bleibt das Ressourcen-UI fruehe Planeten sauber. food = gedeckelt (food_cap), Rate darf
+    # negativ sein (Verbrauch > Produktion). population = waechst Richtung pop_cap / schrumpft, floor 0.
+    has_pop = (
+        int(buildings.get("housing", 0)) > 0
+        or int(buildings.get("farm", 0)) > 0
+        or bool(pf_by_type)
+    )
+    if has_pop:
+        speed = get_balance().speed
+        food_row = pf_by_type.get("food")
+        if food_row is None:
+            food_row = Resource(planet_id=planet.id, type="food", amount=0.0, rate=0.0, last_updated=now)
+            session.add(food_row)
+        last = food_row.last_updated or now
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=dt.timezone.utc)
+        dt_h = max(0.0, (now - last).total_seconds() / 3600.0)
+        food_row.amount = max(0.0, min(
+            float(food_row.amount or 0.0) + float(food_row.rate or 0.0) * dt_h, food_cap))
+        food_row.rate = round(float(dyn["food_rate"]) * speed, 4)
+        food_row.last_updated = now
+        result["food"] = {
+            "amount": round(food_row.amount, 2),
+            "rate": round(food_row.rate, 2),
+            "capacity": round(food_cap, 2),
+        }
+
+        pop_row = pf_by_type.get("population")
+        if pop_row is None:
+            pop_row = Resource(planet_id=planet.id, type="population", amount=0.0, rate=0.0, last_updated=now)
+            session.add(pop_row)
+        last = pop_row.last_updated or now
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=dt.timezone.utc)
+        dt_h = max(0.0, (now - last).total_seconds() / 3600.0)
+        grown = float(pop_row.amount or 0.0) + float(pop_row.rate or 0.0) * dt_h
+        cap_val = pop_cap if pop_cap > 0 else grown  # ohne Wohnhaus kein harter Cap -> nur floor 0
+        pop_row.amount = max(0.0, min(grown, cap_val))
+        pop_row.rate = round(float(dyn["pop_rate"]) * speed, 4)
+        pop_row.last_updated = now
+        result["population"] = {
+            "amount": round(pop_row.amount, 2),
+            "rate": round(pop_row.rate, 2),
+            "capacity": round(pop_cap, 2),
+            "satisfaction": dyn["tier"],
         }
 
     # --- Exotische Materie (PRO PLANET, wie metal/crystal — KEIN Sweep aufs Konto mehr) ----------

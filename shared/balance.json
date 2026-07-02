@@ -24,28 +24,28 @@
   "planets": {
     "_note": "Position bestimmt Typ/Temperatur/fields_max (Doku 06a). field_curve: ZENTRUM-Stuetzwert je Position 1..15 (1 Feld pro Gebaeudestufe). Die tatsaechlichen Felder eines Slots werden per (galaxy:system:position)-geseedetem RNG um diesen Wert gerollt (field_roll) -> jeder Slot hat feste, aber variierende Groesse (Glueck), stabil ueber Neustarts. type_bands: erstes Band mit pos <= max_pos gewinnt. temp linear von inner (Pos 1) nach outer (Pos 15). homeworld_min_fields garantiert fairen Start.",
     "field_curve": [
-      90,
-      110,
-      130,
-      165,
-      200,
+      104,
+      127,
+      150,
+      190,
       230,
-      255,
       265,
-      255,
+      293,
+      305,
+      293,
+      265,
       230,
-      200,
-      165,
-      135,
-      110,
-      95
+      190,
+      155,
+      127,
+      109
     ],
     "field_roll": {
       "_note": "Felder = triangular(center*(1-variance), center*(1+variance), mode=center), geseedet per Slot-Koordinate. Mittenlastig -> Max-Feld-Planeten sind selten (Glueck). floor = harte Untergrenze. variance auf 0 setzen = wieder deterministisch.",
       "variance": 0.3,
       "floor": 60
     },
-    "homeworld_min_fields": 190,
+    "homeworld_min_fields": 220,
     "type_bands": [
       {
         "max_pos": 3,
@@ -75,6 +75,28 @@
       "variance": 15
     }
   },
+  "population": {
+    "_note": "Phase 1 (Bevoelkerung & Nahrung, docs/systems/POPULATION_PHASE1.md). Wohnhaus (housing) setzt pop_cap, Farm (farm) produziert Nahrung. Bevoelkerung isst food_per_pop_per_hour Nahrung; food_production/food_consumption bestimmt die Zufriedenheit (satt/neutral/hungernd) -> Arbeitskraft-Bonus auf die MINEN (workforce_bonus) + Wachstum/Schrumpf. Gouverneur-Spezialisierung verschiebt die Zufriedenheit (commander_satisfaction_shift, additiv auf das Verhaeltnis r). Alles tunebar.",
+    "food_per_pop_per_hour": 0.05,
+    "growth_rate_per_hour": 0.03,
+    "starve_rate_per_hour": 0.06,
+    "satt_surplus": 0.20,
+    "workforce_bonus": {
+      "satt": 0.15,
+      "neutral": 0.0,
+      "hungernd": -0.10
+    },
+    "food_base_cap": 20000,
+    "food_cap_per_farm_level": 8000,
+    "commander_satisfaction_shift": {
+      "admin": 0.15,
+      "trade": 0.15,
+      "logistics": 0.10,
+      "research": 0.05,
+      "spy": -0.05,
+      "combat": -0.10
+    }
+  },
   "buildings": {
     "metal_mine": {
       "cost": {
@@ -87,6 +109,32 @@
       "prod_growth": 1.1,
       "energy_base": 10,
       "energy_growth": 1.1
+    },
+    "housing": {
+      "cost": {
+        "metal": 80,
+        "crystal": 40,
+        "deuterium": 0
+      },
+      "factor": 1.5,
+      "pop_cap_base": 500,
+      "pop_cap_growth": 1.1,
+      "energy_base": 8,
+      "energy_growth": 1.1,
+      "_note": "Wohnhaus: setzt die Bevoelkerungs-Obergrenze (pop_cap = pop_cap_base * lvl * pop_cap_growth^lvl). Kein Rohstoff-Output. Bevoelkerung waechst bei Nahrungsueberschuss Richtung pop_cap."
+    },
+    "farm": {
+      "cost": {
+        "metal": 70,
+        "crystal": 30,
+        "deuterium": 0
+      },
+      "factor": 1.5,
+      "food_prod_base": 60,
+      "food_prod_growth": 1.1,
+      "energy_base": 6,
+      "energy_growth": 1.1,
+      "_note": "Farm: produziert Nahrung (food_prod_base * lvl * food_prod_growth^lvl), energie-gedrosselt wie eine Mine. Nahrung ist Voraussetzung, damit die Bevoelkerung waechst/ueberlebt."
     },
     "crystal_mine": {
       "cost": {
