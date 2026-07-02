@@ -55,6 +55,10 @@ Es gibt **zwei** Asset-Wurzeln:
 | ✅ | bg_combat | `backgrounds/` | JPG, 1920×1080, dunkel | Screen-Hintergrund **Simulator/Kampfbericht**: Weltraumschlacht-Szene — ferne Explosionen + Wrackteile + Sternenfeld, dramatisch, sparsame rot-orange Glut. |
 | ✅ | bg_trade | `backgrounds/` | JPG, 1920×1080, dunkel | Screen-Hintergrund **Handel**: Handelsstation / Docking-Bay mit Frachtcontainern + andockenden Transportern, warme Markt-Lichter. |
 | ✅ | bg_buildings | `backgrounds/` | JPG, 1920×1080, dunkel | Screen-Hintergrund **Gebäude**: Kolonie/Planetenoberfläche aus niedrigem Orbit bei Nacht, leuchtende Basis-Strukturen. |
+| ✅ | housing | `buildings/housing.png` | PNG, 256×256, alpha | Wohn-Arkologie: verbundene Habitat-Türme/Wohnkuppeln mit warm beleuchteten Fenstern; beherbergt die Bevölkerung. Stil = metal_mine/solar_plant. |
+| ✅ | farm | `buildings/farm.png` | PNG, 256×256, alpha | Agrar-/Hydrokultur-Kuppel mit grün leuchtenden Pflanzenreihen + Nährstofftanks; produziert Nahrung. Stil = metal_mine/solar_plant. |
+| ✅ | population | `icons/resources/population.png` | PNG, 256×256, alpha | Ressourcen-Icon Bevölkerung: cyan glühende Humanoid-Gruppe / Kolonisten-Emblem. Stil = icons/resources/metal.png. |
+| ✅ | food | `icons/resources/food.png` | PNG, 256×256, alpha | Ressourcen-Icon Nahrung: grün leuchtender Setzling/Ration im gerenderten Behälter. Stil = icons/resources/deuterium.png. |
 
 > **Stil-/Kompositions-Brief für ALLE bg_* (Screen-Hintergründe):** modern-cinematic Sci-Fi,
 > **dunkel** (sitzt hinter Inhalt, wird im UI zusätzlich ~65–85% abgedunkelt → ruhig, nicht grell),
