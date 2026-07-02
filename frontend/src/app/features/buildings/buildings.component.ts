@@ -35,6 +35,7 @@ interface BuildingGroup {
 /** Kategorien gemaess Wunsch: Rohstoffe, Energie, Anlagen, Lager, Kommando. */
 const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string | null; types: string[] }[] = [
   { key: 'resource', label: 'Rohstoff-Gebaeude', glyph: '⛏️', icon: missionIcon('mine'), types: ['metal_mine', 'crystal_mine', 'deuterium_synth'] },
+  { key: 'population', label: 'Bevölkerung', glyph: '👥', icon: navIcon('buildings'), types: ['housing', 'farm'] },
   { key: 'energy', label: 'Energie', glyph: '⚡', icon: resourceIcon('energy'), types: ['solar_plant', 'fusion_reactor'] },
   { key: 'facility', label: 'Anlagen', glyph: '🏭', icon: navIcon('buildings'), types: ['robot_factory', 'shipyard', 'defense_factory', 'research_lab', 'nanite_factory'] },
   { key: 'storage', label: 'Lager', glyph: '📦', icon: statIcon('cargo'), types: ['metal_storage', 'crystal_storage', 'deuterium_tank'] },

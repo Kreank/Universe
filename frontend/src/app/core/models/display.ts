@@ -23,6 +23,8 @@ export const RESOURCE_META: Record<string, DisplayMeta> = {
   energy: { label: 'Energie', glyph: '⚡', blurb: 'Treibt die Minen an.' },
   antimatter: { label: 'Antimaterie', glyph: '⚛️', blurb: 'Exotisch — Elite-Schiffe & Endgame.' },
   dark_matter: { label: 'Dunkle Materie', glyph: '🌑', blurb: 'Exotisch — Forschung & Endgame.' },
+  population: { label: 'Bevölkerung', glyph: '👥', blurb: 'Arbeitskraft — steigert die Minen-Produktion.' },
+  food: { label: 'Nahrung', glyph: '🌾', blurb: 'Ernährt die Bevölkerung.' },
 };
 
 export const BUILDING_META: Record<string, DisplayMeta> = {
@@ -85,6 +87,15 @@ export const BUILDING_META: Record<string, DisplayMeta> = {
   command_center: {
     label: 'Kommandozentrale', glyph: '📡', blurb: '+1 Span of Control je Stufe.',
     desc: 'Das Nervenzentrum deines Imperiums. Ohne Kommandozentrale kannst du genau 1 Commander gleichzeitig im Feld führen. Jede Stufe hebt deine Befehlsreichweite (Span of Control) um +1 — es gibt kein Maximum, nur die Baukosten setzen die Grenze. Zählt wird die höchste Stufe über alle deine Planeten. Wer mehr Geschwader losschickt, als die Span erlaubt, kassiert pro überzähligem Geschwader −8 % Kampfkraft (Koordinationsstrafe). Hinzu kommt noch die Kommando-Doktrin (+1 Span je Forschungsstufe).',
+  },
+  // -- Bevölkerung & Nahrung --
+  housing: {
+    label: 'Wohnhaus', glyph: '🏘️', blurb: 'Setzt die Bevölkerungs-Obergrenze.',
+    desc: 'Dicht getaktete Wohnkomplexe beherbergen die Bevölkerung deines Planeten. Jede Stufe hebt die Bevölkerungs-Obergrenze an — doch wachsen tut die Bevölkerung nur, solange genug Nahrung vorhanden ist. Ohne Wohnraum bleibt kein Platz für neue Arbeitskraft.',
+  },
+  farm: {
+    label: 'Farm', glyph: '🌾', blurb: 'Produziert Nahrung.',
+    desc: 'Agrarkuppeln und Hydrokultur-Anlagen erzeugen die Nahrung, die deine Bevölkerung ernährt. Jede Stufe steigert die Nahrungsproduktion. Ohne Überschuss stagniert die Bevölkerung — reicht die Nahrung nicht, schrumpft sie sogar wieder.',
   },
   // -- Mond-Gebäude (nur auf Monden baubar) --
   moon_base: {

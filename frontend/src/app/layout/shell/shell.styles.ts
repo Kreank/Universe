@@ -64,6 +64,20 @@ export const shellStyles = `
   .res.exotic .res-icon { width: 19px; height: 19px; }
   .res.exotic .res-amount { font-size: var(--fs-sm); color: var(--text-dim); }
 
+  /* Bevoelkerung & Nahrung (nur sichtbar, wenn Wohnhaus/Farm gebaut). */
+  .res-group.society { gap: var(--sp-4); }
+  /* Glyph-Fallback fuer die (noch) fehlenden Bevoelkerungs-/Nahrungs-Icons. */
+  .res-glyph-fallback { display: none; font-size: 18px; line-height: 22px; flex: 0 0 auto; }
+  /* Zufriedenheits-Chip: satt = gruen, neutral = gedaempft, hungernd = rot. */
+  .sat-chip {
+    font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.02em;
+    padding: 1px 7px; border-radius: var(--r-pill); white-space: nowrap; flex: 0 0 auto;
+    border: 1px solid transparent;
+  }
+  .sat-chip.sat-satt { color: var(--ok); background: rgba(46, 230, 160, 0.12); border-color: rgba(46, 230, 160, 0.3); }
+  .sat-chip.sat-neutral { color: var(--text-dim); background: rgba(255, 255, 255, 0.05); border-color: var(--border); }
+  .sat-chip.sat-hungernd { color: var(--danger); background: rgba(255, 77, 125, 0.12); border-color: rgba(255, 77, 125, 0.35); }
+
   .planet-select { width: auto; min-height: 34px; padding: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); }
   .player { font-size: var(--fs-sm); }
 

@@ -112,6 +112,10 @@ export interface PlanetResources {
   energy: EnergyBalance;
   /** Exotische Materie pro Planet (antimatter/dark_matter); nur vorhanden, wenn je produziert/erhalten. */
   exotic?: Record<string, { amount: number; rate: number }>;
+  /** Bevoelkerung — nur vorhanden, wenn ein Wohnhaus gebaut wurde. rate kann negativ sein (schrumpft). */
+  population?: { amount: number; rate: number; capacity: number; satisfaction: 'satt' | 'neutral' | 'hungernd' };
+  /** Nahrung wie metal/crystal — nur vorhanden, wenn eine Farm/ein Wohnhaus gebaut wurde. rate kann negativ sein. */
+  food?: { amount: number; rate: number; capacity: number };
 }
 
 export interface PlanetBuilding {

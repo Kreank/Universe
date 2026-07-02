@@ -5,7 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { GameStateService } from '../../core/services/game-state.service';
 import { ShortNumberPipe } from '../../shared/pipes/short-number.pipe';
 import { RESOURCE_META } from '../../core/models/display';
-import { statusIcon } from '../../core/models/icon-assets';
+import { resourceIcon, statusIcon } from '../../core/models/icon-assets';
 import { BtnIconComponent } from '../../shared/components/btn-icon.component';
 import { shellStyles } from './shell.styles';
 
@@ -74,6 +74,40 @@ interface NavGroup {
               <span class="res-amount mono">{{ antimatter() | shortNumber }}</span>
             </div>
           </div>
+
+          @if (populationRow() || foodRow()) {
+            <span class="res-sep" aria-hidden="true"></span>
+            <div class="res-group society">
+              @if (populationRow(); as p) {
+                <div class="res tip" [attr.data-tip]="p.tip" [class.at-cap]="p.pct >= 100">
+                  <img class="res-icon" [src]="resourceIcon('population')" alt="" (error)="onNavIconError($event)" />
+                  <span class="res-glyph-fallback">👥</span>
+                  <div class="res-meta">
+                    <span class="res-amount mono">{{ p.display }}</span>
+                    <div class="bar" [class.full]="p.pct >= 100">
+                      <span class="fill" [style.width.%]="p.pct"></span>
+                    </div>
+                  </div>
+                  <span class="sat-chip" [class]="'sat-' + p.satisfaction">{{ p.satLabel }}</span>
+                </div>
+              }
+              @if (foodRow(); as f) {
+                <div class="res tip" [attr.data-tip]="f.tip" [class.at-cap]="f.pct >= 100">
+                  <img class="res-icon" [src]="resourceIcon('food')" alt="" (error)="onNavIconError($event)" />
+                  <span class="res-glyph-fallback">🌾</span>
+                  <div class="res-meta">
+                    <span class="res-amount mono">{{ f.display }}</span>
+                    <div class="bar" [class.full]="f.pct >= 100">
+                      <span class="fill" [style.width.%]="f.pct"></span>
+                    </div>
+                  </div>
+                  <span class="res-rate mono" [class.neg]="f.rate < 0"
+                    >{{ f.rate >= 0 ? '+' : '' }}{{ f.rate | shortNumber }}/h</span
+                  >
+                </div>
+              }
+            </div>
+          }
         </div>
 
         <div class="topbar-right">
@@ -221,6 +255,65 @@ export class ShellComponent implements OnInit, OnDestroy {
   protected readonly antimatter = computed(
     () => (this.state.activePlanet()?.resources as any)?.exotic?.antimatter?.amount ?? 0,
   );
+  protected readonly resourceIcon = resourceIcon;
+
+  /**
+   * Bevoelkerung des aktiven Planeten (nur wenn ein Wohnhaus gebaut wurde -> Backend liefert den Key).
+   * Sekundengenaue Hochrechnung wie bei den Haupt-Rohstoffen (rate kann negativ sein -> schrumpft).
+   */
+  protected readonly populationRow = computed(() => {
+    const pop = this.state.activePlanet()?.resources?.population;
+    if (!pop) {
+      return null;
+    }
+    const elapsedH = Math.max(0, (this.nowMs() - this.state.resourcesAt()) / 3_600_000);
+    const base = pop.amount ?? 0;
+    const capacity = pop.capacity ?? 0;
+    const rate = pop.rate ?? 0;
+    let amount = base + rate * elapsedH;
+    if (capacity > 0) {
+      amount = Math.min(amount, Math.max(capacity, base));
+    }
+    amount = Math.max(0, amount);
+    const pct = capacity > 0 ? Math.min(100, (amount / capacity) * 100) : 0;
+    const satLabel = pop.satisfaction.charAt(0).toUpperCase() + pop.satisfaction.slice(1);
+    return {
+      display: Math.floor(amount).toLocaleString('de-DE'),
+      rate,
+      pct,
+      satisfaction: pop.satisfaction,
+      satLabel,
+      tip: `${RESOURCE_META['population'].label}\n${Math.floor(amount).toLocaleString('de-DE')} / ${Math.floor(capacity).toLocaleString('de-DE')}\nRate: ${rate >= 0 ? '+' : ''}${rate.toFixed(0)}/h\nZufriedenheit: ${satLabel}`,
+    };
+  });
+
+  /**
+   * Nahrung des aktiven Planeten (nur wenn Farm/Wohnhaus vorhanden -> Backend liefert den Key).
+   * Wie metal/crystal, aber die Rate kann negativ sein (Bevoelkerung verbraucht mehr, als produziert wird).
+   */
+  protected readonly foodRow = computed(() => {
+    const food = this.state.activePlanet()?.resources?.food;
+    if (!food) {
+      return null;
+    }
+    const elapsedH = Math.max(0, (this.nowMs() - this.state.resourcesAt()) / 3_600_000);
+    const base = food.amount ?? 0;
+    const capacity = food.capacity ?? 0;
+    const rate = food.rate ?? 0;
+    let amount = base + rate * elapsedH;
+    if (capacity > 0) {
+      amount = Math.min(amount, Math.max(capacity, base));
+    }
+    amount = Math.max(0, amount);
+    const pct = capacity > 0 ? Math.min(100, (amount / capacity) * 100) : 0;
+    return {
+      display: Math.floor(amount).toLocaleString('de-DE'),
+      rate,
+      pct,
+      tip: `${RESOURCE_META['food'].label}\n${Math.floor(amount).toLocaleString('de-DE')} / ${Math.floor(capacity).toLocaleString('de-DE')}\nRate: ${rate >= 0 ? '+' : ''}${rate.toFixed(0)}/h`,
+    };
+  });
+
   protected readonly navOpen = signal(false);
 
   private static readonly ITEMS: Record<string, NavItem> = {
