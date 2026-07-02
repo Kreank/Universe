@@ -11,7 +11,15 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.economy.service import add_resources, get_research_levels, spend_resources
+from app.economy.service import (
+    add_population,
+    add_resources,
+    fleet_crew,
+    get_population,
+    get_research_levels,
+    spend_population,
+    spend_resources,
+)
 from app.platform.balance import get_balance
 from app.platform.db import session_scope
 from app.platform.eventbus import event_bus
@@ -714,6 +722,17 @@ async def send_fleet(
     if not await spend_resources(session, planet, total_cost):
         raise RuntimeError("Nicht genug Ressourcen (Fracht/Sprit)")
 
+    # Phase 2 (docs/systems/CREW_PHASE2.md): Crew (= Bevoelkerung) fuers Losschicken vom Start-
+    # Planeten abziehen. Autonome Schiffe (Sonde/Solarsat/Drohne) = 0 Crew. Reicht die Bevoelkerung
+    # nicht, wird der Start blockiert (die Session rollt den obigen Sprit-/Fracht-Abzug zurueck).
+    crew_needed = fleet_crew(ships)
+    if crew_needed > 0 and not await spend_population(session, planet, crew_needed):
+        have = await get_population(session, planet)
+        raise RuntimeError(
+            f"Nicht genug Bevoelkerung fuer die Crew (brauche {int(crew_needed)}, habe {int(have)})"
+        )
+    mission_data = {**(mission_data or {}), "embarked_crew": crew_needed}
+
     depart = _now()
     arrive = depart + dt.timedelta(seconds=secs)
     # Expedition: Aufenthalt in den galaktischen Weiten vor dem Rueckflug.
@@ -1187,11 +1206,15 @@ async def fleet_return(fleet_id: str) -> None:
         player_id = fleet.player_id
         # Farm-Routinen-Tag frueh auslesen (nach commit sind die Attribute expired).
         farm_route_id = (fleet.mission_data or {}).get("farm_route_id")
+        # Phase 2: beim Start gebundene Crew (0 fuer Alt-Flotten von vor Phase 2 -> keine Gutschrift).
+        embarked_crew = float((fleet.mission_data or {}).get("embarked_crew", 0) or 0)
         origin = await session.get(Planet, fleet.origin_planet_id) if fleet.origin_planet_id else None
 
         fleet_ships = (await session.execute(
             select(Ship).where(Ship.fleet_id == fleet.id)
         )).scalars().all()
+        # Zusammensetzung der ÜBERLEBENDEN Schiffe fuer die Crew-Gutschrift (vor dem Loeschen erfassen).
+        survivor_ships = {fs.type: int(fs.count) for fs in fleet_ships}
 
         # Zeitbasiertes Schuerfen: bei der Rueckkehr (Verweildauer rum) die volle Ausbeute real
         # foerdern + in die Fracht legen, BEVOR sie dem Heimatplaneten gutgeschrieben wird.
@@ -1255,6 +1278,12 @@ async def fleet_return(fleet_id: str) -> None:
                 await session.delete(fs)
             # Fracht gutschreiben.
             await add_resources(session, origin, fleet.cargo or {})
+            # Phase 2: Crew der ÜBERLEBENDEN Schiffe der Heimat-Bevoelkerung gutschreiben, gedeckelt
+            # auf die mitgeflogene Crew -> gekaperte Schiffe geben keine Gratis-Bevoelkerung, verlorene
+            # Schiffe/Crew kommen nicht zurueck. embarked_crew=0 (Alt-Flotten) -> Gutschrift 0.
+            credit = min(fleet_crew(survivor_ships), embarked_crew)
+            if credit > 0:
+                await add_population(session, origin, credit)
 
         fleet.status = "done"
         fleet.cargo = {}

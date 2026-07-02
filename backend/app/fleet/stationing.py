@@ -132,6 +132,13 @@ async def _land_at_own_planet(
 
     if cargo:
         await add_resources(session, planet, cargo)
+    # Phase 2 (Q3): Crew der gelandeten Schiffe geht in die ZIEL-Planeten-Bevoelkerung (Einbahn),
+    # gedeckelt auf die mitgeflogene Crew. Alt-Flotten ohne embarked_crew -> 0 (keine Gratis-Pop).
+    from app.economy.service import add_population, fleet_crew
+    embarked = float((fleet.mission_data or {}).get("embarked_crew", 0) or 0)
+    land_crew = min(fleet_crew(ships), embarked)
+    if land_crew > 0:
+        await add_population(session, planet, land_crew)
 
     fleet.status = "done"
     fleet.cargo = {}
@@ -450,7 +457,7 @@ async def _send_station_home(session: AsyncSession, st: StationedFleet) -> Fleet
     """Schickt eine stationierte Flotte zum Heimatplaneten zurueck (Rueckflug) und loescht die
     Station. Liefert das Rueckflug-Fleet oder None (leer / kein Heimatplanet). Geteilt von
     Rueckruf (manuell) und Treibstoff-Tick (Zwangs-Rueckkehr)."""
-    from app.economy.service import get_research_levels
+    from app.economy.service import fleet_crew, get_research_levels
     from app.fleet.service import compute_distance, fleet_return, flight_seconds, slowest_ship_speed
     from app.platform.scheduler import schedule_at
 
@@ -478,6 +485,9 @@ async def _send_station_home(session: AsyncSession, st: StationedFleet) -> Fleet
         mission="deploy", status="returning",
         depart_at=now, arrive_at=now, return_at=now + dt.timedelta(seconds=int(secs)),
         cargo=return_cargo,
+        # Phase 2: die Crew der zurueckkehrenden Station-Schiffe wird bei der Heimkehr (fleet_return)
+        # der Heimat-Bevoelkerung gutgeschrieben (Station kann nicht kapern -> Deckel = eigene Crew).
+        mission_data={"embarked_crew": fleet_crew(ships)},
     )
     session.add(fleet)
     await session.flush()

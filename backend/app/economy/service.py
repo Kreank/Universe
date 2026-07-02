@@ -115,13 +115,20 @@ def farm_food_production(buildings: dict[str, int], energy_factor: float = 1.0) 
     return raw * float(energy_factor)
 
 
+def base_population() -> float:
+    """Grund-Bevoelkerung je Planet (Phase 2): jeder Planet ist bewohnt (Floor + Startwert),
+    auch ohne Wohnhaus — sonst koennte man ohne Crew keine Flotte starten."""
+    return float(get_balance().data.get("population", {}).get("base_pop", 0))
+
+
 def population_capacity(buildings: dict[str, int]) -> float:
-    """Bevoelkerungs-Obergrenze aus den Wohnhaeusern (pop_cap_base * lvl * growth^lvl)."""
+    """Bevoelkerungs-Obergrenze: Grund-Bevoelkerung + Wohnhaus-Beitrag (pop_cap_base*lvl*growth^lvl)."""
+    cap = base_population()
     cfg = get_balance().buildings.get("housing")
     level = int(buildings.get("housing", 0))
-    if not cfg or level <= 0:
-        return 0.0
-    return float(cfg["pop_cap_base"]) * level * (float(cfg["pop_cap_growth"]) ** level)
+    if cfg and level > 0:
+        cap += float(cfg["pop_cap_base"]) * level * (float(cfg["pop_cap_growth"]) ** level)
+    return cap
 
 
 def food_capacity(buildings: dict[str, int]) -> float:
@@ -148,37 +155,50 @@ def population_dynamics(
 ) -> dict:
     """Reiner Tick-Kern: liefert {tier, workforce_mult, food_rate, pop_rate, consumption} (speed=1).
 
+    Phase 2 mit Grund-Bevoelkerung (base_pop): Nur Bevoelkerung UEBER base_pop isst Farm-Nahrung
+    und kann verhungern (die Basis ernaehrt sich selbst = Subsistenz). Starvation schrumpft nie
+    unter base_pop. Sinkt die Bevoelkerung unter base_pop (z. B. Crew im Kampf verloren), waechst
+    sie ohne Farm langsam wieder auf base_pop zurueck (natuerliche Wiederbesiedlung).
+
     tier in {satt, neutral, hungernd}. food_rate = Produktion - Verbrauch (kann negativ sein).
-    Der Arbeitskraft-Bonus (workforce_mult) wirkt nur bei vorhandener Bevoelkerung. Wachstum nur
-    'satt', Schrumpf nur 'hungernd' (Nahrungslager leer UND Unterdeckung)."""
+    Wachstum ueber base_pop nur 'satt', Schrumpf nur 'hungernd'."""
     pc = get_balance().data["population"]
     per_pop = float(pc["food_per_pop_per_hour"])
     satt_surplus = float(pc["satt_surplus"])
     wb = pc["workforce_bonus"]
+    base_pop = float(pc.get("base_pop", 0))
 
-    consumption = max(0.0, float(population)) * per_pop
+    pop = max(0.0, float(population))
+    # Nur die Bevoelkerung UEBER der selbstversorgenden Basis isst Farm-Nahrung.
+    eaters = max(0.0, pop - base_pop)
+    consumption = eaters * per_pop
     food_rate = float(food_production) - consumption
-    starving = food_rate < 0 and float(food_stock) <= 1e-6
 
+    # Unter der Basis: natuerliche Wiederbesiedlung (kein Hunger, keine Farm noetig).
+    if pop < base_pop - 1e-9:
+        tier = "neutral"
+        pop_rate = (base_pop - pop) * float(pc.get("base_recovery_rate_per_hour", 0.0))
+        workforce_mult = 1.0
+        return {"tier": tier, "workforce_mult": workforce_mult, "food_rate": food_rate,
+                "pop_rate": pop_rate, "consumption": consumption}
+
+    starving = food_rate < 0 and float(food_stock) <= 1e-6
     if starving:
         tier = "hungernd"
     elif consumption <= 1e-9:
-        # Keine (essende) Bevoelkerung: satt, falls Nahrung+Wohnraum vorhanden (Wachstums-Saat).
-        tier = "satt" if (food_production > 0 and pop_cap > 0) else "neutral"
+        # Keine (essenden) Extra-Bevoelkerung: satt, falls Nahrung+Wohnraum fuer Wachstum da.
+        tier = "satt" if (food_production > 0 and pop_cap > pop + 1e-9) else "neutral"
     else:
         r_eff = food_production / consumption + float(satisfaction_shift)
-        if r_eff >= 1.0 + satt_surplus:
-            tier = "satt"
-        else:
-            # r>=1: satt gedeckt aber kein Ueberschuss. r<1: zehrt von Reserven (Lager>0). Beide neutral.
-            tier = "neutral"
+        tier = "satt" if r_eff >= 1.0 + satt_surplus else "neutral"
 
-    workforce_mult = 1.0 if float(population) <= 0 else 1.0 + float(wb.get(tier, 0.0))
+    workforce_mult = 1.0 if pop <= 0 else 1.0 + float(wb.get(tier, 0.0))
 
     if tier == "hungernd":
-        pop_rate = -float(population) * float(pc["starve_rate_per_hour"])
-    elif tier == "satt" and pop_cap > 0 and float(population) < pop_cap:
-        pop_rate = (pop_cap - float(population)) * float(pc["growth_rate_per_hour"])
+        # Schrumpf nur der Ueber-Basis-Bevoelkerung; nie unter base_pop.
+        pop_rate = -max(0.0, pop - base_pop) * float(pc["starve_rate_per_hour"])
+    elif tier == "satt" and pop_cap > pop + 1e-9:
+        pop_rate = (pop_cap - pop) * float(pc["growth_rate_per_hour"])
     else:
         pop_rate = 0.0
 
@@ -425,7 +445,8 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
         )
     )).scalars().all()
     pf_by_type = {r.type: r for r in pf_rows}
-    pop_amount = float(pf_by_type["population"].amount) if "population" in pf_by_type else 0.0
+    # Fehlt die Bevoelkerungs-Zeile noch, gilt die Grund-Bevoelkerung (wird unten so angelegt).
+    pop_amount = float(pf_by_type["population"].amount) if "population" in pf_by_type else base_population()
     food_amount = float(pf_by_type["food"].amount) if "food" in pf_by_type else 0.0
     food_prod = farm_food_production(buildings, _energy_pre["factor"])
     pop_cap = population_capacity(buildings)
@@ -517,20 +538,23 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
         }
 
     # --- Bevoelkerung & Nahrung: Lazy-Akkumulator (eigene Dynamik, NICHT in RESOURCE_KEYS) --------
-    # Erst relevant, sobald der Spieler Wohnhaus/Farm gebaut hat (oder bereits Bestand existiert) —
-    # sonst bleibt das Ressourcen-UI fruehe Planeten sauber. food = gedeckelt (food_cap), Rate darf
-    # negativ sein (Verbrauch > Produktion). population = waechst Richtung pop_cap / schrumpft, floor 0.
+    # Phase 2: jeder Planet hat eine Grund-Bevoelkerung (base_pop) -> immer relevant. food = gedeckelt
+    # (food_cap), Rate darf negativ sein. population = waechst Richtung pop_cap / schrumpft (nie unter
+    # base_pop durch Hunger); Crew-Abzug kann sie unter base_pop druecken (Recovery holt sie zurueck).
     has_pop = (
-        int(buildings.get("housing", 0)) > 0
+        base_population() > 0
+        or int(buildings.get("housing", 0)) > 0
         or int(buildings.get("farm", 0)) > 0
         or bool(pf_by_type)
     )
     if has_pop:
         speed = get_balance().speed
+        created_pf = False
         food_row = pf_by_type.get("food")
         if food_row is None:
             food_row = Resource(planet_id=planet.id, type="food", amount=0.0, rate=0.0, last_updated=now)
             session.add(food_row)
+            created_pf = True
         last = food_row.last_updated or now
         if last.tzinfo is None:
             last = last.replace(tzinfo=dt.timezone.utc)
@@ -547,15 +571,20 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
 
         pop_row = pf_by_type.get("population")
         if pop_row is None:
-            pop_row = Resource(planet_id=planet.id, type="population", amount=0.0, rate=0.0, last_updated=now)
+            # Neue Planeten starten mit der Grund-Bevoelkerung.
+            pop_row = Resource(planet_id=planet.id, type="population",
+                               amount=base_population(), rate=0.0, last_updated=now)
             session.add(pop_row)
+            created_pf = True
         last = pop_row.last_updated or now
         if last.tzinfo is None:
             last = last.replace(tzinfo=dt.timezone.utc)
         dt_h = max(0.0, (now - last).total_seconds() / 3600.0)
-        grown = float(pop_row.amount or 0.0) + float(pop_row.rate or 0.0) * dt_h
-        cap_val = pop_cap if pop_cap > 0 else grown  # ohne Wohnhaus kein harter Cap -> nur floor 0
-        pop_row.amount = max(0.0, min(grown, cap_val))
+        start_pop = float(pop_row.amount or 0.0)
+        grown = start_pop + float(pop_row.rate or 0.0) * dt_h
+        # Cap deckelt nur das WACHSTUM; heimgekehrte Crew (extern gutgeschrieben) darf ueberfuellen
+        # (wie Lager-Overfill) und bleibt erhalten. Floor 0 (Crew kann alle abziehen).
+        pop_row.amount = max(0.0, min(grown, max(pop_cap, start_pop)))
         pop_row.rate = round(float(dyn["pop_rate"]) * speed, 4)
         pop_row.last_updated = now
         result["population"] = {
@@ -564,6 +593,10 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
             "capacity": round(pop_cap, 2),
             "satisfaction": dyn["tier"],
         }
+        # autoflush ist AUS: neu angelegte population/food-Zeilen sofort flushen, sonst sehen
+        # Folge-Refreshes sie nicht (Duplikate) und spend/add_population lesen sie als fehlend.
+        if created_pf:
+            await session.flush()
 
     # --- Exotische Materie (PRO PLANET, wie metal/crystal — KEIN Sweep aufs Konto mehr) ----------
     # Lazy-Akkumulator je Planet (amount + rate + last_updated), UNCAPPED (kein Lagergebaeude).
@@ -655,3 +688,64 @@ async def add_resources(session: AsyncSession, planet: Planet, gain: dict[str, f
             row.amount = float(row.amount or 0) + amount
         else:
             session.add(Resource(planet_id=planet.id, type=key, amount=amount, rate=0.0))
+
+
+# --- Crew / Manpower (Phase 2, docs/systems/CREW_PHASE2.md) -----------------------------------
+
+def ship_crew(ship_type: str) -> float:
+    """Crew (= Bevoelkerung), die EIN Schiff dieses Typs zum Losschicken bindet. Autonome Schiffe
+    (spy_probe/solar_satellite/drone) fehlen in der Map -> 0. Mk2-Varianten erben vom Elternschiff."""
+    bal = get_balance()
+    crew_map = bal.data.get("population", {}).get("crew", {})
+    if ship_type in crew_map:
+        return float(crew_map[ship_type])
+    parent = (bal.ships.get(ship_type) or {}).get("mk2_parent")
+    if parent and parent in crew_map:
+        return float(crew_map[parent])
+    return 0.0
+
+
+def fleet_crew(ships: dict[str, int]) -> float:
+    """Gesamte Crew einer Schiffs-Zusammenstellung (Summe crew*Anzahl)."""
+    return sum(ship_crew(t) * int(c) for t, c in ships.items())
+
+
+async def get_population(session: AsyncSession, planet: Planet) -> float:
+    """Aktuelle Bevoelkerung eines Planeten (nach Lazy-Refresh)."""
+    await refresh_resources(session, planet)
+    row = (await session.execute(
+        select(Resource).where(Resource.planet_id == planet.id, Resource.type == "population")
+    )).scalar_one_or_none()
+    return float(row.amount) if row is not None else base_population()
+
+
+async def spend_population(session: AsyncSession, planet: Planet, amount: float) -> bool:
+    """Zieht ``amount`` Bevoelkerung ab (Crew boarding beim Flottenstart). Aktualisiert zuerst
+    lazy. Gibt False zurueck, wenn nicht genug da ist (dann wird NICHTS abgezogen)."""
+    if amount <= 0:
+        return True
+    await refresh_resources(session, planet)
+    row = (await session.execute(
+        select(Resource).where(Resource.planet_id == planet.id, Resource.type == "population")
+    )).scalar_one_or_none()
+    have = float(row.amount) if row is not None else 0.0
+    if have + 1e-6 < amount:
+        return False
+    row.amount = have - amount
+    return True
+
+
+async def add_population(session: AsyncSession, planet: Planet, amount: float) -> None:
+    """Schreibt Bevoelkerung gut (heimgekehrte/gelandete Crew). Darf den pop_cap ueberfuellen
+    (wie extern zugefuehrte Ressourcen) — refresh_resources haelt den Ueberschuss."""
+    if amount <= 0:
+        return
+    await refresh_resources(session, planet)
+    row = (await session.execute(
+        select(Resource).where(Resource.planet_id == planet.id, Resource.type == "population")
+    )).scalar_one_or_none()
+    if row is not None:
+        row.amount = float(row.amount or 0.0) + amount
+    else:
+        session.add(Resource(planet_id=planet.id, type="population",
+                             amount=base_population() + amount, rate=0.0, last_updated=_now()))
