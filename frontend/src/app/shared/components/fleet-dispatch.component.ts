@@ -841,6 +841,9 @@ export class FleetDispatchComponent {
     this.api.getResearch().subscribe((r) => {
       const astro = (r.research ?? []).find((x) => x.type === 'astrophysics');
       this.astroLevel.set(astro?.level ?? 0);
+      // Phase 3: Automatisierungstechnik senkt den Crew-Bedarf beim Losschicken.
+      const auto = (r.research ?? []).find((x) => x.type === 'automation_tech');
+      this.automationLevel.set(auto?.level ?? 0);
     });
     // Schrumpft die Auswahl, sodass die geladene Fracht die Kapazitaet uebersteigt,
     // automatisch von hinten (Deut -> Kristall -> Metall) kuerzen -> nie ueberladen.
@@ -917,7 +920,24 @@ export class FleetDispatchComponent {
     return 0;
   }
 
-  /** Gesamt-Crew, die die aktuelle Schiffs-Auswahl bindet (nur Schiffe mit Crew>0 tragen bei). */
+  /** Phase 3: Stufe der Automatisierungstechnik (Roboter ersetzen Crew). */
+  protected readonly automationLevel = signal(0);
+
+  /** Crew-Multiplikator der Automatisierungstechnik — Spiegel von economy.automation_crew_mult:
+   *  max(floor, 1 - per_level * Stufe), Werte aus balance.research.effects. */
+  protected readonly automationCrewMult = computed(() => {
+    const lvl = this.automationLevel();
+    if (lvl <= 0) {
+      return 1;
+    }
+    const eff = (this.balanceSvc.value as any)?.research?.effects ?? {};
+    const per = eff.automation_crew_reduction_per_level ?? 0;
+    const floor = eff.automation_crew_floor ?? 0;
+    return Math.max(floor, 1 - per * lvl);
+  });
+
+  /** Gesamt-Crew, die die aktuelle Schiffs-Auswahl bindet (nur Schiffe mit Crew>0 tragen bei).
+   *  Wie im Backend wird die Automatisierungs-Reduktion auf die SUMME angewendet. */
   protected readonly crewNeeded = computed(() => {
     let n = 0;
     for (const [type, count] of Object.entries(this.selection())) {
@@ -925,7 +945,8 @@ export class FleetDispatchComponent {
         n += this.crewPerShip(type) * count;
       }
     }
-    return n;
+    // Aufrunden: ganzzahlige Anzeige, nie optimistischer als der Backend-Abzug.
+    return Math.ceil(n * this.automationCrewMult());
   });
 
   /** Verfügbare Bevölkerung des Start-Planeten (aktiver Planet = Start-Planet). */

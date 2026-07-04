@@ -134,9 +134,11 @@ async def _land_at_own_planet(
         await add_resources(session, planet, cargo)
     # Phase 2 (Q3): Crew der gelandeten Schiffe geht in die ZIEL-Planeten-Bevoelkerung (Einbahn),
     # gedeckelt auf die mitgeflogene Crew. Alt-Flotten ohne embarked_crew -> 0 (keine Gratis-Pop).
-    from app.economy.service import add_population, fleet_crew
+    # Phase 3: gleiche Automatisierungs-Reduktion wie beim Start (siehe fleet_return).
+    from app.economy.service import add_population, fleet_crew, get_research_levels
     embarked = float((fleet.mission_data or {}).get("embarked_crew", 0) or 0)
-    land_crew = min(fleet_crew(ships), embarked)
+    _auto_lvl = (await get_research_levels(session, fleet.player_id)).get("automation_tech", 0)
+    land_crew = min(fleet_crew(ships, _auto_lvl), embarked)
     if land_crew > 0:
         await add_population(session, planet, land_crew)
 
@@ -487,7 +489,8 @@ async def _send_station_home(session: AsyncSession, st: StationedFleet) -> Fleet
         cargo=return_cargo,
         # Phase 2: die Crew der zurueckkehrenden Station-Schiffe wird bei der Heimkehr (fleet_return)
         # der Heimat-Bevoelkerung gutgeschrieben (Station kann nicht kapern -> Deckel = eigene Crew).
-        mission_data={"embarked_crew": fleet_crew(ships)},
+        # Phase 3: mit Automatisierungs-Reduktion, konsistent zum Abzug beim Losschicken.
+        mission_data={"embarked_crew": fleet_crew(ships, research.get("automation_tech", 0))},
     )
     session.add(fleet)
     await session.flush()

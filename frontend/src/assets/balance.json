@@ -24,28 +24,28 @@
   "planets": {
     "_note": "Position bestimmt Typ/Temperatur/fields_max (Doku 06a). field_curve: ZENTRUM-Stuetzwert je Position 1..15 (1 Feld pro Gebaeudestufe). Die tatsaechlichen Felder eines Slots werden per (galaxy:system:position)-geseedetem RNG um diesen Wert gerollt (field_roll) -> jeder Slot hat feste, aber variierende Groesse (Glueck), stabil ueber Neustarts. type_bands: erstes Band mit pos <= max_pos gewinnt. temp linear von inner (Pos 1) nach outer (Pos 15). homeworld_min_fields garantiert fairen Start.",
     "field_curve": [
-      90,
-      110,
-      130,
-      165,
-      200,
+      104,
+      127,
+      150,
+      190,
       230,
-      255,
       265,
-      255,
+      293,
+      305,
+      293,
+      265,
       230,
-      200,
-      165,
-      135,
-      110,
-      95
+      190,
+      155,
+      127,
+      109
     ],
     "field_roll": {
       "_note": "Felder = triangular(center*(1-variance), center*(1+variance), mode=center), geseedet per Slot-Koordinate. Mittenlastig -> Max-Feld-Planeten sind selten (Glueck). floor = harte Untergrenze. variance auf 0 setzen = wieder deterministisch.",
       "variance": 0.3,
       "floor": 60
     },
-    "homeworld_min_fields": 190,
+    "homeworld_min_fields": 220,
     "type_bands": [
       {
         "max_pos": 3,
@@ -75,6 +75,62 @@
       "variance": 15
     }
   },
+  "population": {
+    "_note": "Phase 1 (Bevoelkerung & Nahrung, docs/systems/POPULATION_PHASE1.md). Wohnhaus (housing) setzt pop_cap, Farm (farm) produziert Nahrung. Bevoelkerung isst food_per_pop_per_hour Nahrung; food_production/food_consumption bestimmt die Zufriedenheit (satt/neutral/hungernd) -> Arbeitskraft-Bonus auf die MINEN (workforce_bonus) + Wachstum/Schrumpf. Gouverneur-Spezialisierung verschiebt die Zufriedenheit (commander_satisfaction_shift, additiv auf das Verhaeltnis r). Alles tunebar.",
+    "food_per_pop_per_hour": 0.05,
+    "growth_rate_per_hour": 0.03,
+    "starve_rate_per_hour": 0.06,
+    "satt_surplus": 0.20,
+    "workforce_bonus": {
+      "satt": 0.15,
+      "neutral": 0.0,
+      "hungernd": -0.10
+    },
+    "food_base_cap": 20000,
+    "food_cap_per_farm_level": 8000,
+    "commander_satisfaction_shift": {
+      "admin": 0.15,
+      "trade": 0.15,
+      "logistics": 0.10,
+      "research": 0.05,
+      "spy": -0.05,
+      "combat": -0.10
+    },
+    "base_pop": 200,
+    "base_recovery_rate_per_hour": 0.05,
+    "_crew_note": "Phase 2 (docs/systems/CREW_PHASE2.md): Crew = Bevoelkerung, die zum LOSSCHICKEN einer Flotte vom Start-Planeten gebunden wird (nicht zum Bauen). Reicht die Bevoelkerung nicht -> Flotte startet nicht. Heile Rueckkehr/Ankunft gibt die Crew der Ueberlebenden zurueck; Verluste/Kapern = Crew tot. Autonome Schiffe (spy_probe/solar_satellite/drone) fehlen in der Map -> 0 Crew. Werte tunebar, grob proportional zu Groesse/Kosten. Mk2 = wie Basis.",
+    "crew": {
+      "small_cargo": 2,
+      "large_cargo": 6,
+      "recycler": 8,
+      "colony_ship": 20,
+      "miner": 5,
+      "expedition_ship": 15,
+      "deep_scout": 3,
+      "light_fighter": 2,
+      "heavy_fighter": 4,
+      "cruiser": 8,
+      "battleship": 20,
+      "battlecruiser": 30,
+      "bomber": 25,
+      "destroyer": 40,
+      "deathstar": 2000,
+      "interceptor": 3,
+      "escort_frigate": 10,
+      "shield_tender": 12,
+      "carrier": 50,
+      "interdictor": 60,
+      "warp_stabilizer": 15,
+      "ewar_frigate": 10,
+      "boarder": 20,
+      "stealth_corvette": 6,
+      "harvest_titan": 80,
+      "flagship": 200,
+      "corsair": 15,
+      "tanker": 12,
+      "trade_leviathan": 40
+    }
+  },
   "buildings": {
     "metal_mine": {
       "cost": {
@@ -87,6 +143,32 @@
       "prod_growth": 1.1,
       "energy_base": 10,
       "energy_growth": 1.1
+    },
+    "housing": {
+      "cost": {
+        "metal": 80,
+        "crystal": 40,
+        "deuterium": 0
+      },
+      "factor": 1.5,
+      "pop_cap_base": 500,
+      "pop_cap_growth": 1.1,
+      "energy_base": 8,
+      "energy_growth": 1.1,
+      "_note": "Wohnhaus: setzt die Bevoelkerungs-Obergrenze (pop_cap = pop_cap_base * lvl * pop_cap_growth^lvl). Kein Rohstoff-Output. Bevoelkerung waechst bei Nahrungsueberschuss Richtung pop_cap."
+    },
+    "farm": {
+      "cost": {
+        "metal": 70,
+        "crystal": 30,
+        "deuterium": 0
+      },
+      "factor": 1.5,
+      "food_prod_base": 60,
+      "food_prod_growth": 1.1,
+      "energy_base": 6,
+      "energy_growth": 1.1,
+      "_note": "Farm: produziert Nahrung (food_prod_base * lvl * food_prod_growth^lvl), energie-gedrosselt wie eine Mine. Nahrung ist Voraussetzung, damit die Bevoelkerung waechst/ueberlebt."
     },
     "crystal_mine": {
       "cost": {
@@ -440,7 +522,12 @@
       "trade_network_margin_max": 0.1,
       "trade_network_hub_margin_per_level": 0.01,
       "deuterium_chance_bonus_per_level": 0.25,
-      "deuterium_yield_bonus_per_level": 0.15
+      "deuterium_yield_bonus_per_level": 0.15,
+      "automation_crew_reduction_per_level": 0.05,
+      "automation_crew_floor": 0.4,
+      "habitat_pop_cap_per_level": 0.08,
+      "habitat_satt_bonus_per_level": 0.01,
+      "habitat_satt_bonus_max": 0.15
     },
     "techs": {
       "energy_tech": {
@@ -1024,6 +1111,30 @@
           "weapons_tech": 12
         },
         "effect": "Veteranen-Werft (Endgame): schaltet die Mk-II-Veredelung aller regulaeren Schiffe frei (<typ>_mk2). Mk-II-Ruempfe haben hoehere Kampfwerte und groessere Tanks, kosten mehr Ressourcen plus Antimaterie und brauchen diese Forschung als Gate."
+      },
+      "automation_tech": {
+        "cost": {
+          "metal": 4000,
+          "crystal": 6000,
+          "deuterium": 3000
+        },
+        "requires": {
+          "research_lab": 6,
+          "computer_tech": 6
+        },
+        "effect": "Automatisierungstechnik (Bevoelkerung Phase 3, Fleeter-Weg): Roboter ersetzen Crew -> -automation_crew_reduction_per_level Crew-Bedarf je Stufe beim Flotten-Losschicken, Untergrenze automation_crew_floor des Normalbedarfs. Gelesen in economy.ship_crew/fleet_crew."
+      },
+      "habitat_tech": {
+        "cost": {
+          "metal": 5000,
+          "crystal": 4000,
+          "deuterium": 2000
+        },
+        "requires": {
+          "research_lab": 5,
+          "housing": 5
+        },
+        "effect": "Habitattechnik (Bevoelkerung Phase 3, Miner-Weg): +habitat_pop_cap_per_level Wohnhaus-Kapazitaet je Stufe UND der 'satt'-Arbeitskraft-Bonus steigt um habitat_satt_bonus_per_level je Stufe (Cap habitat_satt_bonus_max). Mehr Menschen brauchen mehr Nahrung -> Farm/Felder-Tradeoff bleibt."
       }
     }
   },

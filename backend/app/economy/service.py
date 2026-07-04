@@ -121,14 +121,31 @@ def base_population() -> float:
     return float(get_balance().data.get("population", {}).get("base_pop", 0))
 
 
-def population_capacity(buildings: dict[str, int]) -> float:
-    """Bevoelkerungs-Obergrenze: Grund-Bevoelkerung + Wohnhaus-Beitrag (pop_cap_base*lvl*growth^lvl)."""
+def population_capacity(buildings: dict[str, int], habitat_level: int = 0) -> float:
+    """Bevoelkerungs-Obergrenze: Grund-Bevoelkerung + Wohnhaus-Beitrag (pop_cap_base*lvl*growth^lvl).
+    Phase 3: Habitattechnik hebt den WOHNHAUS-Beitrag um habitat_pop_cap_per_level je Stufe
+    (nicht die Grund-Bevoelkerung — die Basis bleibt Subsistenz)."""
     cap = base_population()
     cfg = get_balance().buildings.get("housing")
     level = int(buildings.get("housing", 0))
     if cfg and level > 0:
-        cap += float(cfg["pop_cap_base"]) * level * (float(cfg["pop_cap_growth"]) ** level)
+        housing_cap = float(cfg["pop_cap_base"]) * level * (float(cfg["pop_cap_growth"]) ** level)
+        if habitat_level > 0:
+            eff = get_balance().data["research"].get("effects", {})
+            housing_cap *= 1.0 + float(eff.get("habitat_pop_cap_per_level", 0.0)) * int(habitat_level)
+        cap += housing_cap
     return cap
+
+
+def habitat_satt_bonus(habitat_level: int) -> float:
+    """Phase 3 (Miner-Weg): zusaetzlicher 'satt'-Arbeitskraft-Bonus durch Habitattechnik,
+    habitat_satt_bonus_per_level je Stufe, gedeckelt auf habitat_satt_bonus_max."""
+    if habitat_level <= 0:
+        return 0.0
+    eff = get_balance().data["research"].get("effects", {})
+    per = float(eff.get("habitat_satt_bonus_per_level", 0.0))
+    cap = float(eff.get("habitat_satt_bonus_max", 0.0))
+    return min(per * int(habitat_level), cap)
 
 
 def food_capacity(buildings: dict[str, int]) -> float:
@@ -152,8 +169,12 @@ def population_dynamics(
     food_stock: float,
     pop_cap: float,
     satisfaction_shift: float = 0.0,
+    satt_workforce_extra: float = 0.0,
 ) -> dict:
     """Reiner Tick-Kern: liefert {tier, workforce_mult, food_rate, pop_rate, consumption} (speed=1).
+
+    Phase 3: satt_workforce_extra (Habitattechnik, siehe habitat_satt_bonus) erhoeht den
+    Arbeitskraft-Bonus NUR im Tier 'satt' — hungernde Bevoelkerung profitiert nicht.
 
     Phase 2 mit Grund-Bevoelkerung (base_pop): Nur Bevoelkerung UEBER base_pop isst Farm-Nahrung
     und kann verhungern (die Basis ernaehrt sich selbst = Subsistenz). Starvation schrumpft nie
@@ -192,7 +213,8 @@ def population_dynamics(
         r_eff = food_production / consumption + float(satisfaction_shift)
         tier = "satt" if r_eff >= 1.0 + satt_surplus else "neutral"
 
-    workforce_mult = 1.0 if pop <= 0 else 1.0 + float(wb.get(tier, 0.0))
+    bonus = float(wb.get(tier, 0.0)) + (float(satt_workforce_extra) if tier == "satt" else 0.0)
+    workforce_mult = 1.0 if pop <= 0 else 1.0 + bonus
 
     if tier == "hungernd":
         # Schrumpf nur der Ueber-Basis-Bevoelkerung; nie unter base_pop.
@@ -449,10 +471,13 @@ async def refresh_resources(session: AsyncSession, planet: Planet) -> dict:
     pop_amount = float(pf_by_type["population"].amount) if "population" in pf_by_type else base_population()
     food_amount = float(pf_by_type["food"].amount) if "food" in pf_by_type else 0.0
     food_prod = farm_food_production(buildings, _energy_pre["factor"])
-    pop_cap = population_capacity(buildings)
+    # Phase 3: Habitattechnik hebt Wohnraum-Cap + 'satt'-Arbeitskraft-Bonus.
+    habitat_level = int(research.get("habitat_tech", 0))
+    pop_cap = population_capacity(buildings, habitat_level)
     food_cap = food_capacity(buildings)
     dyn = population_dynamics(
-        pop_amount, food_prod, food_amount, pop_cap, governor_satisfaction_shift(gov_spec)
+        pop_amount, food_prod, food_amount, pop_cap, governor_satisfaction_shift(gov_spec),
+        satt_workforce_extra=habitat_satt_bonus(habitat_level),
     )
 
     new_rates, energy, capacities = compute_rates(
@@ -692,6 +717,18 @@ async def add_resources(session: AsyncSession, planet: Planet, gain: dict[str, f
 
 # --- Crew / Manpower (Phase 2, docs/systems/CREW_PHASE2.md) -----------------------------------
 
+def automation_crew_mult(automation_level: int) -> float:
+    """Phase 3 (Fleeter-Weg): Crew-Multiplikator der Automatisierungstechnik.
+    -automation_crew_reduction_per_level je Stufe, Untergrenze automation_crew_floor
+    (Roboter ersetzen Crew, aber nie komplett)."""
+    if automation_level <= 0:
+        return 1.0
+    eff = get_balance().data["research"].get("effects", {})
+    per = float(eff.get("automation_crew_reduction_per_level", 0.0))
+    floor = float(eff.get("automation_crew_floor", 0.0))
+    return max(floor, 1.0 - per * int(automation_level))
+
+
 def ship_crew(ship_type: str) -> float:
     """Crew (= Bevoelkerung), die EIN Schiff dieses Typs zum Losschicken bindet. Autonome Schiffe
     (spy_probe/solar_satellite/drone) fehlen in der Map -> 0. Mk2-Varianten erben vom Elternschiff."""
@@ -705,9 +742,12 @@ def ship_crew(ship_type: str) -> float:
     return 0.0
 
 
-def fleet_crew(ships: dict[str, int]) -> float:
-    """Gesamte Crew einer Schiffs-Zusammenstellung (Summe crew*Anzahl)."""
-    return sum(ship_crew(t) * int(c) for t, c in ships.items())
+def fleet_crew(ships: dict[str, int], automation_level: int = 0) -> float:
+    """Gesamte Crew einer Schiffs-Zusammenstellung (Summe crew*Anzahl), reduziert um die
+    Automatisierungstechnik des Besitzers (Phase 3). Reduktion auf der SUMME (nicht je Schiff
+    gerundet) -> stetig tunebar."""
+    raw = sum(ship_crew(t) * int(c) for t, c in ships.items())
+    return raw * automation_crew_mult(automation_level)
 
 
 async def get_population(session: AsyncSession, planet: Planet) -> float:

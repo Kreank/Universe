@@ -80,6 +80,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
       'crew_psychology',
       'logistics_tech',
       'computer_tech',
+      'automation_tech',
       'flagship_command',
       'corsair_command',
       'leviathan_command',
@@ -113,7 +114,7 @@ const CATEGORY_ORDER: { key: string; label: string; glyph: string; icon: string 
     label: 'Wirtschaft & Ausbau',
     glyph: '🌍',
     icon: techIcon('terraforming'),
-    types: ['storage_tech', 'terraforming', 'research_network', 'trade_network', 'convoy_tactics'],
+    types: ['storage_tech', 'terraforming', 'habitat_tech', 'research_network', 'trade_network', 'convoy_tactics'],
   },
   {
     key: 'intel',

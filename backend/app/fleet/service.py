@@ -725,7 +725,8 @@ async def send_fleet(
     # Phase 2 (docs/systems/CREW_PHASE2.md): Crew (= Bevoelkerung) fuers Losschicken vom Start-
     # Planeten abziehen. Autonome Schiffe (Sonde/Solarsat/Drohne) = 0 Crew. Reicht die Bevoelkerung
     # nicht, wird der Start blockiert (die Session rollt den obigen Sprit-/Fracht-Abzug zurueck).
-    crew_needed = fleet_crew(ships)
+    # Phase 3: Automatisierungstechnik senkt den Crew-Bedarf (Roboter ersetzen Crew).
+    crew_needed = fleet_crew(ships, research.get("automation_tech", 0))
     if crew_needed > 0 and not await spend_population(session, planet, crew_needed):
         have = await get_population(session, planet)
         raise RuntimeError(
@@ -1281,7 +1282,10 @@ async def fleet_return(fleet_id: str) -> None:
             # Phase 2: Crew der ÜBERLEBENDEN Schiffe der Heimat-Bevoelkerung gutschreiben, gedeckelt
             # auf die mitgeflogene Crew -> gekaperte Schiffe geben keine Gratis-Bevoelkerung, verlorene
             # Schiffe/Crew kommen nicht zurueck. embarked_crew=0 (Alt-Flotten) -> Gutschrift 0.
-            credit = min(fleet_crew(survivor_ships), embarked_crew)
+            # Phase 3: dieselbe Automatisierungs-Reduktion wie beim Start, sonst wuerde bei
+            # Teilverlusten mehr Crew heimkehren, als anteilig mitgeflogen ist.
+            _auto_lvl = (await get_research_levels(session, player_id)).get("automation_tech", 0)
+            credit = min(fleet_crew(survivor_ships, _auto_lvl), embarked_crew)
             if credit > 0:
                 await add_population(session, origin, credit)
 

@@ -56,9 +56,9 @@ zurückkehrt. Bewusster Tradeoff (Sascha-Entscheid Q1).
   stealth_corvette 6, harvest_titan 80, flagship 200, corsair 15, tanker 12, trade_leviathan 40.
   Mk2-Varianten = wie Basis.
 
-## Phase 3 (geparkt, mit Sascha abzustimmen)
-Automatisierungs-Forschung (Roboter senken Crew-/Arbeiter-Bedarf) + Gegen-Forschung
-(mehr Bevölkerung/Produktion) → Spieler-Identität Miner/Fleeter/Händler.
+## Phase 3 — GEBAUT (2026-07-04, siehe POPULATION_PHASE3.md)
+Automatisierungstechnik (−5 % Crew-Bedarf je Stufe, Floor 40 %) + Habitattechnik
+(+8 % Wohnraum je Stufe, „satt"-Bonus bis +30 %) → Spieler-Identität Fleeter/Miner.
 
 ## Frontend
 Flotten-Versand-Dialog (`fleet-dispatch`): Crew-Bedarf der Auswahl anzeigen + gegen die

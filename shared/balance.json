@@ -522,7 +522,12 @@
       "trade_network_margin_max": 0.1,
       "trade_network_hub_margin_per_level": 0.01,
       "deuterium_chance_bonus_per_level": 0.25,
-      "deuterium_yield_bonus_per_level": 0.15
+      "deuterium_yield_bonus_per_level": 0.15,
+      "automation_crew_reduction_per_level": 0.05,
+      "automation_crew_floor": 0.4,
+      "habitat_pop_cap_per_level": 0.08,
+      "habitat_satt_bonus_per_level": 0.01,
+      "habitat_satt_bonus_max": 0.15
     },
     "techs": {
       "energy_tech": {
@@ -1106,6 +1111,30 @@
           "weapons_tech": 12
         },
         "effect": "Veteranen-Werft (Endgame): schaltet die Mk-II-Veredelung aller regulaeren Schiffe frei (<typ>_mk2). Mk-II-Ruempfe haben hoehere Kampfwerte und groessere Tanks, kosten mehr Ressourcen plus Antimaterie und brauchen diese Forschung als Gate."
+      },
+      "automation_tech": {
+        "cost": {
+          "metal": 4000,
+          "crystal": 6000,
+          "deuterium": 3000
+        },
+        "requires": {
+          "research_lab": 6,
+          "computer_tech": 6
+        },
+        "effect": "Automatisierungstechnik (Bevoelkerung Phase 3, Fleeter-Weg): Roboter ersetzen Crew -> -automation_crew_reduction_per_level Crew-Bedarf je Stufe beim Flotten-Losschicken, Untergrenze automation_crew_floor des Normalbedarfs. Gelesen in economy.ship_crew/fleet_crew."
+      },
+      "habitat_tech": {
+        "cost": {
+          "metal": 5000,
+          "crystal": 4000,
+          "deuterium": 2000
+        },
+        "requires": {
+          "research_lab": 5,
+          "housing": 5
+        },
+        "effect": "Habitattechnik (Bevoelkerung Phase 3, Miner-Weg): +habitat_pop_cap_per_level Wohnhaus-Kapazitaet je Stufe UND der 'satt'-Arbeitskraft-Bonus steigt um habitat_satt_bonus_per_level je Stufe (Cap habitat_satt_bonus_max). Mehr Menschen brauchen mehr Nahrung -> Farm/Felder-Tradeoff bleibt."
       }
     }
   },

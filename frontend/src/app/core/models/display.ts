@@ -317,6 +317,14 @@ export const TECH_META: Record<string, DisplayMeta> = {
     label: 'Veteranen-Werft', glyph: '🎖️', blurb: 'Schaltet Mk II / Elite-Schiffe frei.',
     desc: 'Eine spezialisierte Werft-Erweiterung für veteranengeführte Eliteklassen. Schaltet die Mk II-Varianten aller regulären Schiffe frei (gleicher Rumpf, klar erkennbar am Mk II-Rahmen) — höhere Kampfwerte und größere Tanks, dafür teurer und zusätzlich mit Antimaterie bezahlt. Der Einstieg ins Schiffs-Endgame.',
   },
+  automation_tech: {
+    label: 'Automatisierungstechnik', glyph: '🤖', blurb: '−5 % Crew-Bedarf je Stufe (min. 40 %).',
+    desc: 'Bordroboter, Autopiloten und selbstwartende Systeme übernehmen Routineaufgaben der Besatzung. Jede Stufe senkt den Crew-Bedarf beim Losschicken einer Flotte um 5 % — bis auf minimal 40 % des Normalbedarfs. Der Weg des Fleeters: große Flotten schicken, ohne den Planeten leerzufegen, denn wer zu Hause bleibt, arbeitet in den Minen.',
+  },
+  habitat_tech: {
+    label: 'Habitattechnik', glyph: '🏙️', blurb: '+8 % Wohnraum je Stufe · stärkerer Satt-Bonus.',
+    desc: 'Vertikale Arkologien, geschlossene Kreisläufe und effiziente Raumnutzung. Jede Stufe erhöht die Kapazität deiner Wohnhäuser um 8 % und hebt den Arbeitskraft-Bonus einer satten Bevölkerung um einen Prozentpunkt (von +15 % auf bis zu +30 %). Der Weg des Miners: mehr Menschen, mehr Produktion — aber mehr Mäuler wollen von Farmen ernährt werden.',
+  },
 };
 
 /**
@@ -550,6 +558,16 @@ export const TECH_EFFECTS: Record<string, TechEffectMeta> = {
   veteran_shipyard: {
     branch: 'Endgame',
     summary: 'Schaltet die Mk II / Elite-Varianten aller regulären Schiffe frei — stärkere Kampfwerte und größere Tanks, dafür teurer und Antimaterie-gegatet.',
+  },
+  automation_tech: {
+    branch: 'Kommando',
+    summary: 'Roboter ersetzen Crew: −5 % Crew-Bedarf je Stufe beim Flotten-Losschicken, Untergrenze 40 % des Normalbedarfs.',
+    levelEffect: { label: 'Crew-Ersparnis', perLevel: 5, unit: '%' },
+  },
+  habitat_tech: {
+    branch: 'Wirtschaft',
+    summary: '+8 % Wohnhaus-Kapazität je Stufe und +1 %-Punkt „satt“-Arbeitskraft-Bonus je Stufe (max. +30 % statt +15 %).',
+    levelEffect: { label: 'Wohnraum-Bonus', perLevel: 8, unit: '%' },
   },
 };
 
